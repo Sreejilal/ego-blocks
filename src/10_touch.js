@@ -75,7 +75,7 @@ const Touch = {
   },
   /** show the layer only while a match is being played by touch */
   sync() {
-    const vis = this.on && Game.state === 'match' && !Input.usingPad;
+    const vis = this.on && Game.playing() && !Net.paused && !Input.usingPad;
     if (vis === this.visible) return;
     this.visible = vis;
     if (this.el) this.el.hidden = !vis;

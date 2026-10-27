@@ -1,7 +1,8 @@
 # SCORZ
 
-5v5 voxel football that runs in a web browser: ranked play, 7 styles with abilities, Flow, spins,
-a Lawless mode with items, and keyboard, controller and phone touch controls.
+Voxel football that runs in a web browser, 3v3 up to 5v5: ranked play, 10 styles with abilities,
+Flow, skins, clubs and kits, a game pass, replays, featured modes, online rooms with friends, and
+keyboard, controller and phone touch controls.
 
 **To play right now:** open `docs/index.html` in Chrome or Edge. That one file is the whole game,
 and it works offline.
@@ -83,7 +84,56 @@ To update it later: run `npm run build` and upload the new `docs/index.html`.
 - Online multiplayer there needs your own server, their room and invite features, chat moderation (at least a swear filter), and CrazyGames usernames shown in game.
 - Their requirement pages: https://docs.crazygames.com/requirements/intro/
 
-## 5. Where things are
+## 5. Play online with friends (the SCORZ server)
+
+Online rooms need the SCORZ server running somewhere. The game itself still works offline without it.
+
+### On your own computer first
+
+1. Open the terminal in VS Code (**Terminal > New Terminal**) and type:
+
+   ```
+   npm install
+   npm run build
+   npm run server
+   ```
+
+2. It prints `SCORZ server on http://localhost:8787`. Leave that terminal open.
+3. Open **http://localhost:8787** in Chrome or Edge, pick **PLAY WITH FRIENDS** and **CREATE A ROOM**.
+4. To try it with a second player on the same computer, open the invite link in a second window.
+5. People on the same Wi-Fi can join too: find your computer's address (in PowerShell run `ipconfig`
+   and look for the IPv4 address, for example `192.168.1.20`) and they open `http://192.168.1.20:8787`.
+   Windows may ask to allow Node.js through the firewall: allow it on private networks only.
+
+Press `Ctrl+C` in the terminal to stop the server.
+
+### Hosting it so anyone can join
+
+The server is one Node.js program that also serves the game page, so a host only has to run
+`npm install` and `npm run server`. Most hosts give you `https://` for free, which the game needs
+(it then connects with `wss://`, a secure connection, automatically).
+
+Good options to look at, from simplest: **Render** (a Web Service from your GitHub repo),
+**Railway**, or **Fly.io**. Small servers usually cost a few dollars a month; free plans tend to
+fall asleep when nobody is playing, which makes the first join slow.
+
+On any of them:
+
+1. Connect your GitHub repository.
+2. Build command: `npm install && npm run build`. Start command: `npm run server`.
+3. The host sets `PORT` for you; the server reads it.
+4. When it is running, open the address the host gives you (for example `https://scorz.onrender.com`).
+   That page is the game, and its rooms work right away. Share that address with friends.
+
+If you want the GitHub Pages copy of the game to use your server too, open **PLAY WITH FRIENDS >
+SERVER ADDRESS** and enter `wss://your-server-address/ws`. Invite links made from there carry the
+server address with them.
+
+Things to know: one server runs every room; 20 or so players at once is fine on a small plan. There
+is no player prediction yet, so the further players are from the server, the more lag they feel.
+Pick a server region close to you and your friends.
+
+## 6. Where things are
 
 ```
 src/            the game's source code (edit these)
@@ -91,6 +141,7 @@ src/            the game's source code (edit these)
   01..12_*.js   game code, joined in order by build.js
 build.js        builds docs/index.html
 docs/index.html the finished game (play it, upload it)
+server/         the online server (npm run server)
 test/           automatic tests (npm test)
 CLAUDE.md       instructions Claude Code reads
 ROADMAP.md      your feature list as prompts

@@ -11,9 +11,9 @@ const Input = {
   init(canvas) {
     this.canvas = canvas;
     window.addEventListener('keydown', (e) => {
-      const inGame = Game.state === 'match';
+      const inGame = Game.playing();
       if (inGame && GAME_KEYS.has(e.code)) e.preventDefault();
-      if (e.code === 'Tab' && Game.state === 'match') e.preventDefault();
+      if (e.code === 'Tab' && Game.playing()) e.preventDefault();
       if (!e.repeat) { this.down.add(e.code); this.edges.add(e.code); }
       if (e.code === 'Escape') Game.onEscape();
       this.usingPad = false;
@@ -21,7 +21,7 @@ const Input = {
     window.addEventListener('keyup', (e) => { this.down.delete(e.code); this.up.add(e.code); });
     window.addEventListener('blur', () => { this.down.clear(); if (this.mouseL) this.up.add('Mouse0'); if (this.mouseR) this.up.add('Mouse2'); this.mouseL = this.mouseR = false; });
     canvas.addEventListener('mousedown', (e) => {
-      if (Game.state !== 'match') return;
+      if (!Game.playing() || Net.paused) return;
       e.preventDefault();
       Sfx.init();
       if (!this.locked && !this.lockFailed) { this.requestLock(); return; }
@@ -34,7 +34,7 @@ const Input = {
       if (e.button === 2 && this.mouseR) { this.mouseR = false; this.up.add('Mouse2'); }
     });
     window.addEventListener('mousemove', (e) => {
-      if (Game.state !== 'match') return;
+      if (!Game.playing()) return;
       if (this.locked) { this.mdx += e.movementX || 0; this.mdy += e.movementY || 0; }
       else if (this.lockFailed) { this.mdx += (e.movementX || 0) * 0.8; this.mdy += (e.movementY || 0) * 0.8; }
     });
@@ -43,7 +43,7 @@ const Input = {
       const was = this.locked;
       this.locked = document.pointerLockElement === canvas;
       if (this.locked) { this.everLocked = true; this.lockFailed = false; }
-      if (was && !this.locked && Game.state === 'match' && !this.releasing) Game.pause();
+      if (was && !this.locked && Game.playing() && !Net.paused && !this.releasing) Game.pause();
       this.releasing = false;
       Hud.lockHint && Hud.lockHint();
     });

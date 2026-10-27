@@ -4,6 +4,8 @@
 const Game = {
   state: 'boot', match: null, lastMode: null, last: 0, time: 0, ended: false, autoQ: 'med', pausedAt: 0,
   perf: { t: 0, frames: 0 }, crowdT: 0,
+  /** a match is being played here, offline or online */
+  playing() { return this.state === 'match' || this.state === 'online'; },
   start() {
     Save.load(); Save.validate();
     Sfx.setMuted(Save.data.settings.mute);
@@ -14,12 +16,14 @@ const Game = {
     Showcase.init();
     Reveal.init();
     Replay.init();
+    Net.init();
     Input.init($('gl'));
     Touch.init();
     this.applyQuality();
     window.addEventListener('resize', () => World.resize());
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'match') this.pause(); });
     this.toLobby();
+    if (Net.joinCode) Net.open(); // opened from an invite link
     this.last = performance.now();
     const tick = (t) => { requestAnimationFrame(tick); if (!this.manual) this.loop(t); };
     requestAnimationFrame(tick);
@@ -28,6 +32,7 @@ const Game = {
   toLobby() {
     Replay.stop(); Replay.offer = null; Replay.hideOffer();
     if (this.match) { this.match.dispose(); this.match = null; }
+    Net.nm = null; Net.paused = false;
     Input.releaseLock();
     this.state = 'lobby';
     World.setSun(SUN_LOBBY);
@@ -57,12 +62,14 @@ const Game = {
     Cam.look(0); Cam.follow(1, this.match);
   },
   pause() {
+    if (this.state === 'online') { Net.paused = true; this.pausedAt = performance.now(); Input.releaseLock(); UI.showPause(true); return; } // the server keeps playing
     if (this.state !== 'match' || !this.match) return;
     this.state = 'paused'; this.match.paused = true; this.pausedAt = performance.now();
     Input.releaseLock();
     UI.showPause(true);
   },
   resume() {
+    if (this.state === 'online') { Net.paused = false; UI.showPause(false); Input.consumeEdges(); Input.requestLock(); UI.lockHint(); return; }
     if (this.state !== 'paused') return;
     this.state = 'match'; this.match.paused = false;
     UI.showPause(false);
@@ -72,10 +79,11 @@ const Game = {
   },
   onEscape() {
     if (this.state === 'replay') { Replay.stop(); return; }
+    if (this.state === 'online') { if (!Net.paused) this.pause(); else if (performance.now() - this.pausedAt > 350) this.resume(); return; }
     if (this.state === 'match') this.pause();
     else if (this.state === 'paused' && performance.now() - this.pausedAt > 350) this.resume();
   },
-  forfeit() { UI.showPause(false); this.finishMatch(true); },
+  forfeit() { UI.showPause(false); if (this.state === 'online') { Net.leaveMatch(); return; } this.finishMatch(true); },
   finishMatch(forfeit) {
     if (this.ended || !this.match) return;
     this.ended = true;
@@ -166,6 +174,8 @@ const Game = {
         }
         if (m.phase === 'end' && m.phaseT > 3.2 && !this.ended) this.finishMatch(false);
       } else { Shake.update(rdt); }
+    } else if (this.state === 'online' && Net.nm) {
+      Net.frame(rdt);
     } else {
       Reveal.update(rdt);
       Showcase.update(rdt);
@@ -184,7 +194,7 @@ const Game = {
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Player, TEAM, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Player, TEAM, rollRarity, poolFor,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

@@ -85,6 +85,29 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .btn.pass { background: linear-gradient(90deg, #a8740f, #d9a512); box-shadow: inset 0 -6px 0 #6b4a08, inset 0 var(--px) 0 rgba(255,255,255,.25), 4px 4px 0 rgba(0,0,0,.45); }
 .btn.pass .sub { color: #fff3c9; }
 .menu .ghosts { display: flex; gap: 6px 18px; flex-wrap: wrap; }
+/* spins, locker and the pass share one row of three smaller buttons */
+.menu .meta-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.menu .meta-row .btn { display: grid; justify-items: start; gap: 2px; font-size: clamp(20px, 3.4vh, 26px); padding: 6px 10px 9px; }
+.menu .meta-row .btn .sub { font-size: 9px; }
+.btn.friends { background: #0e6a7a; box-shadow: inset 0 -6px 0 #074451, inset 0 var(--px) 0 rgba(255,255,255,.22), 4px 4px 0 rgba(0,0,0,.45); }
+.btn.friends .sub { color: #c4f4ff; }
+/* play with friends */
+.on-box { padding: 18px; display: grid; gap: 12px; max-width: 640px; }
+.on-in { font-family: var(--font-display); font-size: 28px; color: var(--text); background: var(--ink); border: var(--px) solid var(--slate-3); padding: 6px 10px 8px; min-width: 0; user-select: text; -webkit-user-select: text; }
+.on-in.code { width: 5.5ch; text-transform: uppercase; letter-spacing: .12em; }
+.on-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.on-row .on-in:not(.code) { flex: 1 1 200px; }
+.on-status { margin: 0; min-height: 1.2em; font-family: var(--font-label); font-size: 12px; letter-spacing: .08em; color: var(--gold); }
+.on-adv summary { cursor: pointer; }
+.on-adv .on-row { margin-top: 8px; }
+.on-code { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.on-code b { font-family: var(--font-display); font-weight: 400; font-size: 64px; line-height: .85; letter-spacing: .1em; color: var(--gold); }
+.on-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.on-team { background: var(--slate-2); padding: 10px; display: grid; gap: 6px; align-content: start; }
+.on-p { font-family: var(--font-display); font-size: 24px; line-height: 1; }
+.on-p.me { color: var(--gold); } .on-p.bot { color: var(--muted); font-size: 18px; }
+.on-host { display: grid; gap: 8px; justify-items: start; }
+.on-host .seg { flex-wrap: wrap; }
 .btn.emerald { background: var(--emerald-deep); box-shadow: inset 0 -6px 0 #064a2b, inset 0 var(--px) 0 rgba(255,255,255,.22), 4px 4px 0 rgba(0,0,0,.45); }
 .btn.emerald .sub { color: #b9ffd9; }
 .btn.small { font-size: 24px; padding: 6px 14px 9px; }
@@ -115,6 +138,7 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
   .btn.emerald:hover { background: #12925a; }
   .btn.featured:hover { background: linear-gradient(90deg, #6c3cd6, #a066ee); }
   .btn.pass:hover { background: linear-gradient(90deg, #c08614, #f0b81a); }
+  .btn.friends:hover { background: #148ba0; }
   .btn.ghost:hover { color: var(--text); background: transparent; }
   .iconbtn:hover { background: var(--slate-3); }
   .lcard:hover { background: var(--slate-3); }
@@ -592,7 +616,8 @@ body.touch .howto .touchsec { order: -1; }
   .menu .btn { font-size: 22px; padding: 4px 10px 7px; gap: 8px; }
   .menu .btn .sub { font-size: 9px; }
   .menu .btn.ghost { font-size: 18px; }
-  .menu .ghosts { grid-column: 1 / -1; }
+  .menu .ghosts, .menu .meta-row { grid-column: 1 / -1; }
+  .menu .meta-row .btn { font-size: 18px; padding: 3px 8px 6px; }
   .lobby-foot { align-self: end; justify-self: stretch; justify-items: stretch; gap: 4px; }
   .profile { width: 100%; padding: 6px 10px; gap: 2px 10px; }
   .profile .badge { width: 36px; height: 36px; }
@@ -717,7 +742,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
-      settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true },
+      name: '', settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '' },
       howto: false,
     };
   },
@@ -756,7 +781,8 @@ const Save = {
     if (!['auto', 'low', 'med', 'high'].includes(st.quality)) st.quality = 'auto';
     st.sens = clamp(Number(st.sens) || 1, 0.3, 2.5);
     st.btn = [0.85, 1, 1.15].includes(Number(st.btn)) ? Number(st.btn) : 1;
-    st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false;
+    st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false; st.server = typeof st.server === 'string' ? st.server.slice(0, 200) : '';
+    out.name = String(out.name || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12);
     if (!Array.isArray(out.styles)) out.styles = ['ROOKIE'];
     if (!Array.isArray(out.flows)) out.flows = [];
     out.styles = out.styles.filter((s) => typeof s === 'string');
@@ -5289,9 +5315,9 @@ const Input = {
   init(canvas) {
     this.canvas = canvas;
     window.addEventListener('keydown', (e) => {
-      const inGame = Game.state === 'match';
+      const inGame = Game.playing();
       if (inGame && GAME_KEYS.has(e.code)) e.preventDefault();
-      if (e.code === 'Tab' && Game.state === 'match') e.preventDefault();
+      if (e.code === 'Tab' && Game.playing()) e.preventDefault();
       if (!e.repeat) { this.down.add(e.code); this.edges.add(e.code); }
       if (e.code === 'Escape') Game.onEscape();
       this.usingPad = false;
@@ -5299,7 +5325,7 @@ const Input = {
     window.addEventListener('keyup', (e) => { this.down.delete(e.code); this.up.add(e.code); });
     window.addEventListener('blur', () => { this.down.clear(); if (this.mouseL) this.up.add('Mouse0'); if (this.mouseR) this.up.add('Mouse2'); this.mouseL = this.mouseR = false; });
     canvas.addEventListener('mousedown', (e) => {
-      if (Game.state !== 'match') return;
+      if (!Game.playing() || Net.paused) return;
       e.preventDefault();
       Sfx.init();
       if (!this.locked && !this.lockFailed) { this.requestLock(); return; }
@@ -5312,7 +5338,7 @@ const Input = {
       if (e.button === 2 && this.mouseR) { this.mouseR = false; this.up.add('Mouse2'); }
     });
     window.addEventListener('mousemove', (e) => {
-      if (Game.state !== 'match') return;
+      if (!Game.playing()) return;
       if (this.locked) { this.mdx += e.movementX || 0; this.mdy += e.movementY || 0; }
       else if (this.lockFailed) { this.mdx += (e.movementX || 0) * 0.8; this.mdy += (e.movementY || 0) * 0.8; }
     });
@@ -5321,7 +5347,7 @@ const Input = {
       const was = this.locked;
       this.locked = document.pointerLockElement === canvas;
       if (this.locked) { this.everLocked = true; this.lockFailed = false; }
-      if (was && !this.locked && Game.state === 'match' && !this.releasing) Game.pause();
+      if (was && !this.locked && Game.playing() && !Net.paused && !this.releasing) Game.pause();
       this.releasing = false;
       Hud.lockHint && Hud.lockHint();
     });
@@ -5550,7 +5576,7 @@ const Touch = {
   },
   /** show the layer only while a match is being played by touch */
   sync() {
-    const vis = this.on && Game.state === 'match' && !Input.usingPad;
+    const vis = this.on && Game.playing() && !Net.paused && !Input.usingPad;
     if (vis === this.visible) return;
     this.visible = vis;
     if (this.el) this.el.hidden = !vis;
@@ -5794,6 +5820,300 @@ const Touch = {
     if (UI.cur === 'lobby') UI.renderLobby();
     if (Game.state === 'paused') UI.renderPause();
   },
+};
+
+/* ---- 11_net.js ---- */
+/* =====================================================================
+   Net: playing online with friends. The server runs the match (same
+   code as offline); this side sends your controls 30 times a second
+   and draws the match from the server's snapshots, a little behind
+   real time so movement stays smooth. Rooms have a 4-letter code and
+   an invite link. The offline game never needs any of this.
+   ===================================================================== */
+const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup'];
+const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook'];
+const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
+const NET_DELAY = 0.12; // seconds the picture runs behind the server
+
+/** the match as this screen knows it: models moved by snapshots, with what the HUD needs */
+class NetMatch {
+  constructor(msg, myId) {
+    this.mode = msg.mode; this.cfg = MODES[msg.mode] || MODES.quick; this.size = msg.size; this.tier = 0; this.online = true;
+    this.scene = World.scene; this.time = 0; this.clock = MATCH_LEN; this.golden = false; this.goldenClock = 0;
+    this.phase = 'kickoff'; this.phaseT = 0; this.score = [0, 0]; this.players = []; this.teams = [[], []]; this.items = [];
+    this.aim = V3(0, 1, F.L); this.camYaw = 0; this.aimOnTarget = false; this.human = null; this.result = null;
+    this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, trailed: false };
+    this.ball = new Ball(this);
+    msg.roster.forEach((r, i) => {
+      const p = new Player(this, { team: r.team, role: r.role, human: !!r.id, style: r.style, flow: r.flow, look: (msg.looks && msg.looks[i]) || {}, skin: r.skin, number: r.number, name: r.id === myId ? 'YOU' : r.name });
+      p.netId = r.id;
+      this.players.push(p); this.teams[r.team].push(p);
+      if (r.id === myId) this.human = p;
+    });
+    for (const p of this.players) if (p.isHuman && p !== this.human) p.isHuman = false; // only you are "you" on this screen
+    if (this.cfg.hill) this.buildHill();
+  }
+  dispose() {
+    for (const p of this.players) p.dispose();
+    this.ball.dispose();
+    if (this.hill) { this.scene.remove(this.hill.mesh); this.hill.mesh.children.forEach((c) => { c.geometry.dispose(); c.material.dispose(); }); }
+  }
+}
+for (const k of ['dir', 'oppGoalZ', 'ownGoalZ', 'prog', 'buildHill']) NetMatch.prototype[k] = Match.prototype[k];
+
+const Net = {
+  ws: null, id: null, room: null, nm: null, url: '', status: '', snaps: [], rt: 0, sendT: 0, pend: {}, paused: false, joinCode: null, lastBall: null,
+  tpl() {
+    return `<section id="scr-online" class="screen sub-screen" hidden>
+      <div class="sub-wrap">
+        <div class="sub-head"><h2>PLAY WITH FRIENDS</h2><button class="btn small" id="on-back" type="button">BACK</button></div>
+        <div class="panel on-box" id="on-start">
+          <label class="label" for="on-name">YOUR NAME</label>
+          <input class="on-in" id="on-name" maxlength="12" autocomplete="off" spellcheck="false">
+          <button class="btn blue" id="on-create" type="button">CREATE A ROOM <span class="sub">GET A CODE FOR FRIENDS</span></button>
+          <div class="on-row"><input class="on-in code" id="on-code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false"><button class="btn" id="on-join" type="button">JOIN</button></div>
+          <p class="on-status" id="on-status"></p>
+          <details class="on-adv"><summary class="label">SERVER ADDRESS</summary><div class="on-row"><input class="on-in" id="on-server" autocomplete="off" spellcheck="false"><button class="btn small" id="on-server-save" type="button">SAVE</button></div></details>
+        </div>
+        <div class="panel on-box" id="on-room" hidden>
+          <div class="on-code"><span class="label">ROOM CODE</span><b id="on-room-code">----</b><button class="btn small" id="on-copy" type="button">COPY INVITE LINK</button></div>
+          <div class="on-teams"><div class="on-team" id="on-t0"></div><div class="on-team" id="on-t1"></div></div>
+          <button class="btn small" id="on-switch" type="button">SWITCH TEAM</button>
+          <div class="on-host" id="on-host">
+            <span class="label">MODE</span><div class="seg" id="on-mode">${NET_MODES.map(([k, n]) => `<button type="button" data-m="${k}">${n}</button>`).join('')}</div>
+            <span class="label">TEAM SIZE</span><div class="seg" id="on-size">${[3, 4, 5].map((n) => `<button type="button" data-s="${n}">${n}V${n}</button>`).join('')}</div>
+            <button class="btn blue" id="on-go" type="button">START MATCH <span class="sub">BOTS FILL EMPTY SPOTS</span></button>
+          </div>
+          <p class="on-status" id="on-wait"></p>
+          <button class="btn ghost" id="on-leave" type="button">LEAVE ROOM</button>
+        </div>
+      </div>
+    </section>`;
+  },
+  init() {
+    const d = Save.data;
+    if (!d.name) { d.name = 'PLAYER' + randi(10, 99); Save.save(); }
+    $('on-name').value = d.name;
+    $('on-server').value = this.serverUrl();
+    const click = (id, fn) => $(id).addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); });
+    click('on-back', () => UI.show('lobby'));
+    click('on-create', () => this.connect(() => this.send({ t: 'create' })));
+    click('on-join', () => this.join($('on-code').value));
+    $('on-code').addEventListener('keydown', (e) => { if (e.code === 'Enter') this.join($('on-code').value); });
+    $('on-name').addEventListener('change', () => { d.name = this.cleanName($('on-name').value) || d.name; $('on-name').value = d.name; Save.save(); this.hello(); });
+    click('on-server-save', () => { d.settings.server = $('on-server').value.trim(); Save.save(); this.close(); this.setStatus('SAVED. CREATE OR JOIN A ROOM.'); });
+    click('on-copy', () => this.copyInvite());
+    click('on-switch', () => { const me = this.room && this.room.players.find((p) => p.id === this.id); if (me) this.send({ t: 'team', team: 1 - me.team }); });
+    click('on-go', () => this.send({ t: 'start' }));
+    click('on-leave', () => { this.send({ t: 'leave' }); this.room = null; this.renderRoom(); });
+    $('on-mode').addEventListener('click', (e) => { const m = e.target.closest('[data-m]'); if (m && this.room) { Sfx.click(); this.send({ t: 'settings', mode: m.dataset.m, size: this.room.size }); } });
+    $('on-size').addEventListener('click', (e) => { const s = e.target.closest('[data-s]'); if (s && this.room) { Sfx.click(); this.send({ t: 'settings', mode: this.room.mode, size: +s.dataset.s }); } });
+    // an invite link opens straight into the room
+    try { const q = new URLSearchParams(location.search); this.joinCode = q.get('room'); if (q.get('server')) this.urlOverride = q.get('server'); } catch (e) {}
+  },
+  /** where the server is: your saved address, the invite link's, or the server that sent you this page */
+  serverUrl() {
+    const s = (Save.data.settings && Save.data.settings.server) || this.urlOverride;
+    if (s) return s;
+    if (location.protocol === 'file:' || !location.host) return 'ws://localhost:8787/ws';
+    return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+  },
+  cleanName(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12); },
+  setStatus(t) { this.status = t; const el = $('on-status'); if (el) el.textContent = t; },
+  open() { UI.show('online'); this.renderRoom(); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },
+  join(code) { code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); if (code.length !== 4) { this.setStatus('A ROOM CODE IS 4 LETTERS OR NUMBERS'); return; } this.connect(() => this.send({ t: 'join', code })); },
+  /* ---------- the connection ---------- */
+  connect(then) {
+    if (this.ws && this.ws.readyState === 1) { then(); return; }
+    if (this.ws && this.ws.readyState === 0) { this.onOpen = then; return; }
+    this.url = this.serverUrl();
+    this.setStatus('CONNECTING...');
+    let ws;
+    try { ws = new WebSocket(this.url); } catch (e) { this.setStatus('THAT SERVER ADDRESS DOES NOT WORK'); return; }
+    this.ws = ws; this.onOpen = then;
+    ws.onopen = () => { this.setStatus('CONNECTED'); this.hello(); const f = this.onOpen; this.onOpen = null; if (f) f(); };
+    ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } this.onMessage(m); };
+    ws.onclose = () => {
+      const wasPlaying = Game.state === 'online';
+      this.ws = null; this.room = null;
+      if (wasPlaying) { Game.toLobby(); UI.show('online'); }
+      this.renderRoom();
+      this.setStatus(wasPlaying ? 'LOST THE CONNECTION TO THE SERVER' : 'CANNOT REACH THE SERVER. IS IT RUNNING? (SEE SERVER ADDRESS)');
+    };
+  },
+  close() { if (this.ws) { this.ws.onclose = null; try { this.ws.close(); } catch (e) {} } this.ws = null; this.room = null; this.renderRoom(); },
+  send(m) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(m)); },
+  hello() { const d = Save.data; this.send({ t: 'hello', name: d.name, style: d.style, flow: d.flow, look: d.look, club: d.club }); },
+  onMessage(m) {
+    switch (m.t) {
+      case 'welcome': this.id = m.id; break;
+      case 'room': this.room = m; this.renderRoom(); break;
+      case 'error': this.setStatus(m.text); $('on-wait').textContent = m.text; Sfx.deny(); break;
+      case 'left': this.room = null; this.renderRoom(); break;
+      case 'start': this.start(m); break;
+      case 'snap': this.onSnap(m); break;
+      case 'stats': if (this.nm) m.st.forEach((s, i) => { const p = this.nm.players[i]; if (p) Object.assign(p.stats, { goals: s[0], assists: s[1], shots: s[2], tackles: s[3], saves: s[4] }); }); break;
+      case 'end': this.end(m); break;
+    }
+  },
+  /* ---------- the room screen ---------- */
+  renderRoom() {
+    const R = this.room;
+    $('on-start').hidden = !!R; $('on-room').hidden = !R;
+    if (!R) return;
+    const host = R.host === this.id;
+    $('on-room-code').textContent = R.code;
+    for (const t of [0, 1]) {
+      const list = R.players.filter((p) => p.team === t);
+      $('on-t' + t).innerHTML = `<span class="label">${t === 0 ? 'HOME' : 'AWAY'} · ${list.length} / ${R.size - 1}</span>` + list.map((p) => `<div class="on-p ${p.id === this.id ? 'me' : ''}">${esc(p.name)}${p.id === R.host ? ' <span class="chip">HOST</span>' : ''}${p.id === this.id ? ' <span class="chip">YOU</span>' : ''}</div>`).join('') + '<div class="on-p bot">+ BOTS</div>';
+    }
+    $('on-host').hidden = !host;
+    $('on-mode').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === R.mode));
+    $('on-size').querySelectorAll('button').forEach((b) => { b.setAttribute('aria-pressed', +b.dataset.s === R.size); b.disabled = R.mode === 'duel'; });
+    $('on-wait').textContent = R.state === 'match' ? 'A MATCH IS ON. YOU PLAY IN THE NEXT ONE.' : host ? 'SHARE THE CODE, THEN PRESS START.' : 'WAITING FOR THE HOST TO START.';
+  },
+  inviteLink() {
+    const base = location.origin && location.origin !== 'null' ? location.origin + location.pathname : '';
+    const sameHost = this.url === (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+    return base + '?room=' + (this.room ? this.room.code : '') + (sameHost ? '' : '&server=' + encodeURIComponent(this.url));
+  },
+  copyInvite() {
+    const link = this.inviteLink();
+    const done = () => { $('on-wait').textContent = 'INVITE LINK COPIED. SEND IT TO A FRIEND.'; };
+    try { navigator.clipboard.writeText(link).then(done, () => { $('on-wait').textContent = link; }); } catch (e) { $('on-wait').textContent = link; }
+  },
+  /* ---------- the match ---------- */
+  start(msg) {
+    if (Game.match) { Game.match.dispose(); Game.match = null; }
+    Replay.stop(); Reveal.stop(); Showcase.hide(); UI.hideOverlays(); TimeCtl.reset(); FX.clear();
+    [TEAM[0], TEAM[1]] = matchSides(msg.home, msg.away);
+    World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(2); World.setSun(SUN_MATCH);
+    const nm = this.nm = new NetMatch(msg, this.id);
+    Game.match = nm; Game.lastMode = 'online'; Game.ended = false;
+    this.snaps = []; this.rt = -1; this.pend = {}; this.paused = false; this.lastBall = null; this.lastPhase = '';
+    const me = nm.human;
+    Cam.reset(me && me.team === 1 ? Math.PI : 0);
+    Game.state = 'online';
+    UI.show('hud'); UI.buildHud(nm);
+    Sfx.init(); Sfx.setCrowd(0.55);
+    Input.consumeEdges(); Input.requestLock();
+  },
+  onSnap(m) {
+    const nm = this.nm; if (!nm) return;
+    this.snaps.push(m); if (this.snaps.length > 30) this.snaps.shift();
+    // things that happened: banners, labels, goals, your toasts and cut-ins
+    for (const e of m.ev || []) this.event(e);
+    if (m.me && nm.human) {
+      const p = nm.human, me = m.me;
+      p.abil.forEach((a, i) => { a.cd = me.cd[i] || 0; });
+      p.flow = me.fl; p.flowT = me.ft; p.stamina = me.st; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
+      for (const k in p.fx) p.fx[k] = 0;
+      Object.assign(p.fx, me.fx || {});
+    }
+    // sounds from what changed
+    if (m.ph !== this.lastPhase) {
+      if (m.ph === 'play' && (this.lastPhase === 'kickoff' || this.lastPhase === 'out')) Sfx.whistle(1);
+      if (m.ph === 'out') Sfx.whistle(1);
+      if (m.ph === 'end') Sfx.whistle(3);
+      this.lastPhase = m.ph;
+    }
+    const b = m.b;
+    if (this.lastBall) {
+      const v = Math.hypot(b[0] - this.lastBall[0], b[1] - this.lastBall[1], b[2] - this.lastBall[2]) * 20, v0 = this.lastBall.v || 0;
+      if (v - v0 > 8 && b[3] < 0) Sfx.kick(clamp(v / 36, 0.2, 1));
+      b.v = v;
+    }
+    this.lastBall = b;
+  },
+  event(e) {
+    const nm = this.nm, P = (i) => (i >= 0 ? nm.players[i] : null);
+    if (e.to && e.to !== this.id) return;
+    if (e.e === 'banner') UI.banner(e.big, e.small, e.color, e.quick ? 1.1 : 2.0);
+    else if (e.e === 'label') { const p = P(e.i); if (p) UI.flabel(p, e.text, e.color, e.dur); }
+    else if (e.e === 'goal') { UI.goalBanner(e.team, P(e.s), P(e.a), e.own); Sfx.roar(1); Sfx.whistle(1); World.excite[e.team] = 1; if (P(e.s) === nm.human) Shake.add(0.5); }
+    else if (e.e === 'toast') UI.toast(e.text, e.cls);
+    else if (e.e === 'cutin') { const p = P(e.i); if (p && Save.data.settings.cutins) { UI.cutin(p, e.name); Cam.punch(0.75); Sfx.cutin(); } }
+  },
+  /** move every model to where it was NET_DELAY seconds ago on the server, blending two snapshots */
+  applySnapshots(rdt) {
+    const S = this.snaps, nm = this.nm;
+    if (!S.length) return;
+    const newest = S[S.length - 1].n / 60, target = newest - NET_DELAY;
+    if (this.rt < 0 || Math.abs(this.rt - target) > 0.5) this.rt = target; else this.rt += rdt + (target - this.rt) * 0.08;
+    let a = S[0], b = S[S.length - 1];
+    for (let i = 0; i < S.length - 1; i++) if (S[i].n / 60 <= this.rt && S[i + 1].n / 60 >= this.rt) { a = S[i]; b = S[i + 1]; break; }
+    const ta = a.n / 60, tb = b.n / 60, k = tb > ta ? clamp((this.rt - ta) / (tb - ta), 0, 1) : 1, since = Math.max(0, this.rt - tb);
+    nm.time = this.rt; nm.phase = b.ph; nm.phaseT = b.pt + since; nm.clock = b.c; nm.golden = b.g >= 0; nm.goldenClock = Math.max(0, b.g); nm.score = b.s;
+    nm.players.forEach((p, i) => {
+      const A = a.pl[i], B = b.pl[i]; if (!A || !B) return;
+      p.pos.set(lerp(A[0], B[0], k), lerp(A[1], B[1], k), lerp(A[2], B[2], k));
+      p.vel.set(B[3], 0, B[4]);
+      p.yaw = A[5] + wrapA(B[5] - A[5]) * k;
+      const st = NET_STATES[B[6]] || 'free';
+      if (p.state !== st) p.setState(st, B[8]);
+      p.stateT = B[7] + since; p.stateDur = B[8];
+      p.kickT = B[9] >= 0 ? Math.min(0.999, B[9] + since / 0.3) : -1; p.kickStyle = NET_KICKS[B[10]] || null;
+      const f = B[11];
+      p.charging = !!(f & 1); p.onGround = !!(f & 2); p.flowT = f & 4 ? Math.max(p.flowT, 1) : 0; p.callT = f & 8 ? 0.5 : 0;
+      p.fx.shuffle = f & 16 ? 1 : 0; p.fx.lockdown = f & 32 ? 1 : 0; p.fx.bubble = f & 64 ? 1 : 0;
+      p.charge = B[12];
+      p.dive = st === 'dive' ? { side: B[13], high: !!B[14], dur: B[15] } : null;
+      p.flipT = B[16];
+      p.animate(rdt);
+      p.P.eyes.visible = p.flowT > 0;
+    });
+    // the ball, with a roll worked out from how far it moved
+    const ball = nm.ball, pa = a.b, pb = b.b;
+    ball.last.copy(ball.pos);
+    ball.pos.set(lerp(pa[0], pb[0], k), lerp(pa[1], pb[1], k), lerp(pa[2], pb[2], k));
+    ball.owner = pb[3] >= 0 ? nm.players[pb[3]] : null;
+    const dx = ball.pos.x - ball.last.x, dz = ball.pos.z - ball.last.z, dl = len2D(dx, dz);
+    if (dl > 1e-4) { ball.spinAxis.set(dz / dl, 0, -dx / dl); _q1.setFromAxisAngle(ball.spinAxis, dl / BALL_R); ball.quat.premultiply(_q1); }
+    ball.mesh.position.copy(ball.pos); ball.mesh.quaternion.copy(ball.quat);
+    ball.blob.position.set(ball.pos.x, 0.02, ball.pos.z);
+    if (nm.hill && b.hill) { const H = nm.hill; H.x = b.hill[0]; H.z = b.hill[1]; H.holder = b.hill[2]; H.mesh.position.set(H.x, 0.04, H.z); const c = H.mesh.children; c[0].material.color.copy(col(H.holder >= 0 ? TEAM[H.holder].hex : '#f5efe0')); c[1].material.color.copy(c[0].material.color); }
+  },
+  /** remember button presses until the next send, so a quick tap is never lost */
+  collect(c) {
+    if (!c) return;
+    const P = this.pend;
+    P.jump = P.jump || c.jump; P.sd = P.sd || c.shootDown; P.su = P.su || c.shootUp; P.pd = P.pd || c.passDown; P.pu = P.pu || c.passUp;
+    P.dodge = P.dodge || c.dodge; P.tackle = P.tackle || c.tackle; P.flow = P.flow || c.flow;
+    P.a0 = P.a0 || c.ab[0]; P.a1 = P.a1 || c.ab[1]; P.a2 = P.a2 || c.ab[2];
+    this.held = c;
+  },
+  sendInput() {
+    const c = this.paused ? null : this.held, P = this.pend, nm = this.nm;
+    const msg = Object.assign({ t: 'input', mx: c ? +c.moveX.toFixed(2) : 0, my: c ? +c.moveY.toFixed(2) : 0, sp: !!(c && c.sprint), jh: !!(c && c.jumpHeld), sh: !!(c && c.shootHeld), cy: +nm.camYaw.toFixed(3), aim: [+nm.aim.x.toFixed(2), +nm.aim.y.toFixed(2), +nm.aim.z.toFixed(2)] }, P);
+    this.send(msg);
+    this.pend = {};
+  },
+  /** one frame of an online match */
+  frame(rdt) {
+    const nm = this.nm; if (!nm) return;
+    if (!this.paused) Cam.look(rdt);
+    this.collect(this.paused ? null : Input.controls());
+    this.sendT -= rdt;
+    if (this.sendT <= 0) { this.sendT = 1 / 30; this.sendInput(); }
+    Input.consumeEdges();
+    this.applySnapshots(rdt);
+    FX.update(rdt); Shake.update(rdt);
+    Cam.follow(rdt, nm);
+    UI.updateHud(nm, rdt);
+  },
+  /** the final whistle: rewards on your side, then the results with BACK TO ROOM */
+  end(m) {
+    const nm = this.nm; if (!nm) return;
+    const mine = m.players.find((p) => p.id === this.id);
+    const my = nm.human ? nm.human.team : 0, a = m.score[my], b = m.score[1 - my];
+    nm.score = m.score;
+    nm.result = { res: a > b ? 'win' : a < b ? 'loss' : 'draw', human: mine ? mine.stats : { goals: 0, assists: 0, shots: 0, tackles: 0 } };
+    if (mine && mine.feats) nm.feats = mine.feats;
+    Game.finishMatch(false);
+    $('r-again').textContent = 'BACK TO ROOM'; $('r-lobby').textContent = 'LEAVE ROOM';
+  },
+  /** leave the match early: a bot takes over your player */
+  leaveMatch() { this.send({ t: 'leave' }); this.room = null; this.paused = false; Game.toLobby(); },
 };
 
 /* ---- 11_replay.js ---- */
@@ -6308,7 +6628,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -6341,11 +6661,10 @@ const UI = {
         <nav class="menu" aria-label="Main menu">
           <button class="btn blue" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
           <button class="btn" id="go-quick" type="button">QUICK MATCH <span class="sub">3V3 &middot; NO RANK CHANGE</span></button>
+          <button class="btn friends" id="go-online" type="button">PLAY WITH FRIENDS <span class="sub">ONLINE ROOM</span></button>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
           <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
-          <button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button>
-          <button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button>
-          <button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button>
+          <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
           <div class="ghosts"><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button></div>
         </nav>
       </div>
@@ -6446,6 +6765,7 @@ const UI = {
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
+            <li><b>Play with friends:</b> create a room, send the code or invite link, pick teams and a mode, and bots fill the empty spots. Keyboard, controller and phone players can all join the same room. It needs the SCORZ server running (see the README).</li>
             <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
             <li><b>Featured mode</b> changes every 3 hours, the same for everyone: King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3) and Lawless.</li>
             <li><b>Team size:</b> Quick Match and Lawless are 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
@@ -6608,6 +6928,7 @@ const UI = {
     click('go-howto', () => this.show('howto'));
     click('go-profile', () => this.show('profile'));
     click('go-pass', () => this.show('pass'));
+    click('go-online', () => Net.open());
     click('pass-back', () => this.show('lobby'));
     click('lob-profile', () => this.show('profile'));
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
@@ -6632,10 +6953,10 @@ const UI = {
       Sfx.click();
       const b = $('p-forfeit');
       if (b.dataset.armed) { delete b.dataset.armed; Game.forfeit(); }
-      else { b.dataset.armed = '1'; b.textContent = Game.match && Game.match.cfg.ranked ? 'CONFIRM: -15 RP' : 'CONFIRM FORFEIT'; }
+      else { b.dataset.armed = '1'; b.textContent = Game.state === 'online' ? 'CONFIRM: A BOT TAKES OVER' : Game.match && Game.match.cfg.ranked ? 'CONFIRM: -15 RP' : 'CONFIRM FORFEIT'; }
     });
-    click('r-again', () => Game.startMatch(Game.lastMode || 'quick'));
-    click('r-lobby', () => Game.toLobby());
+    click('r-again', () => { if (Game.lastMode === 'online') { Game.toLobby(); Net.open(); } else Game.startMatch(Game.lastMode || 'quick'); });
+    click('r-lobby', () => { if (Game.lastMode === 'online') Net.send({ t: 'leave' }); Game.toLobby(); });
     $('set-q').addEventListener('click', (e) => { const q = e.target.dataset.q; if (!q) return; Save.data.settings.quality = q; Game.applyQuality(); Save.save(); this.renderPause(); });
     $('set-sens').addEventListener('input', (e) => { Save.data.settings.sens = parseFloat(e.target.value) || 1; Save.save(); });
     $('set-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.invertY = v === '1'; Save.save(); this.renderPause(); });
@@ -6646,13 +6967,13 @@ const UI = {
     $('set-fs').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; if ((v === '1') !== Touch.isFs()) Touch.toggleFs(); });
     click('btn-fs', () => Touch.toggleFs());
     window.addEventListener('keydown', (e) => {
-      if (Game.state === 'match' || Game.state === 'paused') return;
-      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass') && !this.spinning) this.show('lobby');
+      if (Game.playing() || Game.state === 'paused') return;
+      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass' || this.cur === 'online') && !this.spinning && !(e.target && e.target.tagName === 'INPUT')) this.show('lobby');
     });
   },
   show(name) {
     this.cur = name;
-    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', hud: 'hud' };
+    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
@@ -6798,7 +7119,7 @@ const UI = {
   },
   lockHint() {
     const h = $('hint'); if (!h) return;
-    if (Game.state !== 'match') { h.hidden = true; return; }
+    if (!Game.playing()) { h.hidden = true; return; }
     let txt = '';
     if (Touch.on && !Input.usingPad) {
       if (this.hintT > 0) {
@@ -6838,7 +7159,7 @@ const UI = {
   },
   /* floating labels above players */
   flabel(p, text, color, dur) {
-    if (!p || Game.state !== 'match') return;
+    if (!p || !Game.playing()) return;
     let slot = this.labels.find((l) => l.p === p && l.t > 0) || this.labels.find((l) => l.t <= 0) || this.labels.reduce((a, b) => (a.t < b.t ? a : b));
     slot.p = p; slot.t = slot.dur = dur || (text === '!' ? 0.9 : 1.25); slot.text = text; slot.color = color || '#f5efe0'; slot.think = text === '...';
     slot.el.textContent = text; slot.el.style.setProperty('--c', slot.color);
@@ -6864,7 +7185,7 @@ const UI = {
     } else this.youLabel.hidden = true;
   },
   toast(text, cls = '') {
-    if (Game.state !== 'match') return;
+    if (!Game.playing()) return;
     const wrap = $('toasts');
     while (wrap.children.length >= 4) wrap.removeChild(wrap.firstChild);
     const d = document.createElement('div');
@@ -6906,13 +7227,16 @@ const UI = {
     document.querySelectorAll('#scr-pause .fs-only').forEach((el) => { el.hidden = !fs; });
     $('set-fs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === Touch.isFs()));
     $('p-note').textContent = Touch.on ? 'Tip: double tap the right side of the screen to face the goal you attack.' : 'Click the pitch after resuming to lock the mouse again.';
-    const f = $('p-forfeit'); delete f.dataset.armed; f.textContent = 'FORFEIT';
+    const f = $('p-forfeit'); delete f.dataset.armed; f.textContent = Game.state === 'online' ? 'LEAVE MATCH' : 'FORFEIT';
+    $('p-note').textContent = Game.state === 'online' ? 'Online matches keep going while this menu is open.' : $('p-note').textContent;
+    $('scr-pause').querySelector('h2').textContent = Game.state === 'online' ? 'MENU' : 'PAUSED';
   },
   showPause(on) {
     if (on) { this.renderPause(); $('scoreboard').hidden = true; Touch.board = false; for (const l of this.labels) { l.t = 0; l.el.hidden = true; } this.youLabel.hidden = true; }
     $('scr-pause').hidden = !on;
   },
   showResults(r) {
+    $('r-again').textContent = 'PLAY AGAIN'; $('r-lobby').textContent = 'LOBBY';
     const titles = { win: ['VICTORY', '#2ee38f'], draw: ['DRAW', '#ffcb3d'], loss: ['DEFEAT', '#ff4d5e'], forfeit: ['FORFEIT', '#ff4d5e'] };
     const [t, c] = titles[r.res];
     $('r-title').textContent = t; $('r-title').style.color = c;
@@ -7069,6 +7393,8 @@ const UI = {
 const Game = {
   state: 'boot', match: null, lastMode: null, last: 0, time: 0, ended: false, autoQ: 'med', pausedAt: 0,
   perf: { t: 0, frames: 0 }, crowdT: 0,
+  /** a match is being played here, offline or online */
+  playing() { return this.state === 'match' || this.state === 'online'; },
   start() {
     Save.load(); Save.validate();
     Sfx.setMuted(Save.data.settings.mute);
@@ -7079,12 +7405,14 @@ const Game = {
     Showcase.init();
     Reveal.init();
     Replay.init();
+    Net.init();
     Input.init($('gl'));
     Touch.init();
     this.applyQuality();
     window.addEventListener('resize', () => World.resize());
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'match') this.pause(); });
     this.toLobby();
+    if (Net.joinCode) Net.open(); // opened from an invite link
     this.last = performance.now();
     const tick = (t) => { requestAnimationFrame(tick); if (!this.manual) this.loop(t); };
     requestAnimationFrame(tick);
@@ -7093,6 +7421,7 @@ const Game = {
   toLobby() {
     Replay.stop(); Replay.offer = null; Replay.hideOffer();
     if (this.match) { this.match.dispose(); this.match = null; }
+    Net.nm = null; Net.paused = false;
     Input.releaseLock();
     this.state = 'lobby';
     World.setSun(SUN_LOBBY);
@@ -7122,12 +7451,14 @@ const Game = {
     Cam.look(0); Cam.follow(1, this.match);
   },
   pause() {
+    if (this.state === 'online') { Net.paused = true; this.pausedAt = performance.now(); Input.releaseLock(); UI.showPause(true); return; } // the server keeps playing
     if (this.state !== 'match' || !this.match) return;
     this.state = 'paused'; this.match.paused = true; this.pausedAt = performance.now();
     Input.releaseLock();
     UI.showPause(true);
   },
   resume() {
+    if (this.state === 'online') { Net.paused = false; UI.showPause(false); Input.consumeEdges(); Input.requestLock(); UI.lockHint(); return; }
     if (this.state !== 'paused') return;
     this.state = 'match'; this.match.paused = false;
     UI.showPause(false);
@@ -7137,10 +7468,11 @@ const Game = {
   },
   onEscape() {
     if (this.state === 'replay') { Replay.stop(); return; }
+    if (this.state === 'online') { if (!Net.paused) this.pause(); else if (performance.now() - this.pausedAt > 350) this.resume(); return; }
     if (this.state === 'match') this.pause();
     else if (this.state === 'paused' && performance.now() - this.pausedAt > 350) this.resume();
   },
-  forfeit() { UI.showPause(false); this.finishMatch(true); },
+  forfeit() { UI.showPause(false); if (this.state === 'online') { Net.leaveMatch(); return; } this.finishMatch(true); },
   finishMatch(forfeit) {
     if (this.ended || !this.match) return;
     this.ended = true;
@@ -7231,6 +7563,8 @@ const Game = {
         }
         if (m.phase === 'end' && m.phaseT > 3.2 && !this.ended) this.finishMatch(false);
       } else { Shake.update(rdt); }
+    } else if (this.state === 'online' && Net.nm) {
+      Net.frame(rdt);
     } else {
       Reveal.update(rdt);
       Showcase.update(rdt);
@@ -7249,7 +7583,7 @@ const Game = {
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Player, TEAM, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Player, TEAM, rollRarity, poolFor,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

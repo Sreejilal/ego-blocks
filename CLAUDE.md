@@ -32,11 +32,19 @@ file in file-name order into ONE function scope. There are no imports or exports
 | `09_ai.js` | `AI`: bot roles, passing and shooting decisions, keepers |
 | `10_input.js` | keyboard, mouse, pointer lock, gamepad, and the camera (`Cam`) |
 | `10_touch.js` | `Touch`: phone controls (floating stick, drag to look, thumb arc of buttons) |
+| `11_net.js` | `Net`: online rooms (code, invite link, teams) and `NetMatch`, which draws an online match from server snapshots and sends your controls |
 | `11_replay.js` | `Replay`: records the last 10s (player poses + ball every frame), offers replays after your goals, nutmegs and ankle breakers, saves clips with MediaRecorder |
 | `11_reveal.js` | `Reveal`: the 3D spin (block drops, shakes in the rarity colour, cracks open). The roll happens in `UI.spin()` first |
 | `11_showcase.js` | `Showcase`: your player on a lit spot on the start screen. The camera fits the player into the `#lob-stage` box |
 | `11_ui.js` | `UI`: all menus and the HUD (lobby, pause, results, spins, locker, how to play) |
 | `12_main.js` | `Game`: state machine, main loop, rewards, auto graphics, `window.EGO` test hooks |
+
+## Online server
+
+- `server/server.js` runs online matches; `server/headless.js` loads `src/01` to `src/09` into Node with stand-ins for canvas, sound, camera and particles. Anything those files call must exist there, so keep browser-only code out of them (put it in 10_ and later files) or give it a stand-in in headless.js.
+- `npm run server` starts it on port 8787 (or `PORT`). `MATCH_SECONDS` and `GOLDEN_SECONDS` shorten matches for tests.
+- Online modes: quick, koth, volleys, duel (not Lawless yet). Several humans per match: `Match` takes `opts.humans`, each human has `p.ctl`, `p.camYaw`, `p.aimV`, and toasts take the player they are for.
+- Tests: `node test/server_proto.js` (protocol) and `node test/online.js` (two real browsers).
 
 ## Rules to keep
 
