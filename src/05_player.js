@@ -333,6 +333,9 @@ class Player {
           const ph = (t % 1.3) / 1.3, f = clamp((ph - 0.12) / 0.5, 0, 1);
           snapX = true;
           by = 0.72 + Math.sin(Math.PI * f) * 1.0; bx = -TAU * smooth(f); lL = -1.1 * Math.sin(Math.PI * f); lR = 0.3; aLz = 2.4; aRz = -2.4;
+        } else if (c === 'trophy') {
+          const lift = Math.abs(Math.sin(t * 3.2));
+          aL = aR = -2.6 - lift * 0.4; aLz = 0.22; aRz = -0.22; by = 0.72 + lift * 0.12; hx = -0.35;
         } else if (c === 'meteor') {
           const ph = (t % 1.7) / 1.7, up = ph < 0.55 ? Math.sin(ph / 0.55 * Math.PI / 2) : ph < 0.7 ? 1 : Math.max(0, 1 - (ph - 0.7) / 0.1);
           by = 0.72 + up * 2.4; aLz = 2.7; aRz = -2.7; lL = -0.4 * up; lR = 0.4 * up;

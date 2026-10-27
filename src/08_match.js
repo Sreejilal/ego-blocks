@@ -30,7 +30,8 @@ class Match {
     this.lastPass = null; this.restart = null; this.result = null; this.endTimer = 0;
     this.teamState = ['loose', 'loose']; this.pred = [];
     this.aim = V3(0, 1, F.L); this.camYaw = 0; this.aimOnTarget = false;
-    this.ctl = null; this.autopilot = !!opts.autopilot; this.thinkPass = opts.thinkPass !== false; this.lastGoal = null; this.pendingEnd = false;
+    this.ctl = null; this.autopilot = !!opts.autopilot; this.thinkPass = opts.thinkPass !== false;
+    this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, trailed: false }; // your moments, for the weekly challenges this.lastGoal = null; this.pendingEnd = false;
     // your club at home against a random other club; the away side changes kit if the colours clash
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
     const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
@@ -237,7 +238,7 @@ class Match {
     const b = this.ball, k = b.kick;
     b.owner = p; b.held = false; b.inGoal = 0; b.vel.set(0, 0, 0); b.curve.set(0, 0, 0); b.straightT = 0; b.kick = null;
     b.touch(p);
-    p.pickBlock = 0; p.gotBallT = this.time;
+    p.pickBlock = 0; p.gotBallT = this.time; p.stats.touches = (p.stats.touches || 0) + 1;
     if (k && k.by && k.by !== p) {
       if (k.type === 'pass' && k.by.team === p.team) {
         k.by.stats.passes++; this.flowAdd(k.by, 12);
@@ -264,7 +265,8 @@ class Match {
     b.curve.set(o.cx || 0, 0, o.cz || 0); b.curveDecay = o.curveDecay == null ? 1.4 : o.curveDecay;
     b.straightT = o.straight || 0; b.inGoal = 0;
     b.kick = { by: p, type: o.type || 'shot', to: o.to || null, t: this.time, trail: o.trail || null, special: o.special || null, counted: false,
-      aerial: !!(o.aerial || o.special === 'volley' || o.special === 'overhead') }; // struck in the air: counts in Volleys Only
+      aerial: !!(o.aerial || o.special === 'volley' || o.special === 'overhead'), // struck in the air: counts in Volleys Only
+      curved: !!(o.cx || o.cz), fx: b.pos.x, fz: b.pos.z };
     b.lastKicker = p; b.touch(p);
     b.ignore = p; b.ignoreT = 0.22;
     p.kickStyle = o.kickStyle || null;
@@ -508,7 +510,7 @@ class Match {
     this.label(carrier, 'ANKLES', carrier.aura);
     FX.feathers(carrier.pos.x, carrier.pos.y + 0.6, carrier.pos.z, carrier.aura, 8);
     Sfx.dodge();
-    if (carrier.isHuman) { this.toast('ANKLE BREAKER', 'good'); Replay.event(this, 'ANKLE BREAKER', carrier); }
+    if (carrier.isHuman) { this.feats.ankles++; this.toast('ANKLE BREAKER', 'good'); Replay.event(this, 'ANKLE BREAKER', carrier); }
     else if (tackler.isHuman) this.toast('DODGED', 'bad');
     if (this.involvesHuman(tackler, carrier)) TimeCtl.slowMo(0.45, 0.35);
   }
@@ -769,6 +771,7 @@ class Match {
       if (this.stun(o, 0.6)) { n++; this.label(o, 'ANKLES', p.aura); FX.feathers(o.pos.x, 0.8, o.pos.z, p.aura, 5); }
     }
     if (n) this.flowAdd(p, 10 * n);
+    if (p.isHuman) this.feats.ankles += n;
     if (p.isHuman && n) { this.toast('ANKLE BREAKER', 'good'); Replay.event(this, 'ANKLE BREAKER', p); }
     Sfx.dodge();
     return true;
@@ -897,6 +900,12 @@ class Match {
       scorer.setState('celebrate', 3.2); scorer.charging = false;
     }
     this.lastGoal = { team, scorer, assister, own };
+    if (scorer && scorer.isHuman && k && (k.type === 'shot' || k.type === 'header')) {
+      if (k.special === 'curl' || k.curved) this.feats.curler++;
+      if (k.aerial) this.feats.volley++;
+      if (k.fx != null && Math.hypot(k.fx, this.oppGoalZ(scorer.team) - k.fz) >= 25) this.feats.longShot++;
+    }
+    if (this.human && this.score[this.human.team] < this.score[1 - this.human.team]) this.feats.trailed = true;
     Replay.event(this, 'GOAL', scorer);
     if (this.golden) this.pendingEnd = true;
     b.owner = null; b.kick = null;

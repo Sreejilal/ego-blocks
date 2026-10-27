@@ -10,7 +10,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -47,8 +47,8 @@ const UI = {
           <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
           <button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button>
           <button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button>
-          <button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button>
-          <button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button>
+          <button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button>
+          <div class="ghosts"><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button></div>
         </nav>
       </div>
       <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
@@ -148,6 +148,7 @@ const UI = {
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
+            <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
             <li><b>Featured mode</b> changes every 3 hours, the same for everyone: King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3) and Lawless.</li>
             <li><b>Team size:</b> Quick Match and Lawless are 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
@@ -202,6 +203,36 @@ const UI = {
         <span class="label">${h.g} G · ${h.a} A · ${esc(STYLES[h.style] ? STYLES[h.style].name : h.style)}</span>${rp}</div>`;
     }).join('');
     $('pf-hist').innerHTML = rows || '<p class="label">NO MATCHES YET. PLAY ONE AND IT SHOWS UP HERE.</p>';
+  },
+  tplPass() {
+    return `<section id="scr-pass" class="screen sub-screen" hidden>
+      <div class="sub-wrap">
+        <div class="sub-head"><h2>GAME PASS</h2><button class="btn small" id="pass-back" type="button">BACK</button></div>
+        <section class="panel gp-top" id="gp-top"></section>
+        <section class="panel gp-week"><h3>THIS WEEK</h3><div class="gp-ch" id="gp-ch"></div></section>
+        <section class="panel gp-track-box"><h3>REWARDS</h3><div class="gp-track" id="gp-track"></div></section>
+      </div>
+    </section>`;
+  },
+  renderPass() {
+    const d = Save.data; Pass.sync(d);
+    const S = seasonAt(), P = d.pass, tier = Pass.tier(d), into = tier >= PASS_TIERS ? PASS_TIER_XP : P.xp % PASS_TIER_XP;
+    const days = (ms) => { const h = Math.floor(ms / 3600e3); return h >= 48 ? Math.floor(h / 24) + ' DAYS' : h + 'H ' + Math.floor(ms / 60e3) % 60 + 'M'; };
+    $('gp-top').innerHTML = `<div class="gp-tier"><span class="label">SEASON ${S.season} · ENDS IN ${days(S.seasonLeft)}</span><b>TIER ${tier} <small>/ ${PASS_TIERS}</small></b></div>
+      <div class="gp-bar"><div class="xpbar pass"><i style="width:${into / PASS_TIER_XP * 100}%"></i></div><span class="label">${tier >= PASS_TIERS ? 'PASS COMPLETE' : into + ' / ' + PASS_TIER_XP + ' XP TO TIER ' + (tier + 1)}</span></div>
+      <p class="gp-note">Free for everyone. Earn pass XP by playing well: goals, assists, shots on target, tackles, passes and wins. Standing around earns nothing. Rewards only change your looks.</p>`;
+    $('gp-ch').innerHTML = `<span class="label">NEW CHALLENGES IN ${days(S.weekLeft)}</span>` + weekChallenges(P.week).map((id) => {
+      const C = CHALLENGES[id], n = Math.min(C.goal, P.prog[id] || 0), done = P.done.includes(id);
+      return `<div class="gp-c ${done ? 'done' : ''}"><b>${esc(C.name)}</b><span class="label">${done ? 'DONE' : n + ' / ' + C.goal} · +${C.xp} XP</span><div class="xpbar"><i style="width:${n / C.goal * 100}%"></i></div></div>`;
+    }).join('');
+    $('gp-track').innerHTML = PASS_REWARDS.map((r, i) => {
+      const n = i + 1, got = P.got >= n, now = n === tier + 1;
+      return `<div class="gp-t ${got ? 'got' : ''} ${now ? 'next' : ''}" data-i="${i}"><span class="label">TIER ${n}</span><span class="gv"></span><b>${esc(Pass.rewardName(r))}</b><span class="label">${got ? 'EARNED' : now ? 'NEXT' : ''}</span></div>`;
+    }).join('');
+    $('gp-track').querySelectorAll('.gp-t').forEach((el) => {
+      const r = PASS_REWARDS[+el.dataset.i], cv = r.skin ? skinCanvas(r.skin, 40) : iconCanvas('emerald');
+      cv.className = 'px'; el.querySelector('.gv').replaceWith(cv);
+    });
   },
   tplHud() {
     return `<section id="hud" hidden>
@@ -262,6 +293,7 @@ const UI = {
         <div class="earn" id="r-earn"></div>
         <div class="rankline" id="r-rank"></div>
         <div class="xpline" id="r-xp"></div>
+        <div class="passline" id="r-pass"></div>
         <div class="row"><button class="btn blue" id="r-again" type="button">PLAY AGAIN</button><button class="btn" id="r-lobby" type="button">LOBBY</button></div>
       </div>
     </section>`;
@@ -277,6 +309,8 @@ const UI = {
     click('go-locker', () => this.openLocker());
     click('go-howto', () => this.show('howto'));
     click('go-profile', () => this.show('profile'));
+    click('go-pass', () => this.show('pass'));
+    click('pass-back', () => this.show('lobby'));
     click('lob-profile', () => this.show('profile'));
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
     click('profile-back', () => this.show('lobby'));
@@ -315,12 +349,12 @@ const UI = {
     click('btn-fs', () => Touch.toggleFs());
     window.addEventListener('keydown', (e) => {
       if (Game.state === 'match' || Game.state === 'paused') return;
-      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile') && !this.spinning) this.show('lobby');
+      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass') && !this.spinning) this.show('lobby');
     });
   },
   show(name) {
     this.cur = name;
-    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', hud: 'hud' };
+    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
@@ -328,6 +362,7 @@ const UI = {
     if (name === 'lobby') { this.renderLobby(); Showcase.ensure(); }
     if (name === 'howto') { Save.data.howto = true; Save.save(); }
     if (name === 'profile') this.renderProfile();
+    if (name === 'pass') this.renderPass();
   },
   /* ---------- lobby ---------- */
   renderLobby() {
@@ -340,6 +375,7 @@ const UI = {
     $('rank-sub').textContent = TIER_NAMES[tier] + ' · ' + sz + 'V' + sz;
     $('locker-sub').textContent = STYLES[d.style].name + (d.flow ? ' · ' + FLOWS[d.flow].name : '');
     $('pro-badge').src = badgeURL(tier);
+    Pass.sync(d); $('pass-sub').textContent = 'TIER ' + Pass.tier(d) + ' / ' + PASS_TIERS;
     $('pro-tier').textContent = TIER_NAMES[tier];
     const inTier = tier >= 5 ? 10 : Math.floor((d.rp % 100) / 10);
     $('pro-rp').innerHTML = Array.from({ length: 10 }, (_, i) => `<i class="${i < inTier ? 'on' : ''}"></i>`).join('');
@@ -594,6 +630,9 @@ const UI = {
     } else { $('r-rank').hidden = true; }
     const lv = levelOf(Save.data.xp);
     $('r-xp').innerHTML = `<span class="label">${r.levelUp ? '<b class="lvup">LEVEL UP!</b> ' : ''}LEVEL ${lv.level} · +${r.xp || 0} XP</span><div class="xpbar"><i style="width:${(lv.into / lv.need * 100).toFixed(1)}%"></i></div>`;
+    const P = r.pass || { xp: 0, challenges: [], tiers: [] }, pd = Save.data.pass;
+    $('r-pass').innerHTML = `<span class="label">GAME PASS · TIER ${Pass.tier(Save.data)} / ${PASS_TIERS} · +${P.xp} XP${P.xp ? '' : (r.res === 'forfeit' ? '' : ' (DO SOMETHING ON THE BALL TO EARN PASS XP)')}</span><div class="xpbar pass"><i style="width:${(pd.xp % PASS_TIER_XP) / PASS_TIER_XP * 100}%"></i></div>`
+      + P.challenges.map((c) => `<span class="label pl-ch">CHALLENGE DONE: ${esc(c)}</span>`).join('') + P.tiers.map((t) => `<span class="label pl-tier">${esc(t)}</span>`).join('');
     $('hint').hidden = true;
     $('scr-results').hidden = false;
   },
@@ -609,7 +648,7 @@ const UI = {
     $('spin-odds').innerHTML = RARITIES.map((r, i) => `<span class="rar" data-r="${r}">${r.toUpperCase()} ${RARITY_ODDS[i]}%</span>`).join('');
     $('spin-go').disabled = this.spinning || d.emeralds < 200;
     $('spin-go').innerHTML = d.emeralds < 200 ? 'SPIN <span class="sub">NEED 200 EMERALDS</span>' : 'SPIN <span class="sub">200 EMERALDS</span>';
-    const owned = kind === 'style' ? d.styles.length + ' / ' + STYLE_IDS.length + ' STYLES OWNED' : kind === 'flow' ? d.flows.length + ' / ' + FLOW_IDS.length + ' FLOWS OWNED' : d.skins.length + ' / ' + SKIN_IDS.length + ' SKINS OWNED (LOOKS ONLY)';
+    const owned = kind === 'style' ? d.styles.length + ' / ' + STYLE_IDS.length + ' STYLES OWNED' : kind === 'flow' ? d.flows.length + ' / ' + FLOW_IDS.length + ' FLOWS OWNED' : d.skins.filter((k) => !SKINS[k].pass).length + ' / ' + SKIN_IDS.length + ' SKINS OWNED (LOOKS ONLY)';
     $('spin-owned').textContent = owned + '. WIN MATCHES TO EARN MORE EMERALDS.';
     if (resetReel) { $('spin-result').innerHTML = ''; $('spin-result').classList.remove('show'); Reveal.ready(); }
   },
@@ -658,7 +697,7 @@ const UI = {
     if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
     if (tab === 'flow') { const fl = id === 'NONE' ? null : FLOWS[id]; return { name: fl ? fl.name : 'NO FLOW', rarity: fl ? fl.rarity : 'Rare', base: !fl, owned: !fl || d.flows.includes(id), equipped: (d.flow || 'NONE') === id, from: 'FLOW SPINS' }; }
     const sk = SKINS[id];
-    return { name: sk.name, rarity: sk.rarity, base: !!sk.base, owned: !!sk.base || d.skins.includes(id), equipped: d.look[sk.slot] === id, from: 'SKIN SPINS' };
+    return { name: sk.name, rarity: sk.rarity, base: !!sk.base, owned: !!sk.base || d.skins.includes(id), equipped: d.look[sk.slot] === id, from: sk.pass ? 'GAME PASS TIER ' + (PASS_REWARDS.findIndex((r) => r.skin === id) + 1) : 'SKIN SPINS' };
   },
   lockerArt(id, size) {
     const tab = this.lockerTab;
@@ -672,7 +711,7 @@ const UI = {
     slots.hidden = tab !== 'skin';
     if (tab === 'skin') slots.innerHTML = SKIN_SLOTS.map((sl) => `<button class="tab" type="button" role="tab" data-slot="${sl.id}" aria-selected="${this.skinSlot === sl.id}">${sl.name}</button>`).join('');
     const ids = tab === 'club' ? CLUB_IDS : tab === 'style' ? STYLE_IDS : tab === 'flow' ? ['NONE'].concat(FLOW_IDS)
-      : [SKIN_SLOTS.find((sl) => sl.id === this.skinSlot).base].concat(SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
+      : [SKIN_SLOTS.find((sl) => sl.id === this.skinSlot).base].concat(LOCKER_SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
     const grid = $('locker-grid');
     grid.innerHTML = ids.map((id) => {
       const it = this.lockerItem(id);
@@ -709,7 +748,7 @@ const UI = {
         <p style="margin:0;color:var(--muted)">Fill the Flow bar with completed passes, dodges, tackles and shots on target. Press G for 15 seconds of Flow: glowing eyes, a swirling aura and this buff.</p>`;
     } else {
       const sk = SKINS[id], slot = SKIN_SLOTS.find((sl) => sl.id === sk.slot);
-      det.innerHTML = head(slot.name + ' SKIN', sk.desc || '') + `<p style="margin:0;color:var(--muted)">Skins only change how you look. They never change your stats.${sk.slot === 'celeb' ? ' You play it when you score.' : ''}</p>`;
+      det.innerHTML = head(slot.name + ' SKIN' + (sk.pass ? ' · GAME PASS ONLY' : ''), sk.desc || '') + `<p style="margin:0;color:var(--muted)">Skins only change how you look. They never change your stats.${sk.slot === 'celeb' ? ' You play it when you score.' : ''}</p>`;
     }
     det.querySelector('.cv').replaceWith(this.lockerArt(id, 96));
     // name, rarity and the equip button sit under the 3D preview

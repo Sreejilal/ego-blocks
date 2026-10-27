@@ -383,8 +383,13 @@ const SKINS = {
   KNEE_SLIDE: { slot: 'celeb', name: 'KNEE SLIDE', rarity: 'Legendary', celeb: 'knees', desc: 'Drop to the knees, lean back and soak it in.' },
   BACKFLIP: { slot: 'celeb', name: 'BACKFLIP', rarity: 'Mythic', celeb: 'flip', desc: 'Backflip after backflip.' },
   METEOR: { slot: 'celeb', name: 'METEOR', rarity: 'Generational', celeb: 'meteor', desc: 'Leap sky high, then slam down in a ring of light.' },
+  // game pass only: never in spins
+  SEASON_GOLD: { slot: 'color', name: 'SEASON GOLD', rarity: 'Legendary', hex: '#e9c14a', pass: true },
+  CHAMP_BOOTS: { slot: 'boots', name: 'CHAMPION BOOTS', rarity: 'Legendary', hex: '#f6f2e6', sparkle: true, pass: true },
+  TROPHY: { slot: 'celeb', name: 'TROPHY LIFT', rarity: 'Mythic', celeb: 'trophy', pass: true, desc: 'Hoist an invisible trophy over your head, again and again.' },
 };
-const SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base);
+const SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base && !SKINS[k].pass); // what spins can give
+const LOCKER_SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base);
 /** the concrete colours and shapes a player model is built from: the style's defaults with skins on top */
 function lookFor(styleId, look = {}) {
   const st = STYLES[styleId] || STYLES.ROOKIE, S = (slot) => SKINS[look[slot]] || {};
@@ -491,6 +496,88 @@ function levelOf(xp) {
   while (xp >= need) { xp -= need; level++; need = 200 + 50 * (level - 1); }
   return { level, into: xp, need };
 }
+
+/* ---------- free game pass: 30 tiers, earned by playing well, never sold, rewards only change looks ----------
+   Seasons are 8 weeks from a fixed start, weeks start on Monday (UTC), so everyone has the same season and challenges */
+const SEASON_START = Date.UTC(2026, 9, 26), WEEK_MS = 7 * 864e5, SEASON_WEEKS = 8, PASS_TIER_XP = 1000, PASS_TIERS = 30;
+function seasonAt(now = Date.now()) {
+  const w = Math.floor((now - SEASON_START) / WEEK_MS), s = Math.floor(w / SEASON_WEEKS);
+  return { season: s + 1, week: w, weekLeft: SEASON_START + (w + 1) * WEEK_MS - now, seasonLeft: SEASON_START + (s + 1) * SEASON_WEEKS * WEEK_MS - now };
+}
+const CHALLENGES = {
+  curler: { name: 'SCORE WITH A CURLER', goal: 1, xp: 500 },
+  tackles: { name: 'WIN THE BALL BACK WITH 5 TACKLES', goal: 5, xp: 400 },
+  cleanSheet: { name: 'KEEP A CLEAN SHEET', goal: 1, xp: 500 },
+  diamond: { name: 'WIN A DIAMOND MATCH', goal: 1, xp: 800 },
+  volley: { name: 'SCORE A VOLLEY OR HEADER', goal: 1, xp: 500 },
+  ankles: { name: 'BREAK 3 ANKLES', goal: 3, xp: 400 },
+  hatTrick: { name: 'SCORE 3 GOALS IN ONE MATCH', goal: 1, xp: 600 },
+  assists: { name: 'GET 4 ASSISTS', goal: 4, xp: 400 },
+  longShot: { name: 'SCORE FROM 25 BLOCKS OUT', goal: 1, xp: 500 },
+  featured: { name: 'WIN A FEATURED MODE MATCH', goal: 1, xp: 400 },
+  comeback: { name: 'WIN AFTER FALLING BEHIND', goal: 1, xp: 600 },
+};
+const CHALLENGE_IDS = Object.keys(CHALLENGES);
+/** four challenges a week: every fourth week the classic set, otherwise a fixed shuffle for that week */
+function weekChallenges(week) {
+  if (((week % 4) + 4) % 4 === 0) return ['curler', 'tackles', 'cleanSheet', 'diamond'];
+  const R = mulberry32(week * 7919 + 3), pool = CHALLENGE_IDS.slice(), out = [];
+  while (out.length < 4) out.push(pool.splice(Math.floor(R() * pool.length), 1)[0]);
+  return out;
+}
+const PASS_REWARDS = [
+  { em: 100 }, { skin: 'CHALK' }, { em: 150 }, { skin: 'WHITE_BAND' }, { em: 200 }, { skin: 'AIRPLANE' }, { em: 150 }, { skin: 'JET' }, { em: 200 }, { skin: 'SEASON_GOLD' },
+  { em: 200 }, { skin: 'SHUSH' }, { em: 200 }, { skin: 'RED_GLOVES' }, { em: 300 }, { skin: 'BED_HEAD' }, { em: 200 }, { skin: 'LIME' }, { em: 250 }, { skin: 'CHAMP_BOOTS' },
+  { em: 250 }, { skin: 'SILVER_CHAIN' }, { em: 250 }, { skin: 'ROBOT' }, { em: 400 }, { skin: 'FLAT_TOP' }, { em: 300 }, { skin: 'CHROME_MASK' }, { em: 400 }, { skin: 'TROPHY' },
+];
+/** pass XP for one match. You only earn by doing things: no touches, no passes, no shots, no tackles = nothing */
+function passXp(res, s) {
+  const did = (s.touches || 0) + (s.passes || 0) + (s.shots || 0) + (s.tackles || 0);
+  if (res === 'forfeit' || did < 3) return 0;
+  return Math.min(400, 60 * (s.goals || 0) + 40 * (s.assists || 0) + 15 * (s.onTarget || 0) + 15 * (s.tackles || 0) + 5 * Math.min(20, s.passes || 0) + (res === 'win' ? 60 : res === 'draw' ? 30 : 0));
+}
+const Pass = {
+  /** keep the save on this season and week: a new season starts the track again, a new week brings new challenges */
+  sync(d, now = Date.now()) {
+    const S = seasonAt(now), P = d.pass;
+    if (P.season !== S.season) { P.season = S.season; P.xp = 0; P.got = 0; P.week = -1; }
+    if (P.week !== S.week) { P.week = S.week; P.prog = {}; P.done = []; }
+  },
+  tier(d) { return Math.min(PASS_TIERS, Math.floor(d.pass.xp / PASS_TIER_XP)); },
+  /** after a match: pass XP for what you did, weekly challenge progress, and the rewards for any tiers reached */
+  award(d, m, res, hs) {
+    this.sync(d);
+    const out = { xp: passXp(res, hs), challenges: [], tiers: [] };
+    if (res !== 'forfeit') {
+      const f = m.feats, opp = m.score[1 - (m.human ? m.human.team : 0)], win = res === 'win';
+      const got = {
+        curler: f.curler, tackles: hs.tackles || 0, cleanSheet: opp === 0 && res !== 'loss' ? 1 : 0, diamond: m.cfg.ranked && m.tier >= 4 && win ? 1 : 0,
+        volley: f.volley, ankles: f.ankles, hatTrick: (hs.goals || 0) >= 3 ? 1 : 0, assists: hs.assists || 0, longShot: f.longShot,
+        featured: FEATURED.includes(m.mode) && win ? 1 : 0, comeback: f.trailed && win ? 1 : 0,
+      };
+      for (const id of weekChallenges(d.pass.week)) {
+        if (d.pass.done.includes(id) || !got[id]) continue;
+        const C = CHALLENGES[id];
+        d.pass.prog[id] = Math.min(C.goal, (d.pass.prog[id] || 0) + got[id]);
+        if (d.pass.prog[id] >= C.goal) { d.pass.done.push(id); out.xp += C.xp; out.challenges.push(C.name + ' +' + C.xp + ' XP'); }
+      }
+    }
+    d.pass.xp += out.xp;
+    const tier = this.tier(d);
+    while (d.pass.got < tier) { d.pass.got++; out.tiers.push(this.grant(d, d.pass.got)); }
+    return out;
+  },
+  /** a tier's reward; a skin you already own becomes 100 emeralds */
+  grant(d, n) {
+    const r = PASS_REWARDS[n - 1];
+    if (r.skin) {
+      if (!d.skins.includes(r.skin)) { d.skins.push(r.skin); return 'TIER ' + n + ': ' + SKINS[r.skin].name; }
+      d.emeralds += 100; return 'TIER ' + n + ': 100 EMERALDS (YOU HAD ' + SKINS[r.skin].name + ')';
+    }
+    d.emeralds += r.em; return 'TIER ' + n + ': ' + r.em + ' EMERALDS';
+  },
+  rewardName(r) { return r.skin ? SKINS[r.skin].name : r.em + ' EMERALDS'; },
+};
 
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));

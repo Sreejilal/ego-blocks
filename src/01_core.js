@@ -77,7 +77,7 @@ const Save = {
   defaults() {
     return {
       v: 1, emeralds: 500, styles: ['ROOKIE'], flows: [], style: 'ROOKIE', flow: null,
-      xp: 0, history: [], best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
+      xp: 0, history: [], pass: { season: 0, week: -1, xp: 0, got: 0, prog: {}, done: [] }, best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
@@ -99,6 +99,11 @@ const Save = {
     out.look = Object.assign({}, def.look, out.look && typeof out.look === 'object' ? out.look : {});
     if (typeof out.club !== 'string') out.club = 'ROVERS';
     out.xp = Math.max(0, Math.floor(Number(out.xp) || 0));
+    const ps = out.pass = Object.assign({}, def.pass, out.pass && typeof out.pass === 'object' ? out.pass : {});
+    for (const k of ['season', 'week', 'xp', 'got']) ps[k] = Math.floor(Number(ps[k]) || 0);
+    ps.xp = Math.max(0, ps.xp); ps.got = clamp(ps.got, 0, 30);
+    ps.prog = ps.prog && typeof ps.prog === 'object' ? ps.prog : {};
+    ps.done = Array.isArray(ps.done) ? ps.done.filter((x) => typeof x === 'string') : [];
     out.best = Object.assign({}, def.best, out.best && typeof out.best === 'object' ? out.best : {});
     for (const k in def.best) out.best[k] = Math.max(0, Math.floor(Number(out.best[k]) || 0));
     // the last 20 matches; anything odd in an old or edited save is dropped
@@ -134,6 +139,8 @@ const Save = {
     if (!STYLES[d.style] || !d.styles.includes(d.style)) d.style = 'ROOKIE';
     if (d.flow && (!FLOWS[d.flow] || !d.flows.includes(d.flow))) d.flow = null;
     if (!CLUBS[d.club]) d.club = 'ROVERS';
+    for (const k in d.pass.prog) if (!CHALLENGES[k]) delete d.pass.prog[k]; else d.pass.prog[k] = Math.max(0, Math.floor(Number(d.pass.prog[k]) || 0));
+    Pass.sync(d);
     d.skins = d.skins.filter((s, i) => SKINS[s] && !SKINS[s].base && d.skins.indexOf(s) === i);
     const look = {};
     for (const sl of SKIN_SLOTS) {

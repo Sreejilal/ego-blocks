@@ -82,6 +82,9 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .btn.hazard .sub { color: var(--ink); text-shadow: none; background: var(--gold); padding: 2px 5px; }
 .btn.featured { background: linear-gradient(90deg, #5d2a9e, #8e4bd6); box-shadow: inset 0 -6px 0 #3a1d66, inset 0 var(--px) 0 rgba(255,255,255,.22), 4px 4px 0 rgba(0,0,0,.45); }
 .btn.featured .sub { color: #e6d6ff; }
+.btn.pass { background: linear-gradient(90deg, #a8740f, #d9a512); box-shadow: inset 0 -6px 0 #6b4a08, inset 0 var(--px) 0 rgba(255,255,255,.25), 4px 4px 0 rgba(0,0,0,.45); }
+.btn.pass .sub { color: #fff3c9; }
+.menu .ghosts { display: flex; gap: 6px 18px; flex-wrap: wrap; }
 .btn.emerald { background: var(--emerald-deep); box-shadow: inset 0 -6px 0 #064a2b, inset 0 var(--px) 0 rgba(255,255,255,.22), 4px 4px 0 rgba(0,0,0,.45); }
 .btn.emerald .sub { color: #b9ffd9; }
 .btn.small { font-size: 24px; padding: 6px 14px 9px; }
@@ -111,6 +114,7 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
   .btn.blue:hover { background: #5590ff; }
   .btn.emerald:hover { background: #12925a; }
   .btn.featured:hover { background: linear-gradient(90deg, #6c3cd6, #a066ee); }
+  .btn.pass:hover { background: linear-gradient(90deg, #c08614, #f0b81a); }
   .btn.ghost:hover { color: var(--text); background: transparent; }
   .iconbtn:hover { background: var(--slate-3); }
   .lcard:hover { background: var(--slate-3); }
@@ -270,6 +274,31 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
   .pf-row { grid-template-columns: minmax(0, 1fr) auto; }
   .pf-row > :nth-child(2) { grid-column: 1 / -1; grid-row: 1; }
 }
+
+/* game pass: tier and XP, this week's challenges, then the 30-tier reward track */
+.gp-top, .gp-week, .gp-track-box { padding: 16px; display: grid; gap: 12px; }
+.gp-top { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px 20px; }
+.gp-top .gp-note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 18px; }
+.gp-tier b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 56px; line-height: .9; color: var(--gold); }
+.gp-tier small { font-size: 28px; color: var(--muted); }
+.gp-bar { display: grid; gap: 4px; }
+.xpbar.pass i { background: var(--gold); }
+.gp-week h3, .gp-track-box h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: .9; }
+.gp-ch { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px; }
+.gp-ch > .label { grid-column: 1 / -1; }
+.gp-c { background: var(--slate-2); padding: 10px; display: grid; gap: 6px; box-shadow: inset 4px 0 0 var(--muted); }
+.gp-c b { font-family: var(--font-display); font-weight: 400; font-size: 22px; line-height: .95; }
+.gp-c.done { box-shadow: inset 4px 0 0 var(--emerald); }
+.gp-c.done .xpbar i { background: var(--emerald); }
+.gp-track { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.gp-t { background: var(--slate-2); padding: 8px; display: grid; justify-items: center; gap: 4px; text-align: center; opacity: .6; }
+.gp-t canvas { width: 40px; height: 40px; }
+.gp-t b { font-family: var(--font-display); font-weight: 400; font-size: 18px; line-height: .95; }
+.gp-t.got { opacity: 1; box-shadow: inset 0 0 0 3px var(--gold); }
+.gp-t.next { opacity: 1; box-shadow: inset 0 0 0 3px var(--text); }
+.passline { display: grid; gap: 4px; }
+.passline .pl-ch { color: var(--emerald); } .passline .pl-tier { color: var(--gold); }
+@media (max-width: 560px) { .gp-top { grid-template-columns: minmax(0, 1fr); } }
 
 /* how to play */
 .howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
@@ -561,6 +590,7 @@ body.touch .howto .touchsec { order: -1; }
   .menu .btn { font-size: 22px; padding: 4px 10px 7px; gap: 8px; }
   .menu .btn .sub { font-size: 9px; }
   .menu .btn.ghost { font-size: 18px; }
+  .menu .ghosts { grid-column: 1 / -1; }
   .lobby-foot { align-self: end; justify-self: stretch; justify-items: stretch; gap: 4px; }
   .profile { width: 100%; padding: 6px 10px; gap: 2px 10px; }
   .profile .badge { width: 36px; height: 36px; }
@@ -681,7 +711,7 @@ const Save = {
   defaults() {
     return {
       v: 1, emeralds: 500, styles: ['ROOKIE'], flows: [], style: 'ROOKIE', flow: null,
-      xp: 0, history: [], best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
+      xp: 0, history: [], pass: { season: 0, week: -1, xp: 0, got: 0, prog: {}, done: [] }, best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
@@ -703,6 +733,11 @@ const Save = {
     out.look = Object.assign({}, def.look, out.look && typeof out.look === 'object' ? out.look : {});
     if (typeof out.club !== 'string') out.club = 'ROVERS';
     out.xp = Math.max(0, Math.floor(Number(out.xp) || 0));
+    const ps = out.pass = Object.assign({}, def.pass, out.pass && typeof out.pass === 'object' ? out.pass : {});
+    for (const k of ['season', 'week', 'xp', 'got']) ps[k] = Math.floor(Number(ps[k]) || 0);
+    ps.xp = Math.max(0, ps.xp); ps.got = clamp(ps.got, 0, 30);
+    ps.prog = ps.prog && typeof ps.prog === 'object' ? ps.prog : {};
+    ps.done = Array.isArray(ps.done) ? ps.done.filter((x) => typeof x === 'string') : [];
     out.best = Object.assign({}, def.best, out.best && typeof out.best === 'object' ? out.best : {});
     for (const k in def.best) out.best[k] = Math.max(0, Math.floor(Number(out.best[k]) || 0));
     // the last 20 matches; anything odd in an old or edited save is dropped
@@ -738,6 +773,8 @@ const Save = {
     if (!STYLES[d.style] || !d.styles.includes(d.style)) d.style = 'ROOKIE';
     if (d.flow && (!FLOWS[d.flow] || !d.flows.includes(d.flow))) d.flow = null;
     if (!CLUBS[d.club]) d.club = 'ROVERS';
+    for (const k in d.pass.prog) if (!CHALLENGES[k]) delete d.pass.prog[k]; else d.pass.prog[k] = Math.max(0, Math.floor(Number(d.pass.prog[k]) || 0));
+    Pass.sync(d);
     d.skins = d.skins.filter((s, i) => SKINS[s] && !SKINS[s].base && d.skins.indexOf(s) === i);
     const look = {};
     for (const sl of SKIN_SLOTS) {
@@ -2588,6 +2625,9 @@ class Player {
           const ph = (t % 1.3) / 1.3, f = clamp((ph - 0.12) / 0.5, 0, 1);
           snapX = true;
           by = 0.72 + Math.sin(Math.PI * f) * 1.0; bx = -TAU * smooth(f); lL = -1.1 * Math.sin(Math.PI * f); lR = 0.3; aLz = 2.4; aRz = -2.4;
+        } else if (c === 'trophy') {
+          const lift = Math.abs(Math.sin(t * 3.2));
+          aL = aR = -2.6 - lift * 0.4; aLz = 0.22; aRz = -0.22; by = 0.72 + lift * 0.12; hx = -0.35;
         } else if (c === 'meteor') {
           const ph = (t % 1.7) / 1.7, up = ph < 0.55 ? Math.sin(ph / 0.55 * Math.PI / 2) : ph < 0.7 ? 1 : Math.max(0, 1 - (ph - 0.7) / 0.1);
           by = 0.72 + up * 2.4; aLz = 2.7; aRz = -2.7; lL = -0.4 * up; lR = 0.4 * up;
@@ -3198,8 +3238,13 @@ const SKINS = {
   KNEE_SLIDE: { slot: 'celeb', name: 'KNEE SLIDE', rarity: 'Legendary', celeb: 'knees', desc: 'Drop to the knees, lean back and soak it in.' },
   BACKFLIP: { slot: 'celeb', name: 'BACKFLIP', rarity: 'Mythic', celeb: 'flip', desc: 'Backflip after backflip.' },
   METEOR: { slot: 'celeb', name: 'METEOR', rarity: 'Generational', celeb: 'meteor', desc: 'Leap sky high, then slam down in a ring of light.' },
+  // game pass only: never in spins
+  SEASON_GOLD: { slot: 'color', name: 'SEASON GOLD', rarity: 'Legendary', hex: '#e9c14a', pass: true },
+  CHAMP_BOOTS: { slot: 'boots', name: 'CHAMPION BOOTS', rarity: 'Legendary', hex: '#f6f2e6', sparkle: true, pass: true },
+  TROPHY: { slot: 'celeb', name: 'TROPHY LIFT', rarity: 'Mythic', celeb: 'trophy', pass: true, desc: 'Hoist an invisible trophy over your head, again and again.' },
 };
-const SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base);
+const SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base && !SKINS[k].pass); // what spins can give
+const LOCKER_SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base);
 /** the concrete colours and shapes a player model is built from: the style's defaults with skins on top */
 function lookFor(styleId, look = {}) {
   const st = STYLES[styleId] || STYLES.ROOKIE, S = (slot) => SKINS[look[slot]] || {};
@@ -3307,6 +3352,88 @@ function levelOf(xp) {
   return { level, into: xp, need };
 }
 
+/* ---------- free game pass: 30 tiers, earned by playing well, never sold, rewards only change looks ----------
+   Seasons are 8 weeks from a fixed start, weeks start on Monday (UTC), so everyone has the same season and challenges */
+const SEASON_START = Date.UTC(2026, 9, 26), WEEK_MS = 7 * 864e5, SEASON_WEEKS = 8, PASS_TIER_XP = 1000, PASS_TIERS = 30;
+function seasonAt(now = Date.now()) {
+  const w = Math.floor((now - SEASON_START) / WEEK_MS), s = Math.floor(w / SEASON_WEEKS);
+  return { season: s + 1, week: w, weekLeft: SEASON_START + (w + 1) * WEEK_MS - now, seasonLeft: SEASON_START + (s + 1) * SEASON_WEEKS * WEEK_MS - now };
+}
+const CHALLENGES = {
+  curler: { name: 'SCORE WITH A CURLER', goal: 1, xp: 500 },
+  tackles: { name: 'WIN THE BALL BACK WITH 5 TACKLES', goal: 5, xp: 400 },
+  cleanSheet: { name: 'KEEP A CLEAN SHEET', goal: 1, xp: 500 },
+  diamond: { name: 'WIN A DIAMOND MATCH', goal: 1, xp: 800 },
+  volley: { name: 'SCORE A VOLLEY OR HEADER', goal: 1, xp: 500 },
+  ankles: { name: 'BREAK 3 ANKLES', goal: 3, xp: 400 },
+  hatTrick: { name: 'SCORE 3 GOALS IN ONE MATCH', goal: 1, xp: 600 },
+  assists: { name: 'GET 4 ASSISTS', goal: 4, xp: 400 },
+  longShot: { name: 'SCORE FROM 25 BLOCKS OUT', goal: 1, xp: 500 },
+  featured: { name: 'WIN A FEATURED MODE MATCH', goal: 1, xp: 400 },
+  comeback: { name: 'WIN AFTER FALLING BEHIND', goal: 1, xp: 600 },
+};
+const CHALLENGE_IDS = Object.keys(CHALLENGES);
+/** four challenges a week: every fourth week the classic set, otherwise a fixed shuffle for that week */
+function weekChallenges(week) {
+  if (((week % 4) + 4) % 4 === 0) return ['curler', 'tackles', 'cleanSheet', 'diamond'];
+  const R = mulberry32(week * 7919 + 3), pool = CHALLENGE_IDS.slice(), out = [];
+  while (out.length < 4) out.push(pool.splice(Math.floor(R() * pool.length), 1)[0]);
+  return out;
+}
+const PASS_REWARDS = [
+  { em: 100 }, { skin: 'CHALK' }, { em: 150 }, { skin: 'WHITE_BAND' }, { em: 200 }, { skin: 'AIRPLANE' }, { em: 150 }, { skin: 'JET' }, { em: 200 }, { skin: 'SEASON_GOLD' },
+  { em: 200 }, { skin: 'SHUSH' }, { em: 200 }, { skin: 'RED_GLOVES' }, { em: 300 }, { skin: 'BED_HEAD' }, { em: 200 }, { skin: 'LIME' }, { em: 250 }, { skin: 'CHAMP_BOOTS' },
+  { em: 250 }, { skin: 'SILVER_CHAIN' }, { em: 250 }, { skin: 'ROBOT' }, { em: 400 }, { skin: 'FLAT_TOP' }, { em: 300 }, { skin: 'CHROME_MASK' }, { em: 400 }, { skin: 'TROPHY' },
+];
+/** pass XP for one match. You only earn by doing things: no touches, no passes, no shots, no tackles = nothing */
+function passXp(res, s) {
+  const did = (s.touches || 0) + (s.passes || 0) + (s.shots || 0) + (s.tackles || 0);
+  if (res === 'forfeit' || did < 3) return 0;
+  return Math.min(400, 60 * (s.goals || 0) + 40 * (s.assists || 0) + 15 * (s.onTarget || 0) + 15 * (s.tackles || 0) + 5 * Math.min(20, s.passes || 0) + (res === 'win' ? 60 : res === 'draw' ? 30 : 0));
+}
+const Pass = {
+  /** keep the save on this season and week: a new season starts the track again, a new week brings new challenges */
+  sync(d, now = Date.now()) {
+    const S = seasonAt(now), P = d.pass;
+    if (P.season !== S.season) { P.season = S.season; P.xp = 0; P.got = 0; P.week = -1; }
+    if (P.week !== S.week) { P.week = S.week; P.prog = {}; P.done = []; }
+  },
+  tier(d) { return Math.min(PASS_TIERS, Math.floor(d.pass.xp / PASS_TIER_XP)); },
+  /** after a match: pass XP for what you did, weekly challenge progress, and the rewards for any tiers reached */
+  award(d, m, res, hs) {
+    this.sync(d);
+    const out = { xp: passXp(res, hs), challenges: [], tiers: [] };
+    if (res !== 'forfeit') {
+      const f = m.feats, opp = m.score[1 - (m.human ? m.human.team : 0)], win = res === 'win';
+      const got = {
+        curler: f.curler, tackles: hs.tackles || 0, cleanSheet: opp === 0 && res !== 'loss' ? 1 : 0, diamond: m.cfg.ranked && m.tier >= 4 && win ? 1 : 0,
+        volley: f.volley, ankles: f.ankles, hatTrick: (hs.goals || 0) >= 3 ? 1 : 0, assists: hs.assists || 0, longShot: f.longShot,
+        featured: FEATURED.includes(m.mode) && win ? 1 : 0, comeback: f.trailed && win ? 1 : 0,
+      };
+      for (const id of weekChallenges(d.pass.week)) {
+        if (d.pass.done.includes(id) || !got[id]) continue;
+        const C = CHALLENGES[id];
+        d.pass.prog[id] = Math.min(C.goal, (d.pass.prog[id] || 0) + got[id]);
+        if (d.pass.prog[id] >= C.goal) { d.pass.done.push(id); out.xp += C.xp; out.challenges.push(C.name + ' +' + C.xp + ' XP'); }
+      }
+    }
+    d.pass.xp += out.xp;
+    const tier = this.tier(d);
+    while (d.pass.got < tier) { d.pass.got++; out.tiers.push(this.grant(d, d.pass.got)); }
+    return out;
+  },
+  /** a tier's reward; a skin you already own becomes 100 emeralds */
+  grant(d, n) {
+    const r = PASS_REWARDS[n - 1];
+    if (r.skin) {
+      if (!d.skins.includes(r.skin)) { d.skins.push(r.skin); return 'TIER ' + n + ': ' + SKINS[r.skin].name; }
+      d.emeralds += 100; return 'TIER ' + n + ': 100 EMERALDS (YOU HAD ' + SKINS[r.skin].name + ')';
+    }
+    d.emeralds += r.em; return 'TIER ' + n + ': ' + r.em + ' EMERALDS';
+  },
+  rewardName(r) { return r.skin ? SKINS[r.skin].name : r.em + ' EMERALDS'; },
+};
+
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /** bot difficulty 0..1 from rank points */
@@ -3362,7 +3489,8 @@ class Match {
     this.lastPass = null; this.restart = null; this.result = null; this.endTimer = 0;
     this.teamState = ['loose', 'loose']; this.pred = [];
     this.aim = V3(0, 1, F.L); this.camYaw = 0; this.aimOnTarget = false;
-    this.ctl = null; this.autopilot = !!opts.autopilot; this.thinkPass = opts.thinkPass !== false; this.lastGoal = null; this.pendingEnd = false;
+    this.ctl = null; this.autopilot = !!opts.autopilot; this.thinkPass = opts.thinkPass !== false;
+    this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, trailed: false }; // your moments, for the weekly challenges this.lastGoal = null; this.pendingEnd = false;
     // your club at home against a random other club; the away side changes kit if the colours clash
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
     const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
@@ -3569,7 +3697,7 @@ class Match {
     const b = this.ball, k = b.kick;
     b.owner = p; b.held = false; b.inGoal = 0; b.vel.set(0, 0, 0); b.curve.set(0, 0, 0); b.straightT = 0; b.kick = null;
     b.touch(p);
-    p.pickBlock = 0; p.gotBallT = this.time;
+    p.pickBlock = 0; p.gotBallT = this.time; p.stats.touches = (p.stats.touches || 0) + 1;
     if (k && k.by && k.by !== p) {
       if (k.type === 'pass' && k.by.team === p.team) {
         k.by.stats.passes++; this.flowAdd(k.by, 12);
@@ -3596,7 +3724,8 @@ class Match {
     b.curve.set(o.cx || 0, 0, o.cz || 0); b.curveDecay = o.curveDecay == null ? 1.4 : o.curveDecay;
     b.straightT = o.straight || 0; b.inGoal = 0;
     b.kick = { by: p, type: o.type || 'shot', to: o.to || null, t: this.time, trail: o.trail || null, special: o.special || null, counted: false,
-      aerial: !!(o.aerial || o.special === 'volley' || o.special === 'overhead') }; // struck in the air: counts in Volleys Only
+      aerial: !!(o.aerial || o.special === 'volley' || o.special === 'overhead'), // struck in the air: counts in Volleys Only
+      curved: !!(o.cx || o.cz), fx: b.pos.x, fz: b.pos.z };
     b.lastKicker = p; b.touch(p);
     b.ignore = p; b.ignoreT = 0.22;
     p.kickStyle = o.kickStyle || null;
@@ -3840,7 +3969,7 @@ class Match {
     this.label(carrier, 'ANKLES', carrier.aura);
     FX.feathers(carrier.pos.x, carrier.pos.y + 0.6, carrier.pos.z, carrier.aura, 8);
     Sfx.dodge();
-    if (carrier.isHuman) { this.toast('ANKLE BREAKER', 'good'); Replay.event(this, 'ANKLE BREAKER', carrier); }
+    if (carrier.isHuman) { this.feats.ankles++; this.toast('ANKLE BREAKER', 'good'); Replay.event(this, 'ANKLE BREAKER', carrier); }
     else if (tackler.isHuman) this.toast('DODGED', 'bad');
     if (this.involvesHuman(tackler, carrier)) TimeCtl.slowMo(0.45, 0.35);
   }
@@ -4101,6 +4230,7 @@ class Match {
       if (this.stun(o, 0.6)) { n++; this.label(o, 'ANKLES', p.aura); FX.feathers(o.pos.x, 0.8, o.pos.z, p.aura, 5); }
     }
     if (n) this.flowAdd(p, 10 * n);
+    if (p.isHuman) this.feats.ankles += n;
     if (p.isHuman && n) { this.toast('ANKLE BREAKER', 'good'); Replay.event(this, 'ANKLE BREAKER', p); }
     Sfx.dodge();
     return true;
@@ -4229,6 +4359,12 @@ class Match {
       scorer.setState('celebrate', 3.2); scorer.charging = false;
     }
     this.lastGoal = { team, scorer, assister, own };
+    if (scorer && scorer.isHuman && k && (k.type === 'shot' || k.type === 'header')) {
+      if (k.special === 'curl' || k.curved) this.feats.curler++;
+      if (k.aerial) this.feats.volley++;
+      if (k.fx != null && Math.hypot(k.fx, this.oppGoalZ(scorer.team) - k.fz) >= 25) this.feats.longShot++;
+    }
+    if (this.human && this.score[this.human.team] < this.score[1 - this.human.team]) this.feats.trailed = true;
     Replay.event(this, 'GOAL', scorer);
     if (this.golden) this.pendingEnd = true;
     b.owner = null; b.kick = null;
@@ -6147,7 +6283,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -6184,8 +6320,8 @@ const UI = {
           <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
           <button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button>
           <button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button>
-          <button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button>
-          <button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button>
+          <button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button>
+          <div class="ghosts"><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button></div>
         </nav>
       </div>
       <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
@@ -6285,6 +6421,7 @@ const UI = {
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
+            <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
             <li><b>Featured mode</b> changes every 3 hours, the same for everyone: King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3) and Lawless.</li>
             <li><b>Team size:</b> Quick Match and Lawless are 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
@@ -6339,6 +6476,36 @@ const UI = {
         <span class="label">${h.g} G · ${h.a} A · ${esc(STYLES[h.style] ? STYLES[h.style].name : h.style)}</span>${rp}</div>`;
     }).join('');
     $('pf-hist').innerHTML = rows || '<p class="label">NO MATCHES YET. PLAY ONE AND IT SHOWS UP HERE.</p>';
+  },
+  tplPass() {
+    return `<section id="scr-pass" class="screen sub-screen" hidden>
+      <div class="sub-wrap">
+        <div class="sub-head"><h2>GAME PASS</h2><button class="btn small" id="pass-back" type="button">BACK</button></div>
+        <section class="panel gp-top" id="gp-top"></section>
+        <section class="panel gp-week"><h3>THIS WEEK</h3><div class="gp-ch" id="gp-ch"></div></section>
+        <section class="panel gp-track-box"><h3>REWARDS</h3><div class="gp-track" id="gp-track"></div></section>
+      </div>
+    </section>`;
+  },
+  renderPass() {
+    const d = Save.data; Pass.sync(d);
+    const S = seasonAt(), P = d.pass, tier = Pass.tier(d), into = tier >= PASS_TIERS ? PASS_TIER_XP : P.xp % PASS_TIER_XP;
+    const days = (ms) => { const h = Math.floor(ms / 3600e3); return h >= 48 ? Math.floor(h / 24) + ' DAYS' : h + 'H ' + Math.floor(ms / 60e3) % 60 + 'M'; };
+    $('gp-top').innerHTML = `<div class="gp-tier"><span class="label">SEASON ${S.season} · ENDS IN ${days(S.seasonLeft)}</span><b>TIER ${tier} <small>/ ${PASS_TIERS}</small></b></div>
+      <div class="gp-bar"><div class="xpbar pass"><i style="width:${into / PASS_TIER_XP * 100}%"></i></div><span class="label">${tier >= PASS_TIERS ? 'PASS COMPLETE' : into + ' / ' + PASS_TIER_XP + ' XP TO TIER ' + (tier + 1)}</span></div>
+      <p class="gp-note">Free for everyone. Earn pass XP by playing well: goals, assists, shots on target, tackles, passes and wins. Standing around earns nothing. Rewards only change your looks.</p>`;
+    $('gp-ch').innerHTML = `<span class="label">NEW CHALLENGES IN ${days(S.weekLeft)}</span>` + weekChallenges(P.week).map((id) => {
+      const C = CHALLENGES[id], n = Math.min(C.goal, P.prog[id] || 0), done = P.done.includes(id);
+      return `<div class="gp-c ${done ? 'done' : ''}"><b>${esc(C.name)}</b><span class="label">${done ? 'DONE' : n + ' / ' + C.goal} · +${C.xp} XP</span><div class="xpbar"><i style="width:${n / C.goal * 100}%"></i></div></div>`;
+    }).join('');
+    $('gp-track').innerHTML = PASS_REWARDS.map((r, i) => {
+      const n = i + 1, got = P.got >= n, now = n === tier + 1;
+      return `<div class="gp-t ${got ? 'got' : ''} ${now ? 'next' : ''}" data-i="${i}"><span class="label">TIER ${n}</span><span class="gv"></span><b>${esc(Pass.rewardName(r))}</b><span class="label">${got ? 'EARNED' : now ? 'NEXT' : ''}</span></div>`;
+    }).join('');
+    $('gp-track').querySelectorAll('.gp-t').forEach((el) => {
+      const r = PASS_REWARDS[+el.dataset.i], cv = r.skin ? skinCanvas(r.skin, 40) : iconCanvas('emerald');
+      cv.className = 'px'; el.querySelector('.gv').replaceWith(cv);
+    });
   },
   tplHud() {
     return `<section id="hud" hidden>
@@ -6399,6 +6566,7 @@ const UI = {
         <div class="earn" id="r-earn"></div>
         <div class="rankline" id="r-rank"></div>
         <div class="xpline" id="r-xp"></div>
+        <div class="passline" id="r-pass"></div>
         <div class="row"><button class="btn blue" id="r-again" type="button">PLAY AGAIN</button><button class="btn" id="r-lobby" type="button">LOBBY</button></div>
       </div>
     </section>`;
@@ -6414,6 +6582,8 @@ const UI = {
     click('go-locker', () => this.openLocker());
     click('go-howto', () => this.show('howto'));
     click('go-profile', () => this.show('profile'));
+    click('go-pass', () => this.show('pass'));
+    click('pass-back', () => this.show('lobby'));
     click('lob-profile', () => this.show('profile'));
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
     click('profile-back', () => this.show('lobby'));
@@ -6452,12 +6622,12 @@ const UI = {
     click('btn-fs', () => Touch.toggleFs());
     window.addEventListener('keydown', (e) => {
       if (Game.state === 'match' || Game.state === 'paused') return;
-      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile') && !this.spinning) this.show('lobby');
+      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass') && !this.spinning) this.show('lobby');
     });
   },
   show(name) {
     this.cur = name;
-    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', hud: 'hud' };
+    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
@@ -6465,6 +6635,7 @@ const UI = {
     if (name === 'lobby') { this.renderLobby(); Showcase.ensure(); }
     if (name === 'howto') { Save.data.howto = true; Save.save(); }
     if (name === 'profile') this.renderProfile();
+    if (name === 'pass') this.renderPass();
   },
   /* ---------- lobby ---------- */
   renderLobby() {
@@ -6477,6 +6648,7 @@ const UI = {
     $('rank-sub').textContent = TIER_NAMES[tier] + ' · ' + sz + 'V' + sz;
     $('locker-sub').textContent = STYLES[d.style].name + (d.flow ? ' · ' + FLOWS[d.flow].name : '');
     $('pro-badge').src = badgeURL(tier);
+    Pass.sync(d); $('pass-sub').textContent = 'TIER ' + Pass.tier(d) + ' / ' + PASS_TIERS;
     $('pro-tier').textContent = TIER_NAMES[tier];
     const inTier = tier >= 5 ? 10 : Math.floor((d.rp % 100) / 10);
     $('pro-rp').innerHTML = Array.from({ length: 10 }, (_, i) => `<i class="${i < inTier ? 'on' : ''}"></i>`).join('');
@@ -6731,6 +6903,9 @@ const UI = {
     } else { $('r-rank').hidden = true; }
     const lv = levelOf(Save.data.xp);
     $('r-xp').innerHTML = `<span class="label">${r.levelUp ? '<b class="lvup">LEVEL UP!</b> ' : ''}LEVEL ${lv.level} · +${r.xp || 0} XP</span><div class="xpbar"><i style="width:${(lv.into / lv.need * 100).toFixed(1)}%"></i></div>`;
+    const P = r.pass || { xp: 0, challenges: [], tiers: [] }, pd = Save.data.pass;
+    $('r-pass').innerHTML = `<span class="label">GAME PASS · TIER ${Pass.tier(Save.data)} / ${PASS_TIERS} · +${P.xp} XP${P.xp ? '' : (r.res === 'forfeit' ? '' : ' (DO SOMETHING ON THE BALL TO EARN PASS XP)')}</span><div class="xpbar pass"><i style="width:${(pd.xp % PASS_TIER_XP) / PASS_TIER_XP * 100}%"></i></div>`
+      + P.challenges.map((c) => `<span class="label pl-ch">CHALLENGE DONE: ${esc(c)}</span>`).join('') + P.tiers.map((t) => `<span class="label pl-tier">${esc(t)}</span>`).join('');
     $('hint').hidden = true;
     $('scr-results').hidden = false;
   },
@@ -6746,7 +6921,7 @@ const UI = {
     $('spin-odds').innerHTML = RARITIES.map((r, i) => `<span class="rar" data-r="${r}">${r.toUpperCase()} ${RARITY_ODDS[i]}%</span>`).join('');
     $('spin-go').disabled = this.spinning || d.emeralds < 200;
     $('spin-go').innerHTML = d.emeralds < 200 ? 'SPIN <span class="sub">NEED 200 EMERALDS</span>' : 'SPIN <span class="sub">200 EMERALDS</span>';
-    const owned = kind === 'style' ? d.styles.length + ' / ' + STYLE_IDS.length + ' STYLES OWNED' : kind === 'flow' ? d.flows.length + ' / ' + FLOW_IDS.length + ' FLOWS OWNED' : d.skins.length + ' / ' + SKIN_IDS.length + ' SKINS OWNED (LOOKS ONLY)';
+    const owned = kind === 'style' ? d.styles.length + ' / ' + STYLE_IDS.length + ' STYLES OWNED' : kind === 'flow' ? d.flows.length + ' / ' + FLOW_IDS.length + ' FLOWS OWNED' : d.skins.filter((k) => !SKINS[k].pass).length + ' / ' + SKIN_IDS.length + ' SKINS OWNED (LOOKS ONLY)';
     $('spin-owned').textContent = owned + '. WIN MATCHES TO EARN MORE EMERALDS.';
     if (resetReel) { $('spin-result').innerHTML = ''; $('spin-result').classList.remove('show'); Reveal.ready(); }
   },
@@ -6795,7 +6970,7 @@ const UI = {
     if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
     if (tab === 'flow') { const fl = id === 'NONE' ? null : FLOWS[id]; return { name: fl ? fl.name : 'NO FLOW', rarity: fl ? fl.rarity : 'Rare', base: !fl, owned: !fl || d.flows.includes(id), equipped: (d.flow || 'NONE') === id, from: 'FLOW SPINS' }; }
     const sk = SKINS[id];
-    return { name: sk.name, rarity: sk.rarity, base: !!sk.base, owned: !!sk.base || d.skins.includes(id), equipped: d.look[sk.slot] === id, from: 'SKIN SPINS' };
+    return { name: sk.name, rarity: sk.rarity, base: !!sk.base, owned: !!sk.base || d.skins.includes(id), equipped: d.look[sk.slot] === id, from: sk.pass ? 'GAME PASS TIER ' + (PASS_REWARDS.findIndex((r) => r.skin === id) + 1) : 'SKIN SPINS' };
   },
   lockerArt(id, size) {
     const tab = this.lockerTab;
@@ -6809,7 +6984,7 @@ const UI = {
     slots.hidden = tab !== 'skin';
     if (tab === 'skin') slots.innerHTML = SKIN_SLOTS.map((sl) => `<button class="tab" type="button" role="tab" data-slot="${sl.id}" aria-selected="${this.skinSlot === sl.id}">${sl.name}</button>`).join('');
     const ids = tab === 'club' ? CLUB_IDS : tab === 'style' ? STYLE_IDS : tab === 'flow' ? ['NONE'].concat(FLOW_IDS)
-      : [SKIN_SLOTS.find((sl) => sl.id === this.skinSlot).base].concat(SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
+      : [SKIN_SLOTS.find((sl) => sl.id === this.skinSlot).base].concat(LOCKER_SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
     const grid = $('locker-grid');
     grid.innerHTML = ids.map((id) => {
       const it = this.lockerItem(id);
@@ -6846,7 +7021,7 @@ const UI = {
         <p style="margin:0;color:var(--muted)">Fill the Flow bar with completed passes, dodges, tackles and shots on target. Press G for 15 seconds of Flow: glowing eyes, a swirling aura and this buff.</p>`;
     } else {
       const sk = SKINS[id], slot = SKIN_SLOTS.find((sl) => sl.id === sk.slot);
-      det.innerHTML = head(slot.name + ' SKIN', sk.desc || '') + `<p style="margin:0;color:var(--muted)">Skins only change how you look. They never change your stats.${sk.slot === 'celeb' ? ' You play it when you score.' : ''}</p>`;
+      det.innerHTML = head(slot.name + ' SKIN' + (sk.pass ? ' · GAME PASS ONLY' : ''), sk.desc || '') + `<p style="margin:0;color:var(--muted)">Skins only change how you look. They never change your stats.${sk.slot === 'celeb' ? ' You play it when you score.' : ''}</p>`;
     }
     det.querySelector('.cv').replaceWith(this.lockerArt(id, 96));
     // name, rarity and the equip button sit under the 3D preview
@@ -6969,10 +7144,11 @@ const Game = {
     const B = d.best;
     B.goals = Math.max(B.goals, hs.goals || 0); B.assists = Math.max(B.assists, hs.assists || 0);
     B.run = res === 'win' ? B.run + 1 : 0; B.streak = Math.max(B.streak, B.run); B.peakRp = Math.max(B.peakRp, d.rp);
+    const pass = Pass.award(d, m, res, hs);
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass });
     if (res === 'win') Sfx.fanfare(2);
     Sfx.setCrowd(0.3);
   },
@@ -7047,7 +7223,7 @@ const Game = {
 
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
-  TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp,
+  TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Player, TEAM, rollRarity, poolFor,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES,
   /** run a full bot-vs-bot match off-screen and report what happened */
