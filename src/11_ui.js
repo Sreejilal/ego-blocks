@@ -44,6 +44,7 @@ const UI = {
           <button class="btn blue" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
           <button class="btn" id="go-quick" type="button">QUICK MATCH <span class="sub">3V3 &middot; NO RANK CHANGE</span></button>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
+          <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
           <button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button>
           <button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button>
           <button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button>
@@ -146,6 +147,7 @@ const UI = {
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
+            <li><b>Featured mode</b> changes every 3 hours, the same for everyone: King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3) and Lawless.</li>
             <li><b>Team size:</b> Quick Match and Lawless are 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
@@ -222,6 +224,7 @@ const UI = {
     click('go-ranked', () => Game.startMatch('ranked'));
     click('go-quick', () => Game.startMatch('quick'));
     click('go-lawless', () => Game.startMatch('lawless'));
+    click('go-featured', () => Game.startMatch(featuredAt().mode));
     click('go-spins', () => this.openSpins());
     click('go-locker', () => this.openLocker());
     click('go-howto', () => this.show('howto'));
@@ -301,10 +304,19 @@ const UI = {
     fsb.hidden = !(Touch.on && Touch.fsAvailable());
     fsb.textContent = Touch.isFs() ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
   },
+  /** the featured slot: this mode's name and the countdown to the next one (ticks once a second) */
+  tickFeatured() {
+    const f = featuredAt(), sec = Math.ceil(f.left / 1000);
+    if (sec === this._featSec && f.mode === this._featMode) return;
+    this._featSec = sec; this._featMode = f.mode;
+    const hms = Math.floor(sec / 3600) + ':' + String(Math.floor(sec / 60) % 60).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
+    $('feat-name').textContent = MODES[f.mode].name;
+    $('feat-sub').textContent = 'FEATURED · NEXT IN ' + hms;
+  },
   /* ---------- HUD ---------- */
   buildHud(m) {
     const p = m.human;
-    $('hud-mode').textContent = m.cfg.name + ' · ' + m.size + 'V' + m.size + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
+    $('hud-mode').textContent = m.cfg.name + (m.mode === 'duel' ? '' : ' · ' + m.size + 'V' + m.size) + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
     $('hud-badge').src = badgeURL(tierOf(Save.data.rp)); $('hud-badge').hidden = !m.cfg.ranked;
     $('hud-em-ico').src = iconURL('emerald'); $('hud-em').textContent = Save.data.emeralds;
     for (const t of [0, 1]) { // the score bar wears each club's shirt
@@ -424,6 +436,7 @@ const UI = {
     g.fillStyle = TEAM[1].hex; g.fillRect(X(F.GW), Z(F.L + 1.5), F.GW * 2 * kx, 2);
     g.fillStyle = TEAM[0].hex; g.fillRect(X(F.GW), Z(-F.L) - 0, F.GW * 2 * kx, 2);
     for (const it of m.items) { g.fillStyle = '#ffcb3d'; g.fillRect(X(it.x) - 2, Z(it.z) - 2, 4, 4); }
+    if (m.hill) { const H = m.hill; g.strokeStyle = H.holder >= 0 ? TEAM[H.holder].hex : '#f5efe0'; g.lineWidth = 2; g.beginPath(); g.ellipse(X(H.x), Z(H.z), H.r * kx, H.r * kz, 0, 0, TAU); g.stroke(); }
     for (const p of m.players) {
       const x = X(p.pos.x), z = Z(p.pos.z);
       g.fillStyle = '#090b16'; g.fillRect(x - 3.5, z - 3.5, 7, 7);

@@ -477,8 +477,11 @@ function matchSides(homeId, awayId) {
 }
 
 /* ---------- team sizes: casual modes are 3v3; ranked grows as you climb ---------- */
-const ROSTERS = { 3: ['GK', 'MID', 'ST'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'LW', 'RW', 'ST'] };
-const teamSizeFor = (mode, rp) => { if (mode !== 'ranked') return 3; const t = tierOf(rp); return t >= 4 ? 5 : t >= 2 ? 4 : 3; };
+const ROSTERS = { 2: ['GK', 'ST'], 3: ['GK', 'MID', 'ST'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'LW', 'RW', 'ST'] };
+const teamSizeFor = (mode, rp) => { if (mode === 'duel') return 2; if (mode !== 'ranked') return 3; const t = tierOf(rp); return t >= 4 ? 5 : t >= 2 ? 4 : 3; };
+/* the featured mode changes every 3 hours on a fixed schedule from the clock (UTC), so everyone sees the same one */
+const FEATURED = ['koth', 'volleys', 'duel', 'lawless'], FEATURED_MS = 3 * 3600 * 1000;
+function featuredAt(now = Date.now()) { const k = Math.floor(now / FEATURED_MS); return { mode: FEATURED[((k % FEATURED.length) + FEATURED.length) % FEATURED.length], left: (k + 1) * FEATURED_MS - now }; }
 
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));

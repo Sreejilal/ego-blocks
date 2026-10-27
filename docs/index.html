@@ -80,6 +80,8 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
   text-shadow: 3px 3px 0 var(--ink);
 }
 .btn.hazard .sub { color: var(--ink); text-shadow: none; background: var(--gold); padding: 2px 5px; }
+.btn.featured { background: linear-gradient(90deg, #5d2a9e, #8e4bd6); box-shadow: inset 0 -6px 0 #3a1d66, inset 0 var(--px) 0 rgba(255,255,255,.22), 4px 4px 0 rgba(0,0,0,.45); }
+.btn.featured .sub { color: #e6d6ff; }
 .btn.emerald { background: var(--emerald-deep); box-shadow: inset 0 -6px 0 #064a2b, inset 0 var(--px) 0 rgba(255,255,255,.22), 4px 4px 0 rgba(0,0,0,.45); }
 .btn.emerald .sub { color: #b9ffd9; }
 .btn.small { font-size: 24px; padding: 6px 14px 9px; }
@@ -108,6 +110,7 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
   .btn[disabled]:hover { transform: none; }
   .btn.blue:hover { background: #5590ff; }
   .btn.emerald:hover { background: #12925a; }
+  .btn.featured:hover { background: linear-gradient(90deg, #6c3cd6, #a066ee); }
   .btn.ghost:hover { color: var(--text); background: transparent; }
   .iconbtn:hover { background: var(--slate-3); }
   .lcard:hover { background: var(--slate-3); }
@@ -3241,8 +3244,11 @@ function matchSides(homeId, awayId) {
 }
 
 /* ---------- team sizes: casual modes are 3v3; ranked grows as you climb ---------- */
-const ROSTERS = { 3: ['GK', 'MID', 'ST'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'LW', 'RW', 'ST'] };
-const teamSizeFor = (mode, rp) => { if (mode !== 'ranked') return 3; const t = tierOf(rp); return t >= 4 ? 5 : t >= 2 ? 4 : 3; };
+const ROSTERS = { 2: ['GK', 'ST'], 3: ['GK', 'MID', 'ST'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'LW', 'RW', 'ST'] };
+const teamSizeFor = (mode, rp) => { if (mode === 'duel') return 2; if (mode !== 'ranked') return 3; const t = tierOf(rp); return t >= 4 ? 5 : t >= 2 ? 4 : 3; };
+/* the featured mode changes every 3 hours on a fixed schedule from the clock (UTC), so everyone sees the same one */
+const FEATURED = ['koth', 'volleys', 'duel', 'lawless'], FEATURED_MS = 3 * 3600 * 1000;
+function featuredAt(now = Date.now()) { const k = Math.floor(now / FEATURED_MS); return { mode: FEATURED[((k % FEATURED.length) + FEATURED.length) % FEATURED.length], left: (k + 1) * FEATURED_MS - now }; }
 
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
@@ -3277,6 +3283,9 @@ const MODES = {
   ranked: { name: 'RANKED', ranked: true, items: false },
   quick: { name: 'QUICK MATCH', ranked: false, items: false },
   lawless: { name: 'LAWLESS', ranked: false, items: true },
+  koth: { name: 'KING OF THE HILL', ranked: false, items: false, hill: true, tip: 'HOLD THE BALL IN THE RING FOR POINTS \u00b7 GOALS ARE WORTH 3' },
+  volleys: { name: 'VOLLEYS ONLY', ranked: false, items: false, aerialOnly: true, tip: 'ONLY VOLLEYS AND HEADERS COUNT' },
+  duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
 };
 // kickoff spots on the first pitch's scale (see PITCH_KX / PITCH_KZ)
 const FORM = { GK: [0, -31.0], DEF: [0, -18], MID: [7, -9], LW: [11, -7], RW: [-11, -7], ST: [0, -2.2] };
@@ -3301,6 +3310,7 @@ class Match {
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
     const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
     [TEAM[0], TEAM[1]] = matchSides(home, away);
+    if (this.cfg.hill) this.buildHill();
     this.buildTeams(opts);
     // whose PASS calls make teammates look up (the human; in a test match, a bot striker that calls like a human)
     this.caller = opts.caller ? this.teams[0].find((p) => p.role === 'ST') : this.autopilot ? null : this.human;
@@ -3330,6 +3340,7 @@ class Match {
     this.teamD = opts.teamD || (this.human ? [Math.max(0.55, this.d), this.d] : [this.d, this.d]);
   }
   dispose() {
+    if (this.hill) { this.scene.remove(this.hill.mesh); this.hill.mesh.children.forEach((c) => { c.geometry.dispose(); c.material.dispose(); }); }
     for (const p of this.players) p.dispose();
     this.ball.dispose();
     for (const it of this.items) this.drop(it.mesh);
@@ -3375,6 +3386,7 @@ class Match {
       p.ai.wantShot = null; p.ai.dodgeIn = -1; p.ai.task = 'pos'; p.ai.receive = null; p.ai.runT = 0;
     }
     if (first && this.mode === 'ranked') Hud.banner('VS ' + TIER_NAMES[this.tier], TEAM[1].full + ' \u00b7 ' + TIER_NAMES[this.tier] + ' BOTS \u00b7 WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15', TIER_MATS[this.tier].a);
+    else if (first && this.cfg.tip) Hud.banner(this.cfg.name, this.cfg.tip, '#b65cff');
     else if (first) Hud.banner(this.cfg.name, this.mode === 'ranked' ? 'WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15' : this.mode === 'lawless' ? (Touch.on ? 'GRAB THE ? BLOCKS \u00b7 TAP ITEM TO USE' : 'GRAB THE ? BLOCKS \u00b7 X USES YOUR ITEM') : 'NO RANK ON THE LINE', TEAM[0].hex);
     else Hud.banner('KICKOFF', TEAM[team].name + ' BALL', TEAM[team].hex);
     if (!first && this.human && Touch.on) Touch.faceGoal(this);
@@ -3396,6 +3408,7 @@ class Match {
     if (ph === 'goal' && this.phaseT >= 3.9) { if (this.pendingEnd) this.endMatch(); else this.setupKickoff(1 - this.lastGoal.team); }
     if (ph === 'out' && this.phaseT >= 1.05) this.doRestart();
     if (ph === 'play' || ph === 'out') this.tickClock(dt);
+    if (this.hill && ph === 'play') this.updateHill(dt);
 
     for (const p of this.players) { p.tickTimers(dt); p.computeMods(); }
     if (ph === 'play' || ph === 'out' || ph === 'goal') AI.update(this, dt);
@@ -3417,7 +3430,7 @@ class Match {
       if (this.clock <= 0) {
         this.clock = 0;
         if (this.score[0] !== this.score[1]) this.endMatch();
-        else { this.golden = true; this.goldenClock = GOLDEN_LEN; Hud.banner('GOLDEN GOAL', 'NEXT GOAL WINS', '#ffcb3d'); Sfx.whistle(2); Sfx.roar(0.5); }
+        else { this.golden = true; this.goldenClock = GOLDEN_LEN; Hud.banner(this.hill ? 'GOLDEN POINT' : 'GOLDEN GOAL', this.hill ? 'NEXT POINT WINS' : 'NEXT GOAL WINS', '#ffcb3d'); Sfx.whistle(2); Sfx.roar(0.5); }
       }
     } else {
       this.goldenClock -= dt;
@@ -3525,7 +3538,8 @@ class Match {
     b.vel.set(vx, vy, vz);
     b.curve.set(o.cx || 0, 0, o.cz || 0); b.curveDecay = o.curveDecay == null ? 1.4 : o.curveDecay;
     b.straightT = o.straight || 0; b.inGoal = 0;
-    b.kick = { by: p, type: o.type || 'shot', to: o.to || null, t: this.time, trail: o.trail || null, special: o.special || null, counted: false };
+    b.kick = { by: p, type: o.type || 'shot', to: o.to || null, t: this.time, trail: o.trail || null, special: o.special || null, counted: false,
+      aerial: !!(o.aerial || o.special === 'volley' || o.special === 'overhead') }; // struck in the air: counts in Volleys Only
     b.lastKicker = p; b.touch(p);
     b.ignore = p; b.ignoreT = 0.22;
     p.kickStyle = o.kickStyle || null;
@@ -3558,7 +3572,7 @@ class Match {
       if (hd < (air ? 2.0 : 1.6) && relY < (air ? 2.6 : 1.6) && relY > -0.8 && p.pickBlock < 0.2) {
         const volley = air || relY > 0.9;
         if (volley) { FX.sparks(b.pos.x, b.pos.y, b.pos.z, p.aura, 10, 4); }
-        return this.shootAt(p, aim, power, Object.assign({ mult: volley ? 1.08 : 1, keepPos: true }, o));
+        return this.shootAt(p, aim, power, Object.assign({ mult: volley ? 1.08 : 1, keepPos: true, aerial: volley }, o));
       }
     }
     p.kickT = 0; p.kickDur = 0.3;
@@ -3959,6 +3973,34 @@ class Match {
     TimeCtl.slowMo(0.3, 0.7); Cam.punch(0.75); Hud.cutin(p, name); Sfx.cutin();
     return true;
   }
+  /* ---------- King of the Hill ---------- */
+  buildHill() {
+    const g = new THREE.Group();
+    const mk = (geo, op) => { const me = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: op, side: THREE.DoubleSide, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 })); me.rotation.x = -Math.PI / 2; g.add(me); return me; };
+    const r = 5.2;
+    mk(new THREE.RingGeometry(r - 0.45, r, 40, 1), 0.85); mk(new THREE.CircleGeometry(r - 0.45, 40), 0.14);
+    g.position.y = 0.04;
+    this.scene.add(g);
+    this.hill = { x: 0, z: 0, r, tx: 0, tz: 0, moveT: 6, holdT: 0, holder: -1, mesh: g };
+  }
+  /** the ring drifts round the pitch; the team holding the ball inside it scores a point a second */
+  updateHill(dt) {
+    const H = this.hill, dx = H.tx - H.x, dz = H.tz - H.z, d = len2D(dx, dz);
+    H.moveT -= dt;
+    if (d < 0.5 || H.moveT <= 0) { H.tx = rand(-F.W + 8, F.W - 8); H.tz = rand(-F.L + 12, F.L - 12); H.moveT = 16; }
+    else { H.x += dx / d * 2.2 * dt; H.z += dz / d * 2.2 * dt; }
+    const o = this.ball.owner, team = o && !o.isGK && dist2D(o.pos, H) < H.r ? o.team : -1;
+    if (team !== H.holder) { H.holder = team; H.holdT = 0; }
+    if (team >= 0) {
+      H.holdT += dt;
+      if (H.holdT >= 1) { H.holdT -= 1; this.score[team]++; this.label(o, '+1', TEAM[team].hex, 0.8); Sfx.coin(); if (this.golden) this.endMatch(); }
+    }
+    H.mesh.position.set(H.x, 0.04, H.z);
+    const c = H.mesh.children;
+    c[0].material.color.copy(col(team >= 0 ? TEAM[team].hex : '#f5efe0'));
+    c[1].material.color.copy(c[0].material.color);
+    c[0].material.opacity = 0.7 + Math.sin(this.time * 6) * 0.15;
+  }
   /** shots with a personality: the long bomb dips late, the knuckleball wobbles */
   updateBallSpecials(dt) {
     const b = this.ball, k = b.kick;
@@ -4050,7 +4092,10 @@ class Match {
       const rvx = b.vel.x - p.vel.x, rvz = b.vel.z - p.vel.z, vn = rvx * nx + rvz * nz;
       if (vn < 0) {
         b.vel.x -= 1.45 * vn * nx; b.vel.z -= 1.45 * vn * nz;
-        if (relY > 1.35) b.vel.y = Math.max(b.vel.y, 2.5);
+        if (relY > 1.35) {
+          b.vel.y = Math.max(b.vel.y, 2.5);
+          if (this.cfg.aerialOnly) { b.kick = { by: p, type: 'header', t: this.time, aerial: true }; b.lastKicker = p; } // a header
+        }
         b.straightT = 0; b.curve.set(0, 0, 0);
         if (b.kick && b.kick.by && b.kick.by.team !== p.team && b.kick.type === 'shot' && !p.isGK) this.label(p, 'BLOCK', p.aura);
         b.touch(p);
@@ -4107,7 +4152,13 @@ class Match {
   }
   onGoal(side) {
     const b = this.ball, team = side > 0 ? 0 : 1, k = b.kick;
-    this.score[team]++;
+    if (this.cfg.aerialOnly && !(k && k.aerial)) { // Volleys Only: a goal off the ground does not count
+      b.inGoal = 0; this.onOut();
+      Hud.banner('NO GOAL', 'ONLY VOLLEYS AND HEADERS COUNT', '#ff4d5e', true); Sfx.deny();
+      return;
+    }
+    this.score[team] += this.cfg.hill ? 3 : 1;
+    if (this.cfg.firstTo && this.score[team] >= this.cfg.firstTo) this.pendingEnd = true;
     this.phase = 'goal'; this.phaseT = 0;
     let scorer = b.lastKicker && b.lastKicker.team === team ? b.lastKicker : (b.lastTouch && b.lastTouch.team === team ? b.lastTouch : null);
     const own = !scorer;
@@ -4608,6 +4659,7 @@ const AI = {
         }
       }
     }
+    if (m.cfg.aerialOnly && m.phase === 'play') this.tryVolley(m, p);
     a.think -= dt;
     if (a.think <= 0) { a.think = lerp(0.44, 0.12, Math.min(1, m.skill(p))) * rand(0.8, 1.25); this.decide(m, p); } // reactions
     if (a.wantShot) {
@@ -4641,8 +4693,9 @@ const AI = {
   decideCarrier(m, p, c, sk) {
     const a = p.ai;
     if (a.wantShot) return;
-    const h = m.caller;
-    if (m.thinkPass && h && h !== p && h.team === p.team && h.callT > 0 && !(a.waitT > 0) && !(c.dGoal < 9 && c.angleOK)) {
+    if (m.cfg.hill && !this.calledFor(m, p, c)) { this.hillCarrier(m, p, c, sk); return; }
+    if (m.cfg.aerialOnly && !this.calledFor(m, p, c)) { this.aerialCarrier(m, p, c, sk); return; }
+    if (this.calledFor(m, p, c)) {
       // longer under pressure: it takes a moment to find the pass with someone on your back
       const pr = clamp((5 - c.pressure) / 4, 0, 1), t = lerp(0.3, 0.9, pr) * rand(0.9, 1.1);
       a.look = { t };
@@ -4666,9 +4719,12 @@ const AI = {
       m.passTo(p, bp.mate, { lob: bp.blocked || bp.d > 24 });
       return;
     }
-    // dribble: head for goal, slide around defenders, stay off the lines
-    const gz = m.oppGoalZ(p.team);
-    let dx = -p.pos.x * 0.6, dz = gz - p.pos.z;
+    this.dribble(m, p, c);
+  },
+  /** dribble: head for goal (or a spot), slide around defenders, stay off the lines */
+  dribble(m, p, c, toX, toZ) {
+    const a = p.ai, gz = m.oppGoalZ(p.team);
+    let dx = toX != null ? toX - p.pos.x : -p.pos.x * 0.6, dz = toZ != null ? toZ - p.pos.z : gz - p.pos.z;
     let l = len2D(dx, dz) || 1; dx /= l; dz /= l;
     let ax = dx, az = dz;
     for (const o of m.opponents(p)) {
@@ -4687,6 +4743,39 @@ const AI = {
     l = len2D(ax, az) || 1; ax /= l; az /= l;
     a.target.set(p.pos.x + ax * 6, 0, p.pos.z + az * 6);
     a.sprint = c.spaceAhead && p.stamina > 25;
+  },
+  /** a teammate (you) called for the ball and we are not about to score */
+  calledFor(m, p, c) { const h = m.caller; return m.thinkPass && h && h !== p && h.team === p.team && h.callT > 0 && !(p.ai.waitT > 0) && !(c.dGoal < 9 && c.angleOK); },
+  /** King of the Hill: carry it into the ring and keep it there, away from defenders; a goal (3) if it is on */
+  hillCarrier(m, p, c, sk) {
+    const H = m.hill, a = p.ai, d = Math.hypot(p.pos.x - H.x, p.pos.z - H.z);
+    if (c.dGoal < 9 && c.angleOK && chance(0.5)) { this.shoot(m, p, c, sk); return; }
+    const bp = c.bestPass;
+    if (c.pressure < 2.2 && bp && !bp.blocked && Math.hypot(bp.mate.pos.x - H.x, bp.mate.pos.z - H.z) < H.r && chance(0.5)) { m.passTo(p, bp.mate, {}); return; }
+    if (d > H.r - 1) { this.dribble(m, p, c, H.x, H.z); return; }
+    let ox = 0, oz = 0;
+    for (const o of m.opponents(p)) { const od = dist2D(o.pos, p.pos); if (od < 5 && od > 0.01) { ox += (p.pos.x - o.pos.x) / od; oz += (p.pos.z - o.pos.z) / od; } }
+    a.target.set(H.x + clamp(ox, -1, 1) * (H.r - 1.6), 0, H.z + clamp(oz, -1, 1) * (H.r - 1.6)); a.sprint = false;
+  },
+  /** where bots stand in King of the Hill: round the ring, tighter when attacking */
+  hillSpot(m, p, st) {
+    const H = m.hill, mates = m.teams[p.team].filter((q) => !q.isGK), i = Math.max(0, mates.indexOf(p)), n = Math.max(1, mates.length);
+    const a = i / n * TAU + (p.team ? Math.PI / n : 0) + m.time * 0.05, r = st === 'att' ? 3.5 : 5.5;
+    return { x: clamp(H.x + Math.cos(a) * r, -F.W + 1.5, F.W - 1.5), z: clamp(H.z + Math.sin(a) * r, -F.L + 2, F.L - 2) };
+  },
+  /** Volleys Only: near goal flick it up to volley; elsewhere chip it to a teammate */
+  aerialCarrier(m, p, c, sk) {
+    if (c.dGoal < 20 && c.angleOK && p.onGround && chance(0.35 + 0.3 * sk)) { m.jump(p); return; }
+    const bp = c.bestPass;
+    if (bp && bp.score > -2 && chance(0.6)) { m.passTo(p, bp.mate, { lob: true }); return; }
+    this.dribble(m, p, c);
+  },
+  /** strike a dropping ball first time (Volleys Only) */
+  tryVolley(m, p) {
+    const b = m.ball, hd = dist2D(b.pos, p.pos), relY = b.pos.y - p.pos.y;
+    if (b.owner || hd > 1.8 || relY < 0.85 || relY > 2.5 || p.pickBlock > 0.2 || p.state !== 'free') return;
+    if (Math.hypot(p.pos.x, m.oppGoalZ(p.team) - p.pos.z) > 30) return;
+    m.tryShoot(p, 0.9, this.shotTarget(p, m));
   },
   /** the pass after a call: hold it if you are tightly marked, a through ball into your run,
       a lob over a defender in the lane, a ground pass, or now and then something flashy */
@@ -4764,6 +4853,7 @@ const AI = {
   },
   /** where a bot stands for its role. Worked out on the first pitch's scale, then stretched to this one */
   formation(m, p, st) {
+    if (m.cfg.hill) return this.hillSpot(m, p, st);
     const s = m.dir(p.team), bu = m.ball.pos.x * s / PITCH_KX, bv = m.ball.pos.z * s / PITCH_KZ;
     let u, v;
     const r = p.role;
@@ -6034,6 +6124,7 @@ const UI = {
           <button class="btn blue" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
           <button class="btn" id="go-quick" type="button">QUICK MATCH <span class="sub">3V3 &middot; NO RANK CHANGE</span></button>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
+          <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
           <button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button>
           <button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button>
           <button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button>
@@ -6136,6 +6227,7 @@ const UI = {
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
+            <li><b>Featured mode</b> changes every 3 hours, the same for everyone: King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3) and Lawless.</li>
             <li><b>Team size:</b> Quick Match and Lawless are 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
@@ -6212,6 +6304,7 @@ const UI = {
     click('go-ranked', () => Game.startMatch('ranked'));
     click('go-quick', () => Game.startMatch('quick'));
     click('go-lawless', () => Game.startMatch('lawless'));
+    click('go-featured', () => Game.startMatch(featuredAt().mode));
     click('go-spins', () => this.openSpins());
     click('go-locker', () => this.openLocker());
     click('go-howto', () => this.show('howto'));
@@ -6291,10 +6384,19 @@ const UI = {
     fsb.hidden = !(Touch.on && Touch.fsAvailable());
     fsb.textContent = Touch.isFs() ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
   },
+  /** the featured slot: this mode's name and the countdown to the next one (ticks once a second) */
+  tickFeatured() {
+    const f = featuredAt(), sec = Math.ceil(f.left / 1000);
+    if (sec === this._featSec && f.mode === this._featMode) return;
+    this._featSec = sec; this._featMode = f.mode;
+    const hms = Math.floor(sec / 3600) + ':' + String(Math.floor(sec / 60) % 60).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
+    $('feat-name').textContent = MODES[f.mode].name;
+    $('feat-sub').textContent = 'FEATURED · NEXT IN ' + hms;
+  },
   /* ---------- HUD ---------- */
   buildHud(m) {
     const p = m.human;
-    $('hud-mode').textContent = m.cfg.name + ' · ' + m.size + 'V' + m.size + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
+    $('hud-mode').textContent = m.cfg.name + (m.mode === 'duel' ? '' : ' · ' + m.size + 'V' + m.size) + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
     $('hud-badge').src = badgeURL(tierOf(Save.data.rp)); $('hud-badge').hidden = !m.cfg.ranked;
     $('hud-em-ico').src = iconURL('emerald'); $('hud-em').textContent = Save.data.emeralds;
     for (const t of [0, 1]) { // the score bar wears each club's shirt
@@ -6414,6 +6516,7 @@ const UI = {
     g.fillStyle = TEAM[1].hex; g.fillRect(X(F.GW), Z(F.L + 1.5), F.GW * 2 * kx, 2);
     g.fillStyle = TEAM[0].hex; g.fillRect(X(F.GW), Z(-F.L) - 0, F.GW * 2 * kx, 2);
     for (const it of m.items) { g.fillStyle = '#ffcb3d'; g.fillRect(X(it.x) - 2, Z(it.z) - 2, 4, 4); }
+    if (m.hill) { const H = m.hill; g.strokeStyle = H.holder >= 0 ? TEAM[H.holder].hex : '#f5efe0'; g.lineWidth = 2; g.beginPath(); g.ellipse(X(H.x), Z(H.z), H.r * kx, H.r * kz, 0, 0, TAU); g.stroke(); }
     for (const p of m.players) {
       const x = X(p.pos.x), z = Z(p.pos.z);
       g.fillStyle = '#090b16'; g.fillRect(x - 3.5, z - 3.5, 7, 7);
@@ -6810,6 +6913,7 @@ const Game = {
     } else {
       Reveal.update(rdt);
       Showcase.update(rdt);
+      if (UI.cur === 'lobby') UI.tickFeatured();
       Shake.update(rdt);
       FX.update(rdt);
     }
@@ -6823,7 +6927,7 @@ const Game = {
 
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
-  TIER_SKILL, tierOf,
+  TIER_SKILL, tierOf, featuredAt, MODES,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Player, TEAM, rollRarity, poolFor,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES,
   /** run a full bot-vs-bot match off-screen and report what happened */

@@ -167,6 +167,7 @@ const AI = {
         }
       }
     }
+    if (m.cfg.aerialOnly && m.phase === 'play') this.tryVolley(m, p);
     a.think -= dt;
     if (a.think <= 0) { a.think = lerp(0.44, 0.12, Math.min(1, m.skill(p))) * rand(0.8, 1.25); this.decide(m, p); } // reactions
     if (a.wantShot) {
@@ -200,8 +201,9 @@ const AI = {
   decideCarrier(m, p, c, sk) {
     const a = p.ai;
     if (a.wantShot) return;
-    const h = m.caller;
-    if (m.thinkPass && h && h !== p && h.team === p.team && h.callT > 0 && !(a.waitT > 0) && !(c.dGoal < 9 && c.angleOK)) {
+    if (m.cfg.hill && !this.calledFor(m, p, c)) { this.hillCarrier(m, p, c, sk); return; }
+    if (m.cfg.aerialOnly && !this.calledFor(m, p, c)) { this.aerialCarrier(m, p, c, sk); return; }
+    if (this.calledFor(m, p, c)) {
       // longer under pressure: it takes a moment to find the pass with someone on your back
       const pr = clamp((5 - c.pressure) / 4, 0, 1), t = lerp(0.3, 0.9, pr) * rand(0.9, 1.1);
       a.look = { t };
@@ -225,9 +227,12 @@ const AI = {
       m.passTo(p, bp.mate, { lob: bp.blocked || bp.d > 24 });
       return;
     }
-    // dribble: head for goal, slide around defenders, stay off the lines
-    const gz = m.oppGoalZ(p.team);
-    let dx = -p.pos.x * 0.6, dz = gz - p.pos.z;
+    this.dribble(m, p, c);
+  },
+  /** dribble: head for goal (or a spot), slide around defenders, stay off the lines */
+  dribble(m, p, c, toX, toZ) {
+    const a = p.ai, gz = m.oppGoalZ(p.team);
+    let dx = toX != null ? toX - p.pos.x : -p.pos.x * 0.6, dz = toZ != null ? toZ - p.pos.z : gz - p.pos.z;
     let l = len2D(dx, dz) || 1; dx /= l; dz /= l;
     let ax = dx, az = dz;
     for (const o of m.opponents(p)) {
@@ -246,6 +251,39 @@ const AI = {
     l = len2D(ax, az) || 1; ax /= l; az /= l;
     a.target.set(p.pos.x + ax * 6, 0, p.pos.z + az * 6);
     a.sprint = c.spaceAhead && p.stamina > 25;
+  },
+  /** a teammate (you) called for the ball and we are not about to score */
+  calledFor(m, p, c) { const h = m.caller; return m.thinkPass && h && h !== p && h.team === p.team && h.callT > 0 && !(p.ai.waitT > 0) && !(c.dGoal < 9 && c.angleOK); },
+  /** King of the Hill: carry it into the ring and keep it there, away from defenders; a goal (3) if it is on */
+  hillCarrier(m, p, c, sk) {
+    const H = m.hill, a = p.ai, d = Math.hypot(p.pos.x - H.x, p.pos.z - H.z);
+    if (c.dGoal < 9 && c.angleOK && chance(0.5)) { this.shoot(m, p, c, sk); return; }
+    const bp = c.bestPass;
+    if (c.pressure < 2.2 && bp && !bp.blocked && Math.hypot(bp.mate.pos.x - H.x, bp.mate.pos.z - H.z) < H.r && chance(0.5)) { m.passTo(p, bp.mate, {}); return; }
+    if (d > H.r - 1) { this.dribble(m, p, c, H.x, H.z); return; }
+    let ox = 0, oz = 0;
+    for (const o of m.opponents(p)) { const od = dist2D(o.pos, p.pos); if (od < 5 && od > 0.01) { ox += (p.pos.x - o.pos.x) / od; oz += (p.pos.z - o.pos.z) / od; } }
+    a.target.set(H.x + clamp(ox, -1, 1) * (H.r - 1.6), 0, H.z + clamp(oz, -1, 1) * (H.r - 1.6)); a.sprint = false;
+  },
+  /** where bots stand in King of the Hill: round the ring, tighter when attacking */
+  hillSpot(m, p, st) {
+    const H = m.hill, mates = m.teams[p.team].filter((q) => !q.isGK), i = Math.max(0, mates.indexOf(p)), n = Math.max(1, mates.length);
+    const a = i / n * TAU + (p.team ? Math.PI / n : 0) + m.time * 0.05, r = st === 'att' ? 3.5 : 5.5;
+    return { x: clamp(H.x + Math.cos(a) * r, -F.W + 1.5, F.W - 1.5), z: clamp(H.z + Math.sin(a) * r, -F.L + 2, F.L - 2) };
+  },
+  /** Volleys Only: near goal flick it up to volley; elsewhere chip it to a teammate */
+  aerialCarrier(m, p, c, sk) {
+    if (c.dGoal < 20 && c.angleOK && p.onGround && chance(0.35 + 0.3 * sk)) { m.jump(p); return; }
+    const bp = c.bestPass;
+    if (bp && bp.score > -2 && chance(0.6)) { m.passTo(p, bp.mate, { lob: true }); return; }
+    this.dribble(m, p, c);
+  },
+  /** strike a dropping ball first time (Volleys Only) */
+  tryVolley(m, p) {
+    const b = m.ball, hd = dist2D(b.pos, p.pos), relY = b.pos.y - p.pos.y;
+    if (b.owner || hd > 1.8 || relY < 0.85 || relY > 2.5 || p.pickBlock > 0.2 || p.state !== 'free') return;
+    if (Math.hypot(p.pos.x, m.oppGoalZ(p.team) - p.pos.z) > 30) return;
+    m.tryShoot(p, 0.9, this.shotTarget(p, m));
   },
   /** the pass after a call: hold it if you are tightly marked, a through ball into your run,
       a lob over a defender in the lane, a ground pass, or now and then something flashy */
@@ -323,6 +361,7 @@ const AI = {
   },
   /** where a bot stands for its role. Worked out on the first pitch's scale, then stretched to this one */
   formation(m, p, st) {
+    if (m.cfg.hill) return this.hillSpot(m, p, st);
     const s = m.dir(p.team), bu = m.ball.pos.x * s / PITCH_KX, bv = m.ball.pos.z * s / PITCH_KZ;
     let u, v;
     const r = p.role;

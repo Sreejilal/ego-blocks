@@ -160,6 +160,7 @@ const Game = {
     } else {
       Reveal.update(rdt);
       Showcase.update(rdt);
+      if (UI.cur === 'lobby') UI.tickFeatured();
       Shake.update(rdt);
       FX.update(rdt);
     }
@@ -173,7 +174,7 @@ const Game = {
 
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
-  TIER_SKILL, tierOf,
+  TIER_SKILL, tierOf, featuredAt, MODES,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Player, TEAM, rollRarity, poolFor,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES,
   /** run a full bot-vs-bot match off-screen and report what happened */
