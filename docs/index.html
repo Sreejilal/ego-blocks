@@ -229,7 +229,8 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .lcard .nm { font-family: var(--font-display); font-size: 26px; line-height: .9; }
 .lcard .meta { display: flex; justify-content: space-between; align-items: center; gap: 4px 6px; flex-wrap: wrap; }
 .detail { padding: 18px; display: grid; gap: 14px; }
-.detail h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 54px; line-height: .85; }
+.detail h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(34px, 4.4vw, 54px); line-height: .85; overflow-wrap: anywhere; }
+.detail .head > div { min-width: 0; }
 .detail .head { display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: center; }
 .detail canvas { width: 96px; height: 96px; }
 .ab-list { display: grid; gap: 10px; }
@@ -383,7 +384,8 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .dialog h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 72px; line-height: .85; text-shadow: 4px 4px 0 var(--ink); }
 .dialog .row { display: flex; gap: 10px; flex-wrap: wrap; }
 .dialog .row .btn { flex: 1 1 160px; }
-.set { display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; align-items: center; }
+.set { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 14px; align-items: center; }
+@media (max-width: 420px) { .seg button { padding: 7px 7px; } .dialog { padding: 18px 16px; } }
 .seg { display: flex; }
 .seg button { font-family: var(--font-label); font-size: 11px; font-weight: 700; padding: 7px 10px; background: var(--slate-2); border: 2px solid var(--ink); color: var(--muted); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--text); color: var(--ink); }
