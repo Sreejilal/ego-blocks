@@ -10,7 +10,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplHud() + '<div id="labels"></div>' + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -21,6 +21,7 @@ const UI = {
     Hud.goal = (team, scorer, assister, own) => { this.goalBanner(team, scorer, assister, own); if (Touch.on && Game.match && Game.match.human && Game.match.human.team === team) Touch.buzz([30, 50, 30]); };
     Hud.flowReady = () => {};
     Hud.lockHint = () => this.lockHint();
+    Hud.cutin = (p, name) => this.cutin(p, name);
     Hud.flash = (hex) => { const fl = $('flash'); fl.className = ''; fl.style.background = hex || '#ffffff'; fl.animate([{ opacity: 0.45 }, { opacity: 0 }], { duration: 260, easing: 'steps(4)' }); };
     this.renderLobby();
   },
@@ -117,7 +118,7 @@ const UI = {
             ${row(key('SPACE'), 'Jump. With the ball it flicks it over defenders')}
             ${row(key('C'), 'Dribble dodge. Beats one tackle. 2 charges')}
             ${row(key('F'), 'Slide tackle')}
-            ${row(key('Q') + key('E') + key('R'), 'Style abilities')}
+            ${row(key('Q') + key('E') + key('R'), 'Style abilities. Big moves get a quick cut-in; turn them off in the pause menu')}
             ${row(key('G'), 'Activate Flow when the bar is full')}
             ${row(key('X'), 'Use item (Lawless)')}
             ${row(key('TAB'), 'Scoreboard')}
@@ -170,6 +171,18 @@ const UI = {
       <div class="hint" id="hint" hidden></div>
     </section>`;
   },
+  tplCutin() {
+    return `<div id="cutin" hidden aria-hidden="true"><div class="ci-lines"></div><div class="ci-panel"><span class="ci-face" id="ci-face"></span><div class="ci-text"><b id="ci-name"></b><span id="ci-style"></span></div></div></div>`;
+  },
+  /** comic-style cut-in for a big move: your portrait and the move name slam across the screen (0.8s) */
+  cutin(p, name) {
+    const el = $('cutin');
+    el.style.setProperty('--ci', p.aura);
+    const face = $('ci-face'); face.innerHTML = ''; face.appendChild(portraitCanvas(p.styleId, 120, p.look));
+    $('ci-name').textContent = name; $('ci-style').textContent = p.style.name + ' STYLE';
+    el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+    clearTimeout(this.ciT); this.ciT = setTimeout(() => { el.hidden = true; el.classList.remove('go'); }, 820);
+  },
   tplPause() {
     return `<section id="scr-pause" class="overlay" hidden>
       <div class="dialog panel">
@@ -180,6 +193,7 @@ const UI = {
           <span>Invert camera Y</span><div class="seg" id="set-inv"><button type="button" data-v="0">OFF</button><button type="button" data-v="1">ON</button></div>
           <span class="t-only">Button size</span><div class="seg t-only" id="set-btn"><button type="button" data-v="0.85">S</button><button type="button" data-v="1">M</button><button type="button" data-v="1.15">L</button></div>
           <span class="t-only">Aim assist</span><div class="seg t-only" id="set-assist"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
+          <span>Cut-ins</span><div class="seg" id="set-cut"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Sound</span><div class="seg" id="set-snd"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span class="fs-only" hidden>Fullscreen</span><div class="seg fs-only" id="set-fs" hidden><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
         </div>
@@ -236,6 +250,7 @@ const UI = {
     $('set-q').addEventListener('click', (e) => { const q = e.target.dataset.q; if (!q) return; Save.data.settings.quality = q; Game.applyQuality(); Save.save(); this.renderPause(); });
     $('set-sens').addEventListener('input', (e) => { Save.data.settings.sens = parseFloat(e.target.value) || 1; Save.save(); });
     $('set-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.invertY = v === '1'; Save.save(); this.renderPause(); });
+    $('set-cut').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.cutins = v === '1'; Save.save(); this.renderPause(); });
     $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Sfx.setMuted(Save.data.settings.mute); Save.save(); this.renderPause(); });
     $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
     $('set-assist').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.assist = v === '1'; Save.save(); this.renderPause(); });
@@ -338,8 +353,8 @@ const UI = {
       const key = Math.round(frac * 60);
       if (s.last !== key) { s.last = key; s.cd.style.setProperty('--p', (frac * 360).toFixed(1) + 'deg'); s.num.textContent = a.cd > 0 ? Math.ceil(a.cd) : ''; s.el.classList.toggle('ready', a.cd <= 0); }
     });
-    const fxActive = p.fx.burst > 0 || p.fx.turbo > 0 || p.fx.shuffle > 0 || p.fx.lockdown > 0 || p.fx.skyTrap > 0 || p.fx.vision > 0;
-    this.slots.forEach((s, i) => { const id = p.abil[i].id; const on = (id === 'burst' && p.fx.burst > 0) || (id === 'turbo' && p.fx.turbo > 0) || (id === 'undeadShuffle' && p.fx.shuffle > 0) || (id === 'lockdown' && p.fx.lockdown > 0) || (id === 'skyTrap' && p.fx.skyTrap > 0) || (id === 'vision' && p.fx.vision > 0); s.el.classList.toggle('active', fxActive && on); });
+    const FXOF = { burst: 'burst', turbo: 'turbo', undeadShuffle: 'shuffle', lockdown: 'lockdown', skyTrap: 'skyTrap', vision: 'vision', scent: 'scent', loaded: 'loaded' };
+    this.slots.forEach((s, i) => { const k = FXOF[p.abil[i].id]; s.el.classList.toggle('active', !!k && p.fx[k] > 0); });
     const C = this.slotC;
     C.pips.forEach((pip, i) => pip.classList.toggle('on', i < p.dodgeCharges));
     C.cd.style.setProperty('--p', (p.dodgeCharges >= 2 ? 0 : (1 - p.dodgeRe / 4) * 360).toFixed(1) + 'deg');
@@ -481,6 +496,7 @@ const UI = {
     $('set-q').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.q === s.quality));
     $('set-inv').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !!s.invertY));
     $('set-snd').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !s.mute));
+    $('set-cut').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.cutins !== false)));
     $('set-sens').value = s.sens;
     $('set-btn').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', Math.abs(parseFloat(b.dataset.v) - (s.btn || 1)) < 0.01));
     $('set-assist').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.assist !== false)));

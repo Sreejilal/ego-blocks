@@ -10,9 +10,12 @@ const STYLES = {
   ROOKIE: { name: 'ROOKIE', rarity: 'Rare', hair: '#3b2a22', hairShape: 'short', aura: '#3fd6ff', blurb: 'Reads the whole pitch. The free starter, and it can still win games.', abilities: ['vision', 'quickShot', 'burst'] },
   SPRINTER: { name: 'SPRINTER', rarity: 'Rare', hair: '#c8323e', hairShape: 'long', aura: '#ff5a3c', blurb: 'Raw pace. Burns past the back line, then bends it in.', abilities: ['turbo', 'cutInside', 'curler'] },
   PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'snapPass'] },
+  TRICKSTER: { name: 'TRICKSTER', rarity: 'Epic', hair: '#ff5fb0', hairShape: 'messy', aura: '#ff5fb0', blurb: 'Flicks, nutmegs and snap feints. Makes defenders look silly.', abilities: ['rainbow', 'nutmeg', 'whiplash'] },
   ENFORCER: { name: 'ENFORCER', rarity: 'Epic', hair: '#8a1f33', hairShape: 'swept', aura: '#ffb02e', blurb: 'Midfield general. Flattens attackers and threads perfect through balls.', abilities: ['armSwipe', 'pinpointPass', 'lockdown'] },
   SHAMBLER: { name: 'SHAMBLER', rarity: 'Legendary', hair: '#a6c49c', hairShape: 'messy', aura: '#7dff6a', blurb: 'An undead dribble nobody can tackle, and long arms that steal anything.', abilities: ['undeadShuffle', 'graveGrab', 'lurch'] },
+  PROWLER: { name: 'PROWLER', rarity: 'Legendary', hair: '#2b2f3a', hairShape: 'swept', aura: '#ff9d2e', blurb: 'A predator in the box. Smells loose balls first and finishes them first time.', abilities: ['scent', 'pounce', 'oneTouch'] },
   MAGNET: { name: 'MAGNET', rarity: 'Mythic', hair: '#eef2f7', hairShape: 'fluffy', aura: '#8fd4ff', blurb: 'Kills any high ball dead on the boot, then finishes it in the air.', abilities: ['skyTrap', 'volley', 'fakeVolley'] },
+  THUNDER: { name: 'THUNDER', rarity: 'Mythic', hair: '#f2f2f2', hairShape: 'flattop', aura: '#ffe14d', blurb: 'A long-range bomber. Shots from 30 blocks out that dip, wobble and burn keepers.', abilities: ['longBomb', 'loaded', 'knuckle'] },
   RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'] },
 };
 const STYLE_IDS = Object.keys(STYLES);
@@ -74,13 +77,13 @@ const ABILITIES = {
     ai(p, m, c) { return c.hasBall && c.nearOpp < 3.4 && c.oppInFront; },
   },
   curler: {
-    name: 'CURLER', cd: 14, icon: 'shot',
+    name: 'CURLER', cd: 14, icon: 'shot', big: true,
     desc: 'A shot that starts wide and bends hard back in around the keeper.',
     use(p, m) { if (!nearBall(p, m)) return NEED_BALL; m.curlShot(p, aimFor(p, m)); return true; },
     ai(p, m, c) { return c.hasBall && c.dGoal < 26 && c.dGoal > 8; },
   },
   zigzag: {
-    name: 'ZIGZAG', cd: 10, icon: 'dash',
+    name: 'ZIGZAG', cd: 10, icon: 'dash', big: true,
     desc: 'A rapid zig-zag dash past the defender in front. Tackle-proof while dashing. Leaves black feathers.',
     use(p, m) {
       if (m.ball.owner !== p) return NEED_BALL;
@@ -123,7 +126,7 @@ const ABILITIES = {
     ai(p, m, c) { return !c.hasBall && c.carrierOpp && c.carrierDist < 3.1; },
   },
   pinpointPass: {
-    name: 'PINPOINT PASS', cd: 10, icon: 'pass',
+    name: 'PINPOINT PASS', cd: 10, icon: 'pass', big: true,
     desc: 'A perfect curling through ball into the space ahead of a teammate.',
     use(p, m) {
       if (m.ball.owner !== p) return NEED_BALL;
@@ -140,13 +143,13 @@ const ABILITIES = {
     ai(p, m, c) { return c.defending && c.carrierDist < 9; },
   },
   undeadShuffle: {
-    name: 'UNDEAD SHUFFLE', cd: 16, icon: 'dash',
+    name: 'UNDEAD SHUFFLE', cd: 16, icon: 'dash', big: true,
     desc: '3s extended dribble with arms stretched out, swaying and auto-dodging every tackle.',
     use(p, m) { if (m.ball.owner !== p) return NEED_BALL; p.fx.shuffle = 3; p.tackleProof = 3; Sfx.swoosh(); return true; },
     ai(p, m, c) { return c.hasBall && c.nearOpp < 5; },
   },
   graveGrab: {
-    name: 'GRAVE GRAB', cd: 12, icon: 'grab',
+    name: 'GRAVE GRAB', cd: 12, icon: 'grab', big: true,
     desc: 'A long-reach lunge that steals the ball from a nearby carrier, or snatches a loose ball.',
     use(p, m) {
       if (m.ball.owner === p) return 'ALREADY ON THE BALL';
@@ -179,7 +182,7 @@ const ABILITIES = {
     ai(p, m, c) { return c.highBallNear; },
   },
   volley: {
-    name: 'VOLLEY', cd: 12, icon: 'shot',
+    name: 'VOLLEY', cd: 12, icon: 'shot', big: true,
     desc: 'A huge volley while airborne. On the ground it flicks the ball up and volleys it for you.',
     use(p, m) { return m.volley(p); },
     ai(p, m, c) { return (c.hasBall && c.dGoal < 23 && c.angleOK) || (c.highBallNear && c.dGoal < 24); },
@@ -191,7 +194,7 @@ const ABILITIES = {
     ai(p, m, c) { return c.hasBall && c.nearOpp < 4; },
   },
   impactShot: {
-    name: 'IMPACT SHOT', cd: 20, icon: 'beam',
+    name: 'IMPACT SHOT', cd: 20, icon: 'beam', big: true,
     desc: 'Infinite range, max power, zero arc. The ball flies dead straight as a glowing beam.',
     use(p, m) { if (!nearBall(p, m, 2.1)) return NEED_BALL; m.impactShot(p, aimFor(p, m)); return true; },
     ai(p, m, c) { return c.hasBall && c.dGoal < 46 && c.angleOK && (c.dGoal < 30 || chance(0.4)); },
@@ -203,10 +206,96 @@ const ABILITIES = {
     ai(p, m, c) { return c.mateHasBall && c.open > 4.5 && c.progAhead > 2; },
   },
   overhead: {
-    name: 'OVERHEAD', cd: 16, icon: 'flip',
+    name: 'OVERHEAD', cd: 16, icon: 'flip', big: true,
     desc: 'A bicycle kick off any high ball. On the ground it pops the ball up and flips into it.',
     use(p, m) { return m.overhead(p); },
     ai(p, m, c) { return (c.hasBall && c.dGoal < 17 && c.angleOK) || (c.highBallNear && c.dGoal < 20); },
+  },
+  /* PROWLER */
+  scent: {
+    name: 'SCENT', cd: 12, icon: 'eye',
+    desc: 'For 5s you read loose balls: a glowing mark shows where you can win it, and you run 20% faster while it is loose.',
+    use(p) { p.fx.scent = 5; FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 1.3, 18); return true; },
+    ai(p, m, c) { return !c.hasBall && !m.ball.owner && c.looseDist < 18; },
+  },
+  pounce: {
+    name: 'POUNCE', cd: 10, icon: 'dash', big: true,
+    desc: 'Lunge onto a loose ball up to 12 blocks away and take it.',
+    use(p, m) {
+      if (m.ball.owner) return 'NO LOOSE BALL';
+      const ip = AI.interceptPoint(m, p, 2.2), dx = ip.x - p.pos.x, dz = ip.z - p.pos.z, d = len2D(dx, dz);
+      if (d > 12) return 'TOO FAR';
+      if (d > 0.3) m.dashP(p, dx / d, dz / d, 24, Math.max(0.12, d / 24));
+      p.pickBlock = 0; FX.feathers(p.pos.x, 0.5, p.pos.z, p.aura, 6); Sfx.swoosh();
+      return true;
+    },
+    ai(p, m, c) { return !c.hasBall && c.looseDist < 11 && c.looseDist > 2.5; },
+  },
+  oneTouch: {
+    name: 'ONE TOUCH', cd: 12, icon: 'shot', big: true,
+    desc: 'A first-time finish. On a loose ball, or within a second of it reaching you, it flies 30% harder.',
+    use(p, m) {
+      if (!nearBall(p, m)) return NEED_BALL;
+      const fresh = !m.ball.owner || m.time - (p.gotBallT == null ? -9 : p.gotBallT) < 1.0;
+      m.shootAt(p, aimFor(p, m), 1, { mult: fresh ? 1.3 : 1.05, trail: p.aura, kickDur: 0.2, keepPos: !m.ball.owner, special: fresh ? 'onetouch' : null });
+      return true;
+    },
+    ai(p, m, c) { return (c.hasBall || c.looseDist < 1.8) && c.dGoal < 24 && c.angleOK; },
+  },
+  /* TRICKSTER */
+  rainbow: {
+    name: 'RAINBOW FLICK', cd: 10, icon: 'flip', big: true,
+    desc: 'Flick the ball up over your head and the defender in front, then run onto it.',
+    use(p, m) {
+      if (m.ball.owner !== p) return NEED_BALL;
+      const b = m.ball, fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+      b.release(); b.vel.set(fx * 7.5 + p.vel.x * 0.3, 9.5, fz * 7.5 + p.vel.z * 0.3);
+      b.kick = { by: p, type: 'flick', t: m.time, trail: p.aura }; b.touch(p); b.ignore = p; b.ignoreT = 0.45;
+      p.pickBlock = 0.45; p.kickT = 0; p.kickDur = 0.35; p.kickStyle = 'backheel'; p.tackleProof = 0.9;
+      const o = m.opponentInFront(p, 4.5, 0.9);
+      if (o && !o.isGK) m.stun(o, 0.7);
+      if (!p.isHuman) { p.ai.runTo = V3(p.pos.x + fx * 8, 0, p.pos.z + fz * 8); p.ai.runT = 1.2; }
+      Sfx.swoosh();
+      return true;
+    },
+    ai(p, m, c) { return c.hasBall && c.nearOpp < 3.8 && c.oppInFront; },
+  },
+  nutmeg: {
+    name: 'NUTMEG', cd: 12, icon: 'pass', big: true,
+    desc: 'Slip the ball through the legs of the defender in front and spin round him to collect it.',
+    use(p, m) { return m.nutmeg(p); },
+    ai(p, m, c) { return c.hasBall && c.nearOpp < 4 && c.oppInFront; },
+  },
+  whiplash: {
+    name: 'WHIPLASH', cd: 9, icon: 'fake',
+    desc: 'Snap the ball one way and back the other. Defenders close by lose their footing.',
+    use(p, m) { return m.whiplash(p); },
+    ai(p, m, c) { return c.hasBall && c.nearOpp < 3; },
+  },
+  /* THUNDER */
+  longBomb: {
+    name: 'LONG BOMB', cd: 14, icon: 'beam', big: true,
+    desc: 'A full-power strike that dips late. Best from 20 to 40 blocks out.',
+    use(p, m) {
+      if (!nearBall(p, m)) return NEED_BALL;
+      const t = aimFor(p, m); t.y = Math.min(t.y + 0.8, 3.6);
+      m.shootAt(p, t, 1, { mult: 1.3, trail: p.aura, special: 'bomb' });
+      if (m.involvesHuman(p)) Shake.add(0.35);
+      return true;
+    },
+    ai(p, m, c) { return c.hasBall && c.dGoal > 16 && c.dGoal < 40 && c.angleOK; },
+  },
+  loaded: {
+    name: 'LOADED', cd: 16, icon: 'buff',
+    desc: 'For 5s every shot leaves at full power the moment you shoot, and 20% harder.',
+    use(p) { p.fx.loaded = 5; FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 1.2, 18); return true; },
+    ai(p, m, c) { return c.hasBall && c.dGoal < 30; },
+  },
+  knuckle: {
+    name: 'KNUCKLEBALL', cd: 14, icon: 'shot', big: true,
+    desc: 'A spinless shot that wobbles in the air. Keepers misread it.',
+    use(p, m) { if (!nearBall(p, m)) return NEED_BALL; m.shootAt(p, aimFor(p, m), 0.9, { trail: p.aura, special: 'knuckle' }); return true; },
+    ai(p, m, c) { return c.hasBall && c.dGoal < 28 && c.angleOK; },
   },
 };
 

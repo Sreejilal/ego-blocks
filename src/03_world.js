@@ -104,7 +104,7 @@ const World = {
     const a = w / h;
     this.camera.aspect = a;
     // a phone held upright gets a taller field of view so the sides of the pitch stay in shot
-    this.camera.fov = a >= 1 ? 68 : Math.min(96, 68 + (1 - a) * 52);
+    this.camera.fov = this.baseFov = a >= 1 ? 68 : Math.min(96, 68 + (1 - a) * 52);
     this.camera.updateProjectionMatrix();
   },
   buildLights() {

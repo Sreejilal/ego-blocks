@@ -2,7 +2,8 @@
    Touch controls: floating move stick, drag to look, action buttons.
    On for touch screens; touching a mouse or a controller hides it again.
    ===================================================================== */
-const TOUCH_SHORT = { quickShot: 'QUICK', cutInside: 'CUT IN', snapPass: 'SNAP', armSwipe: 'SWIPE', pinpointPass: 'PINPOINT', lockdown: 'LOCKDOWN', undeadShuffle: 'SHUFFLE', graveGrab: 'GRAB', skyTrap: 'SKY TRAP', fakeVolley: 'FAKE', impactShot: 'IMPACT', overhead: 'OVERHEAD' };
+const TOUCH_SHORT = { quickShot: 'QUICK', cutInside: 'CUT IN', snapPass: 'SNAP', armSwipe: 'SWIPE', pinpointPass: 'PINPOINT', lockdown: 'LOCKDOWN', undeadShuffle: 'SHUFFLE', graveGrab: 'GRAB', skyTrap: 'SKY TRAP', fakeVolley: 'FAKE', impactShot: 'IMPACT', overhead: 'OVERHEAD',
+  oneTouch: 'ONE TOUCH', rainbow: 'RAINBOW', whiplash: 'WHIP', longBomb: 'BOMB', knuckle: 'KNUCKLE' };
 const ITEM_SHORT = { fist: 'FIST', boom: 'BOOM', slime: 'SLIME', jet: 'JETPACK', snow: 'SNOW', magnet: 'MAGNET', bubble: 'BUBBLE', wall: 'WALL', mine: 'MINE', bolt: 'SUPER' };
 const T_LOOK_X = 0.0064, T_LOOK_Y = 0.0042;
 

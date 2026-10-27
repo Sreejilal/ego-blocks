@@ -106,7 +106,9 @@ const Input = {
 };
 
 const Cam = {
-  yaw: 0, pitch: -0.13, dist: 6.4, pos: V3(0, 5, -10), pivotY: 1.7, aim: V3(), onTarget: false, fwd: V3(0, 0, 1), snapYaw: null,
+  yaw: 0, pitch: -0.13, dist: 6.4, pos: V3(0, 5, -10), pivotY: 1.7, aim: V3(), onTarget: false, fwd: V3(0, 0, 1), snapYaw: null, punchT: 0, punchDur: 1, punchK: 0,
+  /** a quick zoom in and back out for the cut-ins */
+  punch(dur) { this.punchT = this.punchDur = dur; },
   reset(yaw = 0) { this.yaw = yaw; this.pitch = -0.13; this.pos.set(0, 5, -10); this.pivotY = 1.7; this.snapYaw = null; },
   look(realDt) {
     const s = Save.data.settings, sens = s.sens || 1, inv = s.invertY ? -1 : 1;
@@ -140,7 +142,11 @@ const Cam = {
     const wide = m.phase === 'goal' || m.phase === 'end';
     const tall = cam.aspect < 0.85; // phone held upright: sit further back and higher to see more pitch
     this.pivotY = damp(this.pivotY, p.pos.y + 1.7, 10, realDt);
-    const dist = this.dist + (wide ? 2.6 : 0) + (tall ? 1.7 : 0);
+    let pk = 0;
+    if (this.punchT > 0) { this.punchT -= realDt; const u = 1 - Math.max(0, this.punchT) / this.punchDur; pk = u < 0.12 ? u / 0.12 : Math.max(0, 1 - (u - 0.12) / 0.88); }
+    if (pk > 0 || this.punchK > 0) { cam.fov = World.baseFov - pk * 10; cam.updateProjectionMatrix(); }
+    this.punchK = pk;
+    const dist = this.dist + (wide ? 2.6 : 0) + (tall ? 1.7 : 0) - pk * 2;
     let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.55 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
     tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
     const k = 1 - Math.exp(-20 * realDt);

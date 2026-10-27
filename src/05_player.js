@@ -173,6 +173,8 @@ class Player {
     if (fx.jetpack > 0) m.speed *= 1.25;
     if (fx.lockdown > 0) m.tackleRange *= 2.3;
     if (fx.slimed > 0) m.speed *= 0.55;
+    if (fx.scent > 0 && !this.m.ball.owner) m.speed *= 1.2;
+    if (fx.loaded > 0) m.shot *= 1.2;
   }
   tickTimers(dt) {
     this.stateT += dt;

@@ -80,7 +80,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
-      settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true },
+      settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true },
       howto: false,
     };
   },
@@ -105,7 +105,7 @@ const Save = {
     if (!['auto', 'low', 'med', 'high'].includes(st.quality)) st.quality = 'auto';
     st.sens = clamp(Number(st.sens) || 1, 0.3, 2.5);
     st.btn = [0.85, 1, 1.15].includes(Number(st.btn)) ? Number(st.btn) : 1;
-    st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY;
+    st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false;
     if (!Array.isArray(out.styles)) out.styles = ['ROOKIE'];
     if (!Array.isArray(out.flows)) out.flows = [];
     out.styles = out.styles.filter((s) => typeof s === 'string');
@@ -273,6 +273,7 @@ const Sfx = (() => {
     punch() { noise(0.08, { vol: 0.3, type: 'lowpass', freq: 1200 }); tone(110, 0.1, { type: 'square', vol: 0.15, slide: 60 }); },
     boing() { tone(260, 0.22, { type: 'sine', vol: 0.15, slide: 620 }); },
     beam() { tone(90, 0.6, { type: 'sawtooth', vol: 0.1, slide: 40 }); noise(0.5, { vol: 0.2, type: 'bandpass', freq: 2500, slide: 400, q: 1 }); },
+    cutin() { noise(0.25, { vol: 0.16, type: 'bandpass', freq: 400, slide: 3800, q: 1.4 }); tone(220, 0.18, { type: 'sawtooth', vol: 0.06, slide: 880, delay: 0.04 }); },
     charge(k) { tone(300 + k * 1100, 0.05, { type: 'square', vol: 0.035 + k * 0.03 }); },
     fizzle() { tone(900, 0.35, { type: 'sawtooth', vol: 0.06, slide: 160 }); noise(0.3, { vol: 0.08, type: 'lowpass', freq: 1200, slide: 200 }); },
     countdown(hi) { tone(hi ? 1046 : 523, 0.12, { type: 'square', vol: 0.07 }); },

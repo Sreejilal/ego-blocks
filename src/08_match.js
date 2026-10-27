@@ -2,7 +2,7 @@
    Match: rules, possession, kicking, tackling, abilities, goals,
    restarts, Flow, Lawless items
    ===================================================================== */
-const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {} }; // filled in by the UI
+const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {} }; // filled in by the UI
 const BOT_NAMES = ['BLOK', 'CUBO', 'PIXL', 'VOXX', 'CHUNK', 'BRIK', 'TILE', 'STAK', 'OBBY', 'GRAV', 'LOAM', 'SLAB', 'COBB', 'FLINT', 'QUARTZ', 'MOSS', 'DUSK', 'EMBR', 'RUNE', 'KRYS', 'BYTE', 'NOVA', 'REDS', 'TUFF'];
 const MODES = {
   ranked: { name: 'RANKED', ranked: true, items: false },
@@ -135,6 +135,7 @@ class Match {
     for (const p of this.players) p.physics(dt);
     this.separate();
     if (ph === 'play') { this.updateSlides(); this.updateMagnets(dt); }
+    this.updateBallSpecials(dt);
     this.ball.update(dt);
     if (this.phase === 'play') { this.ballContacts(); this.checkGoalAndOut(); }
     if (this.cfg.items) this.updateItems(dt);
@@ -186,7 +187,7 @@ class Match {
     if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; }
     if (p.charging) {
       if (!c.shootHeld && !c.shootUp) { p.charging = false; p.charge = 0; }
-      else p.charge = Math.min(1, p.charge + dt / 0.95);
+      else p.charge = p.fx.loaded > 0 ? 1 : Math.min(1, p.charge + dt / 0.95);
     }
     if (c.shootUp && p.charging) {
       const power = Math.max(0.28, p.charge);
@@ -229,7 +230,7 @@ class Match {
     const b = this.ball, k = b.kick;
     b.owner = p; b.held = false; b.inGoal = 0; b.vel.set(0, 0, 0); b.curve.set(0, 0, 0); b.straightT = 0; b.kick = null;
     b.touch(p);
-    p.pickBlock = 0;
+    p.pickBlock = 0; p.gotBallT = this.time;
     if (k && k.by && k.by !== p) {
       if (k.type === 'pass' && k.by.team === p.team) {
         k.by.stats.passes++; this.flowAdd(k.by, 12);
@@ -653,6 +654,7 @@ class Match {
       a.cd = a.def.cd;
       this.label(p, a.def.name, p.aura);
       Sfx.ability();
+      if (a.def.big) this.cinematic(p, a.def.name);
       return true;
     }
     if (p.isHuman && typeof res === 'string') { this.toast(res, 'bad'); Sfx.deny(); }
@@ -678,7 +680,61 @@ class Match {
     p.P.eyes.visible = true;
     FX.sparks(p.pos.x, 1, p.pos.z, p.aura, 40, 8, 0.2); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.4, 24);
     Sfx.flow();
-    if (p.isHuman) { TimeCtl.slowMo(0.3, 0.7); Shake.add(0.25); }
+    if (p.isHuman) { if (!this.cinematic(p, 'FLOW · ' + (f ? f.name : 'RAW'))) TimeCtl.slowMo(0.3, 0.7); Shake.add(0.25); }
+    return true;
+  }
+  /** the anime moment for your big moves: slow motion, a camera punch-in, and a comic cut-in with your face
+      and the move name over speed lines. Under a second, then straight back to play. Off in the settings */
+  cinematic(p, name) {
+    if (!p.isHuman || this.autopilot || !Save.data.settings.cutins) return false;
+    TimeCtl.slowMo(0.3, 0.7); Cam.punch(0.75); Hud.cutin(p, name); Sfx.cutin();
+    return true;
+  }
+  /** shots with a personality: the long bomb dips late, the knuckleball wobbles */
+  updateBallSpecials(dt) {
+    const b = this.ball, k = b.kick;
+    if (b.owner || !k || k.type !== 'shot') return;
+    const age = this.time - k.t;
+    if (k.special === 'bomb' && age > 0.25 && b.pos.y > 0.5) b.vel.y -= 9 * dt;
+    if (k.special === 'knuckle' && b.pos.y > 0.4 && age < 1.6) {
+      if (k.wob == null) k.wob = rand(0, TAU);
+      const hl = len2D(b.vel.x, b.vel.z) || 1, w = Math.sin(age * 19 + k.wob) * 10;
+      b.curve.set(-b.vel.z / hl * w, 0, b.vel.x / hl * w); b.curveDecay = 0;
+    }
+  }
+  /** through the legs of the defender in front, then round him to collect it */
+  nutmeg(p) {
+    if (this.ball.owner !== p) return NEED_BALL;
+    const o = this.opponentInFront(p, 4.5, 0.8);
+    if (!o || o.isGK) return 'NO DEFENDER IN FRONT';
+    const dx = o.pos.x - p.pos.x, dz = o.pos.z - p.pos.z, d = len2D(dx, dz) || 1, ux = dx / d, uz = dz / d;
+    const tx = o.pos.x + ux * 2.6, tz = o.pos.z + uz * 2.6, D = len2D(tx - p.pos.x, tz - p.pos.z), sp = Math.min(groundSpeedFor(D, 4), 18);
+    this.kick(p, ux * sp, 0.3, uz * sp, { type: 'flick', selfBlock: 0.35, kickDur: 0.24 });
+    this.ball.ignore = o; this.ball.ignoreT = 0.7; // straight through his legs
+    this.stun(o, 0.8);
+    const side = (ux * Math.cos(p.yaw) - uz * Math.sin(p.yaw)) > 0 ? -1 : 1, sx = -uz * side, sz = ux * side;
+    this.dashP(p, ux * 0.55 + sx * 0.8, uz * 0.55 + sz * 0.8, 15, 0.24, { onEnd: () => { if (p.state === 'free') this.dashP(p, ux * 0.8 - sx * 0.6, uz * 0.8 - sz * 0.6, 15, 0.2); } });
+    p.tackleProof = 0.8; this.flowAdd(p, 10);
+    if (!p.isHuman) { p.ai.runTo = V3(tx, 0, tz); p.ai.runT = 1.2; }
+    this.label(o, 'NUTMEGGED', '#ff5fb0');
+    if (p.isHuman) this.toast('NUTMEG', 'good');
+    Sfx.dodge();
+    return true;
+  }
+  /** snap one way and back: defenders within 3 blocks slip over */
+  whiplash(p) {
+    if (this.ball.owner !== p) return NEED_BALL;
+    const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), side = chance(0.5) ? 1 : -1, sx = -fz * side, sz = fx * side;
+    this.dashP(p, sx, sz, 13, 0.13, { onEnd: () => { if (p.state === 'free') this.dashP(p, fx * 0.7 - sx * 0.7, fz * 0.7 - sz * 0.7, 14, 0.2); } });
+    p.tackleProof = 0.6;
+    let n = 0;
+    for (const o of this.opponents(p)) {
+      if (o.isGK || dist2D(o.pos, p.pos) > 3) continue;
+      if (this.stun(o, 0.6)) { n++; this.label(o, 'ANKLES', p.aura); FX.feathers(o.pos.x, 0.8, o.pos.z, p.aura, 5); }
+    }
+    if (n) this.flowAdd(p, 10 * n);
+    if (p.isHuman && n) this.toast('ANKLE BREAKER', 'good');
+    Sfx.dodge();
     return true;
   }
   /* ---------- contacts, keepers, goals ---------- */
@@ -1088,6 +1144,11 @@ class Match {
       if (p.fx.jetpack > 0 && Math.random() < 0.9) { FX.trail(p.pos.x - Math.sin(p.yaw) * 0.3, p.pos.y + 0.6, p.pos.z - Math.cos(p.yaw) * 0.3, '#ffb02e', 0.2, 0.3); }
       if (p.fx.supercharge > 0 && Math.random() < 0.5) FX.trail(p.pos.x, p.pos.y + rand(0.2, 1.6), p.pos.z, '#ffd23d', 0.1, 0.3);
       if (p.fx.skyTrap > 0 && Math.random() < 0.3) FX.trail(p.pos.x + rand(-0.4, 0.4), 0.15, p.pos.z + rand(-0.4, 0.4), p.aura, 0.12, 0.4);
+      if (p.fx.loaded > 0 && Math.random() < 0.5) FX.trail(p.pos.x + rand(-0.4, 0.4), p.pos.y + rand(0.3, 1.6), p.pos.z + rand(-0.4, 0.4), p.aura, 0.1, 0.3);
+      if (p.fx.scent > 0 && !this.ball.owner) { // the mark where you can win the loose ball
+        p._scentT = (p._scentT || 0) - dt;
+        if (p._scentT <= 0) { p._scentT = 0.12; const ip = AI.interceptPoint(this, p, 2.2); FX.ring(ip.x, 0.15, ip.z, p.aura, 0.7, 10); }
+      }
       if (p.state === 'dash' && Math.random() < 0.6) FX.dust(p.pos.x, p.pos.z, 1);
     }
     const h = this.human;
