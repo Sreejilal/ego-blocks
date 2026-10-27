@@ -63,15 +63,14 @@ const UI = {
   },
   tplSpins() {
     return `<section id="scr-spins" class="screen sub-screen" hidden>
-      <div class="sub-wrap">
+      <div class="sub-wrap sp-wrap">
         <div class="sub-head"><h2>SPINS</h2><div class="right" style="display:flex;gap:12px;align-items:center"><span class="emer"><img class="px" id="spin-em-ico" alt=""><span id="spin-em">0</span></span><button class="btn small" id="spin-back" type="button">BACK</button></div></div>
         <div class="tabs" role="tablist"><button class="tab" id="tab-style" role="tab" type="button">STYLE SPIN</button><button class="tab" id="tab-flow" role="tab" type="button">FLOW SPIN</button><button class="tab" id="tab-skin" role="tab" type="button">SKIN SPIN</button></div>
-        <div class="panel reel-box"><div class="reel-marker"></div><div class="reel" id="reel"></div></div>
+        <div class="sp-stage"><div class="sp-fit" id="sp-fit"></div><button class="btn small" id="spin-skip" type="button" hidden>SKIP</button><div class="sp-result panel" id="spin-result"></div></div>
         <div class="spin-ctl">
           <button class="btn emerald" id="spin-go" type="button">SPIN <span class="sub">200 EMERALDS</span></button>
           <div style="display:grid;gap:6px"><span class="label" id="spin-pity">LEGENDARY+ GUARANTEED IN 30 SPINS</span><div class="odds" id="spin-odds"></div></div>
         </div>
-        <div class="result-line" id="spin-result"></div>
         <div class="label" id="spin-owned"></div>
       </div>
     </section>`;
@@ -217,6 +216,7 @@ const UI = {
     click('tab-flow', () => { if (!this.spinning) { this.spinKind = 'flow'; this.renderSpins(true); } });
     click('tab-skin', () => { if (!this.spinning) { this.spinKind = 'skin'; this.renderSpins(true); } });
     click('spin-go', () => this.spin());
+    click('spin-skip', () => Reveal.skip());
     click('ltab-style', () => { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.renderLocker(); });
     click('ltab-flow', () => { this.lockerTab = 'flow'; this.lockerSel = Save.data.flow || 'NONE'; this.renderLocker(); });
     click('ltab-club', () => { this.lockerTab = 'club'; this.lockerSel = Save.data.club; this.renderLocker(); });
@@ -251,7 +251,8 @@ const UI = {
     const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
-    if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else Showcase.setStage('lob-stage', 'lobby');
+    if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
+    if (name !== 'spins') Reveal.stop();
     if (name === 'lobby') { this.renderLobby(); Showcase.ensure(); }
     if (name === 'howto') { Save.data.howto = true; Save.save(); }
   },
@@ -524,39 +525,14 @@ const UI = {
     $('spin-go').innerHTML = d.emeralds < 200 ? 'SPIN <span class="sub">NEED 200 EMERALDS</span>' : 'SPIN <span class="sub">200 EMERALDS</span>';
     const owned = kind === 'style' ? d.styles.length + ' / ' + STYLE_IDS.length + ' STYLES OWNED' : kind === 'flow' ? d.flows.length + ' / ' + FLOW_IDS.length + ' FLOWS OWNED' : d.skins.length + ' / ' + SKIN_IDS.length + ' SKINS OWNED (LOOKS ONLY)';
     $('spin-owned').textContent = owned + '. WIN MATCHES TO EARN MORE EMERALDS.';
-    if (resetReel) { $('spin-result').innerHTML = ''; this.buildReel(kind, null); }
-  },
-  cardHTML(kind, id) {
-    const src = kind === 'style' ? STYLES[id] : kind === 'flow' ? FLOWS[id] : SKINS[id];
-    return `<div class="card" data-r="${src.rarity}" style="--rc:${RARITY_HEX[src.rarity]}" data-id="${id}"><span class="cv"></span><span class="nm">${esc(src.name)}</span><span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span></div>`;
-  },
-  fillCardArt(el, kind, id) {
-    const holder = el.querySelector('.cv');
-    const cv = kind === 'style' ? portraitCanvas(id, 72) : kind === 'flow' ? flowEmblemCanvas(id, 72) : skinCanvas(id, 72);
-    holder.replaceWith(cv);
-  },
-  buildReel(kind, winner) {
-    const reel = $('reel');
-    const ids = kind === 'style' ? STYLE_IDS : kind === 'flow' ? FLOW_IDS : SKIN_IDS;
-    const N = 46, WIN = 40;
-    const items = [];
-    for (let i = 0; i < N; i++) {
-      if (winner && i === WIN) { items.push(winner); continue; }
-      const r = rollRarity(0);
-      const pool = poolFor(kind, r);
-      items.push(pool.length ? pick(pool) : pick(ids));
-    }
-    reel.innerHTML = items.map((id) => this.cardHTML(kind, id)).join('');
-    reel.querySelectorAll('.card').forEach((el, i) => this.fillCardArt(el, kind, items[i]));
-    reel.style.transition = 'none';
-    reel.style.transform = 'translateX(-75px)';
-    return { WIN };
+    if (resetReel) { $('spin-result').innerHTML = ''; $('spin-result').classList.remove('show'); Reveal.ready(); }
   },
   spin() {
     if (this.spinning) return;
     const d = Save.data, kind = this.spinKind;
     if (d.emeralds < 200) { Sfx.deny(); return; }
     Sfx.init();
+    // the roll: same odds and 30-spin guarantee as always; the 3D reveal only shows the result
     d.emeralds -= 200;
     const pity = d.pity[kind];
     const r = rollRarity(pity);
@@ -570,45 +546,19 @@ const UI = {
     Save.save();
     this.spinning = true;
     this.renderSpins(false);
-    $('spin-result').innerHTML = '';
-    const { WIN } = this.buildReel(kind, id);
-    const reel = $('reel');
-    // on a short screen the reel can sit above the fold once you have scrolled to the button
-    const box = reel.parentElement.getBoundingClientRect();
-    if (box.top < 0 || box.bottom > window.innerHeight) { try { reel.parentElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { reel.parentElement.scrollIntoView(); } }
-    const CW = 162;
-    const target = -(WIN * CW + 75) + rand(-55, 55);
-    const dur = 4.6 + r * 0.35;
-    const t0 = performance.now();
-    let lastIdx = 0;
-    const step = (now) => {
-      const t = Math.min(1, (now - t0) / 1000 / dur);
-      const e = 1 - Math.pow(1 - t, 4);
-      const x = -75 + (target + 75) * e;
-      reel.style.transform = 'translateX(' + x.toFixed(1) + 'px)';
-      const idx = Math.floor((-x) / CW);
-      if (idx !== lastIdx) { lastIdx = idx; Sfx.tick(); }
-      if (t < 1) requestAnimationFrame(step);
-      else this.spinDone(kind, id, r, dupe);
-    };
-    requestAnimationFrame(step);
+    $('spin-result').classList.remove('show'); $('spin-skip').hidden = false;
+    Reveal.start({ kind, id, r, dupe }, () => this.spinDone(kind, id, r, dupe));
   },
   spinDone(kind, id, r, dupe) {
     this.spinning = false;
+    $('spin-skip').hidden = true;
     const src = kind === 'style' ? STYLES[id] : kind === 'flow' ? FLOWS[id] : SKINS[id];
-    Sfx.fanfare(r);
-    const card = $('reel').querySelectorAll('.card')[40];
-    if (card) { card.style.transform = 'translateY(-8px) scale(1.06)'; card.style.transition = 'transform .2s steps(3)'; }
-    const fl = $('flash');
-    if (r >= 2) {
-      fl.className = r === 4 ? 'rainbow' : '';
-      fl.style.background = r === 4 ? '' : RARITY_HEX[src.rarity];
-      fl.animate([{ opacity: r === 4 ? 0.95 : 0.5 }, { opacity: 0 }], { duration: r === 4 ? 1400 : 650, easing: 'steps(6)' });
-    }
-    if (r >= 3) $('scr-spins').animate([{ transform: 'translate(6px,0)' }, { transform: 'translate(-6px,3px)' }, { transform: 'translate(4px,-3px)' }, { transform: 'translate(0,0)' }], { duration: 380, iterations: r === 4 ? 3 : 1 });
     const tag = dupe ? '<span class="tag dupe">DUPLICATE · +50 EMERALDS</span>' : '<span class="tag">NEW</span>';
     const slotName = kind === 'skin' ? '<span class="label">' + SKIN_SLOTS.find((sl) => sl.id === src.slot).name + ' SKIN</span>' : '';
-    $('spin-result').innerHTML = `<span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${slotName}${tag}${!dupe ? '<button class="btn small" id="spin-equip" type="button">EQUIP</button>' : ''}`;
+    const res = $('spin-result');
+    res.innerHTML = `<span class="cv"></span><span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${slotName}${tag}${!dupe ? '<button class="btn small blue" id="spin-equip" type="button">EQUIP</button>' : ''}`;
+    res.querySelector('.cv').replaceWith(kind === 'style' ? portraitCanvas(id, 48) : kind === 'flow' ? flowEmblemCanvas(id, 48) : skinCanvas(id, 48));
+    res.classList.add('show');
     const eq = $('spin-equip');
     if (eq) eq.addEventListener('click', () => { Sfx.click(); if (kind === 'style') Save.data.style = id; else if (kind === 'flow') Save.data.flow = id; else Save.data.look[src.slot] = id; Save.save(); eq.textContent = 'EQUIPPED'; eq.disabled = true; });
     this.renderSpins(false);

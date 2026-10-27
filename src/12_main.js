@@ -12,6 +12,7 @@ const Game = {
     Touch.detect();
     UI.init();
     Showcase.init();
+    Reveal.init();
     Input.init($('gl'));
     Touch.init();
     this.applyQuality();
@@ -36,7 +37,7 @@ const Game = {
   },
   startMatch(mode) {
     if (this.match) { this.match.dispose(); this.match = null; }
-    Showcase.hide();
+    Reveal.stop(); Showcase.hide();
     UI.hideOverlays();
     Sfx.init();
     TimeCtl.reset(); FX.clear();
@@ -144,7 +145,9 @@ const Game = {
         if (m.phase === 'end' && m.phaseT > 3.2 && !this.ended) this.finishMatch(false);
       } else { Shake.update(rdt); }
     } else {
+      Reveal.update(rdt);
       Showcase.update(rdt);
+      Shake.update(rdt);
       FX.update(rdt);
     }
     World.update(rdt);
@@ -157,7 +160,7 @@ const Game = {
 
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Player, TEAM, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Player, TEAM, rollRarity, poolFor,
   CLUB_IDS, sideFor, matchSides, kitClash,
   /** run a full bot-vs-bot match off-screen and report what happened */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0) {

@@ -176,27 +176,20 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .tab { font-family: var(--font-display); font-size: 26px; padding: 6px 16px 9px; background: var(--slate); border: var(--px) solid var(--ink); color: var(--muted); cursor: pointer; box-shadow: inset 0 -4px 0 rgba(0,0,0,.35); }
 .tab[aria-selected="true"] { background: var(--text); color: var(--ink); }
 
-/* spins */
-.reel-box { position: relative; overflow: hidden; padding: 22px 0; }
-.reel { display: flex; gap: 12px; will-change: transform; padding-left: 50%; }
-.reel-marker { position: absolute; left: 50%; top: 6px; bottom: 6px; width: 6px; margin-left: -3px; background: var(--gold); box-shadow: 0 0 0 3px var(--ink); z-index: 2; }
-.reel-marker::before, .reel-marker::after { content: ""; position: absolute; left: -9px; border: 12px solid transparent; }
-.reel-marker::before { top: -6px; border-top-color: var(--gold); }
-.reel-marker::after { bottom: -6px; border-bottom-color: var(--gold); }
-.card {
-  flex: 0 0 150px; height: 190px; box-sizing: border-box; display: grid; grid-template-rows: 1fr auto auto; gap: 6px; justify-items: center; align-content: end;
-  padding: 12px 8px; background: var(--slate-2); border: var(--px) solid var(--ink); position: relative;
-  box-shadow: inset 0 -8px 0 rgba(0,0,0,.3), inset 0 0 0 3px var(--rc, var(--r-rare));
-}
-.card canvas { width: 72px; height: 72px; align-self: center; }
-.card .nm { font-family: var(--font-display); font-size: 26px; line-height: .9; text-align: center; }
-.card[data-r="Generational"] { --rc: #fff; animation: shimmer 1.4s steps(8) infinite; }
-@keyframes shimmer { 0% { box-shadow: inset 0 -8px 0 rgba(0,0,0,.3), inset 0 0 0 3px #ff4d5e; } 25% { box-shadow: inset 0 -8px 0 rgba(0,0,0,.3), inset 0 0 0 3px #ffcb3d; } 50% { box-shadow: inset 0 -8px 0 rgba(0,0,0,.3), inset 0 0 0 3px #2ee38f; } 75% { box-shadow: inset 0 -8px 0 rgba(0,0,0,.3), inset 0 0 0 3px #4aa8ff; } 100% { box-shadow: inset 0 -8px 0 rgba(0,0,0,.3), inset 0 0 0 3px #b65cff; } }
+/* spins: a 3D block drops onto the lit spot (the camera fits it into #sp-fit) and cracks open on your prize */
+#scr-spins { overflow: hidden; background: radial-gradient(ellipse 26% 46% at var(--stx, 50%) var(--sty, 45%), rgba(9,11,22,.08) 35%, rgba(9,11,22,.88) 100%); }
+.sp-wrap { height: 100%; grid-template-rows: auto auto minmax(0, 1fr) auto auto; }
+.sp-stage { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 8px; min-height: 0; }
+.sp-fit { min-height: 0; }
+#spin-skip { position: absolute; right: 0; top: 0; }
+.sp-result { justify-self: center; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; padding: 8px 14px; min-height: 52px; box-sizing: border-box; visibility: hidden; font-family: var(--font-display); font-size: 34px; line-height: 1; }
+.sp-result.show { visibility: visible; animation: riseIn .35s steps(4); }
+@keyframes riseIn { from { transform: translateY(14px); opacity: 0; } }
+.sp-result canvas { width: 48px; height: 48px; }
+.sp-result .tag { font-family: var(--font-label); font-size: 12px; padding: 4px 8px; background: var(--emerald); color: var(--ink); }
+.sp-result .tag.dupe { background: var(--muted); }
 .spin-ctl { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .odds { display: flex; gap: 6px; flex-wrap: wrap; }
-.result-line { min-height: 48px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-family: var(--font-display); font-size: 34px; }
-.result-line .tag { font-family: var(--font-label); font-size: 12px; padding: 4px 8px; background: var(--emerald); color: var(--ink); }
-.result-line .tag.dupe { background: var(--muted); }
 
 /* locker: your player in 3D on the left (the camera fits it into #lk-fit), cards and details on the right.
    The page itself does not scroll; only the right side does, so the preview stays in view */
@@ -467,12 +460,18 @@ body.touch .howto .touchsec { order: -1; }
   .lk-side { gap: 6px; }
   .screen { padding-block: 10px; }
   .tab { font-size: 22px; padding: 4px 12px 7px; }
-  .reel-box { padding: 8px 0; }
-  .card { height: 150px; padding: 8px; gap: 4px; }
-  .card canvas { width: 56px; height: 56px; }
-  .card .nm { font-size: 22px; }
   .spin-ctl .btn { font-size: 26px; padding: 6px 14px 9px; }
-  .result-line { min-height: 36px; font-size: 26px; }
+  .spin-ctl { gap: 8px 12px; }
+  /* phone on its side: the 3D stage on the left, tabs and the SPIN button in a column on the right */
+  .sp-wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 300px); grid-template-rows: auto auto auto minmax(0, 1fr); column-gap: 16px; }
+  .sp-wrap > .sub-head { grid-column: 1 / -1; }
+  .sp-wrap > .tabs { grid-column: 2; grid-row: 2; }
+  .sp-wrap > .sp-stage { grid-column: 1; grid-row: 2 / 5; }
+  .sp-wrap > .spin-ctl { grid-column: 2; grid-row: 3; }
+  .sp-wrap > #spin-owned { grid-column: 2; grid-row: 4; align-self: start; }
+  .sp-wrap .tab { font-size: 18px; padding: 3px 9px 6px; }
+  .sp-result { font-size: 24px; min-height: 40px; padding: 4px 10px; }
+  .sp-result canvas { width: 32px; height: 32px; }
   .earn { font-size: 18px; gap: 2px; }
   .res-grid div { padding: 6px 8px; }
 }
@@ -511,7 +510,7 @@ body.touch .howto .touchsec { order: -1; }
   #scr-results .dialog > h2, #scr-results .dialog > .res-score, #scr-results .dialog > .row { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .btn, .toast, .banner.pop .big, .card[data-r="Generational"], #touch .tb { animation: none !important; transition: none !important; }
+  .btn, .toast, .banner.pop .big, .sp-result, #touch .tb { animation: none !important; transition: none !important; }
 }
 </style>
 </head>
@@ -807,6 +806,8 @@ const Sfx = (() => {
     punch() { noise(0.08, { vol: 0.3, type: 'lowpass', freq: 1200 }); tone(110, 0.1, { type: 'square', vol: 0.15, slide: 60 }); },
     boing() { tone(260, 0.22, { type: 'sine', vol: 0.15, slide: 620 }); },
     beam() { tone(90, 0.6, { type: 'sawtooth', vol: 0.1, slide: 40 }); noise(0.5, { vol: 0.2, type: 'bandpass', freq: 2500, slide: 400, q: 1 }); },
+    charge(k) { tone(300 + k * 1100, 0.05, { type: 'square', vol: 0.035 + k * 0.03 }); },
+    fizzle() { tone(900, 0.35, { type: 'sawtooth', vol: 0.06, slide: 160 }); noise(0.3, { vol: 0.08, type: 'lowpass', freq: 1200, slide: 200 }); },
     countdown(hi) { tone(hi ? 1046 : 523, 0.12, { type: 'square', vol: 0.07 }); },
   };
 })();
@@ -5238,6 +5239,132 @@ const Touch = {
   },
 };
 
+/* ---- 11_reveal.js ---- */
+/* =====================================================================
+   Reveal: the 3D spin. A block drops onto the lit spot, shakes and glows
+   in the rarity colour (now and then teasing a better colour first),
+   then cracks open on your player posing in what you won. Rarer pulls
+   shake longer and burst bigger. The roll itself happens before this
+   starts (UI.spin), so the odds and the pity never depend on it.
+   ===================================================================== */
+const REVEAL_DROP = 0.7, REVEAL_SHAKE = [1.0, 1.5, 2.1, 2.7, 3.3]; // seconds of shaking per rarity
+const Reveal = {
+  on: false, phase: 'idle', t: 0, res: null, plan: null, done: null, tickT: 0, sparkT: 0,
+  init() {
+    // a dark bevelled block; the glow map lights its seams and a ? on every face
+    const base = Tex.pixels(16, 16, (x, y) => {
+      if (x === 0 || y === 0 || x === 15 || y === 15) return [12, 14, 26];
+      if (x === 1 || y === 1 || x === 14 || y === 14) return [70, 78, 120];
+      return shadeRGB([38, 44, 78], 0.92 + ((x * 7 + y * 3) % 5) * 0.03);
+    });
+    const Q = PF5['?'];
+    const glow = Tex.pixels(16, 16, (x, y) => {
+      const seam = x === 2 || x === 13 || y === 2 || y === 13, qx = x - 6, qy = y - 4;
+      const q = qx >= 0 && qx < 5 && qy >= 0 && qy < 7 && (Q[qy] & (16 >> qx));
+      return seam || q ? [255, 255, 255] : [0, 0, 0];
+    });
+    this.mat = new THREE.MeshLambertMaterial({ map: base, emissiveMap: glow, emissive: new THREE.Color(1, 1, 1), emissiveIntensity: 0.4 });
+    this.block = new THREE.Mesh(new THREE.BoxGeometry(1.3, 1.3, 1.3), this.mat);
+    this.block.castShadow = true;
+    this.haloMat = new THREE.SpriteMaterial({ map: World.T.glow, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+    this.halo = new THREE.Sprite(this.haloMat);
+    this.group = new THREE.Group(); this.group.add(this.block, this.halo); this.group.visible = false;
+    World.scene.add(this.group);
+  },
+  /** total time from SPIN to the crack, for a rarity */
+  duration(r) { return REVEAL_DROP + REVEAL_SHAKE[r]; },
+  /** the spin screen is open: a closed block waits on the spot */
+  ready() {
+    this.on = true; this.phase = 'idle'; this.t = 0; this.done = null; this.group.visible = true; this.block.visible = true;
+    this.setGlow(lin('#a4a9cf'), 0.35, 0.2);
+    Showcase.hidePlayer = true;
+  },
+  stop() { this.on = false; this.phase = 'idle'; this.group.visible = false; this.done = null; Showcase.hidePlayer = false; },
+  /** res: { kind, id, r, dupe }; done() runs at the crack. opts.fake forces (true) or blocks (false) the tease */
+  start(res, done, opts = {}) {
+    this.ready();
+    this.res = res; this.done = done; this.phase = 'drop'; this.t = 0; this.tickT = 0;
+    // colour plan: climb through the rarities to the real one; sometimes climb one step too far, then fizzle back
+    const r = res.r, fake = opts.fake != null ? opts.fake && r < 4 : r < 4 && chance(0.3);
+    const steps = []; for (let i = 0; i <= r; i++) steps.push(i);
+    if (fake) steps.push(r + 1, r);
+    this.plan = { steps, fake, fizzleAt: fake ? 0.78 : 2 };
+    Showcase.hidePlayer = true;
+  },
+  skip() { if (this.phase === 'drop' || this.phase === 'shake') this.open(); },
+  /** a rarity's colour; Generational cycles the rainbow */
+  colorOf(i, t) { return i >= 4 ? col(PRISM_COLS[Math.floor(t * 10) % PRISM_COLS.length]) : col(RARITY_HEX[RARITIES[i]]); },
+  setGlow(c, intensity, halo) {
+    this.mat.emissive.copy(c); this.mat.emissiveIntensity = intensity;
+    this.haloMat.color.copy(c); this.haloMat.opacity = halo;
+  },
+  update(dt) {
+    if (!this.on) return;
+    this.t += dt;
+    const b = this.block, r = this.res ? this.res.r : 0;
+    if (this.phase === 'idle') {
+      b.position.set(0, 0.85 + Math.sin(this.t * 1.6) * 0.08, 0); b.rotation.set(0, this.t * 0.6, 0);
+    } else if (this.phase === 'drop') {
+      const k = Math.min(1, this.t / (REVEAL_DROP * 0.8));
+      let y = lerp(14, 0.65, k * k);
+      if (k >= 1) { const bt = (this.t - REVEAL_DROP * 0.8) / (REVEAL_DROP * 0.2); y = 0.65 + Math.sin(Math.min(1, bt) * Math.PI) * 0.35; }
+      if (k >= 1 && !this.landed) { this.landed = true; FX.dust(0, 0, 14); FX.ring(0, 0.1, 0, '#c9b590', 1.4, 20); Sfx.thud(1); Sfx.tackle(); Shake.add(0.35); }
+      b.position.set(0, y, 0); b.rotation.set(0, this.t * 3, 0);
+      if (this.t >= REVEAL_DROP) { this.phase = 'shake'; this.t = 0; this.landed = false; }
+    } else if (this.phase === 'shake') {
+      const dur = REVEAL_SHAKE[r], k = Math.min(1, this.t / dur), P = this.plan;
+      // which colour step we are on; the tease fizzles back at fizzleAt
+      const n = P.steps.length, fz = k >= P.fizzleAt;
+      const idx = P.fake ? (fz ? P.steps[n - 1] : P.steps[Math.min(n - 2, Math.floor(k / P.fizzleAt * (n - 1)))]) : P.steps[Math.min(n - 1, Math.floor(k * n))];
+      if (P.fake && fz && !P.fizzled) { P.fizzled = true; Sfx.fizzle(); FX.sparks(0, 0.7, 0, '#5a5f78', 14, 3); }
+      const flick = P.fake && fz && k < P.fizzleAt + 0.06 ? (Math.random() < 0.5 ? 0.1 : 1) : 1;
+      const amp = 0.02 + 0.11 * Math.pow(k, 1.6) * (1 + r * 0.15);
+      b.position.set(rand(-amp, amp), 0.65 + Math.abs(rand(-amp, amp)) * 0.6, rand(-amp, amp));
+      b.rotation.set(rand(-amp, amp) * 1.5, b.rotation.y + dt * (1 + k * 6), rand(-amp, amp) * 1.5);
+      const c = this.colorOf(idx, this.t);
+      this.setGlow(c, (0.5 + 1.6 * k) * flick, (0.15 + 0.6 * k) * flick);
+      this.halo.position.copy(b.position); this.halo.scale.setScalar(3 + 2.5 * k + r * 0.4);
+      // rising ticks, faster as it gets closer
+      this.tickT -= dt;
+      if (this.tickT <= 0) { this.tickT = lerp(0.3, 0.07, k); Sfx.charge(k); }
+      this.sparkT -= dt;
+      if (this.sparkT <= 0) {
+        this.sparkT = lerp(0.12, 0.025, k);
+        const a = Math.random() * TAU, rr = rand(0.7, 1.4);
+        FX.glow.spawn(Math.cos(a) * rr, rand(0.1, 1.4), Math.sin(a) * rr, -Math.sin(a) * 1.5, rand(0.8, 2.2), Math.cos(a) * 1.5, rand(0.07, 0.15), rand(0.4, 0.8), c, -0.03, 0.4, 0);
+      }
+      if (this.t >= dur) this.open();
+    } else if (this.phase === 'done') {
+      this.haloMat.opacity = Math.max(0, this.haloMat.opacity - dt * 0.5);
+    }
+  },
+  /** crack it open: shards, a flash and fanfare in the rarity colour, then your player in the prize */
+  open() {
+    const res = this.res, r = res.r, hex = r >= 4 ? '#ffffff' : RARITY_HEX[RARITIES[r]];
+    this.phase = 'done'; this.t = 0;
+    this.block.visible = false;
+    for (let i = 0; i < 26 + r * 10; i++) FX.lit.spawn(rand(-0.6, 0.6), rand(0.1, 1.3), rand(-0.6, 0.6), rand(-6, 6), rand(3, 9), rand(-6, 6), rand(0.12, 0.3), rand(0.8, 1.6), col(pick(['#262c4e', '#464e78', '#0c0e1a'])), 1, 0.4);
+    const hexes = r >= 4 ? PRISM_COLS : [hex, '#ffffff'];
+    FX.sparks(0, 0.8, 0, hexes[0], 40 + r * 20, 8 + r * 2, 0.22, 0.9);
+    FX.ring(0, 0.2, 0, hexes[0], 1.8, 30);
+    if (r >= 2) FX.ring(0, 1.0, 0, hexes[hexes.length > 2 ? 2 : 1], 2.4, 30);
+    if (r >= 3) for (let i = 0; i < r; i++) FX.rocket(rand(-6, 6), rand(4, 9), hexes, 0.2 + i * 0.35);
+    this.setGlow(this.colorOf(r, 0), 0, 0.9);
+    Shake.add(0.25 + r * 0.12);
+    Sfx.punch(); Sfx.fanfare(r);
+    const fl = $('flash');
+    fl.className = r === 4 ? 'rainbow' : ''; fl.style.background = r === 4 ? '' : hex;
+    fl.animate([{ opacity: r >= 2 ? 0.75 : 0.4 }, { opacity: 0 }], { duration: 380 + r * 260, easing: 'steps(6)' });
+    // the player strikes a pose in the new style, Flow or skin
+    const spec = { look: {}, celebrate: true };
+    if (res.kind === 'style') spec.style = res.id; else if (res.kind === 'flow') spec.flow = res.id; else spec.look[SKINS[res.id].slot] = res.id;
+    Showcase.preview(spec);
+    Showcase.hidePlayer = false;
+    const d = this.done; this.done = null;
+    if (d) d();
+  },
+};
+
 /* ---- 11_showcase.js ---- */
 /* =====================================================================
    Showcase: your player on a lit spot in the stadium for the start
@@ -5256,7 +5383,7 @@ const JUGGLE = [
 ];
 
 const Showcase = {
-  p: null, key: '', on: false, t: 0, turn: SHOW_FACE, turnTo: SHOW_FACE, drag: null, dragX: 0, rect: null, stageId: 'lob-stage', mode: 'lobby', spec: null, j: { i: 0, t: 0 }, sparkT: 0, css: '',
+  p: null, key: '', hidePlayer: false, on: false, t: 0, turn: SHOW_FACE, turnTo: SHOW_FACE, drag: null, dragX: 0, rect: null, stageId: 'lob-stage', mode: 'lobby', spec: null, j: { i: 0, t: 0 }, sparkT: 0, css: '',
   init() {
     const T = World.T;
     const g = this.group = new THREE.Group();
@@ -5302,7 +5429,7 @@ const Showcase = {
   setStage(id, mode) {
     if (this.stageId === id && this.mode === mode) return;
     this.stageId = id; this.mode = mode; this.rect = null; this.drag = null;
-    this.turn = this.turnTo = mode === 'locker' ? SHOW_FACE_LOCKER : SHOW_FACE;
+    this.turn = this.turnTo = mode === 'lobby' ? SHOW_FACE : SHOW_FACE_LOCKER;
     if (mode === 'lobby') this.spec = null;
   },
   /** try on a look before equipping it: { style, flow, look, celebrate }. null goes back to what is equipped */
@@ -5330,7 +5457,7 @@ const Showcase = {
   },
   hide() {
     if (!this.on) return;
-    this.on = false; this.group.visible = false; this.drag = null; this.turn = this.turnTo = SHOW_FACE;
+    this.on = false; this.group.visible = false; this.drag = null; this.hidePlayer = false; this.turn = this.turnTo = SHOW_FACE;
     if (this.p) this.p.P.root.visible = this.p.blob.visible = false;
     World.camera.clearViewOffset();
     World.resize();
@@ -5343,7 +5470,9 @@ const Showcase = {
   update(dt) {
     if (!this.on || !this.p) return;
     this.t += dt;
-    if (this.spec && this.spec.celebrate) this.celebrate(dt); else if (this.mode === 'locker') this.idle(dt); else this.animate(dt);
+    if (this.spec && this.spec.celebrate) this.celebrate(dt); else if (this.mode !== 'lobby') this.idle(dt); else this.animate(dt);
+    this.p.P.root.visible = this.p.blob.visible = !this.hidePlayer; // the spin hides you until the block cracks
+    this.ball.visible = this.mode !== 'reveal';
     this.frame();
   },
   /** Locker pose: stand still with the ball at your feet, so the whole outfit is in view */
@@ -5426,7 +5555,7 @@ const Showcase = {
     const frac = clamp(r.h / H, 0.12, 1);
     const D = clamp(SHOW_H / (frac * 2 * Math.tan(SHOW_FOV * Math.PI / 360)), 2.4, 40);
     const a = SHOW_YAW + Math.sin(this.t * 0.21) * 0.04;
-    cam.position.set(Math.sin(a) * D, SHOW_CAM_Y + Math.sin(this.t * 0.33) * 0.03, Math.cos(a) * D);
+    cam.position.set(Math.sin(a) * D + Shake.x, SHOW_CAM_Y + Math.sin(this.t * 0.33) * 0.03 + Shake.y, Math.cos(a) * D);
     cam.lookAt(0, SHOW_MID, 0);
     cam.fov = SHOW_FOV;
     cam.setViewOffset(W, H, W / 2 - r.cx, H / 2 - r.cy, W, H);
@@ -5506,15 +5635,14 @@ const UI = {
   },
   tplSpins() {
     return `<section id="scr-spins" class="screen sub-screen" hidden>
-      <div class="sub-wrap">
+      <div class="sub-wrap sp-wrap">
         <div class="sub-head"><h2>SPINS</h2><div class="right" style="display:flex;gap:12px;align-items:center"><span class="emer"><img class="px" id="spin-em-ico" alt=""><span id="spin-em">0</span></span><button class="btn small" id="spin-back" type="button">BACK</button></div></div>
         <div class="tabs" role="tablist"><button class="tab" id="tab-style" role="tab" type="button">STYLE SPIN</button><button class="tab" id="tab-flow" role="tab" type="button">FLOW SPIN</button><button class="tab" id="tab-skin" role="tab" type="button">SKIN SPIN</button></div>
-        <div class="panel reel-box"><div class="reel-marker"></div><div class="reel" id="reel"></div></div>
+        <div class="sp-stage"><div class="sp-fit" id="sp-fit"></div><button class="btn small" id="spin-skip" type="button" hidden>SKIP</button><div class="sp-result panel" id="spin-result"></div></div>
         <div class="spin-ctl">
           <button class="btn emerald" id="spin-go" type="button">SPIN <span class="sub">200 EMERALDS</span></button>
           <div style="display:grid;gap:6px"><span class="label" id="spin-pity">LEGENDARY+ GUARANTEED IN 30 SPINS</span><div class="odds" id="spin-odds"></div></div>
         </div>
-        <div class="result-line" id="spin-result"></div>
         <div class="label" id="spin-owned"></div>
       </div>
     </section>`;
@@ -5660,6 +5788,7 @@ const UI = {
     click('tab-flow', () => { if (!this.spinning) { this.spinKind = 'flow'; this.renderSpins(true); } });
     click('tab-skin', () => { if (!this.spinning) { this.spinKind = 'skin'; this.renderSpins(true); } });
     click('spin-go', () => this.spin());
+    click('spin-skip', () => Reveal.skip());
     click('ltab-style', () => { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.renderLocker(); });
     click('ltab-flow', () => { this.lockerTab = 'flow'; this.lockerSel = Save.data.flow || 'NONE'; this.renderLocker(); });
     click('ltab-club', () => { this.lockerTab = 'club'; this.lockerSel = Save.data.club; this.renderLocker(); });
@@ -5694,7 +5823,8 @@ const UI = {
     const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
-    if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else Showcase.setStage('lob-stage', 'lobby');
+    if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
+    if (name !== 'spins') Reveal.stop();
     if (name === 'lobby') { this.renderLobby(); Showcase.ensure(); }
     if (name === 'howto') { Save.data.howto = true; Save.save(); }
   },
@@ -5967,39 +6097,14 @@ const UI = {
     $('spin-go').innerHTML = d.emeralds < 200 ? 'SPIN <span class="sub">NEED 200 EMERALDS</span>' : 'SPIN <span class="sub">200 EMERALDS</span>';
     const owned = kind === 'style' ? d.styles.length + ' / ' + STYLE_IDS.length + ' STYLES OWNED' : kind === 'flow' ? d.flows.length + ' / ' + FLOW_IDS.length + ' FLOWS OWNED' : d.skins.length + ' / ' + SKIN_IDS.length + ' SKINS OWNED (LOOKS ONLY)';
     $('spin-owned').textContent = owned + '. WIN MATCHES TO EARN MORE EMERALDS.';
-    if (resetReel) { $('spin-result').innerHTML = ''; this.buildReel(kind, null); }
-  },
-  cardHTML(kind, id) {
-    const src = kind === 'style' ? STYLES[id] : kind === 'flow' ? FLOWS[id] : SKINS[id];
-    return `<div class="card" data-r="${src.rarity}" style="--rc:${RARITY_HEX[src.rarity]}" data-id="${id}"><span class="cv"></span><span class="nm">${esc(src.name)}</span><span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span></div>`;
-  },
-  fillCardArt(el, kind, id) {
-    const holder = el.querySelector('.cv');
-    const cv = kind === 'style' ? portraitCanvas(id, 72) : kind === 'flow' ? flowEmblemCanvas(id, 72) : skinCanvas(id, 72);
-    holder.replaceWith(cv);
-  },
-  buildReel(kind, winner) {
-    const reel = $('reel');
-    const ids = kind === 'style' ? STYLE_IDS : kind === 'flow' ? FLOW_IDS : SKIN_IDS;
-    const N = 46, WIN = 40;
-    const items = [];
-    for (let i = 0; i < N; i++) {
-      if (winner && i === WIN) { items.push(winner); continue; }
-      const r = rollRarity(0);
-      const pool = poolFor(kind, r);
-      items.push(pool.length ? pick(pool) : pick(ids));
-    }
-    reel.innerHTML = items.map((id) => this.cardHTML(kind, id)).join('');
-    reel.querySelectorAll('.card').forEach((el, i) => this.fillCardArt(el, kind, items[i]));
-    reel.style.transition = 'none';
-    reel.style.transform = 'translateX(-75px)';
-    return { WIN };
+    if (resetReel) { $('spin-result').innerHTML = ''; $('spin-result').classList.remove('show'); Reveal.ready(); }
   },
   spin() {
     if (this.spinning) return;
     const d = Save.data, kind = this.spinKind;
     if (d.emeralds < 200) { Sfx.deny(); return; }
     Sfx.init();
+    // the roll: same odds and 30-spin guarantee as always; the 3D reveal only shows the result
     d.emeralds -= 200;
     const pity = d.pity[kind];
     const r = rollRarity(pity);
@@ -6013,45 +6118,19 @@ const UI = {
     Save.save();
     this.spinning = true;
     this.renderSpins(false);
-    $('spin-result').innerHTML = '';
-    const { WIN } = this.buildReel(kind, id);
-    const reel = $('reel');
-    // on a short screen the reel can sit above the fold once you have scrolled to the button
-    const box = reel.parentElement.getBoundingClientRect();
-    if (box.top < 0 || box.bottom > window.innerHeight) { try { reel.parentElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { reel.parentElement.scrollIntoView(); } }
-    const CW = 162;
-    const target = -(WIN * CW + 75) + rand(-55, 55);
-    const dur = 4.6 + r * 0.35;
-    const t0 = performance.now();
-    let lastIdx = 0;
-    const step = (now) => {
-      const t = Math.min(1, (now - t0) / 1000 / dur);
-      const e = 1 - Math.pow(1 - t, 4);
-      const x = -75 + (target + 75) * e;
-      reel.style.transform = 'translateX(' + x.toFixed(1) + 'px)';
-      const idx = Math.floor((-x) / CW);
-      if (idx !== lastIdx) { lastIdx = idx; Sfx.tick(); }
-      if (t < 1) requestAnimationFrame(step);
-      else this.spinDone(kind, id, r, dupe);
-    };
-    requestAnimationFrame(step);
+    $('spin-result').classList.remove('show'); $('spin-skip').hidden = false;
+    Reveal.start({ kind, id, r, dupe }, () => this.spinDone(kind, id, r, dupe));
   },
   spinDone(kind, id, r, dupe) {
     this.spinning = false;
+    $('spin-skip').hidden = true;
     const src = kind === 'style' ? STYLES[id] : kind === 'flow' ? FLOWS[id] : SKINS[id];
-    Sfx.fanfare(r);
-    const card = $('reel').querySelectorAll('.card')[40];
-    if (card) { card.style.transform = 'translateY(-8px) scale(1.06)'; card.style.transition = 'transform .2s steps(3)'; }
-    const fl = $('flash');
-    if (r >= 2) {
-      fl.className = r === 4 ? 'rainbow' : '';
-      fl.style.background = r === 4 ? '' : RARITY_HEX[src.rarity];
-      fl.animate([{ opacity: r === 4 ? 0.95 : 0.5 }, { opacity: 0 }], { duration: r === 4 ? 1400 : 650, easing: 'steps(6)' });
-    }
-    if (r >= 3) $('scr-spins').animate([{ transform: 'translate(6px,0)' }, { transform: 'translate(-6px,3px)' }, { transform: 'translate(4px,-3px)' }, { transform: 'translate(0,0)' }], { duration: 380, iterations: r === 4 ? 3 : 1 });
     const tag = dupe ? '<span class="tag dupe">DUPLICATE · +50 EMERALDS</span>' : '<span class="tag">NEW</span>';
     const slotName = kind === 'skin' ? '<span class="label">' + SKIN_SLOTS.find((sl) => sl.id === src.slot).name + ' SKIN</span>' : '';
-    $('spin-result').innerHTML = `<span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${slotName}${tag}${!dupe ? '<button class="btn small" id="spin-equip" type="button">EQUIP</button>' : ''}`;
+    const res = $('spin-result');
+    res.innerHTML = `<span class="cv"></span><span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${slotName}${tag}${!dupe ? '<button class="btn small blue" id="spin-equip" type="button">EQUIP</button>' : ''}`;
+    res.querySelector('.cv').replaceWith(kind === 'style' ? portraitCanvas(id, 48) : kind === 'flow' ? flowEmblemCanvas(id, 48) : skinCanvas(id, 48));
+    res.classList.add('show');
     const eq = $('spin-equip');
     if (eq) eq.addEventListener('click', () => { Sfx.click(); if (kind === 'style') Save.data.style = id; else if (kind === 'flow') Save.data.flow = id; else Save.data.look[src.slot] = id; Save.save(); eq.textContent = 'EQUIPPED'; eq.disabled = true; });
     this.renderSpins(false);
@@ -6147,6 +6226,7 @@ const Game = {
     Touch.detect();
     UI.init();
     Showcase.init();
+    Reveal.init();
     Input.init($('gl'));
     Touch.init();
     this.applyQuality();
@@ -6171,7 +6251,7 @@ const Game = {
   },
   startMatch(mode) {
     if (this.match) { this.match.dispose(); this.match = null; }
-    Showcase.hide();
+    Reveal.stop(); Showcase.hide();
     UI.hideOverlays();
     Sfx.init();
     TimeCtl.reset(); FX.clear();
@@ -6279,7 +6359,9 @@ const Game = {
         if (m.phase === 'end' && m.phaseT > 3.2 && !this.ended) this.finishMatch(false);
       } else { Shake.update(rdt); }
     } else {
+      Reveal.update(rdt);
       Showcase.update(rdt);
+      Shake.update(rdt);
       FX.update(rdt);
     }
     World.update(rdt);
@@ -6292,7 +6374,7 @@ const Game = {
 
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Player, TEAM, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Player, TEAM, rollRarity, poolFor,
   CLUB_IDS, sideFor, matchSides, kitClash,
   /** run a full bot-vs-bot match off-screen and report what happened */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0) {

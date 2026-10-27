@@ -271,6 +271,8 @@ const Sfx = (() => {
     punch() { noise(0.08, { vol: 0.3, type: 'lowpass', freq: 1200 }); tone(110, 0.1, { type: 'square', vol: 0.15, slide: 60 }); },
     boing() { tone(260, 0.22, { type: 'sine', vol: 0.15, slide: 620 }); },
     beam() { tone(90, 0.6, { type: 'sawtooth', vol: 0.1, slide: 40 }); noise(0.5, { vol: 0.2, type: 'bandpass', freq: 2500, slide: 400, q: 1 }); },
+    charge(k) { tone(300 + k * 1100, 0.05, { type: 'square', vol: 0.035 + k * 0.03 }); },
+    fizzle() { tone(900, 0.35, { type: 'sawtooth', vol: 0.06, slide: 160 }); noise(0.3, { vol: 0.08, type: 'lowpass', freq: 1200, slide: 200 }); },
     countdown(hi) { tone(hi ? 1046 : 523, 0.12, { type: 'square', vol: 0.07 }); },
   };
 })();

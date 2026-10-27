@@ -7,7 +7,7 @@
     "build": "node build.js",
     "test": "node test/check.js",
     "test:touch": "node test/touch.js",
-    "test:all": "node test/check.js && node test/touch.js && node test/ui.js && node test/endings.js && node test/abilities.js && node test/items.js && node test/lobby3d.js && node test/skins.js && node test/kits.js && node test/passing.js"
+    "test:all": "node test/check.js && node test/touch.js && node test/ui.js && node test/endings.js && node test/abilities.js && node test/items.js && node test/lobby3d.js && node test/skins.js && node test/kits.js && node test/passing.js && node test/reveal.js"
   },
   "devDependencies": {
     "@fontsource/jersey-10": "^5.3.0",

@@ -15,7 +15,7 @@ const JUGGLE = [
 ];
 
 const Showcase = {
-  p: null, key: '', on: false, t: 0, turn: SHOW_FACE, turnTo: SHOW_FACE, drag: null, dragX: 0, rect: null, stageId: 'lob-stage', mode: 'lobby', spec: null, j: { i: 0, t: 0 }, sparkT: 0, css: '',
+  p: null, key: '', hidePlayer: false, on: false, t: 0, turn: SHOW_FACE, turnTo: SHOW_FACE, drag: null, dragX: 0, rect: null, stageId: 'lob-stage', mode: 'lobby', spec: null, j: { i: 0, t: 0 }, sparkT: 0, css: '',
   init() {
     const T = World.T;
     const g = this.group = new THREE.Group();
@@ -61,7 +61,7 @@ const Showcase = {
   setStage(id, mode) {
     if (this.stageId === id && this.mode === mode) return;
     this.stageId = id; this.mode = mode; this.rect = null; this.drag = null;
-    this.turn = this.turnTo = mode === 'locker' ? SHOW_FACE_LOCKER : SHOW_FACE;
+    this.turn = this.turnTo = mode === 'lobby' ? SHOW_FACE : SHOW_FACE_LOCKER;
     if (mode === 'lobby') this.spec = null;
   },
   /** try on a look before equipping it: { style, flow, look, celebrate }. null goes back to what is equipped */
@@ -89,7 +89,7 @@ const Showcase = {
   },
   hide() {
     if (!this.on) return;
-    this.on = false; this.group.visible = false; this.drag = null; this.turn = this.turnTo = SHOW_FACE;
+    this.on = false; this.group.visible = false; this.drag = null; this.hidePlayer = false; this.turn = this.turnTo = SHOW_FACE;
     if (this.p) this.p.P.root.visible = this.p.blob.visible = false;
     World.camera.clearViewOffset();
     World.resize();
@@ -102,7 +102,9 @@ const Showcase = {
   update(dt) {
     if (!this.on || !this.p) return;
     this.t += dt;
-    if (this.spec && this.spec.celebrate) this.celebrate(dt); else if (this.mode === 'locker') this.idle(dt); else this.animate(dt);
+    if (this.spec && this.spec.celebrate) this.celebrate(dt); else if (this.mode !== 'lobby') this.idle(dt); else this.animate(dt);
+    this.p.P.root.visible = this.p.blob.visible = !this.hidePlayer; // the spin hides you until the block cracks
+    this.ball.visible = this.mode !== 'reveal';
     this.frame();
   },
   /** Locker pose: stand still with the ball at your feet, so the whole outfit is in view */
@@ -185,7 +187,7 @@ const Showcase = {
     const frac = clamp(r.h / H, 0.12, 1);
     const D = clamp(SHOW_H / (frac * 2 * Math.tan(SHOW_FOV * Math.PI / 360)), 2.4, 40);
     const a = SHOW_YAW + Math.sin(this.t * 0.21) * 0.04;
-    cam.position.set(Math.sin(a) * D, SHOW_CAM_Y + Math.sin(this.t * 0.33) * 0.03, Math.cos(a) * D);
+    cam.position.set(Math.sin(a) * D + Shake.x, SHOW_CAM_Y + Math.sin(this.t * 0.33) * 0.03 + Shake.y, Math.cos(a) * D);
     cam.lookAt(0, SHOW_MID, 0);
     cam.fov = SHOW_FOV;
     cam.setViewOffset(W, H, W / 2 - r.cx, H / 2 - r.cy, W, H);
