@@ -11,6 +11,7 @@ const Game = {
     FX.init(World.scene);
     Touch.detect();
     UI.init();
+    Showcase.init();
     Input.init($('gl'));
     Touch.init();
     this.applyQuality();
@@ -27,12 +28,14 @@ const Game = {
     Input.releaseLock();
     this.state = 'lobby';
     World.setSun(SUN_LOBBY);
-    UI.hideOverlays(); UI.show('lobby');
     TimeCtl.reset(); FX.clear();
+    UI.hideOverlays(); UI.show('lobby');
+    Showcase.show();
     Sfx.setCrowd(0.2);
   },
   startMatch(mode) {
     if (this.match) { this.match.dispose(); this.match = null; }
+    Showcase.hide();
     UI.hideOverlays();
     Sfx.init();
     TimeCtl.reset(); FX.clear();
@@ -139,7 +142,7 @@ const Game = {
         if (m.phase === 'end' && m.phaseT > 3.2 && !this.ended) this.finishMatch(false);
       } else { Shake.update(rdt); }
     } else {
-      Cam.lobby(rdt, this.time);
+      Showcase.update(rdt);
       FX.update(rdt);
     }
     World.update(rdt);
@@ -152,7 +155,7 @@ const Game = {
 
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, rollRarity, poolFor,
   /** run a full bot-vs-bot match off-screen and report what happened */
   simulate(mode = 'quick', d = 0.5, seconds = 240) {
     const m = new Match(mode, d, { noHuman: true, autopilot: true, length: seconds });

@@ -48,6 +48,7 @@ const UI = {
           <button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button>
         </nav>
       </div>
+      <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
       <div class="lobby-foot">
         <div class="profile panel">
           <img class="badge px" id="pro-badge" alt="">
@@ -237,7 +238,7 @@ const UI = {
     const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
-    if (name === 'lobby') this.renderLobby();
+    if (name === 'lobby') { this.renderLobby(); Showcase.ensure(); }
     if (name === 'howto') { Save.data.howto = true; Save.save(); }
   },
   /* ---------- lobby ---------- */
@@ -259,9 +260,9 @@ const UI = {
     $('pro-flow').textContent = d.flow ? FLOWS[d.flow].name : 'NONE';
     $('pro-rec').textContent = d.stats.wins + ' W · ' + d.stats.draws + ' D · ' + d.stats.losses + ' L · ' + d.stats.goals + ' GOALS';
     const notes = [];
-    if (!Save.ok) notes.push('This browser is blocking storage, so progress will not be saved after you close the page.');
-    if (Touch.on) notes.push(window.innerHeight > window.innerWidth ? 'Touch controls are on. Turn your phone sideways for a much wider view of the pitch.' : 'Touch controls are on. Left thumb moves, right thumb aims and shoots.');
-    $('lob-notice').textContent = notes.join(' ');
+    if (!Save.ok) notes.push('<span>This browser is blocking storage, so progress will not be saved after you close the page.</span>');
+    if (Touch.on) notes.push('<span class="n-touch">' + (window.innerHeight > window.innerWidth ? 'Touch controls are on. Turn your phone sideways for a much wider view of the pitch.' : 'Touch controls are on. Left thumb moves, right thumb aims and shoots.') + '</span>');
+    $('lob-notice').innerHTML = notes.join(' ');
     const fsb = $('btn-fs');
     fsb.hidden = !(Touch.on && Touch.fsAvailable());
     fsb.textContent = Touch.isFs() ? 'EXIT FULLSCREEN' : 'FULLSCREEN';

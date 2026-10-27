@@ -114,10 +114,16 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .topbar .right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .iconbtn { font-family: var(--font-label); font-size: 11px; font-weight: 700; letter-spacing: .08em; background: var(--slate); border: var(--px) solid var(--ink); color: var(--text); padding: 8px 10px; cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0,0,0,.35); }
 
-/* lobby */
-#scr-lobby { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 10px 24px; background: linear-gradient(90deg, rgba(9,11,22,.86) 0%, rgba(9,11,22,.55) 34%, rgba(9,11,22,0) 58%); }
+/* lobby: menu on the left, your player on a lit spot in the middle (the 3D camera fits it into .lob-stage), profile on the right */
+#scr-lobby {
+  display: grid; grid-template-columns: minmax(0, 520px) minmax(260px, 1fr) minmax(0, 400px); grid-template-rows: auto minmax(0, 1fr); gap: 10px 24px;
+  background:
+    radial-gradient(ellipse 30% 58% at var(--stx, 56%) var(--sty, 54%), rgba(9,11,22,0) 50%, rgba(9,11,22,.46) 100%),
+    linear-gradient(90deg, rgba(9,11,22,.88) 0, rgba(9,11,22,.62) 380px, rgba(9,11,22,0) 560px);
+}
 #scr-lobby .topbar { grid-column: 1 / -1; }
-.lobby-main { align-self: center; display: grid; gap: 16px; padding-left: clamp(0px, 2.5vw, 40px); min-width: 0; }
+.lobby-main { grid-column: 1; grid-row: 2; align-self: center; display: grid; gap: 16px; padding-left: clamp(0px, 2.5vw, 40px); min-width: 0; }
+.lob-stage { grid-column: 2; grid-row: 2; min-width: 0; min-height: 0; touch-action: pan-y; }
 .title { margin: 0; font-family: var(--font-display); font-weight: 400; line-height: .8; letter-spacing: .02em; font-size: clamp(64px, min(12vw, 17vh), 176px); text-wrap: balance; }
 .title span { display: block; }
 .title em { font-style: normal; }
@@ -127,7 +133,7 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .menu { display: grid; gap: 8px; max-width: 440px; }
 .menu .btn { font-size: clamp(24px, 4.2vh, 32px); padding: 6px 16px 10px; }
 .menu .btn.ghost { font-size: 22px; padding: 2px 6px; justify-self: start; }
-.lobby-foot { align-self: end; justify-self: end; display: grid; gap: 10px; justify-items: end; min-width: 0; }
+.lobby-foot { grid-column: 3; grid-row: 2; align-self: end; justify-self: end; display: grid; gap: 10px; justify-items: end; min-width: 0; }
 .profile { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: center; padding: 14px 16px; min-width: 0; width: min(400px, 100%); box-sizing: border-box; }
 .profile .badge { width: 64px; height: 64px; grid-row: span 2; }
 .profile .tier { font-family: var(--font-display); font-size: 38px; line-height: .9; }
@@ -138,8 +144,16 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .equip-row b { font-family: var(--font-display); font-size: 24px; font-weight: 400; }
 .notice { max-width: 400px; font-size: 18px; color: var(--text); text-shadow: 2px 2px 0 var(--ink); margin: 0; text-align: right; }
 .notice:empty { display: none; }
+/* narrow screens: one column, the player stands between the title and the buttons */
 @media (max-width: 860px) {
-  #scr-lobby { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; background: rgba(9,11,22,.72); }
+  #scr-lobby {
+    grid-template-columns: minmax(0, 1fr); grid-template-rows: none; align-content: start; gap: 10px;
+    background: linear-gradient(to top, rgba(9,11,22,.9) 0%, rgba(9,11,22,.62) 46%, rgba(9,11,22,0) 66%), linear-gradient(to bottom, rgba(9,11,22,.8) 0, rgba(9,11,22,.5) 240px, rgba(9,11,22,0) 330px);
+  }
+  .tagline { color: var(--text); text-shadow: 2px 2px 0 var(--ink); font-size: 19px; }
+  .lobby-main { display: contents; }
+  #scr-lobby > *, .lobby-main > * { grid-column: 1; grid-row: auto; }
+  .title { order: 1; } .tagline { order: 2; } .lob-stage { order: 3; height: clamp(230px, 36vh, 440px); } .menu { order: 4; } .lobby-foot { order: 5; }
   .lobby-foot { justify-self: stretch; justify-items: stretch; }
   .notice { text-align: left; }
 }
@@ -424,8 +438,14 @@ body.touch .howto .touchsec { order: -1; }
   .res-grid div { padding: 6px 8px; }
 }
 @media (max-height: 520px) and (orientation: landscape) {
-  #scr-lobby { grid-template-columns: minmax(0, 1fr) minmax(0, 330px); grid-template-rows: auto minmax(0, 1fr); gap: 8px 16px; padding-block: 10px; background: linear-gradient(90deg, rgba(9,11,22,.88) 0%, rgba(9,11,22,.62) 55%, rgba(9,11,22,.4) 100%); }
-  .lobby-main { gap: 10px; padding-left: 0; align-self: start; }
+  /* phone on its side: buttons in two columns on the left, the player stands above the profile card on the right */
+  #scr-lobby {
+    grid-template-columns: minmax(0, 470px) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; align-content: stretch; gap: 6px 16px; padding-block: 10px;
+    background: radial-gradient(ellipse 30% 58% at var(--stx, 70%) var(--sty, 50%), rgba(9,11,22,0) 50%, rgba(9,11,22,.4) 100%), linear-gradient(90deg, rgba(9,11,22,.9) 0, rgba(9,11,22,.66) 360px, rgba(9,11,22,0) 520px);
+  }
+  #scr-lobby .lobby-main { display: grid; grid-column: 1; grid-row: 2 / 4; gap: 10px; padding-left: 0; align-self: start; }
+  #scr-lobby .lob-stage { grid-column: 2; grid-row: 2; height: auto; }
+  #scr-lobby .lobby-foot { grid-column: 2; grid-row: 3; }
   .title { font-size: clamp(40px, 15vh, 76px); }
   .title span { display: inline; }
   .title .t1 { margin-right: .22em; }
@@ -434,11 +454,16 @@ body.touch .howto .touchsec { order: -1; }
   .menu .btn { font-size: 22px; padding: 4px 10px 7px; gap: 8px; }
   .menu .btn .sub { font-size: 9px; }
   .menu .btn.ghost { grid-column: 1 / -1; font-size: 18px; }
-  .lobby-foot { align-self: start; justify-self: stretch; justify-items: stretch; }
-  .profile { width: 100%; padding: 10px 12px; }
-  .profile .badge { width: 48px; height: 48px; }
-  .profile .tier { font-size: 30px; }
-  .notice { font-size: 15px; text-align: left; max-width: none; }
+  .lobby-foot { align-self: end; justify-self: stretch; justify-items: stretch; gap: 4px; }
+  .profile { width: 100%; padding: 6px 10px; gap: 2px 10px; }
+  .profile .badge { width: 36px; height: 36px; }
+  .profile .tier { font-size: 24px; }
+  .profile .label { font-size: 9px; }
+  .rpbar { height: 9px; }
+  .equip-row { padding-top: 4px; margin-top: 1px; gap: 5px; }
+  .equip-row b { font-size: 18px; }
+  .notice { font-size: 14px; text-align: left; max-width: none; }
+  .notice .n-touch { display: none; }
   .menu .btn.hazard { text-shadow: 2px 2px 0 var(--ink); }
   #scr-pause .dialog { width: min(800px, 100%); }
   #scr-pause .set { grid-template-columns: max-content max-content max-content max-content; gap: 8px 16px; }

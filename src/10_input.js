@@ -186,15 +186,4 @@ const Cam = {
     y = y < 0.35 ? 0.8 : Math.min(y, F.GH - 0.5);
     this.aim.set(x, y, gz);
   },
-  lobby(realDt, t) {
-    const cam = World.camera;
-    const a = 2.32 + Math.sin(t * 0.05) * 0.16;
-    const R = 132;
-    const px = TOWER_POS.x + Math.cos(a) * R, pz = TOWER_POS.z + Math.sin(a) * R;
-    cam.position.set(px, 26 + Math.sin(t * 0.11) * 3, pz);
-    const fx = TOWER_POS.x - px, fz = TOWER_POS.z - pz, fl = Math.hypot(fx, fz);
-    const rx = -fz / fl, rz = fx / fl;
-    _v1.set(TOWER_POS.x - rx * 40, 64, TOWER_POS.z - rz * 40);
-    cam.lookAt(_v1);
-  },
 };

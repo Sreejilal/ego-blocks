@@ -46,7 +46,7 @@ class VoxBuilder {
 
 const TOWER_POS = new THREE.Vector3(70, 0, 175);
 const SUN_DIR = new THREE.Vector3(-0.42, 0.24, 0.87).normalize();
-const SUN_LOBBY = new THREE.Vector3(0.88, 0.13, -0.45).normalize();
+const SUN_LOBBY = new THREE.Vector3(0.3, 0.2, 0.93).normalize(); // low behind the far stand, seen from the start screen
 const SUN_MATCH = SUN_DIR.clone();
 const QUALITY = {
   low: { pr: 0.75, shadows: false, map: 512 },
