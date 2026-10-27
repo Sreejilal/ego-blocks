@@ -33,7 +33,7 @@ function nearBall(p, m, r = 1.9) {
   if (b.owner) return false;
   return dist2D(b.pos, p.pos) < r && b.pos.y - p.pos.y < 2.4;
 }
-function aimFor(p, m) { return p.isHuman ? m.aim.clone() : AI.shotTarget(p, m); }
+function aimFor(p, m) { return p.isHuman ? (p.aimV || m.aim).clone() : AI.shotTarget(p, m); }
 
 const ABILITIES = {
   vision: {

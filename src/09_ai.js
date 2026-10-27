@@ -253,7 +253,12 @@ const AI = {
     a.sprint = c.spaceAhead && p.stamina > 25;
   },
   /** a teammate (you) called for the ball and we are not about to score */
-  calledFor(m, p, c) { const h = m.caller; return m.thinkPass && h && h !== p && h.team === p.team && h.callT > 0 && !(p.ai.waitT > 0) && !(c.dGoal < 9 && c.angleOK); },
+  calledFor(m, p, c) {
+    if (!m.thinkPass || p.ai.waitT > 0 || (c.dGoal < 9 && c.angleOK)) return false;
+    const h = m.caller && m.caller !== p && m.caller.team === p.team && m.caller.callT > 0 ? m.caller : m.humans.find((q) => q !== p && q.team === p.team && q.callT > 0);
+    if (h) p.ai.callerP = h;
+    return !!h;
+  },
   /** King of the Hill: carry it into the ring and keep it there, away from defenders; a goal (3) if it is on */
   hillCarrier(m, p, c, sk) {
     const H = m.hill, a = p.ai, d = Math.hypot(p.pos.x - H.x, p.pos.z - H.z);
@@ -288,7 +293,7 @@ const AI = {
   /** the pass after a call: hold it if you are tightly marked, a through ball into your run,
       a lob over a defender in the lane, a ground pass, or now and then something flashy */
   callPass(m, p) {
-    const h = m.caller, sk = m.skill(p), opps = m.opponents(p), s = m.dir(p.team);
+    const h = p.ai.callerP || m.caller, sk = m.skill(p), opps = m.opponents(p), s = m.dir(p.team);
     let mark = 99; for (const o of opps) if (!o.isGK && o.state !== 'down' && o.state !== 'frozen') mark = Math.min(mark, dist2D(o.pos, h.pos));
     if (mark < 1.8 || (h.state !== 'free' && h.state !== 'dash')) { m.label(p, 'WAIT', '#ffcb3d'); p.ai.waitT = 0.8; h.callT = 0; return false; } // call again once you are free
     const d = dist2D(p.pos, h.pos);

@@ -82,7 +82,8 @@ class Player {
     this.flowId = o.flow || null;
     this.skin = o.skin || pick(SKIN_TONES);
     this.side = o.side || TEAM[this.team];
-    this.look = lookFor(o.style, o.look || {});
+    this.lookIds = o.look || {}; // the skin ids (online games send these so every screen builds the same player)
+    this.look = lookFor(o.style, this.lookIds);
     this.pos = V3(); this.vel = V3(); this.yaw = 0; this.onGround = true; this.airT = 0;
     this.mx = 0; this.mz = 0; this.sprint = false; this.faceYaw = null; this.exhausted = false;
     this.stamina = 100; this.stamDelay = 0;

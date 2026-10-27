@@ -22,7 +22,7 @@ class Match {
     this.tier = opts.tier != null ? opts.tier : tierOf(Save.data.rp);
     this.size = ROSTERS[opts.size] ? opts.size : teamSizeFor(mode, Save.data.rp);
     this.scene = World.scene;
-    this.time = 0; this.clock = opts.length || MATCH_LEN; this.golden = false; this.goldenClock = GOLDEN_LEN;
+    this.time = 0; this.clock = opts.length || MATCH_LEN; this.golden = false; this.goldenLen = opts.goldenLength || GOLDEN_LEN; this.goldenClock = this.goldenLen;
     this.phase = 'kickoff'; this.phaseT = 0; this.paused = false; this.kickDelay = 2.6;
     this.score = [0, 0]; this.players = []; this.teams = [[], []];
     this.ball = new Ball(this);
@@ -31,6 +31,7 @@ class Match {
     this.teamState = ['loose', 'loose']; this.pred = [];
     this.aim = V3(0, 1, F.L); this.camYaw = 0; this.aimOnTarget = false;
     this.ctl = null; this.autopilot = !!opts.autopilot; this.thinkPass = opts.thinkPass !== false;
+    this.online = !!opts.humans; this.humans = []; // online: every remote player, each with their own controls (p.ctl)
     this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, trailed: false }; // your moments, for the weekly challenges this.lastGoal = null; this.pendingEnd = false;
     // your club at home against a random other club; the away side changes kit if the colours clash
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
@@ -47,18 +48,25 @@ class Match {
     const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
     const used = new Set([1, 10]);
     const roles = ROSTERS[this.size];
+    // online: each player takes an outfield role on their team, striker first
+    const seat = {};
+    if (opts.humans) for (const t of [0, 1]) {
+      const order = roles.filter((r) => r !== 'GK').sort((a, b) => ['ST', 'MID', 'LW', 'RW', 'DEF'].indexOf(a) - ['ST', 'MID', 'LW', 'RW', 'DEF'].indexOf(b));
+      opts.humans.filter((h) => h.team === t).slice(0, order.length).forEach((h, i) => { seat[t + order[i]] = h; });
+    }
     for (let team = 0; team < 2; team++) {
       for (const role of roles) {
-        const human = team === 0 && role === 'ST' && !opts.noHuman;
-        let num = role === 'GK' ? 1 : human ? 10 : 0;
+        const net = opts.humans ? seat[team + role] : null;
+        const human = opts.humans ? !!net : team === 0 && role === 'ST' && !opts.noHuman;
+        let num = role === 'GK' ? 1 : human && !net ? 10 : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
-        const style = human ? (opts.style || Save.data.style) : botStyle();
-        const flow = human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
-        const look = human ? (opts.look || Save.data.look) : botLook();
-        const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[1] : null, number: num, name: human ? 'YOU' : names.pop() });
+        const style = net ? net.style : human ? (opts.style || Save.data.style) : botStyle();
+        const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
+        const look = net ? net.look : human ? (opts.look || Save.data.look) : botLook();
+        const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[1] : null, number: num, name: net ? net.name : human ? 'YOU' : names.pop() });
         if (!human && team === 1) p.speedMul = 1 + 0.045 * (opts.teamD ? opts.teamD[1] : this.d);
         this.players.push(p); this.teams[team].push(p);
-        if (human) this.human = p;
+        if (net) { p.netId = net.id; this.humans.push(p); } else if (human) this.human = p;
       }
     }
     if (!this.human) this.human = null;
@@ -93,7 +101,7 @@ class Match {
   }
   canAct(p) { return (p.state === 'free' || p.state === 'hold') && this.phase === 'play'; }
   label(p, text, color, dur) { Hud.label(p, text, color || p.aura, dur); }
-  toast(text, cls) { Hud.toast(text, cls); }
+  toast(text, cls, to) { Hud.toast(text, cls, to); } // to: the player it is for (online sends it only to them)
   involvesHuman(...ps) { return ps.some((q) => q && q.isHuman); }
 
   setupKickoff(team, first = false) {
@@ -139,6 +147,7 @@ class Match {
     for (const p of this.players) { p.tickTimers(dt); p.computeMods(); }
     if (ph === 'play' || ph === 'out' || ph === 'goal') AI.update(this, dt);
     if (this.human && !this.autopilot) this.updateHuman(dt, this.ctl);
+    for (const h of this.humans) if (h.ctl) this.updateHuman(dt, h.ctl, h);
     this.updatePending(dt);
     for (const p of this.players) p.physics(dt);
     this.separate();
@@ -156,7 +165,7 @@ class Match {
       if (this.clock <= 0) {
         this.clock = 0;
         if (this.score[0] !== this.score[1]) this.endMatch();
-        else { this.golden = true; this.goldenClock = GOLDEN_LEN; Hud.banner(this.hill ? 'GOLDEN POINT' : 'GOLDEN GOAL', this.hill ? 'NEXT POINT WINS' : 'NEXT GOAL WINS', '#ffcb3d'); Sfx.whistle(2); Sfx.roar(0.5); }
+        else { this.golden = true; this.goldenClock = this.goldenLen; Hud.banner(this.hill ? 'GOLDEN POINT' : 'GOLDEN GOAL', this.hill ? 'NEXT POINT WINS' : 'NEXT GOAL WINS', '#ffcb3d'); Sfx.whistle(2); Sfx.roar(0.5); }
       }
     } else {
       this.goldenClock -= dt;
@@ -170,7 +179,7 @@ class Match {
     const [a, b] = this.score;
     const humanTeam = this.human ? this.human.team : 0;
     const res = a === b ? 'draw' : ((a > b ? 0 : 1) === humanTeam ? 'win' : 'loss');
-    this.result = { res, score: [a, b], human: this.human ? Object.assign({}, this.human.stats) : null, players: this.players.map((p) => ({ name: p.name, team: p.team, number: p.number, style: p.styleId, role: p.role, isHuman: p.isHuman, stats: Object.assign({}, p.stats) })) };
+    this.result = { res, score: [a, b], human: this.human ? Object.assign({}, this.human.stats) : null, players: this.players.map((p) => ({ netId: p.netId, feats: p.feats, name: p.name, team: p.team, number: p.number, style: p.styleId, role: p.role, isHuman: p.isHuman, stats: Object.assign({}, p.stats) })) };
     Hud.banner('FULL TIME', a + ' : ' + b, res === 'win' ? '#2ee38f' : res === 'loss' ? '#ff4d5e' : '#ffcb3d');
     for (const p of this.players) {
       p.charging = false; p.mx = p.mz = 0;
@@ -180,10 +189,12 @@ class Match {
     World.excite[a > b ? 0 : 1] = a === b ? 0.3 : 1;
   }
   /* ---------- human control ---------- */
-  updateHuman(dt, c) {
-    const p = this.human;
+  updateHuman(dt, c, p = this.human) {
     if (!p || !c) return;
-    const cy = this.camYaw, fx = Math.sin(cy), fz = Math.cos(cy), rx = -fz, rz = fx;
+    // an online player sends their own camera direction and aim point
+    if (c.camYaw != null) p.camYaw = c.camYaw;
+    if (c.aim) p.aimV = c.aim;
+    const cy = c.camYaw != null ? c.camYaw : this.camYaw, fx = Math.sin(cy), fz = Math.cos(cy), rx = -fz, rz = fx;
     let mx = fx * c.moveY + rx * c.moveX, mz = fz * c.moveY + rz * c.moveX;
     const ml = len2D(mx, mz); if (ml > 1) { mx /= ml; mz /= ml; }
     const live = this.phase === 'play' || this.phase === 'out' || this.phase === 'goal' || this.phase === 'end';
@@ -200,7 +211,7 @@ class Match {
     if (c.shootUp && p.charging) {
       const power = Math.max(0.28, p.charge);
       p.charging = false; p.charge = 0;
-      this.tryShoot(p, power, this.aim, { curveIn: c.moveX });
+      this.tryShoot(p, power, p.aimV || this.aim, { curveIn: c.moveX });
     }
     if (c.passDown) p.passHold = 0.0001;
     if (p.passHold > 0) p.passHold += dt;
@@ -217,11 +228,11 @@ class Match {
       this.tackle(p, tx, tz);
     }
     for (let i = 0; i < 3; i++) if (c.ab[i]) this.useAbility(p, i);
-    if (c.flow) { if (!this.activateFlow(p) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad'); Sfx.deny(); } }
+    if (c.flow) { if (!this.activateFlow(p) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
     if (c.item) this.useItem(p);
   }
   pickPassTarget(p) {
-    const fx = Math.sin(this.camYaw), fz = Math.cos(this.camYaw);
+    const yaw = p.camYaw != null ? p.camYaw : this.camYaw, fx = Math.sin(yaw), fz = Math.cos(yaw);
     let best = null, bestS = -1e9;
     for (const t of this.teams[p.team]) {
       if (t === p) continue;
@@ -245,7 +256,7 @@ class Match {
         this.lastPass = { from: k.by, to: p, t: this.time };
       } else if (k.by.team !== p.team && (k.type === 'pass' || k.type === 'shot')) {
         this.flowAdd(p, 10);
-        if (p.isHuman) this.toast('INTERCEPTED', 'good');
+        if (p.isHuman) this.toast('INTERCEPTED', 'good', p);
         if (k.type === 'shot' && !p.isGK) this.label(p, 'BLOCKED', p.aura);
       }
     }
@@ -493,7 +504,7 @@ class Match {
             p.stats.tackles++; this.flowAdd(p, 15);
             this.label(p, 'TACKLE', p.aura);
             Sfx.tackle(); FX.dirt(o.pos.x, o.pos.z, S.dx, S.dz, 14, 1.1);
-            if (this.involvesHuman(p, o)) { TimeCtl.hitStop(0.075); Shake.add(0.3); if (o.isHuman) this.toast('TACKLED', 'bad'); else this.toast('CLEAN TACKLE', 'good'); }
+            if (this.involvesHuman(p, o)) { TimeCtl.hitStop(0.075); Shake.add(0.3); if (o.isHuman) this.toast('TACKLED', 'bad', o); if (p.isHuman) this.toast('CLEAN TACKLE', 'good', p); }
           }
         } else if (!(o.fx.bubble > 0)) {
           this.knockDown(o, 0.6, S.dx, S.dz, 3, p);
@@ -510,8 +521,8 @@ class Match {
     this.label(carrier, 'ANKLES', carrier.aura);
     FX.feathers(carrier.pos.x, carrier.pos.y + 0.6, carrier.pos.z, carrier.aura, 8);
     Sfx.dodge();
-    if (carrier.isHuman) { this.feats.ankles++; this.toast('ANKLE BREAKER', 'good'); Replay.event(this, 'ANKLE BREAKER', carrier); }
-    else if (tackler.isHuman) this.toast('DODGED', 'bad');
+    if (carrier.isHuman) { this.featsOf(carrier).ankles++; this.toast('ANKLE BREAKER', 'good', carrier); Replay.event(this, 'ANKLE BREAKER', carrier); }
+    if (tackler.isHuman) this.toast('DODGED', 'bad', tackler);
     if (this.involvesHuman(tackler, carrier)) TimeCtl.slowMo(0.45, 0.35);
   }
   knockDown(t, dur, dx, dz, power = 3, by = null) {
@@ -545,7 +556,7 @@ class Match {
     from.pickBlock = 0.8; this.stun(from, 0.45);
     p.stats.tackles++; this.flowAdd(p, 15);
     this.label(p, 'STOLEN', p.aura); Sfx.tackle();
-    if (this.involvesHuman(p, from)) { TimeCtl.hitStop(0.06); Shake.add(0.2); this.toast(from.isHuman ? 'ROBBED' : 'STOLEN', from.isHuman ? 'bad' : 'good'); }
+    if (this.involvesHuman(p, from)) { TimeCtl.hitStop(0.06); Shake.add(0.2); if (from.isHuman) this.toast('ROBBED', 'bad', from); if (p.isHuman) this.toast('STOLEN', 'good', p); }
     return true;
   }
   opponentInFront(p, range, cone = 1.0) {
@@ -571,7 +582,7 @@ class Match {
     const gk = this.teams[1 - p.team][0];
     if (gk.state === 'free' && dist2D(gk.pos, p.pos) < 24 && chance(0.75 - 0.35 * this.skill(gk))) AI.keeperBite(this, gk);
     Sfx.swoosh();
-    if (p.isHuman && n) this.toast('FROZE ' + n, 'good');
+    if (p.isHuman && n) this.toast('FROZE ' + n, 'good', p);
   }
   graveGrab(p, carrier) {
     const b = this.ball;
@@ -667,14 +678,14 @@ class Match {
       if (a.def.big) this.cinematic(p, a.def.name);
       return true;
     }
-    if (p.isHuman && typeof res === 'string') { this.toast(res, 'bad'); Sfx.deny(); }
+    if (p.isHuman && typeof res === 'string') { this.toast(res, 'bad', p); Sfx.deny(); }
     return false;
   }
   flowAdd(p, amt) {
     if (!p || p.flowT > 0) return;
     const before = p.flow;
     p.flow = Math.min(100, p.flow + amt);
-    if (p.isHuman && before < 100 && p.flow >= 100) { this.toast(Touch.on ? 'FLOW READY. TAP FLOW' : 'FLOW READY. PRESS G', 'gold'); Sfx.coin(); Hud.flowReady(); }
+    if (p.isHuman && before < 100 && p.flow >= 100) { this.toast(Touch.on ? 'FLOW READY. TAP FLOW' : 'FLOW READY. PRESS G', 'gold', p); Sfx.coin(); Hud.flowReady(); }
   }
   activateFlow(p) {
     if (p.flow < 100 || p.flowT > 0 || !this.canAct(p)) return false;
@@ -685,7 +696,7 @@ class Match {
       p.gamble = r < 0.1 ? { speed: 1, shot: 1, stam: 1 } : pick([{ speed: 1 }, { shot: 1 }, { stam: 1 }]);
       const what = p.gamble.speed && p.gamble.shot ? 'JACKPOT' : p.gamble.speed ? 'SPEED' : p.gamble.shot ? 'POWER' : 'STAMINA';
       this.label(p, 'GAMBLE: ' + what, '#ffcb3d');
-      if (p.isHuman) this.toast('GAMBLE ROLLED ' + what, 'gold');
+      if (p.isHuman) this.toast('GAMBLE ROLLED ' + what, 'gold', p);
     } else this.label(p, f ? f.name : 'FLOW', p.aura);
     p.P.eyes.visible = true;
     FX.sparks(p.pos.x, 1, p.pos.z, p.aura, 40, 8, 0.2); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.4, 24);
@@ -696,10 +707,13 @@ class Match {
   /** the anime moment for your big moves: slow motion, a camera punch-in, and a comic cut-in with your face
       and the move name over speed lines. Under a second, then straight back to play. Off in the settings */
   cinematic(p, name) {
+    if (this.online) { if (p.isHuman) Hud.cutin(p, name); return false; } // online: the cut-in plays on that player's screen only, no slow motion for everyone
     if (!p.isHuman || this.autopilot || !Save.data.settings.cutins) return false;
     TimeCtl.slowMo(0.3, 0.7); Cam.punch(0.75); Hud.cutin(p, name); Sfx.cutin();
     return true;
   }
+  /** a human's moments for the weekly challenges (online each player has their own) */
+  featsOf(p) { return this.online ? (p.feats || (p.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, trailed: false })) : this.feats; }
   /* ---------- King of the Hill ---------- */
   buildHill() {
     const g = new THREE.Group();
@@ -755,7 +769,7 @@ class Match {
     p.tackleProof = 0.8; this.flowAdd(p, 10);
     if (!p.isHuman) { p.ai.runTo = V3(tx, 0, tz); p.ai.runT = 1.2; }
     this.label(o, 'NUTMEGGED', '#ff5fb0');
-    if (p.isHuman) { this.toast('NUTMEG', 'good'); Replay.event(this, 'NUTMEG', p); }
+    if (p.isHuman) { this.toast('NUTMEG', 'good', p); Replay.event(this, 'NUTMEG', p); }
     Sfx.dodge();
     return true;
   }
@@ -771,8 +785,8 @@ class Match {
       if (this.stun(o, 0.6)) { n++; this.label(o, 'ANKLES', p.aura); FX.feathers(o.pos.x, 0.8, o.pos.z, p.aura, 5); }
     }
     if (n) this.flowAdd(p, 10 * n);
-    if (p.isHuman) this.feats.ankles += n;
-    if (p.isHuman && n) { this.toast('ANKLE BREAKER', 'good'); Replay.event(this, 'ANKLE BREAKER', p); }
+    if (p.isHuman) this.featsOf(p).ankles += n;
+    if (p.isHuman && n) { this.toast('ANKLE BREAKER', 'good', p); Replay.event(this, 'ANKLE BREAKER', p); }
     Sfx.dodge();
     return true;
   }
@@ -854,7 +868,7 @@ class Match {
     if (shooter && !k.counted) { k.counted = true; shooter.stats.onTarget++; this.flowAdd(shooter, 15); }
     if (speed < catchMax && !(k && k.special === 'impact')) {
       this.possess(gk);
-      if (shooter) { gk.stats.saves++; this.label(gk, 'SAVE', TEAM[gk.team].hex); if (shooter.isHuman) this.toast('SAVED', 'bad'); Sfx.save(); Sfx.ooh(); }
+      if (shooter) { gk.stats.saves++; this.label(gk, 'SAVE', TEAM[gk.team].hex); if (shooter.isHuman) this.toast('SAVED', 'bad', shooter); Sfx.save(); Sfx.ooh(); }
     } else {
       const s = this.dir(gk.team);
       const out = Math.max(6, speed * 0.32);
@@ -863,13 +877,13 @@ class Match {
       b.curve.set(0, 0, 0); b.straightT = 0;
       b.touch(gk); b.kick = { by: gk, type: 'clear', t: this.time };
       gk.pickBlock = 0.5;
-      if (shooter) { gk.stats.saves++; this.label(gk, 'PARRY', TEAM[gk.team].hex); if (shooter.isHuman) this.toast('PARRIED', 'bad'); Sfx.save(); Sfx.ooh(); }
+      if (shooter) { gk.stats.saves++; this.label(gk, 'PARRY', TEAM[gk.team].hex); if (shooter.isHuman) this.toast('PARRIED', 'bad', shooter); Sfx.save(); Sfx.ooh(); }
       if (this.involvesHuman(shooter)) Shake.add(0.2);
     }
   }
   onWoodwork() {
     const k = this.ball.kick;
-    if (k && k.type === 'shot') { Sfx.ooh(); this.label(k.by, 'WOODWORK', '#eef1f4'); if (k.by && k.by.isHuman) this.toast('OFF THE POST', 'gold'); }
+    if (k && k.type === 'shot') { Sfx.ooh(); this.label(k.by, 'WOODWORK', '#eef1f4'); if (k.by && k.by.isHuman) this.toast('OFF THE POST', 'gold', k.by); }
   }
   checkGoalAndOut() {
     const b = this.ball, r = BALL_R;
@@ -901,11 +915,12 @@ class Match {
     }
     this.lastGoal = { team, scorer, assister, own };
     if (scorer && scorer.isHuman && k && (k.type === 'shot' || k.type === 'header')) {
-      if (k.special === 'curl' || k.curved) this.feats.curler++;
-      if (k.aerial) this.feats.volley++;
-      if (k.fx != null && Math.hypot(k.fx, this.oppGoalZ(scorer.team) - k.fz) >= 25) this.feats.longShot++;
+      const F = this.featsOf(scorer);
+      if (k.special === 'curl' || k.curved) F.curler++;
+      if (k.aerial) F.volley++;
+      if (k.fx != null && Math.hypot(k.fx, this.oppGoalZ(scorer.team) - k.fz) >= 25) F.longShot++;
     }
-    if (this.human && this.score[this.human.team] < this.score[1 - this.human.team]) this.feats.trailed = true;
+    for (const h of this.human ? [this.human] : this.humans) if (this.score[h.team] < this.score[1 - h.team]) this.featsOf(h).trailed = true;
     Replay.event(this, 'GOAL', scorer);
     if (this.golden) this.pendingEnd = true;
     b.owner = null; b.kick = null;
@@ -1068,7 +1083,7 @@ class Match {
           this.knockDown(o, 1.8, dx, dz, 9, pr.owner); Sfx.punch(); FX.sparks(o.pos.x, 1.2, o.pos.z, '#ff6a3c', 16, 6);
           if (this.involvesHuman(o, pr.owner)) { Shake.add(0.35); TimeCtl.hitStop(0.06); }
         }
-        if (o.isHuman) this.toast(pr.type === 'snow' ? 'FROZEN' : 'KNOCKED OUT', 'bad');
+        if (o.isHuman) this.toast(pr.type === 'snow' ? 'FROZEN' : 'KNOCKED OUT', 'bad', o);
         return true;
       }
     }
@@ -1165,7 +1180,7 @@ class Match {
             this.knockDown(p, 1.6, rand(-1, 1), rand(-1, 1), 2);
             p.vel.y = 12; p.onGround = false;
             FX.explosion(h.x, 0.1, h.z); Sfx.boom(); Shake.add(0.4);
-            if (p.isHuman) this.toast('LANDMINE', 'bad');
+            if (p.isHuman) this.toast('LANDMINE', 'bad', p);
             return true;
           }
         }

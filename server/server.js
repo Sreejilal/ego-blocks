@@ -1,0 +1,218 @@
+#!/usr/bin/env node
+/*
+ * SCORZ online server.
+ *   npm run server          (or: node server/server.js)
+ * then open http://localhost:8787 and pick PLAY WITH FRIENDS.
+ *
+ * One server runs every online match with the same code as the browser game (src/), 60 steps a second,
+ * and sends each player a snapshot 20 times a second. Players send only their controls.
+ * It also serves the built game (docs/index.html), so one address is all your friends need.
+ */
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const { WebSocketServer } = require('ws');
+const THREE = require('three');
+const G = require('./headless').load();
+
+const PORT = Number(process.env.PORT) || 8787;
+const STEP = 1 / 60, SNAP_EVERY = 3;
+const MODES_OK = ['quick', 'koth', 'volleys', 'duel'];
+const STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup'];
+const KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook'];
+const FX_SENT = ['burst', 'turbo', 'shuffle', 'lockdown', 'skyTrap', 'vision', 'scent', 'loaded', 'call', 'bubble', 'feathers'];
+const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const rooms = new Map();
+let nextId = 1;
+
+/* ---------- the web page ---------- */
+const PAGE = path.join(__dirname, '..', 'docs', 'index.html');
+const server = http.createServer((req, res) => {
+  const url = req.url.split('?')[0];
+  if (url === '/' || url === '/index.html') {
+    fs.readFile(PAGE, (err, data) => {
+      if (err) { res.writeHead(500); res.end('Build the game first: npm run build'); return; }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' }); res.end(data);
+    });
+  } else if (url === '/health') { res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('ok ' + rooms.size + ' rooms'); }
+  else { res.writeHead(404); res.end('not found'); }
+});
+
+/* ---------- helpers ---------- */
+const clean = (s, n) => String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, n);
+const send = (ws, msg) => { if (ws.readyState === 1) ws.send(JSON.stringify(msg)); };
+const r2 = (v) => Math.round(v * 100) / 100;
+function newCode() { let c; do { c = ''; for (let i = 0; i < 4; i++) c += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]; } while (rooms.has(c)); return c; }
+function maxPerTeam(room) { return room.size - 1; } // keepers are always bots
+function summary(room) {
+  return { t: 'room', code: room.code, host: room.host, mode: room.mode, size: room.size, state: room.match ? 'match' : 'room',
+    players: room.players.map((p) => ({ id: p.id, name: p.name, team: p.team })) };
+}
+function broadcast(room, msg) { const s = JSON.stringify(msg); for (const p of room.players) if (p.ws.readyState === 1) p.ws.send(s); }
+function sync(room) { broadcast(room, summary(room)); }
+function pickTeam(room) {
+  const n = [0, 1].map((t) => room.players.filter((p) => p.team === t).length);
+  return n[0] <= n[1] ? 0 : 1;
+}
+
+/** a player's controls from their input message (held buttons stay, presses count once) */
+function toCtl(m, prev) {
+  const b = (k) => !!(m && m[k]);
+  const aim = m && Array.isArray(m.aim) ? new THREE.Vector3(+m.aim[0] || 0, +m.aim[1] || 0, +m.aim[2] || 0) : (prev && prev.aim) || null;
+  return {
+    moveX: Math.max(-1, Math.min(1, +m.mx || 0)), moveY: Math.max(-1, Math.min(1, +m.my || 0)), sprint: b('sp'),
+    jump: b('jump'), jumpHeld: b('jh'), shootDown: b('sd'), shootHeld: b('sh'), shootUp: b('su'), passDown: b('pd'), passUp: b('pu'),
+    dodge: b('dodge'), tackle: b('tackle'), ab: [b('a0'), b('a1'), b('a2')], flow: b('flow'), item: false, board: false,
+    camYaw: Number.isFinite(+m.cy) ? +m.cy : 0, aim,
+  };
+}
+const EDGES = ['jump', 'shootDown', 'shootUp', 'passDown', 'passUp', 'dodge', 'tackle', 'flow'];
+function clearEdges(c) { for (const k of EDGES) c[k] = false; c.ab = [false, false, false]; }
+
+/* ---------- matches ---------- */
+function startMatch(room) {
+  const humans = room.players.map((p) => ({ id: p.id, team: p.team, name: p.name, style: p.style, flow: p.flow, look: p.look }));
+  // the host's club at home against another club
+  const home = G.CLUBS[room.hostClub] ? room.hostClub : 'ROVERS', away = G.CLUB_IDS.filter((c) => c !== home)[Math.floor(Math.random() * (G.CLUB_IDS.length - 1))];
+  const m = new G.Match(room.mode, 0.5, { humans, size: room.size, home, away, length: Number(process.env.MATCH_SECONDS) || undefined, goldenLength: Number(process.env.GOLDEN_SECONDS) || undefined });
+  room.match = m; room.events = []; room.steps = 0; room.acc = 0; room.last = Date.now();
+  for (const h of m.humans) h.ctl = toCtl({}, null);
+  const roster = m.players.map((p) => ({ team: p.team, role: p.role, number: p.number, name: p.name, style: p.styleId, flow: p.flowId, look: p.lookIds || null, skin: p.skin, id: p.netId || null }));
+  broadcast(room, { t: 'start', mode: room.mode, size: room.size, home: G.TEAM[0].club, away: G.TEAM[1].club, awayKit: G.TEAM[1].away, roster, looks: m.players.map((p) => p.lookIds || null) });
+  sync(room);
+}
+function snapshot(room) {
+  const m = room.match, b = m.ball, idx = (p) => (p ? m.players.indexOf(p) : -1);
+  const pl = m.players.map((p) => {
+    let flags = 0;
+    if (p.charging) flags |= 1; if (p.onGround) flags |= 2; if (p.flowT > 0) flags |= 4; if (p.callT > 0 || p.fx.call > 0) flags |= 8;
+    if (p.fx.shuffle > 0) flags |= 16; if (p.fx.lockdown > 0) flags |= 32; if (p.fx.bubble > 0) flags |= 64;
+    return [r2(p.pos.x), r2(p.pos.y), r2(p.pos.z), r2(p.vel.x), r2(p.vel.z), r2(p.yaw), STATES.indexOf(p.state), r2(p.stateT), r2(p.stateDur), r2(p.kickT), KICKS.indexOf(p.kickStyle || null), flags, r2(p.charge),
+      p.dive ? p.dive.side : 0, p.dive ? (p.dive.high ? 1 : 0) : 0, p.dive ? r2(p.dive.dur) : 0, r2(p.flipT)];
+  });
+  const base = { t: 'snap', n: room.steps, ph: m.phase, pt: r2(m.phaseT), c: r2(m.clock), g: m.golden ? r2(m.goldenClock) : -1, s: m.score, b: [r2(b.pos.x), r2(b.pos.y), r2(b.pos.z), idx(b.owner)], pl,
+    hill: m.hill ? [r2(m.hill.x), r2(m.hill.z), m.hill.holder] : null, ev: room.events };
+  room.events = [];
+  for (const rp of room.players) {
+    const p = m.humans.find((h) => h.netId === rp.id);
+    const me = p ? { i: idx(p), cd: p.abil.map((a) => r2(a.cd)), fl: r2(p.flow), ft: r2(p.flowT), st: r2(p.stamina), dc: p.dodgeCharges, dr: r2(p.dodgeRe), tc: r2(p.tackleCd), tk: r2(p.mods.tackleCd), ph: r2(p.passHold || 0),
+      fx: FX_SENT.reduce((o, k) => (p.fx[k] > 0 ? (o[k] = r2(p.fx[k]), o) : o), {}) } : null;
+    send(rp.ws, Object.assign({ me }, base));
+  }
+  // stats for the scoreboard, once a second
+  if (room.steps % 60 === 0) broadcast(room, { t: 'stats', st: m.players.map((p) => [p.stats.goals, p.stats.assists, p.stats.shots, p.stats.tackles, p.stats.saves]) });
+}
+function endMatch(room) {
+  const m = room.match;
+  broadcast(room, { t: 'end', score: m.score, players: m.players.map((p) => ({ id: p.netId || null, team: p.team, stats: p.stats, feats: p.feats || null })) });
+  m.dispose();
+  room.match = null;
+  sync(room);
+}
+function tick(room) {
+  const m = room.match; if (!m) return;
+  const now = Date.now();
+  room.acc = Math.min(0.25, room.acc + (now - room.last) / 1000); room.last = now;
+  while (room.acc >= STEP) {
+    room.acc -= STEP;
+    G.Hud.room = room;
+    m.update(STEP);
+    for (const h of m.humans) if (h.ctl) clearEdges(h.ctl);
+    room.steps++;
+    if (room.steps % SNAP_EVERY === 0) snapshot(room);
+    if (m.phase === 'end' && m.phaseT > 3.2) { endMatch(room); return; }
+  }
+}
+
+/* ---------- what the match says to players ---------- */
+const H = G.Hud, cur = () => H.room;
+const pi = (p) => (p && cur() && cur().match ? cur().match.players.indexOf(p) : -1);
+const ev = (e) => { const r = cur(); if (r) r.events.push(e); };
+H.toast = (text, cls, to) => { if (to && to.netId) ev({ e: 'toast', text, cls, to: to.netId }); };
+H.label = (p, text, color, dur) => ev({ e: 'label', i: pi(p), text, color, dur });
+H.banner = (big, small, color, quick) => ev({ e: 'banner', big, small, color, quick: !!quick });
+H.goal = (team, scorer, assister, own) => ev({ e: 'goal', team, s: pi(scorer), a: pi(assister), own: !!own });
+H.cutin = (p, name) => { if (p.netId) ev({ e: 'cutin', i: pi(p), name, to: p.netId }); };
+H.flash = H.flowReady = H.lockHint = () => {};
+
+/* ---------- connections ---------- */
+const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 });
+wss.on('connection', (ws) => {
+  const me = { id: 'p' + nextId++, ws, name: 'PLAYER', team: 0, style: 'ROOKIE', flow: null, look: {}, club: 'ROVERS', room: null };
+  send(ws, { t: 'welcome', id: me.id });
+  ws.on('message', (raw) => {
+    let m; try { m = JSON.parse(raw); } catch (e) { return; }
+    if (!m || typeof m.t !== 'string') return;
+    const room = me.room;
+    switch (m.t) {
+      case 'hello': // who I am and what I wear
+        me.name = clean(m.name, 12) || 'PLAYER';
+        me.style = G.STYLES[m.style] ? m.style : 'ROOKIE';
+        me.flow = G.FLOWS[m.flow] ? m.flow : null;
+        me.look = {}; if (m.look && typeof m.look === 'object') for (const s of G.SKIN_SLOTS) if (G.SKINS[m.look[s.id]] && G.SKINS[m.look[s.id]].slot === s.id) me.look[s.id] = m.look[s.id];
+        me.club = G.CLUBS[m.club] ? m.club : 'ROVERS';
+        if (room) sync(room);
+        break;
+      case 'create': {
+        leave(me);
+        const r = { code: newCode(), host: me.id, hostClub: me.club, mode: 'quick', size: 3, players: [], match: null, events: [] };
+        rooms.set(r.code, r); join(me, r);
+        break;
+      }
+      case 'join': {
+        const r = rooms.get(clean(m.code, 4));
+        if (!r) { send(ws, { t: 'error', text: 'NO ROOM WITH THAT CODE' }); break; }
+        if (r.players.length >= 8) { send(ws, { t: 'error', text: 'THAT ROOM IS FULL' }); break; }
+        leave(me); join(me, r);
+        break;
+      }
+      case 'team':
+        if (room && !room.match && (m.team === 0 || m.team === 1) && room.players.filter((p) => p.team === m.team).length < maxPerTeam(room)) { me.team = m.team; sync(room); }
+        break;
+      case 'settings':
+        if (room && room.host === me.id && !room.match) {
+          if (MODES_OK.includes(m.mode)) room.mode = m.mode;
+          room.size = room.mode === 'duel' ? 2 : Math.max(3, Math.min(5, Math.round(+m.size) || room.size));
+          if (room.mode !== 'duel' && room.size < 3) room.size = 3;
+          // players who no longer fit sit out the next match
+          for (const t of [0, 1]) room.players.filter((p) => p.team === t).slice(maxPerTeam(room)).forEach((p) => { p.team = 1 - t; });
+          sync(room);
+        }
+        break;
+      case 'start':
+        if (room && room.host === me.id && !room.match) {
+          for (const t of [0, 1]) if (room.players.filter((p) => p.team === t).length > maxPerTeam(room)) { send(ws, { t: 'error', text: 'TOO MANY PLAYERS ON ONE TEAM' }); return; }
+          startMatch(room);
+        }
+        break;
+      case 'input':
+        if (room && room.match) {
+          const p = room.match.humans.find((h) => h.netId === me.id);
+          if (p) { const c = toCtl(m, p.ctl); for (const k of EDGES) c[k] = c[k] || (p.ctl && p.ctl[k]); c.ab = c.ab.map((v, i) => v || (p.ctl && p.ctl.ab[i])); p.ctl = c; }
+        }
+        break;
+      case 'leave': leave(me); send(ws, { t: 'left' }); break;
+    }
+  });
+  ws.on('close', () => leave(me));
+});
+function join(me, room) {
+  const full = (t) => room.players.filter((p) => p.team === t).length >= maxPerTeam(room);
+  if (full(0) && full(1)) { send(me.ws, { t: 'error', text: 'THAT ROOM IS FULL' }); return; }
+  me.room = room; me.team = pickTeam(room);
+  if (full(me.team)) me.team = 1 - me.team;
+  room.players.push(me);
+  sync(room);
+}
+function leave(me) {
+  const room = me.room; if (!room) return;
+  me.room = null;
+  room.players = room.players.filter((p) => p !== me);
+  if (room.match) { const p = room.match.humans.find((h) => h.netId === me.id); if (p) { p.isHuman = false; p.netId = null; p.ctl = null; room.match.humans = room.match.humans.filter((h) => h !== p); } } // a bot takes over
+  if (!room.players.length) { if (room.match) room.match.dispose(); rooms.delete(room.code); return; }
+  if (room.host === me.id) { room.host = room.players[0].id; room.hostClub = room.players[0].club; }
+  sync(room);
+}
+
+setInterval(() => { for (const r of rooms.values()) tick(r); }, 1000 / 60);
+server.listen(PORT, () => console.log('SCORZ server on http://localhost:' + PORT + '  (WebSocket: ws://localhost:' + PORT + '/ws)'));
