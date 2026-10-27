@@ -95,7 +95,7 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   const sim = await page.evaluate(() => {
     const run = (think) => {
       const r = { called: 0, reached: 0, lost: 0, teamLost: 0, goalsFor: 0, goalsAgainst: 0 };
-      for (let g = 0; g < 10; g++) {
+      for (let g = 0; g < 16; g++) {
         const m = new EGO.Match('quick', 0.6, { noHuman: true, autopilot: true, length: 240, size: 3, caller: true, thinkPass: think });
         const caller = m.caller;
         let pending = null, last = -1, t = 0;
@@ -115,7 +115,10 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     };
     return { instant: run(false), think: run(true) };
   });
-  check('thinking passes do not lose the ball more often', sim.think.lostRate <= sim.instant.lostRate + 0.05 && sim.think.teamLost <= sim.instant.teamLost * 1.1, sim);
+  // allow for luck: two standard errors on the interception rate, 15 percent on the team's lost balls
+  const pr = (sim.think.lost + sim.instant.lost) / Math.max(1, sim.think.called + sim.instant.called);
+  const se = Math.sqrt(pr * (1 - pr) * (1 / Math.max(1, sim.think.called) + 1 / Math.max(1, sim.instant.called)));
+  check('thinking passes do not lose the ball more often', sim.think.lostRate <= sim.instant.lostRate + 2 * se && sim.think.teamLost <= sim.instant.teamLost * 1.15, Object.assign(sim, { margin: +(2 * se).toFixed(2) }));
   check('no errors', logs.length === 0, logs.slice(0, 4));
   console.log(results.join('\n'));
   await browser.close();

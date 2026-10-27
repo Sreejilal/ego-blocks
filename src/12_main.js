@@ -13,6 +13,7 @@ const Game = {
     UI.init();
     Showcase.init();
     Reveal.init();
+    Replay.init();
     Input.init($('gl'));
     Touch.init();
     this.applyQuality();
@@ -25,6 +26,7 @@ const Game = {
   },
   applyQuality() { const q = Save.data.settings.quality; World.setQuality(q === 'auto' ? this.autoQ : q); },
   toLobby() {
+    Replay.stop(); Replay.offer = null; Replay.hideOffer();
     if (this.match) { this.match.dispose(); this.match = null; }
     Input.releaseLock();
     this.state = 'lobby';
@@ -43,6 +45,7 @@ const Game = {
     TimeCtl.reset(); FX.clear();
     this.match = new Match(mode, difficultyFor(Save.data.rp), { size: teamSizeFor(mode, Save.data.rp) });
     this.lastMode = mode; this.ended = false;
+    Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
     World.setSun(SUN_MATCH);
     Cam.reset(0);
@@ -68,6 +71,7 @@ const Game = {
     UI.lockHint();
   },
   onEscape() {
+    if (this.state === 'replay') { Replay.stop(); return; }
     if (this.state === 'match') this.pause();
     else if (this.state === 'paused' && performance.now() - this.pausedAt > 350) this.resume();
   },
@@ -76,6 +80,7 @@ const Game = {
     if (this.ended || !this.match) return;
     this.ended = true;
     const m = this.match, d = Save.data;
+    Replay.offer = null; Replay.hideOffer();
     const res = forfeit ? 'forfeit' : m.result.res;
     const hs = forfeit ? (m.human ? Object.assign({}, m.human.stats) : { goals: 0, assists: 0, shots: 0, tackles: 0 }) : (m.result.human || { goals: 0, assists: 0, shots: 0, tackles: 0 });
     const earn = [];
@@ -118,8 +123,14 @@ const Game = {
     Input.pollPad();
     Touch.sync();
     const m = this.match;
-    if (m && (this.state === 'match' || this.state === 'paused' || this.state === 'results')) {
-      if (this.state === 'match') {
+    if (m && (this.state === 'match' || this.state === 'paused' || this.state === 'results' || this.state === 'replay')) {
+      if (this.state === 'match' && Replay.offer && (Input.edges.has('Enter') || Input.edges.has('PadRS'))) { Input.consumeEdges(); Replay.start(); }
+      if (this.state === 'replay') {
+        if (['Enter', 'Space', 'PadA', 'PadB'].some((k) => Input.edges.has(k))) Replay.stop();
+        Input.consumeEdges();
+        Replay.update(rdt);
+        Shake.update(rdt);
+      } else if (this.state === 'match') {
         Cam.look(rdt);
         m.ctl = Input.controls();
         const sdt = TimeCtl.step(rdt);
@@ -134,6 +145,8 @@ const Game = {
         FX.update(sdt);
         Shake.update(rdt);
         Cam.follow(rdt, m);
+        if (sdt > 0) Replay.record(m);
+        Replay.tick(m, rdt);
         UI.updateHud(m, rdt);
         this.perfCheck(rdt);
         this.crowdT -= rdt;
@@ -161,7 +174,7 @@ const Game = {
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
   TIER_SKILL, tierOf,
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Player, TEAM, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Player, TEAM, rollRarity, poolFor,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

@@ -335,6 +335,18 @@ input[type="range"] { accent-color: var(--gold); width: 160px; }
 }
 #scoreboard .tb { width: 10px; padding: 0; }
 #flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: #fff; }
+/* replays: an offer button after big moments, then letterbox bars, a REPLAY badge, SKIP and SAVE CLIP */
+#replay { position: absolute; inset: 0; pointer-events: none; }
+#replay .rp-offer { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(72px + env(safe-area-inset-top, 0px)); pointer-events: auto; }
+#replay .rp-offer.pop { animation: riseIn .3s steps(3); }
+#replay .rp-on { position: absolute; inset: 0; }
+#replay .rp-on::before, #replay .rp-on::after { content: ""; position: absolute; left: 0; right: 0; height: 9%; background: #000; }
+#replay .rp-on::before { top: 0; } #replay .rp-on::after { bottom: 0; }
+#replay .rp-badge { position: absolute; z-index: 1; left: max(16px, env(safe-area-inset-left, 0px)); top: calc(9% + 10px); font-size: 13px; padding: 6px 10px; background: var(--danger); color: var(--text); }
+#replay .rp-badge b { animation: blink 1s steps(2) infinite; }
+#replay .rp-ctl { position: absolute; z-index: 1; left: 50%; bottom: calc(9% + 12px); transform: translateX(-50%); display: flex; gap: 10px; pointer-events: auto; }
+#replay .rp-note { position: absolute; z-index: 1; left: 50%; bottom: calc(9% + 70px); transform: translateX(-50%); white-space: nowrap; color: var(--text); text-shadow: 1px 1px 0 var(--ink); }
+body.replaying #hud, body.replaying #labels { display: none !important; }
 /* cut-in for big moves: speed lines, then a slanted comic panel with your face and the move name, 0.8s in all */
 #cutin { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 #cutin .ci-lines { position: absolute; inset: -20%; opacity: 0;

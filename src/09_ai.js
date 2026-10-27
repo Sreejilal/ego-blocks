@@ -206,7 +206,10 @@ const AI = {
       const pr = clamp((5 - c.pressure) / 4, 0, 1), t = lerp(0.3, 0.9, pr) * rand(0.9, 1.1);
       a.look = { t };
       m.label(p, '...', '#f5efe0', t + 0.05);
-      a.target.set(p.pos.x + Math.sin(p.yaw) * 3, 0, p.pos.z + Math.cos(p.yaw) * 3); a.sprint = false;
+      // shield it while looking up: drift away from the closest defender
+      let ox = Math.sin(p.yaw), oz = Math.cos(p.yaw), nd = 6;
+      for (const o of m.opponents(p)) { if (o.isGK) continue; const d = dist2D(o.pos, p.pos); if (d < nd) { nd = d; ox = (p.pos.x - o.pos.x) / (d || 1); oz = (p.pos.z - o.pos.z) / (d || 1); } }
+      a.target.set(p.pos.x + ox * 3, 0, p.pos.z + oz * 3); a.sprint = false;
       return;
     }
     const range = 12 + 9 * sk + (p.flowT > 0 ? 3 : 0);

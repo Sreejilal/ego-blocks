@@ -108,6 +108,7 @@ const UI = {
             ${row(key('ARC'), 'Your three style abilities, then FLOW when the bar is full')}
             ${row(key('DOUBLE TAP'), 'Double tap the right side to face the goal')}
             ${row(key('SCORE'), 'Tap the score for the scoreboard. The top right button pauses')}
+            ${row(key('REPLAY'), 'After a goal, a nutmeg or an ankle breaker, tap REPLAY to watch it again')}
           </div></section>
           <section class="panel"><h3>KEYBOARD + MOUSE</h3><div class="ctrl">
             ${row(key('W') + key('A') + key('S') + key('D'), 'Move')}
@@ -123,12 +124,13 @@ const UI = {
             ${row(key('X'), 'Use item (Lawless)')}
             ${row(key('TAB'), 'Scoreboard')}
             ${row(key('ESC'), 'Pause')}
+            ${row(key('ENTER'), 'Watch the replay after a goal, a nutmeg or an ankle breaker. SAVE CLIP downloads it as a video')}
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}
             ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Dodge')}${row(key('X'), 'Slide tackle')}
-            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}
+            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('R3'), 'Watch the replay when it is offered')}
           </div></section>
           <section class="panel"><h3>WINNING THE BALL</h3><ul>
             <li><b>Run into a loose ball</b> to dribble it. You cannot run through a carrier, you have to tackle.</li>

@@ -1,7 +1,7 @@
 /* =====================================================================
    Input (keyboard, mouse + pointer lock, gamepad) and the camera
    ===================================================================== */
-const GAME_KEYS = new Set(['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyF', 'KeyG', 'KeyC', 'KeyX', 'ShiftLeft', 'ShiftRight']);
+const GAME_KEYS = new Set(['Space', 'Tab', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyF', 'KeyG', 'KeyC', 'KeyX', 'ShiftLeft', 'ShiftRight']);
 const PAD = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, BACK: 8, START: 9, LS: 10, RS: 11, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
 const Input = {
   down: new Set(), edges: new Set(), up: new Set(),
@@ -70,7 +70,7 @@ const Input = {
       const any = this.padNow.some(Boolean) || p.axes.some((a) => Math.abs(a) > 0.3);
       if (any) this.usingPad = true;
       // pad edges feed the same edge set as keys
-      const map = [[PAD.A, 'PadA'], [PAD.B, 'PadB'], [PAD.X, 'PadX'], [PAD.Y, 'PadY'], [PAD.LEFT, 'PadLeft'], [PAD.UP, 'PadUp'], [PAD.RIGHT, 'PadRight'], [PAD.DOWN, 'PadDown'], [PAD.RT, 'PadRT'], [PAD.LT, 'PadLT'], [PAD.RB, 'PadRB'], [PAD.START, 'PadStart']];
+      const map = [[PAD.A, 'PadA'], [PAD.B, 'PadB'], [PAD.X, 'PadX'], [PAD.Y, 'PadY'], [PAD.LEFT, 'PadLeft'], [PAD.UP, 'PadUp'], [PAD.RIGHT, 'PadRight'], [PAD.DOWN, 'PadDown'], [PAD.RT, 'PadRT'], [PAD.LT, 'PadLT'], [PAD.RB, 'PadRB'], [PAD.START, 'PadStart'], [PAD.RS, 'PadRS']];
       for (const [i, name] of map) {
         if (this.padNow[i] && !this.padPrev[i]) { this.edges.add(name); if (name === 'PadStart') Game.onEscape(); }
         if (!this.padNow[i] && this.padPrev[i]) this.up.add(name);

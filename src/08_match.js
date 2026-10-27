@@ -500,7 +500,7 @@ class Match {
     this.label(carrier, 'ANKLES', carrier.aura);
     FX.feathers(carrier.pos.x, carrier.pos.y + 0.6, carrier.pos.z, carrier.aura, 8);
     Sfx.dodge();
-    if (carrier.isHuman) this.toast('ANKLE BREAKER', 'good');
+    if (carrier.isHuman) { this.toast('ANKLE BREAKER', 'good'); Replay.event(this, 'ANKLE BREAKER', carrier); }
     else if (tackler.isHuman) this.toast('DODGED', 'bad');
     if (this.involvesHuman(tackler, carrier)) TimeCtl.slowMo(0.45, 0.35);
   }
@@ -717,7 +717,7 @@ class Match {
     p.tackleProof = 0.8; this.flowAdd(p, 10);
     if (!p.isHuman) { p.ai.runTo = V3(tx, 0, tz); p.ai.runT = 1.2; }
     this.label(o, 'NUTMEGGED', '#ff5fb0');
-    if (p.isHuman) this.toast('NUTMEG', 'good');
+    if (p.isHuman) { this.toast('NUTMEG', 'good'); Replay.event(this, 'NUTMEG', p); }
     Sfx.dodge();
     return true;
   }
@@ -733,7 +733,7 @@ class Match {
       if (this.stun(o, 0.6)) { n++; this.label(o, 'ANKLES', p.aura); FX.feathers(o.pos.x, 0.8, o.pos.z, p.aura, 5); }
     }
     if (n) this.flowAdd(p, 10 * n);
-    if (p.isHuman && n) this.toast('ANKLE BREAKER', 'good');
+    if (p.isHuman && n) { this.toast('ANKLE BREAKER', 'good'); Replay.event(this, 'ANKLE BREAKER', p); }
     Sfx.dodge();
     return true;
   }
@@ -852,6 +852,7 @@ class Match {
       scorer.setState('celebrate', 3.2); scorer.charging = false;
     }
     this.lastGoal = { team, scorer, assister, own };
+    Replay.event(this, 'GOAL', scorer);
     if (this.golden) this.pendingEnd = true;
     b.owner = null; b.kick = null;
     TimeCtl.slowMo(0.3, 1.5);
