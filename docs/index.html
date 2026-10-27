@@ -310,6 +310,8 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 #labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .flabel { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font-family: var(--font-display); font-size: 24px; line-height: 1; padding: 2px 6px 4px; color: var(--ink); background: var(--c, var(--text)); border: 2px solid var(--ink); }
 .flabel.call { background: var(--emerald); font-size: 22px; }
+.flabel.think { background: var(--text); letter-spacing: .12em; animation: think .5s steps(2) infinite; }
+@keyframes think { 50% { opacity: .55; } }
 .flabel.me { background: transparent; border: 0; color: var(--text); font-size: 18px; text-shadow: 2px 2px 0 var(--ink); }
 
 /* overlays */
@@ -2413,13 +2415,17 @@ class Player {
     // targets
     let bx = run * 0.14, bz = 0, by = 0.72 + Math.abs(Math.cos(this.animPhase)) * 0.05 * run;
     let lL = s * 0.9 * run, lR = -s * 0.9 * run, aL = -s * 0.8 * run, aR = s * 0.8 * run, aLz = 0.06, aRz = -0.06;
-    let hx = 0, snapX = false;
+    let hx = 0, hy = 0, lRz = 0, snapX = false;
     if (!this.onGround && st === 'free') { lL = -0.55; lR = 0.35; aL = -0.5; aR = -0.3; aLz = 0.5; aRz = -0.5; }
     if (this.charging) { lR = 0.4 + this.charge * 0.8; aLz = 0.7; aRz = -0.35; bx = -0.05 - this.charge * 0.08; }
     if (this.kickT >= 0) {
-      const t = this.kickT;
+      const t = this.kickT, ks = this.kickStyle, env = Math.sin(Math.PI * clamp(t, 0, 1));
       lR = t < 0.35 ? lerp(0.2, 1.1, t / 0.35) : t < 0.7 ? lerp(1.1, -1.45, (t - 0.35) / 0.35) : lerp(-1.45, 0, (t - 0.7) / 0.3);
       lL = 0.1; aLz = 0.75; aRz = -0.5; aL = -0.3; bx = -0.1;
+      if (ks === 'backheel') { lR = t < 0.4 ? lerp(0, -0.7, t / 0.4) : t < 0.7 ? lerp(-0.7, 1.4, (t - 0.4) / 0.3) : lerp(1.4, 0, (t - 0.7) / 0.3); bx = 0.12; } // heel swings back
+      else if (ks === 'rabona') { lRz = 0.55 * env; bz = -0.16 * env; aLz = 1.0; } // kicking leg wraps behind the standing leg
+      else if (ks === 'outside') { lRz = -0.45 * env; lR *= 0.7; } // flick with the outside of the boot
+      else if (ks === 'nolook') hy = 0.95 * (this.noLookSide || 1) * env; // eyes the other way
     }
     if (this.fx.shuffle > 0) { aL = aR = -1.45; aLz = 0.05; aRz = -0.05; bz = Math.sin(this.animPhase * 0.6) * 0.24; }
     if (st === 'hold') { aL = aR = -1.15; aLz = 0.15; aRz = -0.15; }
@@ -2470,7 +2476,7 @@ class Player {
     const r = (o, prop, v) => { o.rotation[prop] += (v - o.rotation[prop]) * k; };
     r(P.body, 'x', bx); r(P.body, 'z', bz);
     if (snapX) P.body.rotation.x = bx; // full flips are set directly, easing would unwind them P.body.position.y += (by - P.body.position.y) * k;
-    r(P.legL, 'x', lL); r(P.legR, 'x', lR);
+    r(P.legL, 'x', lL); r(P.legR, 'x', lR); r(P.legR, 'z', lRz); r(P.headP, 'y', hy);
     r(P.armL, 'x', aL); r(P.armR, 'x', aR); r(P.armL, 'z', aLz); r(P.armR, 'z', aRz);
     r(P.headP, 'x', hx);
     P.root.position.copy(this.pos);
@@ -3120,12 +3126,14 @@ class Match {
     this.lastPass = null; this.restart = null; this.result = null; this.endTimer = 0;
     this.teamState = ['loose', 'loose']; this.pred = [];
     this.aim = V3(0, 1, F.L); this.camYaw = 0; this.aimOnTarget = false;
-    this.ctl = null; this.autopilot = !!opts.autopilot; this.lastGoal = null; this.pendingEnd = false;
+    this.ctl = null; this.autopilot = !!opts.autopilot; this.thinkPass = opts.thinkPass !== false; this.lastGoal = null; this.pendingEnd = false;
     // your club at home against a random other club; the away side changes kit if the colours clash
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
     const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
     [TEAM[0], TEAM[1]] = matchSides(home, away);
     this.buildTeams(opts);
+    // whose PASS calls make teammates look up (the human; in a test match, a bot striker that calls like a human)
+    this.caller = opts.caller ? this.teams[0].find((p) => p.role === 'ST') : this.autopilot ? null : this.human;
     this.setupKickoff(0, true);
   }
   /* ---------- setup ---------- */
@@ -3175,7 +3183,7 @@ class Match {
     return Math.abs(pos.x) < F.BOX_W && Math.abs(pos.z - gz) < F.BOX_D && Math.abs(pos.z) < F.L + 0.5;
   }
   canAct(p) { return (p.state === 'free' || p.state === 'hold') && this.phase === 'play'; }
-  label(p, text, color) { Hud.label(p, text, color || p.aura); }
+  label(p, text, color, dur) { Hud.label(p, text, color || p.aura, dur); }
   toast(text, cls) { Hud.toast(text, cls); }
   involvesHuman(...ps) { return ps.some((q) => q && q.isHuman); }
 
@@ -3346,6 +3354,7 @@ class Match {
     b.kick = { by: p, type: o.type || 'shot', to: o.to || null, t: this.time, trail: o.trail || null, special: o.special || null, counted: false };
     b.lastKicker = p; b.touch(p);
     b.ignore = p; b.ignoreT = 0.22;
+    p.kickStyle = o.kickStyle || null;
     p.pickBlock = o.selfBlock == null ? 0.32 : o.selfBlock;
     if (!o.noAnim) { p.kickT = 0; p.kickDur = o.kickDur || 0.32; }
     if (!o.keepYaw) p.yaw = Math.atan2(vx, vz);
@@ -3387,7 +3396,17 @@ class Match {
     const from = b.owner === p ? V3(p.pos.x + Math.sin(p.yaw) * 0.6, BALL_R, p.pos.z + Math.cos(p.yaw) * 0.6) : b.pos.clone();
     let tx = mate.pos.x, tz = mate.pos.z, vx, vy, vz, extra = {};
     const D0 = Math.hypot(tx - from.x, tz - from.z);
-    if (o.snap) {
+    if (o.style === 'outside') {
+      // a low chip that starts wide and bends back onto the runner
+      const T = clamp(D0 / 17, 0.45, 1.2);
+      tx += mate.vel.x * T * 0.85; tz += mate.vel.z * T * 0.85;
+      const dx = tx - from.x, dz = tz - from.z, D = Math.hypot(dx, dz) || 1, sp = D / T, a = 0.22;
+      const sig = chance(0.5) ? 1 : -1, nx = dz / D * sig, nz = -dx / D * sig;
+      vx = (dx / D * Math.cos(a) + nx * Math.sin(a)) * sp; vz = (dz / D * Math.cos(a) + nz * Math.sin(a)) * sp;
+      vy = (0.9 - from.y + 0.5 * BALL_G * T * T) / T;
+      const acc = 2 * sp * Math.sin(a) / T;
+      extra = { cx: -nx * acc, cz: -nz * acc, curveDecay: 0, trail: p.aura };
+    } else if (o.snap) {
       const sp = 38, t = D0 / sp;
       tx += mate.vel.x * t * 0.9; tz += mate.vel.z * t * 0.9;
       const D = Math.hypot(tx - from.x, tz - from.z) || 1;
@@ -3413,6 +3432,12 @@ class Match {
       vx = (tx - from.x) / (D || 1) * v0; vz = (tz - from.z) / (D || 1) * v0; vy = 0.5;
     }
     if (o.through) Object.assign(extra, o.through);
+    if (o.style) {
+      extra.kickStyle = o.style;
+      if (o.style === 'backheel' || o.style === 'nolook') extra.keepYaw = true;
+      if (o.style === 'rabona') extra.kickDur = 0.42;
+      if (o.style === 'nolook') { const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw); p.noLookSide = (fx * (tz - p.pos.z) - fz * (tx - p.pos.x)) > 0 ? 1 : -1; }
+    }
     const ok = this.kick(p, vx, vy, vz, Object.assign({ type: 'pass', to: mate, selfBlock: 0.45, kickDur: 0.28 }, extra));
     if (ok && !mate.isHuman) { mate.ai.receive = { t: this.time }; }
     return ok;
@@ -4318,6 +4343,17 @@ const AI = {
       a.target.set(f.x, 0, f.z); a.sprint = false; this.steer(m, p, dt); return;
     }
     if (p.state !== 'free') { if (p.state !== 'dash') { p.mx = 0; p.mz = 0; } return; }
+    if (a.waitT > 0) a.waitT -= dt;
+    // a teammate called for it: look up for a moment (the thinking bubble), shield the ball, then pick the pass
+    if (a.look) {
+      if (b.owner !== p) a.look = null;
+      else {
+        a.look.t -= dt;
+        if (a.look.t <= 0) { a.look = null; this.callPass(m, p); return; }
+        this.steer(m, p, dt, 0.45);
+        return;
+      }
+    }
     if (a.dodgeIn > 0) {
       a.dodgeIn -= dt;
       if (a.dodgeIn <= 0) {
@@ -4366,6 +4402,15 @@ const AI = {
   decideCarrier(m, p, c, sk) {
     const a = p.ai;
     if (a.wantShot) return;
+    const h = m.caller;
+    if (m.thinkPass && h && h !== p && h.team === p.team && h.callT > 0 && !(a.waitT > 0) && !(c.dGoal < 9 && c.angleOK)) {
+      // longer under pressure: it takes a moment to find the pass with someone on your back
+      const pr = clamp((5 - c.pressure) / 4, 0, 1), t = lerp(0.3, 0.9, pr) * rand(0.9, 1.1);
+      a.look = { t };
+      m.label(p, '...', '#f5efe0', t + 0.05);
+      a.target.set(p.pos.x + Math.sin(p.yaw) * 3, 0, p.pos.z + Math.cos(p.yaw) * 3); a.sprint = false;
+      return;
+    }
     const range = 12 + 9 * sk + (p.flowT > 0 ? 3 : 0);
     if (c.dGoal < range && c.angleOK) {
       const pShoot = clamp((range - c.dGoal) / range * 1.3 + (c.pressure < 2.6 ? 0.25 : 0) + (c.dGoal < 9 ? 0.4 : 0), 0.1, 0.97);
@@ -4401,6 +4446,26 @@ const AI = {
     a.target.set(p.pos.x + ax * 6, 0, p.pos.z + az * 6);
     a.sprint = c.spaceAhead && p.stamina > 25;
   },
+  /** the pass after a call: hold it if you are tightly marked, a through ball into your run,
+      a lob over a defender in the lane, a ground pass, or now and then something flashy */
+  callPass(m, p) {
+    const h = m.caller, sk = m.skill(p), opps = m.opponents(p), s = m.dir(p.team);
+    let mark = 99; for (const o of opps) if (!o.isGK && o.state !== 'down' && o.state !== 'frozen') mark = Math.min(mark, dist2D(o.pos, h.pos));
+    if (mark < 1.8 || (h.state !== 'free' && h.state !== 'dash')) { m.label(p, 'WAIT', '#ffcb3d'); p.ai.waitT = 0.8; h.callT = 0; return false; } // call again once you are free
+    const d = dist2D(p.pos, h.pos);
+    let blocked = false;
+    for (const o of opps) { const sd = segDist2D(o.pos, p.pos, h.pos); if (sd.t > 0.1 && sd.t < 0.92 && sd.d < 1.4) { blocked = true; break; } }
+    const run = h.vel.z * s, speed = len2D(h.vel.x, h.vel.z);
+    let space = 99;
+    for (const o of opps) { if (o.isGK) continue; const ahead = (o.pos.z - h.pos.z) * s; if (ahead > 0 && ahead < 12) space = Math.min(space, dist2D(o.pos, h.pos)); }
+    if (run > 4.5 && speed > 6 && space > 4 && !blocked && m.prog(p.team, h.pos) < F.L - 8) { m.throughBall(p, h); m.label(p, 'THROUGH BALL', p.aura); return true; }
+    if (!blocked && mark > 3 && d > 5 && d < 20 && chance(0.12 + 0.12 * sk)) {
+      const dx = h.pos.x - p.pos.x, dz = h.pos.z - p.pos.z, behind = (dx * Math.sin(p.yaw) + dz * Math.cos(p.yaw)) / (d || 1) < -0.4;
+      const style = behind && d < 14 ? 'backheel' : pick(['outside', 'rabona', 'nolook']);
+      if (m.passTo(p, h, { style })) { m.label(p, { backheel: 'BACKHEEL!', outside: 'OUTSIDE BOOT!', rabona: 'RABONA!', nolook: 'NO LOOK!' }[style], p.aura); return true; }
+    }
+    return m.passTo(p, h, { lob: blocked || d > 26 });
+  },
   shoot(m, p, c, sk) {
     const t = this.shotTarget(p, m, sk);
     const power = clamp(0.48 + c.dGoal / 30, 0.55, 1);
@@ -4433,8 +4498,8 @@ const AI = {
       let open = 9; for (const o of opps) open = Math.min(open, dist2D(o.pos, t.pos));
       let blocked = false;
       for (const o of opps) { const sd = segDist2D(o.pos, p.pos, t.pos); if (sd.t > 0.08 && sd.t < 0.95 && sd.d < 1.5) { blocked = true; break; } }
-      let score = prog * 0.5 + open * 1.1 - d * 0.08 - (blocked ? 8 : 0);
-      if (t.isHuman) score += 3 + (t.callT > 0 ? 9 : 0) + (t.fx.call > 0 ? 30 : 0);
+      let score = prog * 0.5 + open * 1.1 - d * 0.08 - (blocked ? 8 : 0) - (open < 1.8 ? 6 : 0); // a defender right on them: hold it instead
+      if (t.isHuman || t === m.caller) score += 3 + (t.callT > 0 ? 9 : 0) + (t.fx.call > 0 ? 30 : 0);
       if (t.ai.runT > 0) score += 3;
       if (m.prog(t.team, t.pos) > F.L - 12 && Math.abs(t.pos.x) < 10) score += 3;
       score += rand(-1.5, 1.5) * (1 - sk);
@@ -4532,6 +4597,7 @@ const AI = {
       if (it < 0.9 + sk * 0.5) { tgt = this.interceptPoint(m, p); sprint = true; }
     }
     if (!b.owner && c.ballDist < 4.5 && b.pos.y < 1.6 && !(k && k.type === 'pass' && k.to && k.to.team === p.team && k.to !== p)) { tgt = this.interceptPoint(m, p); sprint = true; }
+    if (p === m.caller && c.mateHasBall && p.callT <= 0 && chance(0.05)) p.callT = 1.6; // test caller: calls like a human, open or not
     if (c.mateHasBall && c.open > 5 && c.progAhead > 3 && p.callT <= 0 && chance(0.12)) {
       p.callT = 1.2;
       if (m.human && p.team === m.human.team) m.label(p, '!', '#2ee38f');
@@ -5393,7 +5459,7 @@ const UI = {
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
     this.bind();
     Hud.toast = (t, c) => this.toast(t, c);
-    Hud.label = (p, t, c) => this.flabel(p, t, c);
+    Hud.label = (p, t, c, dur) => this.flabel(p, t, c, dur);
     Hud.banner = (big, small, color, quick) => this.banner(big, small, color, quick ? 1.1 : 2.0);
     Hud.goal = (team, scorer, assister, own) => { this.goalBanner(team, scorer, assister, own); if (Touch.on && Game.match && Game.match.human && Game.match.human.team === team) Touch.buzz([30, 50, 30]); };
     Hud.flowReady = () => {};
@@ -5479,7 +5545,7 @@ const UI = {
             ${row(key('LEFT THUMB'), 'Touch anywhere on the left and drag to move. Push past the outer ring to sprint')}
             ${row(key('RIGHT THUMB'), 'Drag anywhere on the right to turn the camera. The crosshair is where shots go')}
             ${row(key('SHOOT'), 'Hold to charge, let go to shoot. Drag on it while holding to aim')}
-            ${row(key('PASS'), 'Tap to pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for one')}
+            ${row(key('PASS'), 'Tap to pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for it: your teammate looks up, then picks the pass')}
             ${row(key('DODGE') + key('TACKLE'), 'One button. With the ball it dodges a tackle, without it you slide')}
             ${row(key('JUMP'), 'Jump. With the ball it flicks it over a defender')}
             ${row(key('ARC'), 'Your three style abilities, then FLOW when the bar is full')}
@@ -5491,7 +5557,7 @@ const UI = {
             ${row(key('MOUSE'), 'Aim the camera. Click the pitch to lock the mouse')}
             ${row(key('SHIFT'), 'Sprint (uses stamina)')}
             ${row(key('HOLD LMB'), 'Charge a shot, release to shoot where you aim')}
-            ${row(key('RMB'), 'Pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for a pass')}
+            ${row(key('RMB'), 'Pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for a pass: your teammate looks up, then picks one. Sprint into space for a through ball')}
             ${row(key('SPACE'), 'Jump. With the ball it flicks it over defenders')}
             ${row(key('C'), 'Dribble dodge. Beats one tackle. 2 charges')}
             ${row(key('F'), 'Slide tackle')}
@@ -5796,12 +5862,12 @@ const UI = {
     }
   },
   /* floating labels above players */
-  flabel(p, text, color) {
+  flabel(p, text, color, dur) {
     if (!p || Game.state !== 'match') return;
     let slot = this.labels.find((l) => l.p === p && l.t > 0) || this.labels.find((l) => l.t <= 0) || this.labels.reduce((a, b) => (a.t < b.t ? a : b));
-    slot.p = p; slot.t = text === '!' ? 0.9 : 1.25; slot.text = text; slot.color = color || '#f5efe0';
+    slot.p = p; slot.t = slot.dur = dur || (text === '!' ? 0.9 : 1.25); slot.text = text; slot.color = color || '#f5efe0'; slot.think = text === '...';
     slot.el.textContent = text; slot.el.style.setProperty('--c', slot.color);
-    slot.el.classList.toggle('call', text === '!');
+    slot.el.classList.toggle('call', text === '!'); slot.el.classList.toggle('think', slot.think);
     slot.el.hidden = false;
   },
   updateLabels(m, dt) {
@@ -5810,7 +5876,7 @@ const UI = {
     for (const l of this.labels) {
       if (l.t <= 0 || !l.p) { if (!l.el.hidden) l.el.hidden = true; continue; }
       l.t -= dt;
-      const s = proj(l.p, 2.35 + (1.25 - l.t) * 0.4);
+      const s = proj(l.p, 2.35 + (l.think ? 0 : (l.dur - l.t) * 0.4));
       if (!s.ok || l.t <= 0) { l.el.hidden = true; continue; }
       l.el.hidden = false;
       l.el.style.left = s.x.toFixed(0) + 'px'; l.el.style.top = s.y.toFixed(0) + 'px';

@@ -301,6 +301,8 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 #labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .flabel { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font-family: var(--font-display); font-size: 24px; line-height: 1; padding: 2px 6px 4px; color: var(--ink); background: var(--c, var(--text)); border: 2px solid var(--ink); }
 .flabel.call { background: var(--emerald); font-size: 22px; }
+.flabel.think { background: var(--text); letter-spacing: .12em; animation: think .5s steps(2) infinite; }
+@keyframes think { 50% { opacity: .55; } }
 .flabel.me { background: transparent; border: 0; color: var(--text); font-size: 18px; text-shadow: 2px 2px 0 var(--ink); }
 
 /* overlays */

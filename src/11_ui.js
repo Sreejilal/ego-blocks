@@ -16,7 +16,7 @@ const UI = {
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
     this.bind();
     Hud.toast = (t, c) => this.toast(t, c);
-    Hud.label = (p, t, c) => this.flabel(p, t, c);
+    Hud.label = (p, t, c, dur) => this.flabel(p, t, c, dur);
     Hud.banner = (big, small, color, quick) => this.banner(big, small, color, quick ? 1.1 : 2.0);
     Hud.goal = (team, scorer, assister, own) => { this.goalBanner(team, scorer, assister, own); if (Touch.on && Game.match && Game.match.human && Game.match.human.team === team) Touch.buzz([30, 50, 30]); };
     Hud.flowReady = () => {};
@@ -102,7 +102,7 @@ const UI = {
             ${row(key('LEFT THUMB'), 'Touch anywhere on the left and drag to move. Push past the outer ring to sprint')}
             ${row(key('RIGHT THUMB'), 'Drag anywhere on the right to turn the camera. The crosshair is where shots go')}
             ${row(key('SHOOT'), 'Hold to charge, let go to shoot. Drag on it while holding to aim')}
-            ${row(key('PASS'), 'Tap to pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for one')}
+            ${row(key('PASS'), 'Tap to pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for it: your teammate looks up, then picks the pass')}
             ${row(key('DODGE') + key('TACKLE'), 'One button. With the ball it dodges a tackle, without it you slide')}
             ${row(key('JUMP'), 'Jump. With the ball it flicks it over a defender')}
             ${row(key('ARC'), 'Your three style abilities, then FLOW when the bar is full')}
@@ -114,7 +114,7 @@ const UI = {
             ${row(key('MOUSE'), 'Aim the camera. Click the pitch to lock the mouse')}
             ${row(key('SHIFT'), 'Sprint (uses stamina)')}
             ${row(key('HOLD LMB'), 'Charge a shot, release to shoot where you aim')}
-            ${row(key('RMB'), 'Pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for a pass')}
+            ${row(key('RMB'), 'Pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for a pass: your teammate looks up, then picks one. Sprint into space for a through ball')}
             ${row(key('SPACE'), 'Jump. With the ball it flicks it over defenders')}
             ${row(key('C'), 'Dribble dodge. Beats one tackle. 2 charges')}
             ${row(key('F'), 'Slide tackle')}
@@ -419,12 +419,12 @@ const UI = {
     }
   },
   /* floating labels above players */
-  flabel(p, text, color) {
+  flabel(p, text, color, dur) {
     if (!p || Game.state !== 'match') return;
     let slot = this.labels.find((l) => l.p === p && l.t > 0) || this.labels.find((l) => l.t <= 0) || this.labels.reduce((a, b) => (a.t < b.t ? a : b));
-    slot.p = p; slot.t = text === '!' ? 0.9 : 1.25; slot.text = text; slot.color = color || '#f5efe0';
+    slot.p = p; slot.t = slot.dur = dur || (text === '!' ? 0.9 : 1.25); slot.text = text; slot.color = color || '#f5efe0'; slot.think = text === '...';
     slot.el.textContent = text; slot.el.style.setProperty('--c', slot.color);
-    slot.el.classList.toggle('call', text === '!');
+    slot.el.classList.toggle('call', text === '!'); slot.el.classList.toggle('think', slot.think);
     slot.el.hidden = false;
   },
   updateLabels(m, dt) {
@@ -433,7 +433,7 @@ const UI = {
     for (const l of this.labels) {
       if (l.t <= 0 || !l.p) { if (!l.el.hidden) l.el.hidden = true; continue; }
       l.t -= dt;
-      const s = proj(l.p, 2.35 + (1.25 - l.t) * 0.4);
+      const s = proj(l.p, 2.35 + (l.think ? 0 : (l.dur - l.t) * 0.4));
       if (!s.ok || l.t <= 0) { l.el.hidden = true; continue; }
       l.el.hidden = false;
       l.el.style.left = s.x.toFixed(0) + 'px'; l.el.style.top = s.y.toFixed(0) + 'px';

@@ -141,6 +141,17 @@ const AI = {
       a.target.set(f.x, 0, f.z); a.sprint = false; this.steer(m, p, dt); return;
     }
     if (p.state !== 'free') { if (p.state !== 'dash') { p.mx = 0; p.mz = 0; } return; }
+    if (a.waitT > 0) a.waitT -= dt;
+    // a teammate called for it: look up for a moment (the thinking bubble), shield the ball, then pick the pass
+    if (a.look) {
+      if (b.owner !== p) a.look = null;
+      else {
+        a.look.t -= dt;
+        if (a.look.t <= 0) { a.look = null; this.callPass(m, p); return; }
+        this.steer(m, p, dt, 0.45);
+        return;
+      }
+    }
     if (a.dodgeIn > 0) {
       a.dodgeIn -= dt;
       if (a.dodgeIn <= 0) {
@@ -189,6 +200,15 @@ const AI = {
   decideCarrier(m, p, c, sk) {
     const a = p.ai;
     if (a.wantShot) return;
+    const h = m.caller;
+    if (m.thinkPass && h && h !== p && h.team === p.team && h.callT > 0 && !(a.waitT > 0) && !(c.dGoal < 9 && c.angleOK)) {
+      // longer under pressure: it takes a moment to find the pass with someone on your back
+      const pr = clamp((5 - c.pressure) / 4, 0, 1), t = lerp(0.3, 0.9, pr) * rand(0.9, 1.1);
+      a.look = { t };
+      m.label(p, '...', '#f5efe0', t + 0.05);
+      a.target.set(p.pos.x + Math.sin(p.yaw) * 3, 0, p.pos.z + Math.cos(p.yaw) * 3); a.sprint = false;
+      return;
+    }
     const range = 12 + 9 * sk + (p.flowT > 0 ? 3 : 0);
     if (c.dGoal < range && c.angleOK) {
       const pShoot = clamp((range - c.dGoal) / range * 1.3 + (c.pressure < 2.6 ? 0.25 : 0) + (c.dGoal < 9 ? 0.4 : 0), 0.1, 0.97);
@@ -224,6 +244,26 @@ const AI = {
     a.target.set(p.pos.x + ax * 6, 0, p.pos.z + az * 6);
     a.sprint = c.spaceAhead && p.stamina > 25;
   },
+  /** the pass after a call: hold it if you are tightly marked, a through ball into your run,
+      a lob over a defender in the lane, a ground pass, or now and then something flashy */
+  callPass(m, p) {
+    const h = m.caller, sk = m.skill(p), opps = m.opponents(p), s = m.dir(p.team);
+    let mark = 99; for (const o of opps) if (!o.isGK && o.state !== 'down' && o.state !== 'frozen') mark = Math.min(mark, dist2D(o.pos, h.pos));
+    if (mark < 1.8 || (h.state !== 'free' && h.state !== 'dash')) { m.label(p, 'WAIT', '#ffcb3d'); p.ai.waitT = 0.8; h.callT = 0; return false; } // call again once you are free
+    const d = dist2D(p.pos, h.pos);
+    let blocked = false;
+    for (const o of opps) { const sd = segDist2D(o.pos, p.pos, h.pos); if (sd.t > 0.1 && sd.t < 0.92 && sd.d < 1.4) { blocked = true; break; } }
+    const run = h.vel.z * s, speed = len2D(h.vel.x, h.vel.z);
+    let space = 99;
+    for (const o of opps) { if (o.isGK) continue; const ahead = (o.pos.z - h.pos.z) * s; if (ahead > 0 && ahead < 12) space = Math.min(space, dist2D(o.pos, h.pos)); }
+    if (run > 4.5 && speed > 6 && space > 4 && !blocked && m.prog(p.team, h.pos) < F.L - 8) { m.throughBall(p, h); m.label(p, 'THROUGH BALL', p.aura); return true; }
+    if (!blocked && mark > 3 && d > 5 && d < 20 && chance(0.12 + 0.12 * sk)) {
+      const dx = h.pos.x - p.pos.x, dz = h.pos.z - p.pos.z, behind = (dx * Math.sin(p.yaw) + dz * Math.cos(p.yaw)) / (d || 1) < -0.4;
+      const style = behind && d < 14 ? 'backheel' : pick(['outside', 'rabona', 'nolook']);
+      if (m.passTo(p, h, { style })) { m.label(p, { backheel: 'BACKHEEL!', outside: 'OUTSIDE BOOT!', rabona: 'RABONA!', nolook: 'NO LOOK!' }[style], p.aura); return true; }
+    }
+    return m.passTo(p, h, { lob: blocked || d > 26 });
+  },
   shoot(m, p, c, sk) {
     const t = this.shotTarget(p, m, sk);
     const power = clamp(0.48 + c.dGoal / 30, 0.55, 1);
@@ -256,8 +296,8 @@ const AI = {
       let open = 9; for (const o of opps) open = Math.min(open, dist2D(o.pos, t.pos));
       let blocked = false;
       for (const o of opps) { const sd = segDist2D(o.pos, p.pos, t.pos); if (sd.t > 0.08 && sd.t < 0.95 && sd.d < 1.5) { blocked = true; break; } }
-      let score = prog * 0.5 + open * 1.1 - d * 0.08 - (blocked ? 8 : 0);
-      if (t.isHuman) score += 3 + (t.callT > 0 ? 9 : 0) + (t.fx.call > 0 ? 30 : 0);
+      let score = prog * 0.5 + open * 1.1 - d * 0.08 - (blocked ? 8 : 0) - (open < 1.8 ? 6 : 0); // a defender right on them: hold it instead
+      if (t.isHuman || t === m.caller) score += 3 + (t.callT > 0 ? 9 : 0) + (t.fx.call > 0 ? 30 : 0);
       if (t.ai.runT > 0) score += 3;
       if (m.prog(t.team, t.pos) > F.L - 12 && Math.abs(t.pos.x) < 10) score += 3;
       score += rand(-1.5, 1.5) * (1 - sk);
@@ -355,6 +395,7 @@ const AI = {
       if (it < 0.9 + sk * 0.5) { tgt = this.interceptPoint(m, p); sprint = true; }
     }
     if (!b.owner && c.ballDist < 4.5 && b.pos.y < 1.6 && !(k && k.type === 'pass' && k.to && k.to.team === p.team && k.to !== p)) { tgt = this.interceptPoint(m, p); sprint = true; }
+    if (p === m.caller && c.mateHasBall && p.callT <= 0 && chance(0.05)) p.callT = 1.6; // test caller: calls like a human, open or not
     if (c.mateHasBall && c.open > 5 && c.progAhead > 3 && p.callT <= 0 && chance(0.12)) {
       p.callT = 1.2;
       if (m.human && p.team === m.human.team) m.label(p, '!', '#2ee38f');

@@ -285,13 +285,17 @@ class Player {
     // targets
     let bx = run * 0.14, bz = 0, by = 0.72 + Math.abs(Math.cos(this.animPhase)) * 0.05 * run;
     let lL = s * 0.9 * run, lR = -s * 0.9 * run, aL = -s * 0.8 * run, aR = s * 0.8 * run, aLz = 0.06, aRz = -0.06;
-    let hx = 0, snapX = false;
+    let hx = 0, hy = 0, lRz = 0, snapX = false;
     if (!this.onGround && st === 'free') { lL = -0.55; lR = 0.35; aL = -0.5; aR = -0.3; aLz = 0.5; aRz = -0.5; }
     if (this.charging) { lR = 0.4 + this.charge * 0.8; aLz = 0.7; aRz = -0.35; bx = -0.05 - this.charge * 0.08; }
     if (this.kickT >= 0) {
-      const t = this.kickT;
+      const t = this.kickT, ks = this.kickStyle, env = Math.sin(Math.PI * clamp(t, 0, 1));
       lR = t < 0.35 ? lerp(0.2, 1.1, t / 0.35) : t < 0.7 ? lerp(1.1, -1.45, (t - 0.35) / 0.35) : lerp(-1.45, 0, (t - 0.7) / 0.3);
       lL = 0.1; aLz = 0.75; aRz = -0.5; aL = -0.3; bx = -0.1;
+      if (ks === 'backheel') { lR = t < 0.4 ? lerp(0, -0.7, t / 0.4) : t < 0.7 ? lerp(-0.7, 1.4, (t - 0.4) / 0.3) : lerp(1.4, 0, (t - 0.7) / 0.3); bx = 0.12; } // heel swings back
+      else if (ks === 'rabona') { lRz = 0.55 * env; bz = -0.16 * env; aLz = 1.0; } // kicking leg wraps behind the standing leg
+      else if (ks === 'outside') { lRz = -0.45 * env; lR *= 0.7; } // flick with the outside of the boot
+      else if (ks === 'nolook') hy = 0.95 * (this.noLookSide || 1) * env; // eyes the other way
     }
     if (this.fx.shuffle > 0) { aL = aR = -1.45; aLz = 0.05; aRz = -0.05; bz = Math.sin(this.animPhase * 0.6) * 0.24; }
     if (st === 'hold') { aL = aR = -1.15; aLz = 0.15; aRz = -0.15; }
@@ -342,7 +346,7 @@ class Player {
     const r = (o, prop, v) => { o.rotation[prop] += (v - o.rotation[prop]) * k; };
     r(P.body, 'x', bx); r(P.body, 'z', bz);
     if (snapX) P.body.rotation.x = bx; // full flips are set directly, easing would unwind them P.body.position.y += (by - P.body.position.y) * k;
-    r(P.legL, 'x', lL); r(P.legR, 'x', lR);
+    r(P.legL, 'x', lL); r(P.legR, 'x', lR); r(P.legR, 'z', lRz); r(P.headP, 'y', hy);
     r(P.armL, 'x', aL); r(P.armR, 'x', aR); r(P.armL, 'z', aLz); r(P.armR, 'z', aRz);
     r(P.headP, 'x', hx);
     P.root.position.copy(this.pos);

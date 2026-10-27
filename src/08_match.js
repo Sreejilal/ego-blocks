@@ -26,12 +26,14 @@ class Match {
     this.lastPass = null; this.restart = null; this.result = null; this.endTimer = 0;
     this.teamState = ['loose', 'loose']; this.pred = [];
     this.aim = V3(0, 1, F.L); this.camYaw = 0; this.aimOnTarget = false;
-    this.ctl = null; this.autopilot = !!opts.autopilot; this.lastGoal = null; this.pendingEnd = false;
+    this.ctl = null; this.autopilot = !!opts.autopilot; this.thinkPass = opts.thinkPass !== false; this.lastGoal = null; this.pendingEnd = false;
     // your club at home against a random other club; the away side changes kit if the colours clash
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
     const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
     [TEAM[0], TEAM[1]] = matchSides(home, away);
     this.buildTeams(opts);
+    // whose PASS calls make teammates look up (the human; in a test match, a bot striker that calls like a human)
+    this.caller = opts.caller ? this.teams[0].find((p) => p.role === 'ST') : this.autopilot ? null : this.human;
     this.setupKickoff(0, true);
   }
   /* ---------- setup ---------- */
@@ -81,7 +83,7 @@ class Match {
     return Math.abs(pos.x) < F.BOX_W && Math.abs(pos.z - gz) < F.BOX_D && Math.abs(pos.z) < F.L + 0.5;
   }
   canAct(p) { return (p.state === 'free' || p.state === 'hold') && this.phase === 'play'; }
-  label(p, text, color) { Hud.label(p, text, color || p.aura); }
+  label(p, text, color, dur) { Hud.label(p, text, color || p.aura, dur); }
   toast(text, cls) { Hud.toast(text, cls); }
   involvesHuman(...ps) { return ps.some((q) => q && q.isHuman); }
 
@@ -252,6 +254,7 @@ class Match {
     b.kick = { by: p, type: o.type || 'shot', to: o.to || null, t: this.time, trail: o.trail || null, special: o.special || null, counted: false };
     b.lastKicker = p; b.touch(p);
     b.ignore = p; b.ignoreT = 0.22;
+    p.kickStyle = o.kickStyle || null;
     p.pickBlock = o.selfBlock == null ? 0.32 : o.selfBlock;
     if (!o.noAnim) { p.kickT = 0; p.kickDur = o.kickDur || 0.32; }
     if (!o.keepYaw) p.yaw = Math.atan2(vx, vz);
@@ -293,7 +296,17 @@ class Match {
     const from = b.owner === p ? V3(p.pos.x + Math.sin(p.yaw) * 0.6, BALL_R, p.pos.z + Math.cos(p.yaw) * 0.6) : b.pos.clone();
     let tx = mate.pos.x, tz = mate.pos.z, vx, vy, vz, extra = {};
     const D0 = Math.hypot(tx - from.x, tz - from.z);
-    if (o.snap) {
+    if (o.style === 'outside') {
+      // a low chip that starts wide and bends back onto the runner
+      const T = clamp(D0 / 17, 0.45, 1.2);
+      tx += mate.vel.x * T * 0.85; tz += mate.vel.z * T * 0.85;
+      const dx = tx - from.x, dz = tz - from.z, D = Math.hypot(dx, dz) || 1, sp = D / T, a = 0.22;
+      const sig = chance(0.5) ? 1 : -1, nx = dz / D * sig, nz = -dx / D * sig;
+      vx = (dx / D * Math.cos(a) + nx * Math.sin(a)) * sp; vz = (dz / D * Math.cos(a) + nz * Math.sin(a)) * sp;
+      vy = (0.9 - from.y + 0.5 * BALL_G * T * T) / T;
+      const acc = 2 * sp * Math.sin(a) / T;
+      extra = { cx: -nx * acc, cz: -nz * acc, curveDecay: 0, trail: p.aura };
+    } else if (o.snap) {
       const sp = 38, t = D0 / sp;
       tx += mate.vel.x * t * 0.9; tz += mate.vel.z * t * 0.9;
       const D = Math.hypot(tx - from.x, tz - from.z) || 1;
@@ -319,6 +332,12 @@ class Match {
       vx = (tx - from.x) / (D || 1) * v0; vz = (tz - from.z) / (D || 1) * v0; vy = 0.5;
     }
     if (o.through) Object.assign(extra, o.through);
+    if (o.style) {
+      extra.kickStyle = o.style;
+      if (o.style === 'backheel' || o.style === 'nolook') extra.keepYaw = true;
+      if (o.style === 'rabona') extra.kickDur = 0.42;
+      if (o.style === 'nolook') { const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw); p.noLookSide = (fx * (tz - p.pos.z) - fz * (tx - p.pos.x)) > 0 ? 1 : -1; }
+    }
     const ok = this.kick(p, vx, vy, vz, Object.assign({ type: 'pass', to: mate, selfBlock: 0.45, kickDur: 0.28 }, extra));
     if (ok && !mate.isHuman) { mate.ai.receive = { t: this.time }; }
     return ok;
