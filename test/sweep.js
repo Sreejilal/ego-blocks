@@ -17,6 +17,7 @@ async function inspect(page, where) {
       const r = b.getBoundingClientRect();
       if (r.right > innerWidth + 1 || r.left < -1) out.offscreen.push((b.id || b.className) + ':' + b.textContent.trim().slice(0, 24));
     }
+    for (const lb of document.querySelectorAll('#touch .tb .lb')) if (vis(lb) && lb.textContent && lb.scrollWidth > lb.clientWidth + 1) out.clipped.push('touch label:' + lb.textContent);
     // buttons covering each other (ignore ones inside the same button)
     for (let i = 0; i < btns.length; i++) for (let j = i + 1; j < btns.length; j++) {
       const a = btns[i], b = btns[j]; if (a.contains(b) || b.contains(a)) continue;
@@ -54,6 +55,16 @@ async function inspect(page, where) {
     // a match: pause menu, then results
     await page.evaluate(() => { EGO.UI.show('lobby'); EGO.Game.startMatch('ranked'); EGO.Game.stepManual(60, true); });
     await inspect(page, name + ' hud');
+    // every style's ability names on the touch buttons, and Lawless item names
+    for (const sid of ['ROOKIE', 'SPRINTER', 'PHANTOM', 'TRICKSTER', 'ENFORCER', 'SHAMBLER', 'PROWLER', 'MAGNET', 'THUNDER', 'RAILGUN']) {
+      await page.evaluate((sid) => { const d = EGO.Save.data; if (!d.styles.includes(sid)) d.styles.push(sid); d.style = sid; EGO.Game.startMatch('lawless'); EGO.Game.stepManual(4, true); }, sid);
+      await inspect(page, name + ' touch/' + sid);
+    }
+    for (const it of ['fist', 'boom', 'slime', 'jet', 'snow', 'magnet', 'bubble', 'wall', 'mine', 'bolt']) {
+      await page.evaluate((it) => { EGO.Game.match.human.item = it; EGO.Game.stepManual(2, true); }, it);
+      await inspect(page, name + ' item/' + it);
+    }
+    await page.evaluate(() => { EGO.Save.data.style = 'ROOKIE'; EGO.Game.startMatch('ranked'); EGO.Game.stepManual(30, true); });
     await page.evaluate(() => { EGO.Game.pause(); });
     await inspect(page, name + ' pause');
     await page.evaluate(() => { EGO.Game.pausedAt = 0; EGO.Game.resume(); const m = EGO.Game.match; m.score = [2, 1]; m.human.stats.goals = 2; m.clock = 0.1; for (let i = 0; i < 60 * 20 && EGO.Game.state !== 'results'; i++) EGO.Game.stepManual(1, false); EGO.Game.stepManual(1, true); });

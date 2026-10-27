@@ -235,7 +235,7 @@ const Touch = {
     p.abil.forEach((a, i) => {
       const k = 'ab' + i, P = this.parts[k];
       P.ic.style.backgroundImage = 'url(' + iconURL(a.def.icon, p.aura) + ')';
-      P.lb.textContent = TOUCH_SHORT[a.id] || a.def.name;
+      this.fitLabel(P.lb, TOUCH_SHORT[a.id] || a.def.name);
       this.b[k].style.setProperty('--aura', p.aura);
     });
     this.parts.flow.ic.style.backgroundImage = 'url(' + iconURL('flame', p.aura) + ')';
@@ -249,7 +249,9 @@ const Touch = {
     if (c['cd' + act] !== q) { c['cd' + act] = q; this.b[act].style.setProperty('--p', (frac * 360).toFixed(0) + 'deg'); }
     if (c['n' + act] !== num) { c['n' + act] = num; this.parts[act].num.textContent = num; }
   },
-  setLabel(act, txt) { const c = this.cache; if (c['l' + act] !== txt) { c['l' + act] = txt; this.parts[act].lb.textContent = txt; } },
+  setLabel(act, txt) { const c = this.cache; if (c['l' + act] !== txt) { c['l' + act] = txt; this.fitLabel(this.parts[act].lb, txt); } },
+  /** long names get a smaller font so they fit the button */
+  fitLabel(el, txt) { el.textContent = txt; el.style.setProperty('--lbk', Math.min(0.135, 0.8 / Math.max(1, txt.length)).toFixed(3)); },
   update(m, dt) {
     if (this.board) { this.boardT -= dt; if (this.boardT <= 0) this.board = false; }
     if (!this.visible || !m || !m.human) return;
@@ -290,7 +292,7 @@ const Touch = {
         c.item = key;
         const it = key ? ITEMS[key] : null;
         this.parts.item.ic.style.backgroundImage = 'url(' + (it ? iconURL(it.icon) : iconURL('lock')) + ')';
-        this.parts.item.lb.textContent = it ? (ITEM_SHORT[key] || it.name) : 'ITEM';
+        this.fitLabel(this.parts.item.lb, it ? (ITEM_SHORT[key] || it.name) : 'ITEM');
         this.tog(b.item, 'off', !it); this.tog(b.item, 'ready', !!it);
       }
     }

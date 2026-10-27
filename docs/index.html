@@ -476,7 +476,7 @@ body { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 #touch .tb .ic { position: absolute; left: 25%; top: 15%; width: 50%; height: 50%; background: center / contain no-repeat; image-rendering: pixelated; pointer-events: none; }
 #touch .tb .lb {
   position: absolute; left: 7%; right: 7%; bottom: 13%; text-align: center; pointer-events: none;
-  font-family: var(--font-label); font-weight: 700; font-size: max(8px, calc(var(--sz, 60px) * .135)); line-height: 1; letter-spacing: 0;
+  font-family: var(--font-label); font-weight: 700; font-size: max(6px, calc(var(--sz, 60px) * var(--lbk, .135))); line-height: 1; letter-spacing: 0;
   color: var(--text); text-shadow: 1px 1px 0 var(--ink); white-space: nowrap; overflow: hidden;
 }
 #touch .tb .cd { position: absolute; inset: 3px; -webkit-clip-path: var(--pxc); clip-path: var(--pxc); background: conic-gradient(rgba(9,11,22,.8) var(--p, 0deg), transparent 0); pointer-events: none; }
@@ -5689,7 +5689,7 @@ const Touch = {
     p.abil.forEach((a, i) => {
       const k = 'ab' + i, P = this.parts[k];
       P.ic.style.backgroundImage = 'url(' + iconURL(a.def.icon, p.aura) + ')';
-      P.lb.textContent = TOUCH_SHORT[a.id] || a.def.name;
+      this.fitLabel(P.lb, TOUCH_SHORT[a.id] || a.def.name);
       this.b[k].style.setProperty('--aura', p.aura);
     });
     this.parts.flow.ic.style.backgroundImage = 'url(' + iconURL('flame', p.aura) + ')';
@@ -5703,7 +5703,9 @@ const Touch = {
     if (c['cd' + act] !== q) { c['cd' + act] = q; this.b[act].style.setProperty('--p', (frac * 360).toFixed(0) + 'deg'); }
     if (c['n' + act] !== num) { c['n' + act] = num; this.parts[act].num.textContent = num; }
   },
-  setLabel(act, txt) { const c = this.cache; if (c['l' + act] !== txt) { c['l' + act] = txt; this.parts[act].lb.textContent = txt; } },
+  setLabel(act, txt) { const c = this.cache; if (c['l' + act] !== txt) { c['l' + act] = txt; this.fitLabel(this.parts[act].lb, txt); } },
+  /** long names get a smaller font so they fit the button */
+  fitLabel(el, txt) { el.textContent = txt; el.style.setProperty('--lbk', Math.min(0.135, 0.8 / Math.max(1, txt.length)).toFixed(3)); },
   update(m, dt) {
     if (this.board) { this.boardT -= dt; if (this.boardT <= 0) this.board = false; }
     if (!this.visible || !m || !m.human) return;
@@ -5744,7 +5746,7 @@ const Touch = {
         c.item = key;
         const it = key ? ITEMS[key] : null;
         this.parts.item.ic.style.backgroundImage = 'url(' + (it ? iconURL(it.icon) : iconURL('lock')) + ')';
-        this.parts.item.lb.textContent = it ? (ITEM_SHORT[key] || it.name) : 'ITEM';
+        this.fitLabel(this.parts.item.lb, it ? (ITEM_SHORT[key] || it.name) : 'ITEM');
         this.tog(b.item, 'off', !it); this.tog(b.item, 'ready', !!it);
       }
     }
