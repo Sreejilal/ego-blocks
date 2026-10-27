@@ -142,7 +142,7 @@ const Cam = {
     this.pivotY = damp(this.pivotY, p.pos.y + 1.7, 10, realDt);
     const dist = this.dist + (wide ? 2.6 : 0) + (tall ? 1.7 : 0);
     let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.55 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
-    tx = clamp(tx, -25.2, 25.2); tz = clamp(tz, -38.6, 38.6); ty = Math.max(0.45, ty);
+    tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
     const k = 1 - Math.exp(-20 * realDt);
     this.pos.x += (tx - this.pos.x) * k; this.pos.y += (ty - this.pos.y) * k; this.pos.z += (tz - this.pos.z) * k;
     const rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);

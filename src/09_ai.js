@@ -235,7 +235,7 @@ const AI = {
     const gz = m.oppGoalZ(p.team), gk = m.teams[1 - p.team][0];
     const side = gk.pos.x > 0.5 ? -1 : gk.pos.x < -0.5 ? 1 : (chance(0.5) ? 1 : -1);
     let x = side * rand(2.0, F.GW - 0.55), y = rand(0.45, 2.3);
-    const err = (1 - sk) * 2.1 + 0.25;
+    const err = (1 - sk) * 2.1 + 0.4;
     x += rand(-err, err); y += rand(-err * 0.45, err * 0.45);
     return V3(x, clamp(y, 0.3, 3.8), gz);
   },
@@ -251,7 +251,7 @@ const AI = {
       if (t === p || (t.state !== 'free' && t.state !== 'dash')) continue;
       if (t.isGK && myProg > -12) continue;
       const d = dist2D(p.pos, t.pos);
-      if (d < 4 || d > 36) continue;
+      if (d < 4 || d > 44) continue;
       const prog = m.prog(t.team, t.pos) - myProg;
       let open = 9; for (const o of opps) open = Math.min(open, dist2D(o.pos, t.pos));
       let blocked = false;
@@ -278,17 +278,20 @@ const AI = {
     }
     return best;
   },
+  /** where a bot stands for its role. Worked out on the first pitch's scale, then stretched to this one */
   formation(m, p, st) {
-    const s = m.dir(p.team), bu = m.ball.pos.x * s, bv = m.ball.pos.z * s;
+    const s = m.dir(p.team), bu = m.ball.pos.x * s / PITCH_KX, bv = m.ball.pos.z * s / PITCH_KZ;
     let u, v;
     const r = p.role;
     if (st === 'att') {
       if (r === 'DEF') { u = bu * 0.3; v = clamp(bv - 13, -24, 6); }
+      else if (r === 'MID') { u = bu > 0 ? -8 : 8; v = clamp(bv - 1, -12, 20); } // the spare runner offers width on the far side
       else if (r === 'LW') { u = 12.5; v = clamp(bv + 5, -6, 25); }
       else if (r === 'RW') { u = -12.5; v = clamp(bv + 5, -6, 25); }
       else { u = clamp(-bu * 0.35, -7, 7); v = clamp(bv + 9, 2, 26); }
     } else {
       if (r === 'DEF') { u = bu * 0.5; v = clamp(bv - 7, -29, -6); }
+      else if (r === 'MID') { u = bu * 0.45; v = clamp(bv - 6, -26, 4); }
       else if (r === 'LW') { u = clamp(bu * 0.4 + 7, -14, 15); v = clamp(bv - 4, -24, 8); }
       else if (r === 'RW') { u = clamp(bu * 0.4 - 7, -15, 14); v = clamp(bv - 4, -24, 8); }
       else { u = bu * 0.3; v = clamp(bv + 3, -4, 12); }
@@ -296,7 +299,7 @@ const AI = {
     const a = p.ai;
     a.offT -= 0.2;
     if (a.offT <= 0) { a.offT = rand(10, 20); a.offU = rand(-2.5, 2.5); a.offV = rand(-2.5, 2.5); }
-    u = clamp(u + a.offU, -F.W + 1.5, F.W - 1.5); v = clamp(v + a.offV, -F.L + 2, F.L - 2);
+    u = clamp((u + a.offU) * PITCH_KX, -F.W + 1.5, F.W - 1.5); v = clamp((v + a.offV) * PITCH_KZ, -F.L + 2, F.L - 2);
     return { x: u * s, z: v * s };
   },
   decideOff(m, p, c, sk) {
@@ -339,7 +342,7 @@ const AI = {
         tgt = V3(f.x, 0, f.z); sprint = dist2D(tgt, p.pos) > 9;
         if (st === 'att' && p.role !== 'DEF' && a.runT <= 0 && chance(0.06 + 0.1 * sk)) {
           const bv = m.prog(p.team, b.pos);
-          const v = clamp(bv + rand(10, 16), -5, F.L - 5);
+          const v = clamp(bv + rand(10, 16) * PITCH_KZ, -5, F.L - 5);
           const u = clamp(p.pos.x * s * 0.7 + rand(-5, 5), -F.W + 3, F.W - 3);
           a.runTo = V3(u * s, 0, v * s); a.runT = rand(1.8, 2.8);
           tgt = a.runTo; sprint = true;

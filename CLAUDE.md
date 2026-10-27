@@ -1,6 +1,7 @@
 # SCORZ (formerly EGO BLOCKS): notes for Claude Code
 
-A 5v5 voxel football game (anime "ego striker" feel, blocky art) that runs in a web browser.
+A voxel football game (anime "ego striker" feel, blocky art) that runs in a web browser. Quick Match and Lawless
+are 3v3; Ranked grows from 3v3 to 4v4 (Iron) to 5v5 (Diamond). Rosters are in `ROSTERS` (07_data.js).
 The whole game is one HTML page built from the small files in `src/`. No frameworks, no bundler.
 
 ## Commands
@@ -49,7 +50,9 @@ file in file-name order into ONE function scope. There are no imports or exports
 ## Testing notes
 
 - Tests run headless Chromium with software WebGL, which is very slow. They advance the game with `EGO.Game.stepManual(frames)` instead of waiting in real time.
-- `EGO.simulate(mode, difficulty, seconds)` plays a full bot match off screen and returns stats (goals, shots, passes, tackles). Use it to check balance after changing `07_data.js`, `08_match.js` or `09_ai.js`. Healthy: about 3 to 10 goals in a 4 minute match.
+- `EGO.simulate(mode, difficulty, seconds, teamSize)` plays a full bot match off screen and returns stats (goals, shots, passes, tackles). Use it to check balance after changing `07_data.js`, `08_match.js` or `09_ai.js`. Healthy: about 3 to 10 goals in a 4 minute match.
+- `node test/balance.js [matches] [sizes] [skills]` runs those matches for every team size and a few bot skill levels and prints the averages. Results swing a lot from match to match, so use 4 or more matches per setting.
+- Bot positions are tuned on the first, smaller pitch and scaled by `PITCH_KX` / `PITCH_KZ` (01_core.js), so changing `F` keeps the AI shape.
 - Screenshots from tests are saved in `test/shots/`. Look at them after UI changes.
 
 ## Working with the owner

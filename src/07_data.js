@@ -16,6 +16,13 @@ const STYLES = {
   RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'] },
 };
 const STYLE_IDS = Object.keys(STYLES);
+/** a bot's style: common styles most of the time, the rare ones now and then (like the spins) */
+const BOT_STYLE_ODDS = { Rare: 40, Epic: 30, Legendary: 15, Mythic: 10, Generational: 5 };
+function botStyle() {
+  let r = Math.random() * 100;
+  for (const rar of RARITIES) { r -= BOT_STYLE_ODDS[rar]; if (r < 0) { const pool = STYLE_IDS.filter((k) => STYLES[k].rarity === rar); if (pool.length) return pick(pool); } }
+  return pick(STYLE_IDS);
+}
 
 function nearBall(p, m, r = 1.9) {
   const b = m.ball;
@@ -379,6 +386,10 @@ function matchSides(homeId, awayId) {
   }
   return [home, away];
 }
+
+/* ---------- team sizes: casual modes are 3v3; ranked grows as you climb ---------- */
+const ROSTERS = { 3: ['GK', 'MID', 'ST'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'LW', 'RW', 'ST'] };
+const teamSizeFor = (mode, rp) => { if (mode !== 'ranked') return 3; const t = tierOf(rp); return t >= 4 ? 5 : t >= 2 ? 4 : 3; };
 
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));

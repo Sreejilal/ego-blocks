@@ -188,21 +188,21 @@ function makeBlockTextures() {
 }
 
 /* ---------- pitch texture: 16px per block, mowed stripes, half-block pixel lines ---------- */
-const PITCH_BX = 49, PITCH_BZ = 75; // blocks across (x) and along (z), including run-off
+const PITCH_BX = 2 * F.BOARD_X + 1, PITCH_BZ = 2 * F.BOARD_Z + 1; // blocks across (x) and along (z), including run-off
 function pitchLineAt(x, z) {
   const ax = Math.abs(x), az = Math.abs(z), hw = 0.25;
   if (ax > F.W || az > F.L) return false;
   if (ax >= F.W - 0.5 || az >= F.L - 0.5 || az <= hw) return true;
   const r = Math.hypot(x, z);
-  if (Math.abs(r - 6) <= hw || r <= 0.42) return true;
+  if (Math.abs(r - F.CIRCLE) <= hw || r <= 0.42) return true;
   const bz = F.L - az;
   if (bz <= F.BOX_D && ax >= F.BOX_W - 0.5 && ax <= F.BOX_W) return true;
   if (bz >= F.BOX_D - 0.5 && bz <= F.BOX_D && ax <= F.BOX_W) return true;
   if (bz <= 3.0 && ax >= 5.0 && ax <= 5.5) return true;
   if (bz >= 2.5 && bz <= 3.0 && ax <= 5.5) return true;
-  const dr = Math.hypot(x, az - (F.L - 5.5));
+  const dr = Math.hypot(x, az - (F.L - 6.5));
   if (dr <= 0.32) return true;
-  if (bz > F.BOX_D && Math.abs(dr - 4) <= hw) return true;
+  if (bz > F.BOX_D && Math.abs(dr - 4.5) <= hw) return true;
   if (Math.abs(Math.hypot(ax - F.W, az - F.L) - 1.0) <= hw) return true;
   return false;
 }
@@ -216,9 +216,9 @@ function makePitchTexture() {
   const RUN = [hexRGB('#447f30'), hexRGB('#3e772b'), hexRGB('#4a8835'), hexRGB('#386d27')];
   const LN = hexRGB('#f1f4ec');
   for (let bz = 0; bz < PITCH_BZ; bz++) for (let bx = 0; bx < PITCH_BX; bx++) {
-    const wx = bx - 24, wz = bz - 37;
-    const inField = Math.abs(wx) <= 20 && Math.abs(wz) <= 32;
-    const pal = !inField ? RUN : ((Math.floor((wz + 32) / 4)) % 2 === 0 ? A : B);
+    const wx = bx - (PITCH_BX - 1) / 2, wz = bz - (PITCH_BZ - 1) / 2, fw = F.W - 0.5, fl = F.L - 0.5;
+    const inField = Math.abs(wx) <= fw && Math.abs(wz) <= fl;
+    const pal = !inField ? RUN : ((Math.floor((wz + fl) / 4)) % 2 === 0 ? A : B);
     const blockK = lerp(0.95, 1.04, R());
     for (let py = 0; py < S; py++) for (let px = 0; px < S; px++) {
       const x = wx - 0.5 + (px + 0.5) / S, z = wz - 0.5 + (py + 0.5) / S;

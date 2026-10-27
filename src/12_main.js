@@ -40,7 +40,7 @@ const Game = {
     UI.hideOverlays();
     Sfx.init();
     TimeCtl.reset(); FX.clear();
-    this.match = new Match(mode, difficultyFor(Save.data.rp));
+    this.match = new Match(mode, difficultyFor(Save.data.rp), { size: teamSizeFor(mode, Save.data.rp) });
     this.lastMode = mode; this.ended = false;
     World.paintCrowd(TEAM[0], TEAM[1]);
     World.setSun(SUN_MATCH);
@@ -160,8 +160,8 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Player, TEAM, rollRarity, poolFor,
   CLUB_IDS, sideFor, matchSides, kitClash,
   /** run a full bot-vs-bot match off-screen and report what happened */
-  simulate(mode = 'quick', d = 0.5, seconds = 240) {
-    const m = new Match(mode, d, { noHuman: true, autopilot: true, length: seconds });
+  simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0) {
+    const m = new Match(mode, d, { noHuman: true, autopilot: true, length: seconds, size: size || (mode === 'ranked' ? 5 : 3) });
     const log = { goals: 0, outs: 0, saves: 0, tackles: 0, passes: 0, shots: 0, possessionSwaps: 0, abilities: 0, flows: 0, phases: {} };
     const origOut = m.onOut.bind(m); m.onOut = function () { log.outs++; return origOut(); };
     const origAb = m.useAbility.bind(m); m.useAbility = function (p, i) { const r = origAb(p, i); if (r) log.abilities++; return r; };

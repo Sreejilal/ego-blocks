@@ -38,11 +38,11 @@ const UI = {
       </div>
       <div class="lobby-main">
         <h1 class="title"><span class="t1">SCOR<em class="t2">Z</em></span></h1>
-        <p class="tagline">5v5 voxel football. Pick a style, find your Flow, climb from Wood to Obsidian.</p>
+        <p class="tagline">Voxel football, 3v3 up to 5v5. Pick a style, find your Flow, climb from Wood to Obsidian.</p>
         <nav class="menu" aria-label="Main menu">
           <button class="btn blue" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
-          <button class="btn" id="go-quick" type="button">QUICK MATCH <span class="sub">NO RANK CHANGE</span></button>
-          <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">NO RULES &middot; ITEMS</span></button>
+          <button class="btn" id="go-quick" type="button">QUICK MATCH <span class="sub">3V3 &middot; NO RANK CHANGE</span></button>
+          <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
           <button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button>
           <button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button>
           <button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button>
@@ -144,6 +144,7 @@ const UI = {
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Bots get sharper as you climb.</li>
+            <li><b>Team size:</b> Quick Match and Lawless are 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
           </ul></section>
@@ -261,7 +262,8 @@ const UI = {
     $('lob-em-ico').src = em; $('lob-em').textContent = d.emeralds;
     $('btn-mute').textContent = d.settings.mute ? 'SOUND OFF' : 'SOUND ON';
     $('btn-gfx').textContent = 'GRAPHICS: ' + d.settings.quality.toUpperCase();
-    $('rank-sub').textContent = TIER_NAMES[tier] + ' · ' + d.rp + ' RP';
+    const sz = teamSizeFor('ranked', d.rp);
+    $('rank-sub').textContent = TIER_NAMES[tier] + ' · ' + sz + 'V' + sz;
     $('locker-sub').textContent = STYLES[d.style].name + (d.flow ? ' · ' + FLOWS[d.flow].name : '');
     $('pro-badge').src = badgeURL(tier);
     $('pro-tier').textContent = TIER_NAMES[tier];
@@ -284,7 +286,7 @@ const UI = {
   /* ---------- HUD ---------- */
   buildHud(m) {
     const p = m.human;
-    $('hud-mode').textContent = m.cfg.name;
+    $('hud-mode').textContent = m.cfg.name + ' · ' + m.size + 'V' + m.size;
     $('hud-badge').src = badgeURL(tierOf(Save.data.rp)); $('hud-badge').hidden = !m.cfg.ranked;
     $('hud-em-ico').src = iconURL('emerald'); $('hud-em').textContent = Save.data.emeralds;
     for (const t of [0, 1]) { // the score bar wears each club's shirt

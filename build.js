@@ -64,7 +64,7 @@ const page = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#090b16">
-<meta name="description" content="SCORZ: 5v5 voxel football in your browser. Pick a style, find your Flow, climb from Wood to Obsidian.">
+<meta name="description" content="SCORZ: voxel football in your browser, 3v3 up to 5v5. Pick a style, find your Flow, climb from Wood to Obsidian.">
 ${titleM[0]}
 ${fontTag}
 ${styleM[0]}

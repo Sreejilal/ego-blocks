@@ -48,17 +48,20 @@ function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) +
 /* ---------- pitch geometry (1 unit = 1 block) ----------
    Blue team defends -Z and attacks +Z. Orange is the mirror. */
 const F = {
-  W: 20.5,          // touchline outer edge (x)
-  L: 32.5,          // goal line outer edge (z)
+  W: 24.5,          // touchline outer edge (x)
+  L: 38.5,          // goal line outer edge (z)
   GW: 4.5,          // half width of the goal mouth (inner)
   GH: 3.0,          // goal mouth height (inner, crossbar underside)
   GD: 2.5,          // net depth behind the goal line
   POST: 0.5,        // post / bar thickness
-  BOARD_X: 24.0,    // advertising boards (ball bounces off these)
-  BOARD_Z: 36.5,
-  BOX_W: 9.5,       // penalty box half width (outer edge)
-  BOX_D: 7.5,       // penalty box depth from goal line
+  BOARD_X: 28.0,    // advertising boards (ball bounces off these)
+  BOARD_Z: 43.0,
+  BOX_W: 11,        // penalty box half width (outer edge)
+  BOX_D: 8.5,       // penalty box depth from goal line
+  CIRCLE: 7,        // centre circle radius
 };
+// bot positions were tuned on the first, smaller pitch (20.5 x 32.5); they are scaled by these to fit this one
+const PITCH_KX = F.W / 20.5, PITCH_KZ = F.L / 32.5;
 const BALL_R = 0.3;
 const BALL_G = 16;
 const P_R = 0.42;

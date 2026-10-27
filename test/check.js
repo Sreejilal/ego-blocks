@@ -14,7 +14,11 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     const m = G.match;
     return { state: G.state, phase: m.phase, players: m.players.length, clock: +m.clock.toFixed(1) };
   });
-  check('a match starts and plays', play.state === 'match' && play.phase !== 'kickoff' && play.players === 10, play);
+  check('a quick match starts and plays 3v3', play.state === 'match' && play.phase !== 'kickoff' && play.players === 6, play);
+
+  const sizes = await page.evaluate(() => [0, 150, 250, 350, 450, 600].map((rp) => { EGO.Save.data.rp = rp; EGO.Game.startMatch('ranked'); const n = EGO.Game.match.teams[0].length; EGO.Game.toLobby(); return n; }));
+  await page.evaluate(() => { EGO.Save.data.rp = 0; EGO.Game.startMatch('quick'); EGO.Game.stepManual(5, false); });
+  check('ranked teams grow with rank: 3v3, 4v4 at Iron, 5v5 at Diamond', sizes.join() === '3,3,4,4,5,5', sizes);
 
   const pause = await page.evaluate(() => { const G = EGO.Game; G.pause(); const a = G.state; G.pausedAt = 0; G.resume(); return [a, G.state]; });
   check('pause and resume', pause[0] === 'paused' && pause[1] === 'match', pause);

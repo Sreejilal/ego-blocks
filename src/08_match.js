@@ -9,12 +9,14 @@ const MODES = {
   quick: { name: 'QUICK MATCH', ranked: false, items: false },
   lawless: { name: 'LAWLESS', ranked: false, items: true },
 };
-const FORM = { GK: [0, -31.0], DEF: [0, -18], LW: [11, -7], RW: [-11, -7], ST: [0, -2.2] };
+// kickoff spots on the first pitch's scale (see PITCH_KX / PITCH_KZ)
+const FORM = { GK: [0, -31.0], DEF: [0, -18], MID: [7, -9], LW: [11, -7], RW: [-11, -7], ST: [0, -2.2] };
 const MATCH_LEN = 240, GOLDEN_LEN = 120;
 
 class Match {
   constructor(mode, d, opts = {}) {
     this.mode = mode; this.cfg = MODES[mode] || MODES.quick; this.d = d;
+    this.size = ROSTERS[opts.size] ? opts.size : teamSizeFor(mode, Save.data.rp);
     this.scene = World.scene;
     this.time = 0; this.clock = opts.length || MATCH_LEN; this.golden = false; this.goldenClock = GOLDEN_LEN;
     this.phase = 'kickoff'; this.phaseT = 0; this.paused = false; this.kickDelay = 2.6;
@@ -36,13 +38,13 @@ class Match {
   buildTeams(opts) {
     const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
     const used = new Set([1, 10]);
-    const roles = ['GK', 'DEF', 'LW', 'RW', 'ST'];
+    const roles = ROSTERS[this.size];
     for (let team = 0; team < 2; team++) {
       for (const role of roles) {
         const human = team === 0 && role === 'ST' && !opts.noHuman;
         let num = role === 'GK' ? 1 : human ? 10 : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
-        const style = human ? (opts.style || Save.data.style) : pick(STYLE_IDS);
+        const style = human ? (opts.style || Save.data.style) : botStyle();
         const flow = human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
         const look = human ? (opts.look || Save.data.look) : botLook();
         const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[1] : null, number: num, name: human ? 'YOU' : names.pop() });
@@ -72,7 +74,7 @@ class Match {
   oppGoalZ(team) { return this.dir(team) * F.L; }
   ownGoalZ(team) { return -this.dir(team) * F.L; }
   prog(team, pos) { return pos.z * this.dir(team); }
-  skill(p) { const s = (this.human && p.team === this.human.team) ? Math.max(0.6, this.d) : this.d; return p.isGK ? Math.min(1, s + 0.08) : s; }
+  skill(p) { const s = (this.human && p.team === this.human.team) ? Math.max(0.6, this.d) : this.d; return p.isGK ? Math.min(1.2, s + 0.08 + (5 - this.size) * 0.07) : s; } // keepers get a boost in small teams, where they face more shots
   opponents(p) { return this.teams[1 - p.team]; }
   inOwnBox(p, pos = p.pos) {
     const gz = this.ownGoalZ(p.team);
@@ -87,9 +89,10 @@ class Match {
     this.kickTeam = team; this.phase = 'kickoff'; this.phaseT = 0; this.kickDelay = first ? 2.6 : 1.7;
     this.ball.reset(0, 0); this.lastPass = null; this.pendingEnd = false;
     for (const p of this.players) {
-      const f = FORM[p.role]; let u = f[0], v = f[1];
-      if (p.role === 'ST') v = p.team === team ? -0.95 : -7.4;
-      if ((p.role === 'LW' || p.role === 'RW') && p.team === team) v = -3.5;
+      const f = FORM[p.role]; let u = f[0] * PITCH_KX, v = f[1] * PITCH_KZ;
+      if (p.isGK) v = -(F.L - 1.5);
+      if (p.role === 'ST') v = p.team === team ? -0.95 : -(F.CIRCLE + 1.2);
+      if ((p.role === 'LW' || p.role === 'RW' || p.role === 'MID') && p.team === team) v = -3.5;
       const s = this.dir(p.team);
       p.pos.set(u * s, 0, v * s); p.vel.set(0, 0, 0); p.yaw = s > 0 ? 0 : Math.PI;
       p.dash = p.slide = p.dive = null; p.charging = false; p.charge = 0; p.kickT = -1; p.flipT = -1; p.pending = null;
@@ -716,7 +719,7 @@ class Match {
     const t = clamp(((b.pos.x - ax) * abx + (b.pos.y - ay) * aby + (b.pos.z - az) * abz) / l2, 0, 1);
     const cx = ax + abx * t, cy = ay + aby * t, cz = az + abz * t;
     const dist = Math.hypot(b.pos.x - cx, b.pos.y - cy, b.pos.z - cz);
-    const reach = gk.state === 'dive' ? 0.62 : 0.58;
+    const reach = (gk.state === 'dive' ? 0.62 : 0.58) + (5 - this.size) * 0.1; // longer reach in small teams, where keepers face more shots
     if (dist > BALL_R + reach) return;
     const k = b.kick;
     const shooter = k && k.by && k.by.team !== gk.team && k.type === 'shot' ? k.by : null;
@@ -832,7 +835,7 @@ class Match {
       this.itemSpawnT -= dt;
       if (this.itemSpawnT <= 0 && this.items.length < 3) {
         this.itemSpawnT = rand(5, 8);
-        const x = rand(-16, 16), z = rand(-24, 24);
+        const x = rand(-16, 16) * PITCH_KX, z = rand(-24, 24) * PITCH_KZ;
         const mesh = new THREE.Mesh(PlayerGeo.get().cube, new THREE.MeshLambertMaterial({ map: World.T.itemBox, emissive: lin('#5a3a00'), emissiveIntensity: 0.6 }));
         mesh.scale.set(0.8, 0.8, 0.8); mesh.castShadow = true;
         this.scene.add(mesh);
