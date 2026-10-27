@@ -216,6 +216,10 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .tabs.slots .tab { font-size: 20px; padding: 4px 10px 7px; }
 .lcard .art { display: flex; gap: 8px; align-items: center; min-width: 0; }
 .lcard canvas { width: 40px; height: 40px; flex: none; }
+.kits { display: flex; gap: 12px; flex-wrap: wrap; }
+.kitbox { display: grid; justify-items: center; gap: 4px; padding: 8px 10px; background: #59608a; }
+.kitbox .label { color: var(--text); }
+.kitbox canvas { width: 56px; height: 56px; }
 .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .lcard { text-align: left; cursor: pointer; display: grid; gap: 6px; padding: 10px; background: var(--slate-2); border: var(--px) solid var(--ink); box-shadow: inset 4px 0 0 var(--rc, var(--r-rare)), inset 0 -5px 0 rgba(0,0,0,.3); }
 .lcard[aria-pressed="true"] { outline: var(--px) solid var(--text); outline-offset: -6px; }
@@ -604,7 +608,7 @@ const Save = {
   defaults() {
     return {
       v: 1, emeralds: 500, styles: ['ROOKIE'], flows: [], style: 'ROOKIE', flow: null,
-      skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
+      club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
       settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true },
@@ -623,6 +627,7 @@ const Save = {
     out.pity = Object.assign({}, def.pity, out.pity || {});
     for (const k in out.pity) out.pity[k] = clamp(Math.floor(Number(out.pity[k]) || 0), 0, 29);
     out.look = Object.assign({}, def.look, out.look && typeof out.look === 'object' ? out.look : {});
+    if (typeof out.club !== 'string') out.club = 'ROVERS';
     if (!Array.isArray(out.skins)) out.skins = [];
     out.skins = out.skins.filter((s) => typeof s === 'string');
     out.stats = Object.assign({}, def.stats, out.stats || {});
@@ -649,6 +654,7 @@ const Save = {
     d.flows = d.flows.filter((f) => FLOWS[f]);
     if (!STYLES[d.style] || !d.styles.includes(d.style)) d.style = 'ROOKIE';
     if (d.flow && (!FLOWS[d.flow] || !d.flows.includes(d.flow))) d.flow = null;
+    if (!CLUBS[d.club]) d.club = 'ROVERS';
     d.skins = d.skins.filter((s, i) => SKINS[s] && !SKINS[s].base && d.skins.indexOf(s) === i);
     const look = {};
     for (const sl of SKIN_SLOTS) {
@@ -840,6 +846,7 @@ function digDraw(g, str, x, y, color) {
 }
 
 function hexRGB(hex) { const c = new THREE.Color(hex); return [Math.round(c.r * 255), Math.round(c.g * 255), Math.round(c.b * 255)]; }
+function hexLum(hex) { const c = hexRGB(hex); return (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) / 255; }
 function rgbStr(rgb) { return 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')'; }
 function shadeRGB(rgb, k) { return [clamp(Math.round(rgb[0] * k), 0, 255), clamp(Math.round(rgb[1] * k), 0, 255), clamp(Math.round(rgb[2] * k), 0, 255)]; }
 function mixRGB(a, b, t) { return [Math.round(lerp(a[0], b[0], t)), Math.round(lerp(a[1], b[1], t)), Math.round(lerp(a[2], b[2], t))]; }
@@ -871,6 +878,13 @@ const Tex = {
 };
 
 /* ---------- block texture library (16x16 tiles, repeat-wrapped) ---------- */
+const seatPix = (base, R) => (x, y) => shadeRGB(base, ((x + y) % 4 === 0 ? 0.92 : 1) * lerp(0.9, 1.06, R()) * (y < 3 ? 0.78 : 1) * (y > 13 ? 0.85 : 1));
+/** recolour a stand's seat texture in place (each match dresses the stands in the clubs' colours) */
+function repaintSeat(tex, hex) {
+  const c = tex.image, g = c.getContext('2d'), img = g.createImageData(16, 16), f = seatPix(hexRGB(hex), mulberry32(31));
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const p = f(x, y), i = (y * 16 + x) * 4; img.data[i] = p[0]; img.data[i + 1] = p[1]; img.data[i + 2] = p[2]; img.data[i + 3] = 255; }
+  g.putImageData(img, 0, 0); tex.needsUpdate = true;
+}
 function makeBlockTextures() {
   const T = {};
   const R = mulberry32(1337);
@@ -897,16 +911,8 @@ function makeBlockTextures() {
     const isM = y === 7 || y === 15 || (y < 8 ? (x === 7 || x === 15) : (x === 3 || x === 11));
     return isM ? shadeRGB(darkStone, 0.6) : shadeRGB(darkStone, n(0.85, 1.1));
   }, { repeat: true, mip: true });
-  const seat = (hex) => {
-    const base = hexRGB(hex);
-    return Tex.pixels(16, 16, (x, y) => {
-      const k = ((x + y) % 4 === 0 ? 0.92 : 1) * n(0.9, 1.06) * (y < 3 ? 0.78 : 1) * (y > 13 ? 0.85 : 1);
-      return shadeRGB(base, k);
-    }, { repeat: true, mip: true });
-  };
-  T.seatBlue = seat('#2f62d8');
-  T.seatOrange = seat('#ec7424');
-  T.seatGrey = seat('#5a5f78');
+  T.seatHome = Tex.pixels(16, 16, seatPix(hexRGB('#2f62d8'), R), { repeat: true, mip: true });
+  T.seatAway = Tex.pixels(16, 16, seatPix(hexRGB('#ec7424'), R), { repeat: true, mip: true });
   const white = hexRGB('#eef1f4');
   T.white = Tex.pixels(16, 16, (x, y) => {
     const edge = x === 0 || y === 0 || x === 15 || y === 15;
@@ -1074,7 +1080,7 @@ function makePlayerSkin(o) {
     for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) { g.fillStyle = rgbStr(shadeRGB(base, lerp(a, b, R()))); g.fillRect(x + xx, y + yy, 1, 1); }
   };
   const px = (x, y, hex) => { g.fillStyle = hex; g.fillRect(x, y, 1, 1); };
-  const { jersey, trim, shorts, socks, boots, skin, hair, number, gloves, eye, sparkle } = o;
+  const { kit: K, crest, boots, skin, hair, number, gloves, eye, sparkle } = o;
   // head
   fillN(8, 0, 8, 8, hair, 0.82, 1.08);                       // top
   fillN(16, 0, 8, 8, skin, 0.92, 1.0);                       // bottom (chin)
@@ -1087,20 +1093,42 @@ function makePlayerSkin(o) {
   px(9, 11, brow); px(10, 11, brow); px(13, 11, brow); px(14, 11, brow);
   px(9, 12, '#f7f7f2'); px(10, 12, eye); px(13, 12, eye); px(14, 12, '#f7f7f2');
   px(11, 14, rgbStr(shadeRGB(hexRGB(skin), 0.62))); px(12, 14, rgbStr(shadeRGB(hexRGB(skin), 0.62)));
-  // body
-  fillN(20, 16, 8, 4, jersey); fillN(28, 16, 8, 4, shorts);
-  for (const [x, w] of [[16, 4], [20, 8], [28, 4], [32, 8]]) { fillN(x, 20, w, 10, jersey); fillN(x, 30, w, 2, shorts); }
-  g.fillStyle = trim; g.fillRect(20, 20, 8, 1); g.fillRect(32, 20, 8, 1); g.fillRect(16, 20, 1, 10); g.fillRect(31, 20, 1, 10);
-  g.fillRect(21, 22, 2, 2);
-  const num = String(number);
-  digDraw(g, num, 32 + Math.floor((8 - (num.length * 4 - 1)) / 2), 22, trim);
-  if (num.length === 1) digDraw(g, num, 24, 23, trim); else { g.fillStyle = trim; g.fillRect(24, 23, 2, 1); }
-  // arms: sleeve + skin or gloves
-  fillN(44, 16, 4, 4, jersey); fillN(48, 16, 4, 4, gloves || skin);
-  for (let s = 0; s < 4; s++) { fillN(40 + s * 4, 20, 4, 5, jersey); g.fillStyle = trim; g.fillRect(40 + s * 4, 24, 4, 1); fillN(40 + s * 4, 25, 4, 7, skin, 0.94, 1.02); if (gloves) fillN(40 + s * 4, 29, 4, 3, gloves); }
-  // legs: shorts, socks, boots
-  fillN(4, 16, 4, 4, shorts); fillN(8, 16, 4, 4, '#1a1a1f');
-  for (let s = 0; s < 4; s++) { fillN(s * 4, 20, 4, 4, shorts); fillN(s * 4, 24, 4, 6, socks); g.fillStyle = trim; g.fillRect(s * 4, 25, 4, 1); fillN(s * 4, 30, 4, 2, boots, 0.85, 1.1); }
+  // shirt: the strip x 16..39, rows 20..29 wraps round the body (left side, front, right side, back)
+  const shirt = hexRGB(K.shirt), alt = hexRGB(K.alt);
+  const onAlt = (x, y) => {
+    const r = y - 20;
+    switch (K.pattern) {
+      case 'stripes': return ((x - 16) >> 1) % 2 === 1;
+      case 'hoops': return (r >> 1) % 2 === 1;
+      case 'halves': return x >= 24 && x <= 35; // the +x half: right of the front, the right side, left of the back
+      case 'sash': // shoulder to hip across the front, hip to shoulder across the back
+        if (x >= 20 && x <= 27) return Math.abs(x - 20 - r * 0.75 - 0.4) < 1.3;
+        if (x >= 32) return Math.abs(x - 32 - (7 - r * 0.75) + 0.4) < 1.3;
+        return x >= 28 ? r >= 8 : r <= 1;
+      default: return x === 16 || x === 31; // plain: thin side panels
+    }
+  };
+  for (let y = 20; y < 30; y++) for (let x = 16; x < 40; x++) { g.fillStyle = rgbStr(shadeRGB(onAlt(x, y) ? alt : shirt, lerp(0.9, 1.06, R()))); g.fillRect(x, y, 1, 1); }
+  fillN(20, 16, 8, 4, K.shirt); fillN(22, 17, 4, 2, K.collar); // shoulders, collar ring under the head
+  fillN(28, 16, 8, 4, K.shorts);
+  for (const [x, w] of [[16, 4], [20, 8], [28, 4], [32, 8]]) fillN(x, 30, w, 2, K.shorts);
+  g.fillStyle = K.collar; g.fillRect(22, 20, 4, 1); g.fillRect(23, 21, 2, 1); g.fillRect(34, 20, 4, 1);
+  // crest on the left chest, small number on the right, big number on the back (on a plain panel over stripes and hoops)
+  const cr = crest || ['#ffffff', '#000000'];
+  g.fillStyle = K.number; g.fillRect(21, 22, 3, 2); g.fillRect(22, 24, 1, 1);
+  g.fillStyle = cr[0] === K.number ? cr[1] : cr[0]; g.fillRect(22, 22, 1, 2);
+  const num = String(number), panel = K.pattern === 'stripes' || K.pattern === 'hoops';
+  const bx = 32 + Math.floor((8 - (num.length * 4 - 1)) / 2);
+  if (panel) { fillN(bx - 1, 21, num.length * 4 + 1, 7, K.shirt, 0.95, 1.02); if (num.length === 1) fillN(24, 21, 4, 7, K.shirt, 0.95, 1.02); }
+  digDraw(g, num, bx, 22, K.number);
+  if (num.length === 1) digDraw(g, num, 25, 22, K.number); else { g.fillStyle = K.number; g.fillRect(25, 23, 2, 1); }
+  // arms: sleeve, cuff, then skin or gloves
+  fillN(44, 16, 4, 4, K.sleeve); fillN(48, 16, 4, 4, gloves || skin);
+  for (let s = 0; s < 4; s++) { fillN(40 + s * 4, 20, 4, 4, K.sleeve); fillN(40 + s * 4, 24, 4, 1, K.cuff, 0.95, 1.02); fillN(40 + s * 4, 25, 4, 7, skin, 0.94, 1.02); if (gloves) fillN(40 + s * 4, 29, 4, 3, gloves); }
+  // legs: shorts with a side stripe, socks with a band, boots
+  fillN(4, 16, 4, 4, K.shorts);
+  for (let s = 0; s < 4; s++) { fillN(s * 4, 20, 4, 4, K.shorts); fillN(s * 4, 24, 4, 6, K.socks); g.fillStyle = K.sockTrim; g.fillRect(s * 4, 25, 4, 1); fillN(s * 4, 30, 4, 2, boots, 0.85, 1.1); }
+  g.fillStyle = K.shortsTrim; g.fillRect(1, 20, 1, 4); g.fillRect(10, 20, 1, 4);
   if (sparkle) for (let s = 0; s < 4; s++) { px(s * 4 + (s % 2), 30, '#ffffff'); px(s * 4 + 2 + (s % 2), 31, '#ffe9a8'); }
   fillN(8, 16, 4, 4, boots, 0.7, 0.85); // boot soles
   return Tex.fromCanvas(c);
@@ -1293,6 +1321,39 @@ function portraitCanvas(styleId, size = 96, look = null) {
   const out = mkCanvas(size, size), og = out.getContext('2d');
   og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size);
   out.className = 'px';
+  return out;
+}
+/* ---------- club crests and kit swatches ---------- */
+const CREST_SHIELD = ['.kkkkkkkkkk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '..kAAAAAAk..', '..kAAAAAAk..', '...kAAAAk...', '....kAAk....', '.....kk.....'];
+const CREST_SYMBOLS = {
+  star: ['..BB..', '..BB..', 'BBBBBB', '.BBBB.', '.B..B.', 'B....B'], flame: ['..B...', '..BB..', '.BBB.B', '.BBBBB', 'BBBBBB', '.BBBB.'],
+  leaf: ['....BB', '..BBBB', '.BBBB.', 'BBBB..', 'BBB...', 'B.....'], anchor: ['..BB..', '..BB..', 'BBBBBB', '..BB..', 'B.BB.B', '.BBBB.'],
+  moon: ['..BBB.', '.BB...', 'BB....', 'BB....', '.BB...', '..BBB.'], sun: ['B.BB.B', '.BBBB.', 'BBBBBB', 'BBBBBB', '.BBBB.', 'B.BB.B'],
+};
+function crestCanvas(clubId, size = 48) {
+  const cr = CLUBS[clubId].crest, c = mkCanvas(12, 12), g = c.getContext('2d');
+  CREST_SHIELD.forEach((row, y) => row.split('').forEach((ch, x) => { if (ch !== '.') { g.fillStyle = ch === 'k' ? '#0a0c17' : cr[0]; g.fillRect(x, y, 1, 1); } }));
+  CREST_SYMBOLS[cr[2]].forEach((row, y) => row.split('').forEach((ch, x) => { if (ch === 'B') { g.fillStyle = cr[1]; g.fillRect(3 + x, 2 + y, 1, 1); } }));
+  const out = mkCanvas(size, size), og = out.getContext('2d');
+  og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size); out.className = 'px';
+  return out;
+}
+const KIT_ICON = ['............', '...kkCCkk...', '.kkXXXXXXkk.', 'kLLXXXXXXLLk', 'kLLXXXXXXLLk', '.kkXXXXXXkk.', '..kXXXXXXk..', '..kXXXXXXk..', '..kXXXXXXk..', '..kXXXXXXk..', '..kkkkkkkk..', '............'];
+/** a little shirt in a kit's colours and pattern */
+function kitCanvas(k, size = 48) {
+  const c = mkCanvas(12, 12), g = c.getContext('2d');
+  KIT_ICON.forEach((row, y) => row.split('').forEach((ch, x) => {
+    let col = null;
+    if (ch === 'k') col = '#0a0c17'; else if (ch === 'C') col = k.collar; else if (ch === 'L') col = k.sleeve;
+    else if (ch === 'X') {
+      const u = x - 3, v = y - 2;
+      const a = k.pattern === 'stripes' ? u % 2 === 1 : k.pattern === 'hoops' ? (v >> 1) % 2 === 1 : k.pattern === 'halves' ? u >= 3 : k.pattern === 'sash' ? Math.abs(u - v * 0.7) < 1.1 : false;
+      col = a ? k.alt : k.shirt;
+    }
+    if (col) { g.fillStyle = col; g.fillRect(x, y, 1, 1); }
+  }));
+  const out = mkCanvas(size, size), og = out.getContext('2d');
+  og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size); out.className = 'px';
   return out;
 }
 /** card art for a skin: a portrait for hair and colours, a pixel icon for the rest */
@@ -1591,7 +1652,7 @@ const World = {
     grey.box(-endLen, 0, endIn - 0.6, endLen, 1.2, endIn, '#9fa3b3', { uv: 1 });
     const stone = new THREE.MeshLambertMaterial({ map: T.stoneBrick, vertexColors: true });
     const mkMats = (seat) => [new THREE.MeshLambertMaterial({ map: seat, vertexColors: true }), stone, stone];
-    const bm = blue.mesh(mkMats(T.seatBlue)), om = orange.mesh(mkMats(T.seatOrange)), gm = grey.mesh(stone);
+    const bm = blue.mesh(mkMats(T.seatHome)), om = orange.mesh(mkMats(T.seatAway)), gm = grey.mesh(stone);
     bm.receiveShadow = om.receiveShadow = gm.receiveShadow = false;
     this.scene.add(bm, om, gm);
     this.stand = { sideIn, endIn, sideLen, endLen, outerX, outerZ, wallTop };
@@ -1812,6 +1873,18 @@ const World = {
       this.orbit.instanceMatrix.needsUpdate = true;
     }
     if (this.lampSprites.length) this.lampSprites[0].material.opacity = 0.36 + Math.sin(this.time * 1.7) * 0.03;
+  },
+  /** dress the stands for a match: seats in each club's crest colour, fans in their club's home shirts */
+  paintCrowd(a, b) {
+    const sides = [a, b];
+    repaintSeat(this.T.seatHome, a.crest[0]); repaintSeat(this.T.seatAway, b.crest[0]);
+    const pals = sides.map((s) => { const k = CLUBS[s.club].home; return [k.shirt, k.shirt, k.alt, k.sleeve, k.shirt].map((h) => lin(h)); });
+    const geo = this.fans.geometry, col = geo.attributes.aColor, data = geo.attributes.aData, R = mulberry32(9);
+    for (let i = 0; i < this.fanCount; i++) {
+      const c = pals[data.getY(i) > 0.5 ? 1 : 0][Math.floor(R() * 5)], k = lerp(0.82, 1.04, R());
+      col.setXYZ(i, c.r * k, c.g * k, c.b * k);
+    }
+    col.needsUpdate = true;
   },
   setSun(dir) { SUN_DIR.copy(dir); if (this.sky) this.sky.material.uniforms.sunDir.value.copy(dir); },
   render() { this.renderer.render(this.scene, this.camera); },
@@ -2053,10 +2126,8 @@ const TimeCtl = {
 /* =====================================================================
    Players: blocky humanoid model, procedural animation, movement
    ===================================================================== */
-const TEAM = [
-  { name: 'BLUE', hex: '#3d7dff', jersey: '#2f6bff', trim: '#ffffff', shorts: '#16245e', socks: '#2f6bff', boots: '#1a1a1f', gk: { jersey: '#22b866', trim: '#0b3d22', shorts: '#0b3d22', socks: '#22b866' } },
-  { name: 'ORANGE', hex: '#ff8a2a', jersey: '#ff7a1a', trim: '#1d1f2e', shorts: '#f4efe0', socks: '#ff7a1a', boots: '#f4efe0', gk: { jersey: '#8e4bd6', trim: '#ffffff', shorts: '#3a1d66', socks: '#8e4bd6' } },
-];
+// the two sides of the current match (club, kit, keeper kit, UI colour); Match sets them with matchSides()
+const TEAM = [null, null];
 const SKIN_TONES = ['#f1c7a0', '#e0ac85', '#c48b62', '#9a6643', '#6e4a32', '#f6d6b8'];
 const EYE_COLS = ['#2b1d14', '#1d2b4a', '#2a3a1c', '#3a2a14'];
 const RUN_SPEED = 6.9, SPRINT_SPEED = 10.4;
@@ -2135,6 +2206,7 @@ class Player {
     this.styleId = o.style; this.style = STYLES[o.style];
     this.flowId = o.flow || null;
     this.skin = o.skin || pick(SKIN_TONES);
+    this.side = o.side || TEAM[this.team];
     this.look = lookFor(o.style, o.look || {});
     this.pos = V3(); this.vel = V3(); this.yaw = 0; this.onGround = true; this.airT = 0;
     this.mx = 0; this.mz = 0; this.sprint = false; this.faceYaw = null; this.exhausted = false;
@@ -2159,11 +2231,10 @@ class Player {
   get hasBall() { return this.m.ball.owner === this; }
   get aura() { return this.style.aura; }
   buildModel() {
-    const team = TEAM[this.team];
-    const kit = this.isGK ? Object.assign({}, team, team.gk) : team;
+    const side = this.side, kit = this.isGK ? side.keeper : side.kit;
     const L = this.look;
     this.skinTex = makePlayerSkin({
-      jersey: kit.jersey, trim: kit.trim, shorts: kit.shorts, socks: kit.socks, boots: L.boots || kit.boots, sparkle: L.sparkle,
+      kit, crest: side.crest, boots: L.boots || (this.team === 0 ? '#1a1a1f' : '#f4efe0'), sparkle: L.sparkle,
       skin: this.skin, hair: L.hair, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: pick(EYE_COLS),
       seed: this.team * 97 + this.number * 13 + 7,
     });
@@ -2913,6 +2984,81 @@ function botLook() {
   return { boots: any('boots', 0.4), color: any('color', 0.2), acc: any('acc', 0.22), gloves: any('gloves', 0.15), celeb: any('celeb', 0.6) };
 }
 
+/* ---------- clubs and kits ----------
+   A kit: shirt + alt colour in a pattern (stripes, hoops, sash, halves or plain), sleeves with cuffs, collar,
+   number colour, shorts with a side stripe, socks with a band. Crest: [main colour, symbol colour, symbol]. */
+const mkKit = (shirt, alt, pattern, sleeve, cuff, collar, number, shorts, shortsTrim, socks, sockTrim) => ({ shirt, alt, pattern, sleeve, cuff, collar, number, shorts, shortsTrim, socks, sockTrim });
+const CLUBS = {
+  ROVERS: {
+    name: 'BLOCKTOWN ROVERS', nick: 'ROVERS', short: 'BTR', crest: ['#2f6bff', '#ffffff', 'star'],
+    home: mkKit('#2f6bff', '#f4f1e8', 'sash', '#f4f1e8', '#2f6bff', '#0f2a7a', '#ffffff', '#f4f1e8', '#2f6bff', '#2f6bff', '#f4f1e8'),
+    away: mkKit('#f4f1e8', '#2f6bff', 'sash', '#2f6bff', '#f4f1e8', '#2f6bff', '#16245e', '#16245e', '#f4f1e8', '#f4f1e8', '#2f6bff'),
+    keeper: mkKit('#22b866', '#14804a', 'hoops', '#14804a', '#0b3d22', '#0b3d22', '#0b3d22', '#0b3d22', '#22b866', '#22b866', '#0b3d22'),
+  },
+  EMBER: {
+    name: 'EMBER CITY', nick: 'EMBER', short: 'EMB', crest: ['#ff7a1a', '#1d1f2e', 'flame'],
+    home: mkKit('#ff7a1a', '#1d1f2e', 'halves', '#1d1f2e', '#ff7a1a', '#1d1f2e', '#ffffff', '#1d1f2e', '#ff7a1a', '#ff7a1a', '#1d1f2e'),
+    away: mkKit('#18a999', '#ff7a1a', 'plain', '#ff7a1a', '#18a999', '#ff7a1a', '#ffffff', '#1d1f2e', '#18a999', '#18a999', '#ff7a1a'),
+    keeper: mkKit('#8e4bd6', '#5d2a9e', 'plain', '#5d2a9e', '#ffffff', '#ffffff', '#ffffff', '#3a1d66', '#8e4bd6', '#8e4bd6', '#ffffff'),
+  },
+  MOSSWOOD: {
+    name: 'MOSSWOOD UNITED', nick: 'MOSSWOOD', short: 'MSW', crest: ['#2f9a44', '#f4f1e8', 'leaf'],
+    home: mkKit('#2f9a44', '#f4f1e8', 'hoops', '#2f9a44', '#f4f1e8', '#f4f1e8', '#ffffff', '#f4f1e8', '#2f9a44', '#2f9a44', '#f4f1e8'),
+    away: mkKit('#f2c94c', '#2f9a44', 'plain', '#2f9a44', '#f2c94c', '#2f9a44', '#1b4a26', '#1b4a26', '#f2c94c', '#f2c94c', '#2f9a44'),
+    keeper: mkKit('#ff8a2a', '#c95c14', 'sash', '#c95c14', '#1d1f2e', '#1d1f2e', '#1d1f2e', '#1d1f2e', '#ff8a2a', '#ff8a2a', '#1d1f2e'),
+  },
+  HARBOUR: {
+    name: 'RUBY HARBOUR', nick: 'HARBOUR', short: 'RBH', crest: ['#d8262e', '#ffffff', 'anchor'],
+    home: mkKit('#d8262e', '#f4f1e8', 'stripes', '#d8262e', '#f4f1e8', '#f4f1e8', '#1a1a22', '#1a1a22', '#d8262e', '#d8262e', '#f4f1e8'),
+    away: mkKit('#8d96a6', '#d8262e', 'sash', '#8d96a6', '#d8262e', '#d8262e', '#16213e', '#16213e', '#d8262e', '#8d96a6', '#d8262e'),
+    keeper: mkKit('#ffd23d', '#d9a512', 'plain', '#1a1a22', '#ffd23d', '#1a1a22', '#1a1a22', '#1a1a22', '#ffd23d', '#ffd23d', '#1a1a22'),
+  },
+  NIGHTFALL: {
+    name: 'NIGHTFALL FC', nick: 'NIGHTFALL', short: 'NFC', crest: ['#6c3cd6', '#dcd2ff', 'moon'],
+    home: mkKit('#6c3cd6', '#141218', 'stripes', '#141218', '#6c3cd6', '#141218', '#ffffff', '#141218', '#6c3cd6', '#141218', '#6c3cd6'),
+    away: mkKit('#c9ced8', '#6c3cd6', 'sash', '#c9ced8', '#6c3cd6', '#6c3cd6', '#2a1659', '#2a1659', '#c9ced8', '#c9ced8', '#6c3cd6'),
+    keeper: mkKit('#a6ff2e', '#6cc214', 'hoops', '#6cc214', '#141218', '#141218', '#141218', '#141218', '#a6ff2e', '#a6ff2e', '#141218'),
+  },
+  SUNSPIRE: {
+    name: 'SUNSPIRE', nick: 'SUNSPIRE', short: 'SUN', crest: ['#ffcb3d', '#141218', 'sun'],
+    home: mkKit('#ffcb3d', '#141218', 'plain', '#141218', '#ffcb3d', '#141218', '#141218', '#141218', '#ffcb3d', '#ffcb3d', '#141218'),
+    away: mkKit('#f4f1e8', '#141218', 'plain', '#141218', '#ffcb3d', '#ffcb3d', '#141218', '#141218', '#ffcb3d', '#f4f1e8', '#141218'),
+    keeper: mkKit('#4aa8ff', '#1f6fd0', 'stripes', '#1f6fd0', '#f4f1e8', '#f4f1e8', '#f4f1e8', '#103a78', '#4aa8ff', '#4aa8ff', '#f4f1e8'),
+  },
+};
+const CLUB_IDS = Object.keys(CLUBS);
+const KEEPER_SPARES = [
+  mkKit('#ff5fb0', '#d13f8c', 'plain', '#d13f8c', '#1a1a22', '#1a1a22', '#1a1a22', '#1a1a22', '#ff5fb0', '#ff5fb0', '#1a1a22'),
+  mkKit('#5a5f78', '#3a3f4f', 'hoops', '#3a3f4f', '#ffcb3d', '#ffcb3d', '#ffcb3d', '#2c3150', '#5a5f78', '#5a5f78', '#ffcb3d'),
+];
+/** the colours that fill most of a shirt: patterned shirts count both */
+const kitColours = (k) => (k.pattern === 'plain' || k.pattern === 'sash' ? [k.shirt] : [k.shirt, k.alt]);
+function kitClash(a, b) {
+  for (const x of kitColours(a)) for (const y of kitColours(b)) {
+    const p = hexRGB(x), q = hexRGB(y);
+    if (Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) < 110) return true;
+  }
+  return false;
+}
+/** a colour from the kit that reads well on the dark UI */
+function kitUiHex(k) {
+  const lum = (h) => { const c = hexRGB(h); return (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) / 255; };
+  return lum(k.shirt) >= 0.22 ? k.shirt : lum(k.alt) >= 0.22 ? k.alt : '#a4a9cf';
+}
+/** one team's look for a match: club, kit worn (home or away), keeper kit, UI colour */
+function sideFor(clubId, away = false) {
+  const c = CLUBS[clubId] || CLUBS.ROVERS, k = away ? c.away : c.home;
+  return { club: clubId, name: c.nick, full: c.name, short: c.short, crest: c.crest, kit: k, keeper: c.keeper, away, hex: kitUiHex(k) };
+}
+/** pick both kits for a match: the away club changes if the home kits clash, keepers change if theirs clash */
+function matchSides(homeId, awayId) {
+  const home = sideFor(homeId), away = sideFor(awayId, kitClash(CLUBS[homeId].home, CLUBS[awayId].home));
+  for (const [s, o] of [[home, away], [away, home]]) {
+    if (kitClash(s.keeper, s.kit) || kitClash(s.keeper, o.kit)) s.keeper = KEEPER_SPARES.find((k) => !kitClash(k, s.kit) && !kitClash(k, o.kit)) || KEEPER_SPARES[0];
+  }
+  return [home, away];
+}
+
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /** bot difficulty 0..1 from rank points */
@@ -2959,6 +3105,10 @@ class Match {
     this.teamState = ['loose', 'loose']; this.pred = [];
     this.aim = V3(0, 1, F.L); this.camYaw = 0; this.aimOnTarget = false;
     this.ctl = null; this.autopilot = !!opts.autopilot; this.lastGoal = null; this.pendingEnd = false;
+    // your club at home against a random other club; the away side changes kit if the colours clash
+    const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
+    const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
+    [TEAM[0], TEAM[1]] = matchSides(home, away);
     this.buildTeams(opts);
     this.setupKickoff(0, true);
   }
@@ -5076,11 +5226,12 @@ const Showcase = {
     if (!this.group) return;
     const d = Save.data, sp = this.spec || {};
     const style = sp.style || d.style, flow = sp.flow !== undefined ? sp.flow : d.flow, look = Object.assign({}, d.look, sp.look || {});
-    const key = [style, flow || '', SKIN_SLOTS.map((s) => look[s.id]).join(',')].join('|');
+    const club = sp.club || d.club;
+    const key = [style, flow || '', club, SKIN_SLOTS.map((s) => look[s.id]).join(',')].join('|');
     if (this.p && this.key === key) return;
     if (this.p) this.p.dispose();
     this.key = key; this.flow = flow;
-    this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: 'ST', human: true, style, flow, look, number: 10, name: 'YOU', skin: SKIN_TONES[1] });
+    this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: 'ST', human: true, style, flow, look, side: sideFor(club), number: 10, name: 'YOU', skin: SKIN_TONES[1] });
     const aura = col(this.p.aura);
     this.ringMat.color.copy(aura); this.glowMat.color.copy(aura); this.beamMat.color.copy(col('#fff1d6')).lerp(aura, 0.35);
     this.p.P.root.visible = this.p.blob.visible = this.on;
@@ -5260,7 +5411,7 @@ const UI = {
           <img class="badge px" id="pro-badge" alt="">
           <div><div class="label">RANK</div><div class="tier" id="pro-tier">WOOD</div></div>
           <div><div class="rpbar" id="pro-rp"></div><div class="label" id="pro-rptxt" style="margin-top:6px">0 RP</div></div>
-          <div class="equip-row"><span class="label">STYLE</span><b id="pro-style">ROOKIE</b><span class="rar" id="pro-style-r" data-r="Rare">RARE</span><span class="label">FLOW</span><b id="pro-flow">NONE</b></div>
+          <div class="equip-row"><span class="label">STYLE</span><b id="pro-style">ROOKIE</b><span class="rar" id="pro-style-r" data-r="Rare">RARE</span><span class="label">FLOW</span><b id="pro-flow">NONE</b><span class="label">CLUB</span><b id="pro-club">ROVERS</b></div>
           <div class="label" id="pro-rec" style="grid-column:1/-1">0 W &middot; 0 D &middot; 0 L</div>
         </div>
         <p class="notice" id="lob-notice"></p>
@@ -5289,7 +5440,7 @@ const UI = {
         <div class="locker">
           <div class="lk-stage"><div class="lk-fit" id="lk-fit" title="Drag to turn your player"><span class="label lk-drag">DRAG TO TURN</span></div><div class="lk-cap panel" id="lk-cap"></div></div>
           <div class="lk-side">
-            <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button><button class="tab" id="ltab-skin" role="tab" type="button">SKINS</button></div>
+            <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button><button class="tab" id="ltab-skin" role="tab" type="button">SKINS</button><button class="tab" id="ltab-club" role="tab" type="button">CLUB</button></div>
             <div class="tabs slots" id="lk-slots" role="tablist" hidden></div>
             <div class="lk-body"><div class="grid-cards" id="locker-grid"></div><div class="panel detail" id="locker-detail"></div></div>
           </div>
@@ -5347,6 +5498,7 @@ const UI = {
             <li><b>Flow</b> fills from completed passes, dodges, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
             <li><b>Emeralds:</b> win 150, draw 80, loss 50, plus 20 a goal and 10 an assist.</li>
             <li><b>Spins</b> cost 200. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
+            <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Bots get sharper as you climb.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
@@ -5359,7 +5511,7 @@ const UI = {
   tplHud() {
     return `<section id="hud" hidden>
       <div class="hud-mode"><span class="chip" id="hud-mode">RANKED</span><img class="px" id="hud-badge" alt=""></div>
-      <div class="scorebar"><div class="team blue"><span class="nm">BLUE</span><span id="sc0">0</span></div><div class="clock"><span id="clock">4:00</span><small id="clock-sub"></small></div><div class="team orange"><span id="sc1">0</span><span class="nm">ORANGE</span></div></div>
+      <div class="scorebar"><div class="team blue"><span class="nm" id="sc0-nm">HOME</span><span id="sc0">0</span></div><div class="clock"><span id="clock">4:00</span><small id="clock-sub"></small></div><div class="team orange"><span id="sc1">0</span><span class="nm" id="sc1-nm">AWAY</span></div></div>
       <div class="hud-em emer"><img class="px" id="hud-em-ico" alt=""><span id="hud-em">0</span></div>
       <div class="crosshair" id="xhair"></div>
       <div class="charge" id="charge" hidden><i id="charge-fill"></i><span id="charge-txt">POWER</span></div>
@@ -5423,6 +5575,7 @@ const UI = {
     click('spin-go', () => this.spin());
     click('ltab-style', () => { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.renderLocker(); });
     click('ltab-flow', () => { this.lockerTab = 'flow'; this.lockerSel = Save.data.flow || 'NONE'; this.renderLocker(); });
+    click('ltab-club', () => { this.lockerTab = 'club'; this.lockerSel = Save.data.club; this.renderLocker(); });
     click('ltab-skin', () => { this.lockerTab = 'skin'; this.lockerSel = Save.data.look[this.skinSlot]; this.renderLocker(); });
     $('lk-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); this.skinSlot = b.dataset.slot; this.lockerSel = Save.data.look[this.skinSlot]; this.renderLocker(); });
     click('btn-mute', () => { Save.data.settings.mute = !Save.data.settings.mute; Sfx.setMuted(Save.data.settings.mute); Save.save(); this.renderLobby(); });
@@ -5475,6 +5628,7 @@ const UI = {
     $('pro-style').textContent = STYLES[d.style].name;
     $('pro-style-r').dataset.r = STYLES[d.style].rarity; $('pro-style-r').textContent = STYLES[d.style].rarity.toUpperCase();
     $('pro-flow').textContent = d.flow ? FLOWS[d.flow].name : 'NONE';
+    $('pro-club').textContent = CLUBS[d.club].nick;
     $('pro-rec').textContent = d.stats.wins + ' W · ' + d.stats.draws + ' D · ' + d.stats.losses + ' L · ' + d.stats.goals + ' GOALS';
     const notes = [];
     if (!Save.ok) notes.push('<span>This browser is blocking storage, so progress will not be saved after you close the page.</span>');
@@ -5490,6 +5644,12 @@ const UI = {
     $('hud-mode').textContent = m.cfg.name;
     $('hud-badge').src = badgeURL(tierOf(Save.data.rp)); $('hud-badge').hidden = !m.cfg.ranked;
     $('hud-em-ico').src = iconURL('emerald'); $('hud-em').textContent = Save.data.emeralds;
+    for (const t of [0, 1]) { // the score bar wears each club's shirt
+      const s = TEAM[t], el = $('sc' + t).parentElement;
+      el.style.background = s.kit.shirt; el.style.color = hexLum(s.kit.shirt) > 0.55 ? 'var(--ink)' : 'var(--text)';
+      el.style.boxShadow = 'inset 0 -5px 0 ' + s.kit.alt;
+      $('sc' + t + '-nm').textContent = s.short;
+    }
     const hb = $('hotbar');
     let html = '';
     p.abil.forEach((a, i) => {
@@ -5604,7 +5764,7 @@ const UI = {
     for (const p of m.players) {
       const x = X(p.pos.x), z = Z(p.pos.z);
       g.fillStyle = '#090b16'; g.fillRect(x - 3.5, z - 3.5, 7, 7);
-      g.fillStyle = p.isGK ? (p.team === 0 ? '#22b866' : '#8e4bd6') : TEAM[p.team].hex; g.fillRect(x - 2.5, z - 2.5, 5, 5);
+      g.fillStyle = p.isGK ? TEAM[p.team].keeper.shirt : TEAM[p.team].hex; g.fillRect(x - 2.5, z - 2.5, 5, 5);
       if (p.isHuman) { g.strokeStyle = '#ffcb3d'; g.lineWidth = 2; g.strokeRect(x - 4.5, z - 4.5, 9, 9); }
     }
     const b = m.ball; g.fillStyle = '#ffffff'; g.fillRect(X(b.pos.x) - 2, Z(b.pos.z) - 2, 4, 4);
@@ -5692,7 +5852,7 @@ const UI = {
     const titles = { win: ['VICTORY', '#2ee38f'], draw: ['DRAW', '#ffcb3d'], loss: ['DEFEAT', '#ff4d5e'], forfeit: ['FORFEIT', '#ff4d5e'] };
     const [t, c] = titles[r.res];
     $('r-title').textContent = t; $('r-title').style.color = c;
-    $('r-score').innerHTML = `<span class="b">BLUE ${r.score[0]}</span><span>:</span><span class="o">${r.score[1]} ORANGE</span><span class="chip">${esc(r.modeName)}</span>`;
+    $('r-score').innerHTML = `<span style="color:${TEAM[0].hex}">${TEAM[0].short} ${r.score[0]}</span><span>:</span><span style="color:${TEAM[1].hex}">${r.score[1]} ${TEAM[1].short}</span><span class="chip">${esc(r.modeName)}</span>`;
     const s = r.human || { goals: 0, assists: 0, shots: 0, tackles: 0 };
     $('r-stats').innerHTML = [['GOALS', s.goals], ['ASSISTS', s.assists], ['SHOTS', s.shots], ['TACKLES', s.tackles]].map(([k, v]) => `<div><span class="label">${k}</span><b>${v}</b></div>`).join('');
     $('r-earn').innerHTML = r.earn.map(([k, v]) => `<div><span>${esc(k)}</span><span>+${v}</span></div>`).join('') + `<div class="tot"><span>EMERALDS EARNED</span><span>+${r.emeralds}</span></div>`;
@@ -5814,26 +5974,28 @@ const UI = {
   lockerItem(id) {
     const d = Save.data, tab = this.lockerTab;
     if (tab === 'style') { const st = STYLES[id]; return { name: st.name, rarity: st.rarity, owned: d.styles.includes(id), equipped: d.style === id, from: 'STYLE SPINS' }; }
+    if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
     if (tab === 'flow') { const fl = id === 'NONE' ? null : FLOWS[id]; return { name: fl ? fl.name : 'NO FLOW', rarity: fl ? fl.rarity : 'Rare', base: !fl, owned: !fl || d.flows.includes(id), equipped: (d.flow || 'NONE') === id, from: 'FLOW SPINS' }; }
     const sk = SKINS[id];
     return { name: sk.name, rarity: sk.rarity, base: !!sk.base, owned: !!sk.base || d.skins.includes(id), equipped: d.look[sk.slot] === id, from: 'SKIN SPINS' };
   },
   lockerArt(id, size) {
     const tab = this.lockerTab;
+    if (tab === 'club') return crestCanvas(id, size);
     return tab === 'style' ? portraitCanvas(id, size, lookFor(id, Save.data.look)) : tab === 'flow' ? flowEmblemCanvas(id === 'NONE' ? null : id, size) : skinCanvas(id, size);
   },
   renderLocker() {
     const d = Save.data, tab = this.lockerTab;
-    for (const t of ['style', 'flow', 'skin']) $('ltab-' + t).setAttribute('aria-selected', tab === t);
+    for (const t of ['style', 'flow', 'skin', 'club']) $('ltab-' + t).setAttribute('aria-selected', tab === t);
     const slots = $('lk-slots');
     slots.hidden = tab !== 'skin';
     if (tab === 'skin') slots.innerHTML = SKIN_SLOTS.map((sl) => `<button class="tab" type="button" role="tab" data-slot="${sl.id}" aria-selected="${this.skinSlot === sl.id}">${sl.name}</button>`).join('');
-    const ids = tab === 'style' ? STYLE_IDS : tab === 'flow' ? ['NONE'].concat(FLOW_IDS)
+    const ids = tab === 'club' ? CLUB_IDS : tab === 'style' ? STYLE_IDS : tab === 'flow' ? ['NONE'].concat(FLOW_IDS)
       : [SKIN_SLOTS.find((sl) => sl.id === this.skinSlot).base].concat(SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
     const grid = $('locker-grid');
     grid.innerHTML = ids.map((id) => {
       const it = this.lockerItem(id);
-      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.base ? '<span class="chip">FREE</span>' : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.equipped ? 'EQUIPPED' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
+      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.equipped ? 'EQUIPPED' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
     }).join('');
     grid.querySelectorAll('.lcard').forEach((b) => {
       b.querySelector('.cv').replaceWith(this.lockerArt(b.dataset.id, 40));
@@ -5843,6 +6005,7 @@ const UI = {
     // the 3D player tries on whatever card is picked, owned or not
     const id = this.lockerSel, spec = { look: {} };
     if (tab === 'style') spec.style = id;
+    else if (tab === 'club') spec.club = id;
     else if (tab === 'flow') spec.flow = id === 'NONE' ? null : id;
     else { spec.look[SKINS[id].slot] = id; spec.celebrate = SKINS[id].slot === 'celeb'; }
     Showcase.preview(spec);
@@ -5850,10 +6013,15 @@ const UI = {
   renderLockerDetail() {
     const d = Save.data, tab = this.lockerTab, id = this.lockerSel, it = this.lockerItem(id);
     const det = $('locker-detail');
-    const head = (sub, blurb) => `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px">${it.base ? '<span class="chip" style="justify-self:start">FREE</span>' : `<span class="rar" data-r="${it.rarity}" style="justify-self:start">${it.rarity.toUpperCase()}</span>`}<h3>${esc(it.name)}</h3>${sub ? `<span class="label">${sub}</span>` : ''}${blurb ? `<p style="margin:0;color:var(--muted);max-width:46ch">${esc(blurb)}</p>` : ''}</div></div>`;
+    const head = (sub, blurb) => `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px">${it.chip ? `<span class="chip" style="justify-self:start">${it.chip}</span>` : it.base ? '<span class="chip" style="justify-self:start">FREE</span>' : `<span class="rar" data-r="${it.rarity}" style="justify-self:start">${it.rarity.toUpperCase()}</span>`}<h3>${esc(it.name)}</h3>${sub ? `<span class="label">${sub}</span>` : ''}${blurb ? `<p style="margin:0;color:var(--muted);max-width:46ch">${esc(blurb)}</p>` : ''}</div></div>`;
     if (tab === 'style') {
       const st = STYLES[id];
       det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}</div>`;
+    } else if (tab === 'club') {
+      const c = CLUBS[id];
+      det.innerHTML = head('', 'The club you play for. Your team wears its kit, and its fans fill your stands.') + `<div class="kits">${[['HOME', c.home], ['AWAY', c.away], ['KEEPER', c.keeper]].map(([n]) => `<div class="kitbox"><span class="kv"></span><span class="label">${n}</span></div>`).join('')}</div>
+        <p style="margin:0;color:var(--muted)">When both clubs' colours are too close, the away team changes into its away kit.</p>`;
+      det.querySelectorAll('.kv').forEach((el, i) => el.replaceWith(kitCanvas([c.home, c.away, c.keeper][i], 56)));
     } else if (tab === 'flow') {
       const fl = id === 'NONE' ? null : FLOWS[id];
       det.innerHTML = head('', '') + `<p style="margin:0;font-size:22px">${esc(fl ? fl.desc : RAW_FLOW_DESC)}</p>
@@ -5865,12 +6033,12 @@ const UI = {
     det.querySelector('.cv').replaceWith(this.lockerArt(id, 96));
     // name, rarity and the equip button sit under the 3D preview
     const cap = $('lk-cap');
-    cap.innerHTML = `${it.base ? '<span class="chip">FREE</span>' : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<b>${esc(it.name)}</b>`
+    cap.innerHTML = `${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<b>${esc(it.name)}</b>`
       + (it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`);
     const eq = $('lk-equip');
     if (eq) eq.addEventListener('click', () => {
       Sfx.click();
-      if (tab === 'style') d.style = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else d.look[SKINS[id].slot] = id;
+      if (tab === 'style') d.style = id; else if (tab === 'club') d.club = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else d.look[SKINS[id].slot] = id;
       Save.save(); this.renderLocker();
     });
   },
@@ -5907,6 +6075,7 @@ const Game = {
     Input.releaseLock();
     this.state = 'lobby';
     World.setSun(SUN_LOBBY);
+    const me = sideFor(Save.data.club); World.paintCrowd(me, me);
     TimeCtl.reset(); FX.clear();
     UI.hideOverlays(); UI.show('lobby');
     Showcase.show();
@@ -5920,6 +6089,7 @@ const Game = {
     TimeCtl.reset(); FX.clear();
     this.match = new Match(mode, difficultyFor(Save.data.rp));
     this.lastMode = mode; this.ended = false;
+    World.paintCrowd(TEAM[0], TEAM[1]);
     World.setSun(SUN_MATCH);
     Cam.reset(0);
     this.state = 'match';
@@ -6034,7 +6204,8 @@ const Game = {
 
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Player, TEAM, rollRarity, poolFor,
+  CLUB_IDS, sideFor, matchSides, kitClash,
   /** run a full bot-vs-bot match off-screen and report what happened */
   simulate(mode = 'quick', d = 0.5, seconds = 240) {
     const m = new Match(mode, d, { noHuman: true, autopilot: true, length: seconds });

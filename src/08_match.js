@@ -25,6 +25,10 @@ class Match {
     this.teamState = ['loose', 'loose']; this.pred = [];
     this.aim = V3(0, 1, F.L); this.camYaw = 0; this.aimOnTarget = false;
     this.ctl = null; this.autopilot = !!opts.autopilot; this.lastGoal = null; this.pendingEnd = false;
+    // your club at home against a random other club; the away side changes kit if the colours clash
+    const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
+    const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
+    [TEAM[0], TEAM[1]] = matchSides(home, away);
     this.buildTeams(opts);
     this.setupKickoff(0, true);
   }

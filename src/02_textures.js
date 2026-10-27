@@ -37,6 +37,7 @@ function digDraw(g, str, x, y, color) {
 }
 
 function hexRGB(hex) { const c = new THREE.Color(hex); return [Math.round(c.r * 255), Math.round(c.g * 255), Math.round(c.b * 255)]; }
+function hexLum(hex) { const c = hexRGB(hex); return (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) / 255; }
 function rgbStr(rgb) { return 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')'; }
 function shadeRGB(rgb, k) { return [clamp(Math.round(rgb[0] * k), 0, 255), clamp(Math.round(rgb[1] * k), 0, 255), clamp(Math.round(rgb[2] * k), 0, 255)]; }
 function mixRGB(a, b, t) { return [Math.round(lerp(a[0], b[0], t)), Math.round(lerp(a[1], b[1], t)), Math.round(lerp(a[2], b[2], t))]; }
@@ -68,6 +69,13 @@ const Tex = {
 };
 
 /* ---------- block texture library (16x16 tiles, repeat-wrapped) ---------- */
+const seatPix = (base, R) => (x, y) => shadeRGB(base, ((x + y) % 4 === 0 ? 0.92 : 1) * lerp(0.9, 1.06, R()) * (y < 3 ? 0.78 : 1) * (y > 13 ? 0.85 : 1));
+/** recolour a stand's seat texture in place (each match dresses the stands in the clubs' colours) */
+function repaintSeat(tex, hex) {
+  const c = tex.image, g = c.getContext('2d'), img = g.createImageData(16, 16), f = seatPix(hexRGB(hex), mulberry32(31));
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const p = f(x, y), i = (y * 16 + x) * 4; img.data[i] = p[0]; img.data[i + 1] = p[1]; img.data[i + 2] = p[2]; img.data[i + 3] = 255; }
+  g.putImageData(img, 0, 0); tex.needsUpdate = true;
+}
 function makeBlockTextures() {
   const T = {};
   const R = mulberry32(1337);
@@ -94,16 +102,8 @@ function makeBlockTextures() {
     const isM = y === 7 || y === 15 || (y < 8 ? (x === 7 || x === 15) : (x === 3 || x === 11));
     return isM ? shadeRGB(darkStone, 0.6) : shadeRGB(darkStone, n(0.85, 1.1));
   }, { repeat: true, mip: true });
-  const seat = (hex) => {
-    const base = hexRGB(hex);
-    return Tex.pixels(16, 16, (x, y) => {
-      const k = ((x + y) % 4 === 0 ? 0.92 : 1) * n(0.9, 1.06) * (y < 3 ? 0.78 : 1) * (y > 13 ? 0.85 : 1);
-      return shadeRGB(base, k);
-    }, { repeat: true, mip: true });
-  };
-  T.seatBlue = seat('#2f62d8');
-  T.seatOrange = seat('#ec7424');
-  T.seatGrey = seat('#5a5f78');
+  T.seatHome = Tex.pixels(16, 16, seatPix(hexRGB('#2f62d8'), R), { repeat: true, mip: true });
+  T.seatAway = Tex.pixels(16, 16, seatPix(hexRGB('#ec7424'), R), { repeat: true, mip: true });
   const white = hexRGB('#eef1f4');
   T.white = Tex.pixels(16, 16, (x, y) => {
     const edge = x === 0 || y === 0 || x === 15 || y === 15;
@@ -271,7 +271,7 @@ function makePlayerSkin(o) {
     for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) { g.fillStyle = rgbStr(shadeRGB(base, lerp(a, b, R()))); g.fillRect(x + xx, y + yy, 1, 1); }
   };
   const px = (x, y, hex) => { g.fillStyle = hex; g.fillRect(x, y, 1, 1); };
-  const { jersey, trim, shorts, socks, boots, skin, hair, number, gloves, eye, sparkle } = o;
+  const { kit: K, crest, boots, skin, hair, number, gloves, eye, sparkle } = o;
   // head
   fillN(8, 0, 8, 8, hair, 0.82, 1.08);                       // top
   fillN(16, 0, 8, 8, skin, 0.92, 1.0);                       // bottom (chin)
@@ -284,20 +284,42 @@ function makePlayerSkin(o) {
   px(9, 11, brow); px(10, 11, brow); px(13, 11, brow); px(14, 11, brow);
   px(9, 12, '#f7f7f2'); px(10, 12, eye); px(13, 12, eye); px(14, 12, '#f7f7f2');
   px(11, 14, rgbStr(shadeRGB(hexRGB(skin), 0.62))); px(12, 14, rgbStr(shadeRGB(hexRGB(skin), 0.62)));
-  // body
-  fillN(20, 16, 8, 4, jersey); fillN(28, 16, 8, 4, shorts);
-  for (const [x, w] of [[16, 4], [20, 8], [28, 4], [32, 8]]) { fillN(x, 20, w, 10, jersey); fillN(x, 30, w, 2, shorts); }
-  g.fillStyle = trim; g.fillRect(20, 20, 8, 1); g.fillRect(32, 20, 8, 1); g.fillRect(16, 20, 1, 10); g.fillRect(31, 20, 1, 10);
-  g.fillRect(21, 22, 2, 2);
-  const num = String(number);
-  digDraw(g, num, 32 + Math.floor((8 - (num.length * 4 - 1)) / 2), 22, trim);
-  if (num.length === 1) digDraw(g, num, 24, 23, trim); else { g.fillStyle = trim; g.fillRect(24, 23, 2, 1); }
-  // arms: sleeve + skin or gloves
-  fillN(44, 16, 4, 4, jersey); fillN(48, 16, 4, 4, gloves || skin);
-  for (let s = 0; s < 4; s++) { fillN(40 + s * 4, 20, 4, 5, jersey); g.fillStyle = trim; g.fillRect(40 + s * 4, 24, 4, 1); fillN(40 + s * 4, 25, 4, 7, skin, 0.94, 1.02); if (gloves) fillN(40 + s * 4, 29, 4, 3, gloves); }
-  // legs: shorts, socks, boots
-  fillN(4, 16, 4, 4, shorts); fillN(8, 16, 4, 4, '#1a1a1f');
-  for (let s = 0; s < 4; s++) { fillN(s * 4, 20, 4, 4, shorts); fillN(s * 4, 24, 4, 6, socks); g.fillStyle = trim; g.fillRect(s * 4, 25, 4, 1); fillN(s * 4, 30, 4, 2, boots, 0.85, 1.1); }
+  // shirt: the strip x 16..39, rows 20..29 wraps round the body (left side, front, right side, back)
+  const shirt = hexRGB(K.shirt), alt = hexRGB(K.alt);
+  const onAlt = (x, y) => {
+    const r = y - 20;
+    switch (K.pattern) {
+      case 'stripes': return ((x - 16) >> 1) % 2 === 1;
+      case 'hoops': return (r >> 1) % 2 === 1;
+      case 'halves': return x >= 24 && x <= 35; // the +x half: right of the front, the right side, left of the back
+      case 'sash': // shoulder to hip across the front, hip to shoulder across the back
+        if (x >= 20 && x <= 27) return Math.abs(x - 20 - r * 0.75 - 0.4) < 1.3;
+        if (x >= 32) return Math.abs(x - 32 - (7 - r * 0.75) + 0.4) < 1.3;
+        return x >= 28 ? r >= 8 : r <= 1;
+      default: return x === 16 || x === 31; // plain: thin side panels
+    }
+  };
+  for (let y = 20; y < 30; y++) for (let x = 16; x < 40; x++) { g.fillStyle = rgbStr(shadeRGB(onAlt(x, y) ? alt : shirt, lerp(0.9, 1.06, R()))); g.fillRect(x, y, 1, 1); }
+  fillN(20, 16, 8, 4, K.shirt); fillN(22, 17, 4, 2, K.collar); // shoulders, collar ring under the head
+  fillN(28, 16, 8, 4, K.shorts);
+  for (const [x, w] of [[16, 4], [20, 8], [28, 4], [32, 8]]) fillN(x, 30, w, 2, K.shorts);
+  g.fillStyle = K.collar; g.fillRect(22, 20, 4, 1); g.fillRect(23, 21, 2, 1); g.fillRect(34, 20, 4, 1);
+  // crest on the left chest, small number on the right, big number on the back (on a plain panel over stripes and hoops)
+  const cr = crest || ['#ffffff', '#000000'];
+  g.fillStyle = K.number; g.fillRect(21, 22, 3, 2); g.fillRect(22, 24, 1, 1);
+  g.fillStyle = cr[0] === K.number ? cr[1] : cr[0]; g.fillRect(22, 22, 1, 2);
+  const num = String(number), panel = K.pattern === 'stripes' || K.pattern === 'hoops';
+  const bx = 32 + Math.floor((8 - (num.length * 4 - 1)) / 2);
+  if (panel) { fillN(bx - 1, 21, num.length * 4 + 1, 7, K.shirt, 0.95, 1.02); if (num.length === 1) fillN(24, 21, 4, 7, K.shirt, 0.95, 1.02); }
+  digDraw(g, num, bx, 22, K.number);
+  if (num.length === 1) digDraw(g, num, 25, 22, K.number); else { g.fillStyle = K.number; g.fillRect(25, 23, 2, 1); }
+  // arms: sleeve, cuff, then skin or gloves
+  fillN(44, 16, 4, 4, K.sleeve); fillN(48, 16, 4, 4, gloves || skin);
+  for (let s = 0; s < 4; s++) { fillN(40 + s * 4, 20, 4, 4, K.sleeve); fillN(40 + s * 4, 24, 4, 1, K.cuff, 0.95, 1.02); fillN(40 + s * 4, 25, 4, 7, skin, 0.94, 1.02); if (gloves) fillN(40 + s * 4, 29, 4, 3, gloves); }
+  // legs: shorts with a side stripe, socks with a band, boots
+  fillN(4, 16, 4, 4, K.shorts);
+  for (let s = 0; s < 4; s++) { fillN(s * 4, 20, 4, 4, K.shorts); fillN(s * 4, 24, 4, 6, K.socks); g.fillStyle = K.sockTrim; g.fillRect(s * 4, 25, 4, 1); fillN(s * 4, 30, 4, 2, boots, 0.85, 1.1); }
+  g.fillStyle = K.shortsTrim; g.fillRect(1, 20, 1, 4); g.fillRect(10, 20, 1, 4);
   if (sparkle) for (let s = 0; s < 4; s++) { px(s * 4 + (s % 2), 30, '#ffffff'); px(s * 4 + 2 + (s % 2), 31, '#ffe9a8'); }
   fillN(8, 16, 4, 4, boots, 0.7, 0.85); // boot soles
   return Tex.fromCanvas(c);
@@ -490,6 +512,39 @@ function portraitCanvas(styleId, size = 96, look = null) {
   const out = mkCanvas(size, size), og = out.getContext('2d');
   og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size);
   out.className = 'px';
+  return out;
+}
+/* ---------- club crests and kit swatches ---------- */
+const CREST_SHIELD = ['.kkkkkkkkkk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '..kAAAAAAk..', '..kAAAAAAk..', '...kAAAAk...', '....kAAk....', '.....kk.....'];
+const CREST_SYMBOLS = {
+  star: ['..BB..', '..BB..', 'BBBBBB', '.BBBB.', '.B..B.', 'B....B'], flame: ['..B...', '..BB..', '.BBB.B', '.BBBBB', 'BBBBBB', '.BBBB.'],
+  leaf: ['....BB', '..BBBB', '.BBBB.', 'BBBB..', 'BBB...', 'B.....'], anchor: ['..BB..', '..BB..', 'BBBBBB', '..BB..', 'B.BB.B', '.BBBB.'],
+  moon: ['..BBB.', '.BB...', 'BB....', 'BB....', '.BB...', '..BBB.'], sun: ['B.BB.B', '.BBBB.', 'BBBBBB', 'BBBBBB', '.BBBB.', 'B.BB.B'],
+};
+function crestCanvas(clubId, size = 48) {
+  const cr = CLUBS[clubId].crest, c = mkCanvas(12, 12), g = c.getContext('2d');
+  CREST_SHIELD.forEach((row, y) => row.split('').forEach((ch, x) => { if (ch !== '.') { g.fillStyle = ch === 'k' ? '#0a0c17' : cr[0]; g.fillRect(x, y, 1, 1); } }));
+  CREST_SYMBOLS[cr[2]].forEach((row, y) => row.split('').forEach((ch, x) => { if (ch === 'B') { g.fillStyle = cr[1]; g.fillRect(3 + x, 2 + y, 1, 1); } }));
+  const out = mkCanvas(size, size), og = out.getContext('2d');
+  og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size); out.className = 'px';
+  return out;
+}
+const KIT_ICON = ['............', '...kkCCkk...', '.kkXXXXXXkk.', 'kLLXXXXXXLLk', 'kLLXXXXXXLLk', '.kkXXXXXXkk.', '..kXXXXXXk..', '..kXXXXXXk..', '..kXXXXXXk..', '..kXXXXXXk..', '..kkkkkkkk..', '............'];
+/** a little shirt in a kit's colours and pattern */
+function kitCanvas(k, size = 48) {
+  const c = mkCanvas(12, 12), g = c.getContext('2d');
+  KIT_ICON.forEach((row, y) => row.split('').forEach((ch, x) => {
+    let col = null;
+    if (ch === 'k') col = '#0a0c17'; else if (ch === 'C') col = k.collar; else if (ch === 'L') col = k.sleeve;
+    else if (ch === 'X') {
+      const u = x - 3, v = y - 2;
+      const a = k.pattern === 'stripes' ? u % 2 === 1 : k.pattern === 'hoops' ? (v >> 1) % 2 === 1 : k.pattern === 'halves' ? u >= 3 : k.pattern === 'sash' ? Math.abs(u - v * 0.7) < 1.1 : false;
+      col = a ? k.alt : k.shirt;
+    }
+    if (col) { g.fillStyle = col; g.fillRect(x, y, 1, 1); }
+  }));
+  const out = mkCanvas(size, size), og = out.getContext('2d');
+  og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size); out.className = 'px';
   return out;
 }
 /** card art for a skin: a portrait for hair and colours, a pixel icon for the rest */

@@ -28,6 +28,7 @@ const Game = {
     Input.releaseLock();
     this.state = 'lobby';
     World.setSun(SUN_LOBBY);
+    const me = sideFor(Save.data.club); World.paintCrowd(me, me);
     TimeCtl.reset(); FX.clear();
     UI.hideOverlays(); UI.show('lobby');
     Showcase.show();
@@ -41,6 +42,7 @@ const Game = {
     TimeCtl.reset(); FX.clear();
     this.match = new Match(mode, difficultyFor(Save.data.rp));
     this.lastMode = mode; this.ended = false;
+    World.paintCrowd(TEAM[0], TEAM[1]);
     World.setSun(SUN_MATCH);
     Cam.reset(0);
     this.state = 'match';
@@ -155,7 +157,8 @@ const Game = {
 
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Player, TEAM, rollRarity, poolFor,
+  CLUB_IDS, sideFor, matchSides, kitClash,
   /** run a full bot-vs-bot match off-screen and report what happened */
   simulate(mode = 'quick', d = 0.5, seconds = 240) {
     const m = new Match(mode, d, { noHuman: true, autopilot: true, length: seconds });

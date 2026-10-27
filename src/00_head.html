@@ -207,6 +207,10 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .tabs.slots .tab { font-size: 20px; padding: 4px 10px 7px; }
 .lcard .art { display: flex; gap: 8px; align-items: center; min-width: 0; }
 .lcard canvas { width: 40px; height: 40px; flex: none; }
+.kits { display: flex; gap: 12px; flex-wrap: wrap; }
+.kitbox { display: grid; justify-items: center; gap: 4px; padding: 8px 10px; background: #59608a; }
+.kitbox .label { color: var(--text); }
+.kitbox canvas { width: 56px; height: 56px; }
 .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .lcard { text-align: left; cursor: pointer; display: grid; gap: 6px; padding: 10px; background: var(--slate-2); border: var(--px) solid var(--ink); box-shadow: inset 4px 0 0 var(--rc, var(--r-rare)), inset 0 -5px 0 rgba(0,0,0,.3); }
 .lcard[aria-pressed="true"] { outline: var(--px) solid var(--text); outline-offset: -6px; }

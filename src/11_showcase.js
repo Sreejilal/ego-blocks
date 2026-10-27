@@ -71,11 +71,12 @@ const Showcase = {
     if (!this.group) return;
     const d = Save.data, sp = this.spec || {};
     const style = sp.style || d.style, flow = sp.flow !== undefined ? sp.flow : d.flow, look = Object.assign({}, d.look, sp.look || {});
-    const key = [style, flow || '', SKIN_SLOTS.map((s) => look[s.id]).join(',')].join('|');
+    const club = sp.club || d.club;
+    const key = [style, flow || '', club, SKIN_SLOTS.map((s) => look[s.id]).join(',')].join('|');
     if (this.p && this.key === key) return;
     if (this.p) this.p.dispose();
     this.key = key; this.flow = flow;
-    this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: 'ST', human: true, style, flow, look, number: 10, name: 'YOU', skin: SKIN_TONES[1] });
+    this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: 'ST', human: true, style, flow, look, side: sideFor(club), number: 10, name: 'YOU', skin: SKIN_TONES[1] });
     const aura = col(this.p.aura);
     this.ringMat.color.copy(aura); this.glowMat.color.copy(aura); this.beamMat.color.copy(col('#fff1d6')).lerp(aura, 0.35);
     this.p.P.root.visible = this.p.blob.visible = this.on;

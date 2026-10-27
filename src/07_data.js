@@ -305,6 +305,81 @@ function botLook() {
   return { boots: any('boots', 0.4), color: any('color', 0.2), acc: any('acc', 0.22), gloves: any('gloves', 0.15), celeb: any('celeb', 0.6) };
 }
 
+/* ---------- clubs and kits ----------
+   A kit: shirt + alt colour in a pattern (stripes, hoops, sash, halves or plain), sleeves with cuffs, collar,
+   number colour, shorts with a side stripe, socks with a band. Crest: [main colour, symbol colour, symbol]. */
+const mkKit = (shirt, alt, pattern, sleeve, cuff, collar, number, shorts, shortsTrim, socks, sockTrim) => ({ shirt, alt, pattern, sleeve, cuff, collar, number, shorts, shortsTrim, socks, sockTrim });
+const CLUBS = {
+  ROVERS: {
+    name: 'BLOCKTOWN ROVERS', nick: 'ROVERS', short: 'BTR', crest: ['#2f6bff', '#ffffff', 'star'],
+    home: mkKit('#2f6bff', '#f4f1e8', 'sash', '#f4f1e8', '#2f6bff', '#0f2a7a', '#ffffff', '#f4f1e8', '#2f6bff', '#2f6bff', '#f4f1e8'),
+    away: mkKit('#f4f1e8', '#2f6bff', 'sash', '#2f6bff', '#f4f1e8', '#2f6bff', '#16245e', '#16245e', '#f4f1e8', '#f4f1e8', '#2f6bff'),
+    keeper: mkKit('#22b866', '#14804a', 'hoops', '#14804a', '#0b3d22', '#0b3d22', '#0b3d22', '#0b3d22', '#22b866', '#22b866', '#0b3d22'),
+  },
+  EMBER: {
+    name: 'EMBER CITY', nick: 'EMBER', short: 'EMB', crest: ['#ff7a1a', '#1d1f2e', 'flame'],
+    home: mkKit('#ff7a1a', '#1d1f2e', 'halves', '#1d1f2e', '#ff7a1a', '#1d1f2e', '#ffffff', '#1d1f2e', '#ff7a1a', '#ff7a1a', '#1d1f2e'),
+    away: mkKit('#18a999', '#ff7a1a', 'plain', '#ff7a1a', '#18a999', '#ff7a1a', '#ffffff', '#1d1f2e', '#18a999', '#18a999', '#ff7a1a'),
+    keeper: mkKit('#8e4bd6', '#5d2a9e', 'plain', '#5d2a9e', '#ffffff', '#ffffff', '#ffffff', '#3a1d66', '#8e4bd6', '#8e4bd6', '#ffffff'),
+  },
+  MOSSWOOD: {
+    name: 'MOSSWOOD UNITED', nick: 'MOSSWOOD', short: 'MSW', crest: ['#2f9a44', '#f4f1e8', 'leaf'],
+    home: mkKit('#2f9a44', '#f4f1e8', 'hoops', '#2f9a44', '#f4f1e8', '#f4f1e8', '#ffffff', '#f4f1e8', '#2f9a44', '#2f9a44', '#f4f1e8'),
+    away: mkKit('#f2c94c', '#2f9a44', 'plain', '#2f9a44', '#f2c94c', '#2f9a44', '#1b4a26', '#1b4a26', '#f2c94c', '#f2c94c', '#2f9a44'),
+    keeper: mkKit('#ff8a2a', '#c95c14', 'sash', '#c95c14', '#1d1f2e', '#1d1f2e', '#1d1f2e', '#1d1f2e', '#ff8a2a', '#ff8a2a', '#1d1f2e'),
+  },
+  HARBOUR: {
+    name: 'RUBY HARBOUR', nick: 'HARBOUR', short: 'RBH', crest: ['#d8262e', '#ffffff', 'anchor'],
+    home: mkKit('#d8262e', '#f4f1e8', 'stripes', '#d8262e', '#f4f1e8', '#f4f1e8', '#1a1a22', '#1a1a22', '#d8262e', '#d8262e', '#f4f1e8'),
+    away: mkKit('#8d96a6', '#d8262e', 'sash', '#8d96a6', '#d8262e', '#d8262e', '#16213e', '#16213e', '#d8262e', '#8d96a6', '#d8262e'),
+    keeper: mkKit('#ffd23d', '#d9a512', 'plain', '#1a1a22', '#ffd23d', '#1a1a22', '#1a1a22', '#1a1a22', '#ffd23d', '#ffd23d', '#1a1a22'),
+  },
+  NIGHTFALL: {
+    name: 'NIGHTFALL FC', nick: 'NIGHTFALL', short: 'NFC', crest: ['#6c3cd6', '#dcd2ff', 'moon'],
+    home: mkKit('#6c3cd6', '#141218', 'stripes', '#141218', '#6c3cd6', '#141218', '#ffffff', '#141218', '#6c3cd6', '#141218', '#6c3cd6'),
+    away: mkKit('#c9ced8', '#6c3cd6', 'sash', '#c9ced8', '#6c3cd6', '#6c3cd6', '#2a1659', '#2a1659', '#c9ced8', '#c9ced8', '#6c3cd6'),
+    keeper: mkKit('#a6ff2e', '#6cc214', 'hoops', '#6cc214', '#141218', '#141218', '#141218', '#141218', '#a6ff2e', '#a6ff2e', '#141218'),
+  },
+  SUNSPIRE: {
+    name: 'SUNSPIRE', nick: 'SUNSPIRE', short: 'SUN', crest: ['#ffcb3d', '#141218', 'sun'],
+    home: mkKit('#ffcb3d', '#141218', 'plain', '#141218', '#ffcb3d', '#141218', '#141218', '#141218', '#ffcb3d', '#ffcb3d', '#141218'),
+    away: mkKit('#f4f1e8', '#141218', 'plain', '#141218', '#ffcb3d', '#ffcb3d', '#141218', '#141218', '#ffcb3d', '#f4f1e8', '#141218'),
+    keeper: mkKit('#4aa8ff', '#1f6fd0', 'stripes', '#1f6fd0', '#f4f1e8', '#f4f1e8', '#f4f1e8', '#103a78', '#4aa8ff', '#4aa8ff', '#f4f1e8'),
+  },
+};
+const CLUB_IDS = Object.keys(CLUBS);
+const KEEPER_SPARES = [
+  mkKit('#ff5fb0', '#d13f8c', 'plain', '#d13f8c', '#1a1a22', '#1a1a22', '#1a1a22', '#1a1a22', '#ff5fb0', '#ff5fb0', '#1a1a22'),
+  mkKit('#5a5f78', '#3a3f4f', 'hoops', '#3a3f4f', '#ffcb3d', '#ffcb3d', '#ffcb3d', '#2c3150', '#5a5f78', '#5a5f78', '#ffcb3d'),
+];
+/** the colours that fill most of a shirt: patterned shirts count both */
+const kitColours = (k) => (k.pattern === 'plain' || k.pattern === 'sash' ? [k.shirt] : [k.shirt, k.alt]);
+function kitClash(a, b) {
+  for (const x of kitColours(a)) for (const y of kitColours(b)) {
+    const p = hexRGB(x), q = hexRGB(y);
+    if (Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) < 110) return true;
+  }
+  return false;
+}
+/** a colour from the kit that reads well on the dark UI */
+function kitUiHex(k) {
+  const lum = (h) => { const c = hexRGB(h); return (0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]) / 255; };
+  return lum(k.shirt) >= 0.22 ? k.shirt : lum(k.alt) >= 0.22 ? k.alt : '#a4a9cf';
+}
+/** one team's look for a match: club, kit worn (home or away), keeper kit, UI colour */
+function sideFor(clubId, away = false) {
+  const c = CLUBS[clubId] || CLUBS.ROVERS, k = away ? c.away : c.home;
+  return { club: clubId, name: c.nick, full: c.name, short: c.short, crest: c.crest, kit: k, keeper: c.keeper, away, hex: kitUiHex(k) };
+}
+/** pick both kits for a match: the away club changes if the home kits clash, keepers change if theirs clash */
+function matchSides(homeId, awayId) {
+  const home = sideFor(homeId), away = sideFor(awayId, kitClash(CLUBS[homeId].home, CLUBS[awayId].home));
+  for (const [s, o] of [[home, away], [away, home]]) {
+    if (kitClash(s.keeper, s.kit) || kitClash(s.keeper, o.kit)) s.keeper = KEEPER_SPARES.find((k) => !kitClash(k, s.kit) && !kitClash(k, o.kit)) || KEEPER_SPARES[0];
+  }
+  return [home, away];
+}
+
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /** bot difficulty 0..1 from rank points */

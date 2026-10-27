@@ -266,7 +266,7 @@ const World = {
     grey.box(-endLen, 0, endIn - 0.6, endLen, 1.2, endIn, '#9fa3b3', { uv: 1 });
     const stone = new THREE.MeshLambertMaterial({ map: T.stoneBrick, vertexColors: true });
     const mkMats = (seat) => [new THREE.MeshLambertMaterial({ map: seat, vertexColors: true }), stone, stone];
-    const bm = blue.mesh(mkMats(T.seatBlue)), om = orange.mesh(mkMats(T.seatOrange)), gm = grey.mesh(stone);
+    const bm = blue.mesh(mkMats(T.seatHome)), om = orange.mesh(mkMats(T.seatAway)), gm = grey.mesh(stone);
     bm.receiveShadow = om.receiveShadow = gm.receiveShadow = false;
     this.scene.add(bm, om, gm);
     this.stand = { sideIn, endIn, sideLen, endLen, outerX, outerZ, wallTop };
@@ -487,6 +487,18 @@ const World = {
       this.orbit.instanceMatrix.needsUpdate = true;
     }
     if (this.lampSprites.length) this.lampSprites[0].material.opacity = 0.36 + Math.sin(this.time * 1.7) * 0.03;
+  },
+  /** dress the stands for a match: seats in each club's crest colour, fans in their club's home shirts */
+  paintCrowd(a, b) {
+    const sides = [a, b];
+    repaintSeat(this.T.seatHome, a.crest[0]); repaintSeat(this.T.seatAway, b.crest[0]);
+    const pals = sides.map((s) => { const k = CLUBS[s.club].home; return [k.shirt, k.shirt, k.alt, k.sleeve, k.shirt].map((h) => lin(h)); });
+    const geo = this.fans.geometry, col = geo.attributes.aColor, data = geo.attributes.aData, R = mulberry32(9);
+    for (let i = 0; i < this.fanCount; i++) {
+      const c = pals[data.getY(i) > 0.5 ? 1 : 0][Math.floor(R() * 5)], k = lerp(0.82, 1.04, R());
+      col.setXYZ(i, c.r * k, c.g * k, c.b * k);
+    }
+    col.needsUpdate = true;
   },
   setSun(dir) { SUN_DIR.copy(dir); if (this.sky) this.sky.material.uniforms.sunDir.value.copy(dir); },
   render() { this.renderer.render(this.scene, this.camera); },

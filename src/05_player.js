@@ -1,10 +1,8 @@
 /* =====================================================================
    Players: blocky humanoid model, procedural animation, movement
    ===================================================================== */
-const TEAM = [
-  { name: 'BLUE', hex: '#3d7dff', jersey: '#2f6bff', trim: '#ffffff', shorts: '#16245e', socks: '#2f6bff', boots: '#1a1a1f', gk: { jersey: '#22b866', trim: '#0b3d22', shorts: '#0b3d22', socks: '#22b866' } },
-  { name: 'ORANGE', hex: '#ff8a2a', jersey: '#ff7a1a', trim: '#1d1f2e', shorts: '#f4efe0', socks: '#ff7a1a', boots: '#f4efe0', gk: { jersey: '#8e4bd6', trim: '#ffffff', shorts: '#3a1d66', socks: '#8e4bd6' } },
-];
+// the two sides of the current match (club, kit, keeper kit, UI colour); Match sets them with matchSides()
+const TEAM = [null, null];
 const SKIN_TONES = ['#f1c7a0', '#e0ac85', '#c48b62', '#9a6643', '#6e4a32', '#f6d6b8'];
 const EYE_COLS = ['#2b1d14', '#1d2b4a', '#2a3a1c', '#3a2a14'];
 const RUN_SPEED = 6.9, SPRINT_SPEED = 10.4;
@@ -83,6 +81,7 @@ class Player {
     this.styleId = o.style; this.style = STYLES[o.style];
     this.flowId = o.flow || null;
     this.skin = o.skin || pick(SKIN_TONES);
+    this.side = o.side || TEAM[this.team];
     this.look = lookFor(o.style, o.look || {});
     this.pos = V3(); this.vel = V3(); this.yaw = 0; this.onGround = true; this.airT = 0;
     this.mx = 0; this.mz = 0; this.sprint = false; this.faceYaw = null; this.exhausted = false;
@@ -107,11 +106,10 @@ class Player {
   get hasBall() { return this.m.ball.owner === this; }
   get aura() { return this.style.aura; }
   buildModel() {
-    const team = TEAM[this.team];
-    const kit = this.isGK ? Object.assign({}, team, team.gk) : team;
+    const side = this.side, kit = this.isGK ? side.keeper : side.kit;
     const L = this.look;
     this.skinTex = makePlayerSkin({
-      jersey: kit.jersey, trim: kit.trim, shorts: kit.shorts, socks: kit.socks, boots: L.boots || kit.boots, sparkle: L.sparkle,
+      kit, crest: side.crest, boots: L.boots || (this.team === 0 ? '#1a1a1f' : '#f4efe0'), sparkle: L.sparkle,
       skin: this.skin, hair: L.hair, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: pick(EYE_COLS),
       seed: this.team * 97 + this.number * 13 + 7,
     });
