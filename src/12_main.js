@@ -96,10 +96,18 @@ const Game = {
     d.stats.played++;
     if (res === 'win') d.stats.wins++; else if (res === 'draw') d.stats.draws++; else d.stats.losses++;
     d.stats.goals += hs.goals || 0; d.stats.assists += hs.assists || 0;
+    // XP, the match history (last 20) and best stats
+    const xp = matchXp(res, hs), lvBefore = levelOf(d.xp).level;
+    d.xp += xp;
+    d.history.push({ t: Date.now(), mode: m.mode, size: m.size, score: m.score.slice(), res, g: hs.goals || 0, a: hs.assists || 0, style: d.style, club: TEAM[0].club, opp: TEAM[1].club, rp: m.cfg.ranked ? d.rp - rpBefore : null });
+    if (d.history.length > 20) d.history.splice(0, d.history.length - 20);
+    const B = d.best;
+    B.goals = Math.max(B.goals, hs.goals || 0); B.assists = Math.max(B.assists, hs.assists || 0);
+    B.run = res === 'win' ? B.run + 1 : 0; B.streak = Math.max(B.streak, B.run); B.peakRp = Math.max(B.peakRp, d.rp);
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore });
     if (res === 'win') Sfx.fanfare(2);
     Sfx.setCrowd(0.3);
   },
@@ -174,7 +182,7 @@ const Game = {
 
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
-  TIER_SKILL, tierOf, featuredAt, MODES,
+  TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Player, TEAM, rollRarity, poolFor,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES,
   /** run a full bot-vs-bot match off-screen and report what happened */

@@ -10,7 +10,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -48,11 +48,12 @@ const UI = {
           <button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button>
           <button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button>
           <button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button>
+          <button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button>
         </nav>
       </div>
       <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
       <div class="lobby-foot">
-        <div class="profile panel">
+        <div class="profile panel" id="lob-profile" role="button" tabindex="0" title="Open your profile and match history">
           <img class="badge px" id="pro-badge" alt="">
           <div><div class="label">RANK</div><div class="tier" id="pro-tier">WOOD</div></div>
           <div><div class="rpbar" id="pro-rp"></div><div class="label" id="pro-rptxt" style="margin-top:6px">0 RP</div></div>
@@ -156,6 +157,52 @@ const UI = {
       </div>
     </section>`;
   },
+  tplProfile() {
+    return `<section id="scr-profile" class="screen sub-screen" hidden>
+      <div class="sub-wrap">
+        <div class="sub-head"><h2>PROFILE</h2><button class="btn small" id="profile-back" type="button">BACK</button></div>
+        <div class="pf-top"><div class="panel pf-card" id="pf-card"></div><div class="panel pf-best" id="pf-best"></div></div>
+        <section class="panel pf-hist"><h3>MATCH HISTORY</h3><div id="pf-hist"></div></section>
+      </div>
+    </section>`;
+  },
+  /** the profile card: level and XP, rank, what you have equipped, and your best stats. Built from saved data,
+      so the same card can show a friend's profile later */
+  profileCard(d) {
+    const tier = tierOf(d.rp), lv = levelOf(d.xp), st = STYLES[d.style], fl = d.flow ? FLOWS[d.flow] : null;
+    const skins = SKIN_SLOTS.map((sl) => `<div class="pf-skin" data-id="${d.look[sl.id]}"><span class="sv"></span><span class="label">${sl.name}</span><b>${esc(SKINS[d.look[sl.id]].name)}</b></div>`).join('');
+    return `<div class="pf-head"><span class="pf-face"></span><div class="pf-lv"><span class="label">LEVEL</span><b>${lv.level}</b></div>
+        <div class="pf-xp"><div class="xpbar"><i style="width:${(lv.into / lv.need * 100).toFixed(1)}%"></i></div><span class="label">${lv.into} / ${lv.need} XP TO LEVEL ${lv.level + 1}</span></div>
+        <div class="pf-rank"><img class="px" src="${badgeURL(tier)}" alt=""><div><span class="label">RANK</span><b>${TIER_NAMES[tier]}</b><span class="label">${d.rp} RP</span></div></div></div>
+      <div class="pf-eq"><div><span class="label">STYLE</span><b>${esc(st.name)}</b><span class="rar" data-r="${st.rarity}">${st.rarity.toUpperCase()}</span></div>
+        <div><span class="label">FLOW</span><b>${fl ? esc(fl.name) : 'NONE'}</b>${fl ? `<span class="rar" data-r="${fl.rarity}">${fl.rarity.toUpperCase()}</span>` : ''}</div>
+        <div><span class="label">CLUB</span><b>${esc(CLUBS[d.club].name)}</b></div></div>
+      <div class="pf-skins">${skins}</div>`;
+  },
+  renderProfile() {
+    const d = Save.data, B = d.best, S = d.stats;
+    const card = $('pf-card');
+    card.innerHTML = this.profileCard(d);
+    card.querySelector('.pf-face').replaceWith(portraitCanvas(d.style, 88, lookFor(d.style, d.look)));
+    card.querySelectorAll('.pf-skin').forEach((el) => el.querySelector('.sv').replaceWith(skinCanvas(el.dataset.id, 32)));
+    const stat = (k, v) => `<div><span class="label">${k}</span><b>${v}</b></div>`;
+    $('pf-best').innerHTML = '<h3>BEST</h3><div class="pf-grid">' + [
+      stat('MOST GOALS IN A MATCH', B.goals), stat('MOST ASSISTS IN A MATCH', B.assists), stat('BEST WIN STREAK', B.streak),
+      stat('PEAK RANK', TIER_NAMES[tierOf(B.peakRp)]), stat('MATCHES', S.played), stat('W / D / L', S.wins + ' / ' + S.draws + ' / ' + S.losses),
+      stat('TOTAL GOALS', S.goals), stat('TOTAL ASSISTS', S.assists),
+    ].join('') + '</div>';
+    const MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const when = (t) => { const x = new Date(t); return x.getDate() + ' ' + MON[x.getMonth()] + ' ' + String(x.getHours()).padStart(2, '0') + ':' + String(x.getMinutes()).padStart(2, '0'); };
+    const short = (c) => (CLUBS[c] ? CLUBS[c].short : '???');
+    const rows = d.history.slice().reverse().map((h) => {
+      const mode = MODES[h.mode] ? MODES[h.mode].name : h.mode.toUpperCase();
+      const rp = h.rp == null ? '' : `<span class="pf-rp ${h.rp >= 0 ? 'up' : 'down'}">${h.rp >= 0 ? '+' : ''}${h.rp} RP</span>`;
+      return `<div class="pf-row"><span class="label">${when(h.t)}</span><span class="pf-mode">${esc(mode)}${h.size && h.mode !== 'duel' ? ' · ' + h.size + 'V' + h.size : ''}</span>
+        <span class="pf-score">${short(h.club)} ${h.score[0]} : ${h.score[1]} ${short(h.opp)}</span><span class="pf-res ${h.res}">${h.res.toUpperCase()}</span>
+        <span class="label">${h.g} G · ${h.a} A · ${esc(STYLES[h.style] ? STYLES[h.style].name : h.style)}</span>${rp}</div>`;
+    }).join('');
+    $('pf-hist').innerHTML = rows || '<p class="label">NO MATCHES YET. PLAY ONE AND IT SHOWS UP HERE.</p>';
+  },
   tplHud() {
     return `<section id="hud" hidden>
       <div class="hud-mode"><span class="chip" id="hud-mode">RANKED</span><img class="px" id="hud-badge" alt=""></div>
@@ -214,6 +261,7 @@ const UI = {
         <div class="res-grid" id="r-stats"></div>
         <div class="earn" id="r-earn"></div>
         <div class="rankline" id="r-rank"></div>
+        <div class="xpline" id="r-xp"></div>
         <div class="row"><button class="btn blue" id="r-again" type="button">PLAY AGAIN</button><button class="btn" id="r-lobby" type="button">LOBBY</button></div>
       </div>
     </section>`;
@@ -228,6 +276,10 @@ const UI = {
     click('go-spins', () => this.openSpins());
     click('go-locker', () => this.openLocker());
     click('go-howto', () => this.show('howto'));
+    click('go-profile', () => this.show('profile'));
+    click('lob-profile', () => this.show('profile'));
+    $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
+    click('profile-back', () => this.show('lobby'));
     click('spin-back', () => { if (!this.spinning) this.show('lobby'); });
     click('locker-back', () => this.show('lobby'));
     click('howto-back', () => this.show('lobby'));
@@ -263,18 +315,19 @@ const UI = {
     click('btn-fs', () => Touch.toggleFs());
     window.addEventListener('keydown', (e) => {
       if (Game.state === 'match' || Game.state === 'paused') return;
-      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto') && !this.spinning) this.show('lobby');
+      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile') && !this.spinning) this.show('lobby');
     });
   },
   show(name) {
     this.cur = name;
-    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', hud: 'hud' };
+    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
     if (name !== 'spins') Reveal.stop();
     if (name === 'lobby') { this.renderLobby(); Showcase.ensure(); }
     if (name === 'howto') { Save.data.howto = true; Save.save(); }
+    if (name === 'profile') this.renderProfile();
   },
   /* ---------- lobby ---------- */
   renderLobby() {
@@ -295,7 +348,7 @@ const UI = {
     $('pro-style-r').dataset.r = STYLES[d.style].rarity; $('pro-style-r').textContent = STYLES[d.style].rarity.toUpperCase();
     $('pro-flow').textContent = d.flow ? FLOWS[d.flow].name : 'NONE';
     $('pro-club').textContent = CLUBS[d.club].nick;
-    $('pro-rec').textContent = d.stats.wins + ' W · ' + d.stats.draws + ' D · ' + d.stats.losses + ' L · ' + d.stats.goals + ' GOALS';
+    $('pro-rec').textContent = 'LEVEL ' + levelOf(d.xp).level + ' · ' + d.stats.wins + ' W · ' + d.stats.draws + ' D · ' + d.stats.losses + ' L · ' + d.stats.goals + ' GOALS';
     const notes = [];
     if (!Save.ok) notes.push('<span>This browser is blocking storage, so progress will not be saved after you close the page.</span>');
     if (Touch.on) notes.push('<span class="n-touch">' + (window.innerHeight > window.innerWidth ? 'Touch controls are on. Turn your phone sideways for a much wider view of the pitch.' : 'Touch controls are on. Left thumb moves, right thumb aims and shoots.') + '</span>');
@@ -539,6 +592,8 @@ const UI = {
       $('r-rank').innerHTML = `<img class="px" src="${badgeURL(tier)}" alt=""><div><div class="label">${moved ? (tier > tierOf(r.rpBefore) ? 'PROMOTED' : 'DEMOTED') : 'RANK'}</div><div style="font-family:var(--font-display);font-size:34px;line-height:1">${TIER_NAMES[tier]} · ${r.rpAfter} RP <span style="color:${delta >= 0 ? 'var(--emerald)' : 'var(--danger)'}">${delta >= 0 ? '+' : ''}${delta}</span></div></div>`;
       $('r-rank').hidden = false;
     } else { $('r-rank').hidden = true; }
+    const lv = levelOf(Save.data.xp);
+    $('r-xp').innerHTML = `<span class="label">${r.levelUp ? '<b class="lvup">LEVEL UP!</b> ' : ''}LEVEL ${lv.level} · +${r.xp || 0} XP</span><div class="xpbar"><i style="width:${(lv.into / lv.need * 100).toFixed(1)}%"></i></div>`;
     $('hint').hidden = true;
     $('scr-results').hidden = false;
   },

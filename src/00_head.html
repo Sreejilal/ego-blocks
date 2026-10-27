@@ -139,6 +139,8 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .lobby-foot { grid-column: 3; grid-row: 2; align-self: end; justify-self: end; display: grid; gap: 10px; justify-items: end; min-width: 0; }
 .profile { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: center; padding: 14px 16px; min-width: 0; width: min(400px, 100%); box-sizing: border-box; }
 .profile .badge { width: 64px; height: 64px; grid-row: span 2; }
+#lob-profile { cursor: pointer; }
+@media (hover: hover) { #lob-profile:hover { background: var(--slate-2); } }
 .profile .tier { font-family: var(--font-display); font-size: 38px; line-height: .9; }
 .rpbar { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; height: 12px; }
 .rpbar i { background: var(--ink); }
@@ -223,6 +225,42 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .ab .t { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .ab .t b { font-family: var(--font-display); font-size: 26px; font-weight: 400; line-height: .9; }
 .ab p { margin: 2px 0 0; color: var(--muted); font-size: 19px; max-width: 60ch; }
+
+/* profile: the card (level, rank, what you wear), best stats, then the last 20 matches */
+.pf-top { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.pf-card, .pf-best, .pf-hist { padding: 16px; display: grid; gap: 14px; }
+.pf-card h3, .pf-best h3, .pf-hist h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: .9; }
+.pf-head { display: grid; grid-template-columns: 88px auto minmax(0, 1fr); grid-template-areas: "face lv xp" "face rank rank"; gap: 8px 16px; align-items: center; }
+.pf-head > canvas { grid-area: face; width: 88px; height: 88px; }
+.pf-lv { grid-area: lv; display: grid; justify-items: center; background: var(--ink); padding: 4px 12px 6px; }
+.pf-lv b { font-family: var(--font-display); font-weight: 400; font-size: 44px; line-height: .9; color: var(--gold); }
+.pf-xp { grid-area: xp; display: grid; gap: 4px; min-width: 0; }
+.xpbar { height: 12px; background: var(--ink); border: 2px solid var(--ink); }
+.xpbar i { display: block; height: 100%; background: var(--emerald); }
+.pf-rank { grid-area: rank; display: flex; gap: 10px; align-items: center; }
+.pf-rank img { width: 44px; height: 44px; }
+.pf-rank b, .pf-eq b, .pf-grid b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 26px; line-height: 1; }
+.pf-eq { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 14px; border-top: var(--px) solid var(--ink); padding-top: 12px; }
+.pf-eq > div { display: grid; gap: 3px; justify-items: start; }
+.pf-skins { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.pf-skin { display: grid; grid-template-columns: 32px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; background: var(--slate-2); padding: 6px 8px; }
+.pf-skin canvas { width: 32px; height: 32px; grid-row: span 2; }
+.pf-skin b { font-family: var(--font-display); font-weight: 400; font-size: 20px; line-height: .95; }
+.pf-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.pf-grid > div { background: var(--ink); padding: 8px; display: grid; gap: 3px; }
+.pf-row { display: grid; grid-template-columns: 110px minmax(0, 1.2fr) minmax(0, 1fr) 88px minmax(0, 1.3fr) 76px; gap: 6px 12px; align-items: center; padding: 8px 0; border-top: 2px solid var(--ink); font-size: 19px; }
+.pf-mode { font-family: var(--font-display); font-size: 22px; line-height: 1; }
+.pf-score { font-variant-numeric: tabular-nums; }
+.pf-res { font-family: var(--font-label); font-size: 11px; font-weight: 700; letter-spacing: .08em; padding: 3px 7px; justify-self: start; color: var(--ink); background: var(--muted); }
+.pf-res.win { background: var(--emerald); } .pf-res.draw { background: var(--gold); } .pf-res.loss, .pf-res.forfeit { background: var(--danger); color: var(--text); }
+.pf-rp { font-family: var(--font-label); font-size: 11px; font-weight: 700; } .pf-rp.up { color: var(--emerald); } .pf-rp.down { color: var(--danger); }
+.xpline { display: grid; gap: 4px; }
+.xpline .lvup { color: var(--gold); font-weight: 700; animation: blink .6s steps(2) 4; }
+@media (max-width: 860px) {
+  .pf-top { grid-template-columns: minmax(0, 1fr); }
+  .pf-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .pf-row > :nth-child(2) { grid-column: 1 / -1; grid-row: 1; }
+}
 
 /* how to play */
 .howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
@@ -513,7 +551,7 @@ body.touch .howto .touchsec { order: -1; }
   .menu { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 560px; gap: 6px; }
   .menu .btn { font-size: 22px; padding: 4px 10px 7px; gap: 8px; }
   .menu .btn .sub { font-size: 9px; }
-  .menu .btn.ghost { grid-column: 1 / -1; font-size: 18px; }
+  .menu .btn.ghost { font-size: 18px; }
   .lobby-foot { align-self: end; justify-self: stretch; justify-items: stretch; gap: 4px; }
   .profile { width: 100%; padding: 6px 10px; gap: 2px 10px; }
   .profile .badge { width: 36px; height: 36px; }

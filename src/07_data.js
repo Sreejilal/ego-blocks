@@ -483,6 +483,15 @@ const teamSizeFor = (mode, rp) => { if (mode === 'duel') return 2; if (mode !== 
 const FEATURED = ['koth', 'volleys', 'duel', 'lawless'], FEATURED_MS = 3 * 3600 * 1000;
 function featuredAt(now = Date.now()) { const k = Math.floor(now / FEATURED_MS); return { mode: FEATURED[((k % FEATURED.length) + FEATURED.length) % FEATURED.length], left: (k + 1) * FEATURED_MS - now }; }
 
+/* ---------- XP and levels: from matches; each level needs 50 more XP than the last ---------- */
+const XP_RESULT = { win: 100, draw: 70, loss: 50, forfeit: 0 };
+const matchXp = (res, s) => (res === 'forfeit' ? 0 : XP_RESULT[res] + 25 * (s.goals || 0) + 15 * (s.assists || 0) + 5 * (s.tackles || 0));
+function levelOf(xp) {
+  let level = 1, need = 200;
+  while (xp >= need) { xp -= need; level++; need = 200 + 50 * (level - 1); }
+  return { level, into: xp, need };
+}
+
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /** bot difficulty 0..1 from rank points */
