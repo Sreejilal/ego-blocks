@@ -14,6 +14,7 @@ const path = require('path');
 const { WebSocketServer } = require('ws');
 const THREE = require('three');
 const G = require('./headless').load();
+const Accounts = require('./accounts');
 
 const PORT = Number(process.env.PORT) || 8787;
 const STEP = 1 / 60, SNAP_EVERY = 3;
@@ -23,12 +24,14 @@ const KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook'];
 const FX_SENT = ['burst', 'turbo', 'shuffle', 'lockdown', 'skyTrap', 'vision', 'scent', 'loaded', 'call', 'bubble', 'feathers'];
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const rooms = new Map();
+const online = new Map(); // account name -> connection, so friends can see who is on and in which room
 let nextId = 1;
 
 /* ---------- the web page ---------- */
 const PAGE = path.join(__dirname, '..', 'docs', 'index.html');
 const server = http.createServer((req, res) => {
   const url = req.url.split('?')[0];
+  if (url.startsWith('/api/')) { api(req, res, url.slice(5)); return; }
   if (url === '/' || url === '/index.html') {
     fs.readFile(PAGE, (err, data) => {
       if (err) { res.writeHead(500); res.end('Build the game first: npm run build'); return; }
@@ -37,6 +40,48 @@ const server = http.createServer((req, res) => {
   } else if (url === '/health') { res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('ok ' + rooms.size + ' rooms'); }
   else { res.writeHead(404); res.end('not found'); }
 });
+
+/* ---------- accounts and friends (JSON over HTTP, a sign-in token in the Authorization header) ---------- */
+const tries = new Map(); // sign-in attempts per address, to slow down password guessing
+function api(req, res, route) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+  const reply = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
+  let body = '';
+  req.on('data', (c) => { body += c; if (body.length > 160 * 1024) { reply(413, { error: 'TOO BIG' }); req.destroy(); } });
+  req.on('end', () => {
+    let data = {}; try { data = body ? JSON.parse(body) : {}; } catch (e) { reply(400, { error: 'BAD REQUEST' }); return; }
+    const token = (req.headers.authorization || '').replace(/^Bearer /, '');
+    const u = Accounts.byToken(token);
+    if (route === 'register' || route === 'login') {
+      const ip = req.socket.remoteAddress || '?', t = (tries.get(ip) || []).filter((x) => Date.now() - x < 60000);
+      if (t.length >= 10) { reply(429, { error: 'TOO MANY TRIES. WAIT A MINUTE.' }); return; }
+      t.push(Date.now()); tries.set(ip, t);
+      const r = route === 'register' ? Accounts.register(data.user, data.pass) : Accounts.login(data.user, data.pass);
+      reply(r.error ? 400 : 200, r); return;
+    }
+    if (!u) { reply(401, { error: 'SIGN IN AGAIN' }); return; }
+    const friendInfo = (name) => { const f = Accounts.get(name), c = online.get(name); return { user: name, online: !!c, room: c && c.room ? c.room.code : null, playing: !!(c && c.room && c.room.match), card: f ? Accounts.card(f) : null }; };
+    switch (route) {
+      case 'me': reply(200, { user: u.user, save: u.save }); return;
+      case 'logout': Accounts.logout(u, token); reply(200, { ok: true }); return;
+      case 'save': { const r = Accounts.setSave(u, data.save); reply(r.error ? 400 : 200, r); return; }
+      case 'friends': reply(200, { friends: u.friends.map(friendInfo), requests: u.requests.slice() }); return;
+      case 'friends/add': { const r = Accounts.addFriend(u, data.user); reply(r.error ? 400 : 200, r); return; }
+      case 'friends/accept': { const r = Accounts.accept(u, data.user); reply(r.error ? 400 : 200, r); return; }
+      case 'friends/decline': reply(200, Accounts.decline(u, data.user)); return;
+      case 'friends/remove': reply(200, Accounts.remove(u, data.user)); return;
+    }
+    if (route.startsWith('card/')) {
+      const name = route.slice(5).toUpperCase(), f = Accounts.get(name);
+      if (!f || (f !== u && !u.friends.includes(f.user))) { reply(404, { error: 'ONLY FRIENDS CAN SEE THAT CARD' }); return; }
+      reply(200, Accounts.card(f)); return;
+    }
+    reply(404, { error: 'NOT FOUND' });
+  });
+}
 
 /* ---------- helpers ---------- */
 const clean = (s, n) => String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, n);
@@ -145,14 +190,19 @@ wss.on('connection', (ws) => {
     if (!m || typeof m.t !== 'string') return;
     const room = me.room;
     switch (m.t) {
-      case 'hello': // who I am and what I wear
-        me.name = clean(m.name, 12) || 'PLAYER';
+      case 'hello': { // who I am and what I wear; signed-in players play under their account name
+        const acc = m.token ? Accounts.byToken(m.token) : null;
+        if (me.account && online.get(me.account) === me) online.delete(me.account);
+        me.account = acc ? acc.user : null;
+        if (acc) online.set(acc.user, me);
+        me.name = acc ? acc.user : clean(m.name, 12) || 'PLAYER';
         me.style = G.STYLES[m.style] ? m.style : 'ROOKIE';
         me.flow = G.FLOWS[m.flow] ? m.flow : null;
         me.look = {}; if (m.look && typeof m.look === 'object') for (const s of G.SKIN_SLOTS) if (G.SKINS[m.look[s.id]] && G.SKINS[m.look[s.id]].slot === s.id) me.look[s.id] = m.look[s.id];
         me.club = G.CLUBS[m.club] ? m.club : 'ROVERS';
         if (room) sync(room);
         break;
+      }
       case 'create': {
         leave(me);
         const r = { code: newCode(), host: me.id, hostClub: me.club, mode: 'quick', size: 3, players: [], match: null, events: [] };
@@ -194,7 +244,7 @@ wss.on('connection', (ws) => {
       case 'leave': leave(me); send(ws, { t: 'left' }); break;
     }
   });
-  ws.on('close', () => leave(me));
+  ws.on('close', () => { leave(me); if (me.account && online.get(me.account) === me) online.delete(me.account); });
 });
 function join(me, room) {
   const full = (t) => room.players.filter((p) => p.team === t).length >= maxPerTeam(room);

@@ -32,6 +32,7 @@ file in file-name order into ONE function scope. There are no imports or exports
 | `09_ai.js` | `AI`: bot roles, passing and shooting decisions, keepers |
 | `10_input.js` | keyboard, mouse, pointer lock, gamepad, and the camera (`Cam`) |
 | `10_touch.js` | `Touch`: phone controls (floating stick, drag to look, thumb arc of buttons) |
+| `11_account.js` | `Account`: optional sign-in, progress sync to the server, friends and their profile cards |
 | `11_net.js` | `Net`: online rooms (code, invite link, teams) and `NetMatch`, which draws an online match from server snapshots and sends your controls |
 | `11_replay.js` | `Replay`: records the last 10s (player poses + ball every frame), offers replays after your goals, nutmegs and ankle breakers, saves clips with MediaRecorder |
 | `11_reveal.js` | `Reveal`: the 3D spin (block drops, shakes in the rarity colour, cracks open). The roll happens in `UI.spin()` first |
@@ -45,6 +46,7 @@ file in file-name order into ONE function scope. There are no imports or exports
 - `npm run server` starts it on port 8787 (or `PORT`). `MATCH_SECONDS` and `GOLDEN_SECONDS` shorten matches for tests.
 - Online modes: quick, koth, volleys, duel (not Lawless yet). Several humans per match: `Match` takes `opts.humans`, each human has `p.ctl`, `p.camYaw`, `p.aimV`, and toasts take the player they are for.
 - Tests: `node test/server_proto.js` (protocol) and `node test/online.js` (two real browsers).
+- Accounts: `server/accounts.js` (scrypt-hashed passwords, hashed tokens, JSON file in `DATA_DIR`), HTTP API under `/api/` in server.js, client in `src/11_account.js` on the Profile screen. Friends only ever get `Accounts.card()`, never the whole save. Test: `node test/accounts.js`.
 
 ## Rules to keep
 

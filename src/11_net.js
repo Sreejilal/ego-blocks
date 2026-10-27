@@ -118,7 +118,7 @@ const Net = {
   },
   close() { if (this.ws) { this.ws.onclose = null; try { this.ws.close(); } catch (e) {} } this.ws = null; this.room = null; this.renderRoom(); },
   send(m) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(m)); },
-  hello() { const d = Save.data; this.send({ t: 'hello', name: d.name, style: d.style, flow: d.flow, look: d.look, club: d.club }); },
+  hello() { const d = Save.data; this.send({ t: 'hello', name: d.name, style: d.style, flow: d.flow, look: d.look, club: d.club, token: Account.token }); },
   onMessage(m) {
     switch (m.t) {
       case 'welcome': this.id = m.id; break;

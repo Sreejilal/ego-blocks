@@ -129,6 +129,12 @@ If you want the GitHub Pages copy of the game to use your server too, open **PLA
 SERVER ADDRESS** and enter `wss://your-server-address/ws`. Invite links made from there carry the
 server address with them.
 
+Accounts (optional for players) are kept in `server/data/accounts.json`, or in the folder you set with
+the `DATA_DIR` setting. On hosts with a free plan that folder is often wiped when the server restarts,
+so add a **persistent disk** (Render and Fly.io both have one) and point `DATA_DIR` at it. Back it up now
+and then. Never put that file on GitHub (it is already in `.gitignore`). Accounts only hold a name, a
+hashed password and game progress, no email or real names.
+
 Things to know: one server runs every room; 20 or so players at once is fine on a small plan. There
 is no player prediction yet, so the further players are from the server, the more lag they feel.
 Pick a server region close to you and your friends.

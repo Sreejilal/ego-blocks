@@ -10,7 +10,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -162,6 +162,7 @@ const UI = {
     return `<section id="scr-profile" class="screen sub-screen" hidden>
       <div class="sub-wrap">
         <div class="sub-head"><h2>PROFILE</h2><button class="btn small" id="profile-back" type="button">BACK</button></div>
+        <section class="panel pf-acc" id="pf-acc"></section>
         <div class="pf-top"><div class="panel pf-card" id="pf-card"></div><div class="panel pf-best" id="pf-best"></div></div>
         <section class="panel pf-hist"><h3>MATCH HISTORY</h3><div id="pf-hist"></div></section>
       </div>
@@ -192,17 +193,22 @@ const UI = {
       stat('PEAK RANK', TIER_NAMES[tierOf(B.peakRp)]), stat('MATCHES', S.played), stat('W / D / L', S.wins + ' / ' + S.draws + ' / ' + S.losses),
       stat('TOTAL GOALS', S.goals), stat('TOTAL ASSISTS', S.assists),
     ].join('') + '</div>';
+    $('pf-hist').innerHTML = this.historyRows(d.history) || '<p class="label">NO MATCHES YET. PLAY ONE AND IT SHOWS UP HERE.</p>';
+    const acc = $('pf-acc'); acc.innerHTML = Account.html(); Account.bind(acc);
+  },
+  /** match history rows, newest first (yours, or a friend's recent matches) */
+  historyRows(history) {
     const MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     const when = (t) => { const x = new Date(t); return x.getDate() + ' ' + MON[x.getMonth()] + ' ' + String(x.getHours()).padStart(2, '0') + ':' + String(x.getMinutes()).padStart(2, '0'); };
-    const short = (c) => (CLUBS[c] ? CLUBS[c].short : '???');
-    const rows = d.history.slice().reverse().map((h) => {
+    const short = (c) => (CLUBS[c] ? CLUBS[c].short : '');
+    return history.slice().reverse().map((h) => {
+      h = Object.assign({ g: 0, a: 0, style: '', club: '', opp: '', score: [0, 0], res: 'draw', mode: 'quick', t: 0 }, h);
       const mode = MODES[h.mode] ? MODES[h.mode].name : h.mode.toUpperCase();
       const rp = h.rp == null ? '' : `<span class="pf-rp ${h.rp >= 0 ? 'up' : 'down'}">${h.rp >= 0 ? '+' : ''}${h.rp} RP</span>`;
       return `<div class="pf-row"><span class="label">${when(h.t)}</span><span class="pf-mode">${esc(mode)}${h.size && h.mode !== 'duel' ? ' · ' + h.size + 'V' + h.size : ''}</span>
         <span class="pf-score">${short(h.club)} ${h.score[0]} : ${h.score[1]} ${short(h.opp)}</span><span class="pf-res ${h.res}">${h.res.toUpperCase()}</span>
-        <span class="label">${h.g} G · ${h.a} A · ${esc(STYLES[h.style] ? STYLES[h.style].name : h.style)}</span>${rp}</div>`;
+        <span class="label">${h.g} G · ${h.a} A${STYLES[h.style] ? ' · ' + esc(STYLES[h.style].name) : ''}</span>${rp}</div>`;
     }).join('');
-    $('pf-hist').innerHTML = rows || '<p class="label">NO MATCHES YET. PLAY ONE AND IT SHOWS UP HERE.</p>';
   },
   tplPass() {
     return `<section id="scr-pass" class="screen sub-screen" hidden>
@@ -315,6 +321,7 @@ const UI = {
     click('lob-profile', () => this.show('profile'));
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
     click('profile-back', () => this.show('lobby'));
+    click('fc-close', () => { $('friend-card').hidden = true; });
     click('spin-back', () => { if (!this.spinning) this.show('lobby'); });
     click('locker-back', () => this.show('lobby'));
     click('howto-back', () => this.show('lobby'));
@@ -350,6 +357,7 @@ const UI = {
     click('btn-fs', () => Touch.toggleFs());
     window.addEventListener('keydown', (e) => {
       if (Game.playing() || Game.state === 'paused') return;
+      if (e.code === 'Escape' && !$('friend-card').hidden) { $('friend-card').hidden = true; return; }
       if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass' || this.cur === 'online') && !this.spinning && !(e.target && e.target.tagName === 'INPUT')) this.show('lobby');
     });
   },

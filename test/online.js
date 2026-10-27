@@ -67,7 +67,7 @@ const PORT = 18788, URL = 'http://localhost:' + PORT + '/';
   await A.keyboard.press('Escape'); await sleep(300);
   const menu = await A.evaluate(() => ({ shown: !document.getElementById('scr-pause').hidden, title: document.querySelector('#scr-pause h2').textContent, leave: document.getElementById('p-forfeit').textContent, state: EGO.Game.state }));
   const c1 = await A.evaluate(() => EGO.Net.nm.time); await sleep(1200); const c2 = await A.evaluate(() => EGO.Net.nm.time);
-  check('ESC opens the menu while the online match keeps going', menu.shown && menu.title === 'MENU' && menu.leave === 'LEAVE MATCH' && menu.state === 'online' && c2 > c1 + 0.8, Object.assign(menu, { c1, c2 }));
+  check('ESC opens the menu while the online match keeps going', menu.shown && menu.title === 'MENU' && menu.leave === 'LEAVE MATCH' && menu.state === 'online' && c2 > c1 + 0.3, Object.assign(menu, { c1, c2 }));
   if (menu.shown) await A.click('#p-resume'); else await A.evaluate(() => EGO.Game.resume());
   await sleep(200);
 

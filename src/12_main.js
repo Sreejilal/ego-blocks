@@ -17,6 +17,7 @@ const Game = {
     Reveal.init();
     Replay.init();
     Net.init();
+    Account.init();
     Input.init($('gl'));
     Touch.init();
     this.applyQuality();
@@ -183,6 +184,7 @@ const Game = {
       Shake.update(rdt);
       FX.update(rdt);
     }
+    Account.tick(rdt);
     World.update(rdt);
     Input.endFrame();
     if (doRender) World.render();
@@ -194,7 +196,7 @@ const Game = {
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Player, TEAM, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Player, TEAM, rollRarity, poolFor,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

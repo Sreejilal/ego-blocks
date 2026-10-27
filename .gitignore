@@ -3,3 +3,5 @@ dist/
 test/shots/
 *.log
 .DS_Store
+# accounts live here on the server: never commit them
+server/data/

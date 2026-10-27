@@ -325,6 +325,19 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .passline .pl-ch { color: var(--emerald); } .passline .pl-tier { color: var(--gold); }
 @media (max-width: 560px) { .gp-top { grid-template-columns: minmax(0, 1fr); } }
 
+/* account and friends (on the Profile screen) */
+.pf-acc { padding: 16px; display: grid; gap: 10px; }
+.pf-acc h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: .9; }
+.pf-note { margin: 0; color: var(--muted); font-size: 18px; max-width: 70ch; }
+.pf-note.small { font-size: 15px; }
+.ac-name { font-family: var(--font-display); font-weight: 400; font-size: 30px; color: var(--gold); }
+.fr-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; background: var(--slate-2); padding: 8px 10px; }
+.fr-row b { font-family: var(--font-display); font-weight: 400; font-size: 26px; min-width: 7ch; }
+.fr-row .label.on { color: var(--emerald); }
+#friend-card .fc { width: min(760px, 100%); max-height: 100%; overflow-y: auto; }
+#friend-card .fc-body { display: grid; gap: 12px; }
+#friend-card h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; }
+
 /* how to play */
 .howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
 .howto section { padding: 16px; }
@@ -742,7 +755,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
-      name: '', settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '' },
+      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '' },
       howto: false,
     };
   },
@@ -782,6 +795,7 @@ const Save = {
     st.sens = clamp(Number(st.sens) || 1, 0.3, 2.5);
     st.btn = [0.85, 1, 1.15].includes(Number(st.btn)) ? Number(st.btn) : 1;
     st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false; st.server = typeof st.server === 'string' ? st.server.slice(0, 200) : '';
+    out.account = out.account && typeof out.account === 'object' && typeof out.account.token === 'string' && typeof out.account.user === 'string' ? { user: out.account.user.slice(0, 12), token: out.account.token.slice(0, 128) } : null;
     out.name = String(out.name || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12);
     if (!Array.isArray(out.styles)) out.styles = ['ROOKIE'];
     if (!Array.isArray(out.flows)) out.flows = [];
@@ -814,6 +828,7 @@ const Save = {
   save() {
     try { window.localStorage.setItem(this.key, JSON.stringify(this.data)); this.ok = true; }
     catch (e) { this.ok = false; }
+    if (typeof Account !== 'undefined') Account.changed(); // signed in: send it to the server soon
   },
 };
 
@@ -5822,6 +5837,130 @@ const Touch = {
   },
 };
 
+/* ---- 11_account.js ---- */
+/* =====================================================================
+   Account: optional. Guests play straight away and keep progress in
+   this browser. Signing in (a name and a password, nothing else)
+   keeps progress on the SCORZ server so it follows you to any device,
+   and lets you add friends, see who is online and look at their
+   profile cards. Lives on the Profile screen.
+   ===================================================================== */
+const GUEST_KEY = 'scorz.save.guest'; // the guest progress, kept aside while you are signed in
+const Account = {
+  user: null, token: null, friends: [], requests: [], pending: false, syncT: 0, msg: '',
+  init() {
+    const a = Save.data.account;
+    if (a && a.token) { this.user = a.user; this.token = a.token; this.refresh(); }
+    document.addEventListener('visibilitychange', () => { if (document.hidden) this.upload(true); });
+  },
+  base() { return Net.serverUrl().replace(/^ws/, 'http').replace(/\/ws$/, ''); },
+  api(path, body) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (this.token) headers.Authorization = 'Bearer ' + this.token;
+    return fetch(this.base() + '/api/' + path, { method: body ? 'POST' : 'GET', headers, body: body ? JSON.stringify(body) : undefined, keepalive: !!(body && body.keep) })
+      .then((r) => r.json().catch(() => ({ error: 'THE SERVER SENT SOMETHING ODD' })))
+      .catch(() => ({ error: 'CANNOT REACH THE SERVER' }));
+  },
+  /** what goes up to the server: the progress, not this device's settings or sign-in */
+  payload() { const d = Object.assign({}, Save.data); delete d.account; delete d.settings; return d; },
+  async signIn(user, pass, create) {
+    this.msg = create ? 'CREATING YOUR ACCOUNT...' : 'SIGNING IN...'; UI.renderProfile();
+    const r = await this.api(create ? 'register' : 'login', { user, pass });
+    if (r.error) { this.msg = r.error; UI.renderProfile(); return r; }
+    this.user = r.user; this.token = r.token;
+    const me = await this.api('me');
+    try { localStorage.setItem(GUEST_KEY, JSON.stringify(Save.data)); } catch (e) {}
+    if (me.save) this.useSave(me.save); // your account's progress replaces the guest progress on this device
+    Save.data.account = { user: this.user, token: this.token }; Save.data.name = this.user;
+    Save.save();
+    if (!me.save) await this.upload();
+    this.msg = create ? 'ACCOUNT MADE. YOUR PROGRESS IS SAVED ON THE SERVER.' : 'SIGNED IN. WELCOME BACK.';
+    Net.hello(); this.refresh();
+    return r;
+  },
+  useSave(save) {
+    const keep = { account: Save.data.account, settings: Save.data.settings };
+    try { localStorage.setItem(Save.key, JSON.stringify(Object.assign({}, save, keep))); } catch (e) {}
+    Save.load(); Save.validate();
+    UI.renderLobby(); Showcase.ensure();
+  },
+  signOut() {
+    if (this.token) { this.upload(true); this.api('logout', {}); }
+    this.user = null; this.token = null; this.friends = []; this.requests = [];
+    let guest = null; try { guest = JSON.parse(localStorage.getItem(GUEST_KEY) || 'null'); } catch (e) {}
+    const settings = Save.data.settings;
+    try { localStorage.setItem(Save.key, JSON.stringify(Object.assign(guest || Save.defaults(), { account: null, settings }))); } catch (e) {}
+    Save.load(); Save.validate(); Save.data.account = null; Save.save();
+    this.msg = 'SIGNED OUT. THIS DEVICE IS BACK TO GUEST PROGRESS.';
+    UI.renderLobby(); Showcase.ensure(); Net.hello(); UI.renderProfile();
+  },
+  /** called on every save; the upload happens a few seconds later, once */
+  changed() { if (this.token) this.pending = true; },
+  tick(rdt) { if (!this.pending) return; this.syncT -= rdt; if (this.syncT <= 0) { this.syncT = 5; this.upload(); } },
+  async upload(keep) {
+    if (!this.token) return;
+    this.pending = false;
+    const r = await this.api('save', { save: this.payload(), keep: !!keep });
+    if (r.error === 'SIGN IN AGAIN') { this.token = null; this.user = null; Save.data.account = null; this.msg = 'PLEASE SIGN IN AGAIN'; }
+  },
+  async refresh() {
+    if (!this.token) return;
+    const r = await this.api('friends');
+    if (r.error) { if (r.error === 'SIGN IN AGAIN') { this.token = null; this.user = null; Save.data.account = null; this.msg = 'PLEASE SIGN IN AGAIN'; } }
+    else { this.friends = r.friends || []; this.requests = r.requests || []; }
+    if (UI.cur === 'profile') UI.renderProfile();
+  },
+  async friendAction(kind, user) {
+    const r = await this.api('friends/' + kind, { user });
+    this.msg = r.error || (kind === 'add' ? (r.friends ? 'YOU ARE NOW FRIENDS' : r.already ? 'ALREADY FRIENDS' : 'REQUEST SENT') : kind === 'accept' ? 'YOU ARE NOW FRIENDS' : '');
+    this.refresh();
+  },
+  /* ---------- the Profile screen panels ---------- */
+  html() {
+    if (!this.token) {
+      return `<h3>ACCOUNT</h3><p class="pf-note">You are playing as a guest, and your progress stays in this browser. Make an account (just a name and a password) to keep it on the SCORZ server, play on any device and add friends.</p>
+        <div class="on-row"><input class="on-in" id="ac-user" maxlength="12" placeholder="NAME" autocomplete="username" spellcheck="false"><input class="on-in" id="ac-pass" type="password" maxlength="64" placeholder="PASSWORD" autocomplete="current-password"></div>
+        <div class="on-row"><button class="btn small blue" id="ac-in" type="button">SIGN IN</button><button class="btn small" id="ac-new" type="button">CREATE ACCOUNT</button></div>
+        <p class="on-status" id="ac-msg">${esc(this.msg)}</p>
+        <p class="pf-note small">Never use your real name or a password you use anywhere else. Friends only ever see your profile card.</p>`;
+    }
+    const fr = this.friends.map((f) => `<div class="fr-row"><b>${esc(f.user)}</b><span class="label ${f.online ? 'on' : ''}">${f.online ? (f.room ? (f.playing ? 'PLAYING IN ' : 'IN ROOM ') + esc(f.room) : 'ONLINE') : 'OFFLINE'}</span>
+      <button class="btn small" type="button" data-card="${esc(f.user)}">CARD</button>${f.room ? `<button class="btn small blue" type="button" data-join="${esc(f.room)}">JOIN</button>` : ''}<button class="btn ghost" type="button" data-remove="${esc(f.user)}">REMOVE</button></div>`).join('');
+    const rq = this.requests.map((u) => `<div class="fr-row"><b>${esc(u)}</b><span class="label">WANTS TO BE FRIENDS</span><button class="btn small blue" type="button" data-accept="${esc(u)}">ACCEPT</button><button class="btn ghost" type="button" data-decline="${esc(u)}">NO THANKS</button></div>`).join('');
+    return `<h3>ACCOUNT</h3><div class="on-row"><span class="label">SIGNED IN AS</span><b class="ac-name">${esc(this.user)}</b><button class="btn small" id="ac-out" type="button">SIGN OUT</button></div>
+      <p class="pf-note">Your progress is saved on the SCORZ server.</p>
+      <h3>FRIENDS</h3><div class="on-row"><input class="on-in" id="fr-name" maxlength="12" placeholder="FRIEND'S NAME" spellcheck="false"><button class="btn small" id="fr-add" type="button">ADD FRIEND</button><button class="btn ghost" id="fr-refresh" type="button">REFRESH</button></div>
+      <p class="on-status" id="ac-msg">${esc(this.msg)}</p>${rq}${fr || '<p class="label">NO FRIENDS YET. ADD ONE BY THEIR SCORZ NAME.</p>'}`;
+  },
+  bind(el) {
+    const v = (id) => ($(id) ? $(id).value : '');
+    const on = (id, fn) => { const b = $(id); if (b) b.addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); }); };
+    on('ac-in', () => this.signIn(v('ac-user'), v('ac-pass'), false));
+    on('ac-new', () => this.signIn(v('ac-user'), v('ac-pass'), true));
+    on('ac-out', () => this.signOut());
+    on('fr-add', () => this.friendAction('add', v('fr-name')));
+    on('fr-refresh', () => this.refresh());
+    el.querySelectorAll('[data-accept]').forEach((b) => b.addEventListener('click', () => this.friendAction('accept', b.dataset.accept)));
+    el.querySelectorAll('[data-decline]').forEach((b) => b.addEventListener('click', () => this.friendAction('decline', b.dataset.decline)));
+    el.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => this.friendAction('remove', b.dataset.remove)));
+    el.querySelectorAll('[data-join]').forEach((b) => b.addEventListener('click', () => { Sfx.click(); Net.open(); Net.join(b.dataset.join); }));
+    el.querySelectorAll('[data-card]').forEach((b) => b.addEventListener('click', () => this.showCard(b.dataset.card)));
+  },
+  /** a friend's profile card: level, style, skins, rank and their last matches */
+  async showCard(user) {
+    const c = await this.api('card/' + encodeURIComponent(user));
+    if (c.error) { this.msg = c.error; UI.renderProfile(); return; }
+    const def = Save.defaults();
+    const d = { rp: c.rp, xp: c.xp, style: STYLES[c.style] ? c.style : 'ROOKIE', flow: FLOWS[c.flow] ? c.flow : null, club: CLUBS[c.club] ? c.club : 'ROVERS', look: Object.assign({}, def.look, c.look), best: Object.assign({}, def.best, c.best), stats: Object.assign({}, def.stats, c.stats), history: c.history || [] };
+    for (const sl of SKIN_SLOTS) if (!SKINS[d.look[sl.id]] || SKINS[d.look[sl.id]].slot !== sl.id) d.look[sl.id] = sl.base;
+    const el = $('friend-card');
+    el.querySelector('.fc-body').innerHTML = `<h2>${esc(c.user)}</h2>` + UI.profileCard(d) + '<h3>RECENT MATCHES</h3>' + (UI.historyRows(d.history) || '<p class="label">NO MATCHES YET</p>');
+    el.querySelector('.pf-face').replaceWith(portraitCanvas(d.style, 88, lookFor(d.style, d.look)));
+    el.querySelectorAll('.pf-skin').forEach((s) => s.querySelector('.sv').replaceWith(skinCanvas(s.dataset.id, 32)));
+    el.hidden = false;
+  },
+};
+
 /* ---- 11_net.js ---- */
 /* =====================================================================
    Net: playing online with friends. The server runs the match (same
@@ -5943,7 +6082,7 @@ const Net = {
   },
   close() { if (this.ws) { this.ws.onclose = null; try { this.ws.close(); } catch (e) {} } this.ws = null; this.room = null; this.renderRoom(); },
   send(m) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(m)); },
-  hello() { const d = Save.data; this.send({ t: 'hello', name: d.name, style: d.style, flow: d.flow, look: d.look, club: d.club }); },
+  hello() { const d = Save.data; this.send({ t: 'hello', name: d.name, style: d.style, flow: d.flow, look: d.look, club: d.club, token: Account.token }); },
   onMessage(m) {
     switch (m.t) {
       case 'welcome': this.id = m.id; break;
@@ -6628,7 +6767,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -6780,6 +6919,7 @@ const UI = {
     return `<section id="scr-profile" class="screen sub-screen" hidden>
       <div class="sub-wrap">
         <div class="sub-head"><h2>PROFILE</h2><button class="btn small" id="profile-back" type="button">BACK</button></div>
+        <section class="panel pf-acc" id="pf-acc"></section>
         <div class="pf-top"><div class="panel pf-card" id="pf-card"></div><div class="panel pf-best" id="pf-best"></div></div>
         <section class="panel pf-hist"><h3>MATCH HISTORY</h3><div id="pf-hist"></div></section>
       </div>
@@ -6810,17 +6950,22 @@ const UI = {
       stat('PEAK RANK', TIER_NAMES[tierOf(B.peakRp)]), stat('MATCHES', S.played), stat('W / D / L', S.wins + ' / ' + S.draws + ' / ' + S.losses),
       stat('TOTAL GOALS', S.goals), stat('TOTAL ASSISTS', S.assists),
     ].join('') + '</div>';
+    $('pf-hist').innerHTML = this.historyRows(d.history) || '<p class="label">NO MATCHES YET. PLAY ONE AND IT SHOWS UP HERE.</p>';
+    const acc = $('pf-acc'); acc.innerHTML = Account.html(); Account.bind(acc);
+  },
+  /** match history rows, newest first (yours, or a friend's recent matches) */
+  historyRows(history) {
     const MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
     const when = (t) => { const x = new Date(t); return x.getDate() + ' ' + MON[x.getMonth()] + ' ' + String(x.getHours()).padStart(2, '0') + ':' + String(x.getMinutes()).padStart(2, '0'); };
-    const short = (c) => (CLUBS[c] ? CLUBS[c].short : '???');
-    const rows = d.history.slice().reverse().map((h) => {
+    const short = (c) => (CLUBS[c] ? CLUBS[c].short : '');
+    return history.slice().reverse().map((h) => {
+      h = Object.assign({ g: 0, a: 0, style: '', club: '', opp: '', score: [0, 0], res: 'draw', mode: 'quick', t: 0 }, h);
       const mode = MODES[h.mode] ? MODES[h.mode].name : h.mode.toUpperCase();
       const rp = h.rp == null ? '' : `<span class="pf-rp ${h.rp >= 0 ? 'up' : 'down'}">${h.rp >= 0 ? '+' : ''}${h.rp} RP</span>`;
       return `<div class="pf-row"><span class="label">${when(h.t)}</span><span class="pf-mode">${esc(mode)}${h.size && h.mode !== 'duel' ? ' · ' + h.size + 'V' + h.size : ''}</span>
         <span class="pf-score">${short(h.club)} ${h.score[0]} : ${h.score[1]} ${short(h.opp)}</span><span class="pf-res ${h.res}">${h.res.toUpperCase()}</span>
-        <span class="label">${h.g} G · ${h.a} A · ${esc(STYLES[h.style] ? STYLES[h.style].name : h.style)}</span>${rp}</div>`;
+        <span class="label">${h.g} G · ${h.a} A${STYLES[h.style] ? ' · ' + esc(STYLES[h.style].name) : ''}</span>${rp}</div>`;
     }).join('');
-    $('pf-hist').innerHTML = rows || '<p class="label">NO MATCHES YET. PLAY ONE AND IT SHOWS UP HERE.</p>';
   },
   tplPass() {
     return `<section id="scr-pass" class="screen sub-screen" hidden>
@@ -6933,6 +7078,7 @@ const UI = {
     click('lob-profile', () => this.show('profile'));
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
     click('profile-back', () => this.show('lobby'));
+    click('fc-close', () => { $('friend-card').hidden = true; });
     click('spin-back', () => { if (!this.spinning) this.show('lobby'); });
     click('locker-back', () => this.show('lobby'));
     click('howto-back', () => this.show('lobby'));
@@ -6968,6 +7114,7 @@ const UI = {
     click('btn-fs', () => Touch.toggleFs());
     window.addEventListener('keydown', (e) => {
       if (Game.playing() || Game.state === 'paused') return;
+      if (e.code === 'Escape' && !$('friend-card').hidden) { $('friend-card').hidden = true; return; }
       if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass' || this.cur === 'online') && !this.spinning && !(e.target && e.target.tagName === 'INPUT')) this.show('lobby');
     });
   },
@@ -7406,6 +7553,7 @@ const Game = {
     Reveal.init();
     Replay.init();
     Net.init();
+    Account.init();
     Input.init($('gl'));
     Touch.init();
     this.applyQuality();
@@ -7572,6 +7720,7 @@ const Game = {
       Shake.update(rdt);
       FX.update(rdt);
     }
+    Account.tick(rdt);
     World.update(rdt);
     Input.endFrame();
     if (doRender) World.render();
@@ -7583,7 +7732,7 @@ const Game = {
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Player, TEAM, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Player, TEAM, rollRarity, poolFor,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

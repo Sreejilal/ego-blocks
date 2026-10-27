@@ -316,6 +316,19 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .passline .pl-ch { color: var(--emerald); } .passline .pl-tier { color: var(--gold); }
 @media (max-width: 560px) { .gp-top { grid-template-columns: minmax(0, 1fr); } }
 
+/* account and friends (on the Profile screen) */
+.pf-acc { padding: 16px; display: grid; gap: 10px; }
+.pf-acc h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: .9; }
+.pf-note { margin: 0; color: var(--muted); font-size: 18px; max-width: 70ch; }
+.pf-note.small { font-size: 15px; }
+.ac-name { font-family: var(--font-display); font-weight: 400; font-size: 30px; color: var(--gold); }
+.fr-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; background: var(--slate-2); padding: 8px 10px; }
+.fr-row b { font-family: var(--font-display); font-weight: 400; font-size: 26px; min-width: 7ch; }
+.fr-row .label.on { color: var(--emerald); }
+#friend-card .fc { width: min(760px, 100%); max-height: 100%; overflow-y: auto; }
+#friend-card .fc-body { display: grid; gap: 12px; }
+#friend-card h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; }
+
 /* how to play */
 .howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
 .howto section { padding: 16px; }
