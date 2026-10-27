@@ -1,0 +1,630 @@
+/* =====================================================================
+   UI: lobby, HUD, scoreboard, pause, results, spins, locker, how to play
+   ===================================================================== */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const KEYS3 = ['Q', 'E', 'R'];
+
+const UI = {
+  labels: [], toastsN: 0, bannerT: 0, spinning: false, spinKind: 'style', lockerTab: 'style', lockerSel: null,
+  init() {
+    const app = $('app');
+    // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplHud() + '<div id="labels"></div>' + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
+    $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
+    for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
+    this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
+    this.bind();
+    Hud.toast = (t, c) => this.toast(t, c);
+    Hud.label = (p, t, c) => this.flabel(p, t, c);
+    Hud.banner = (big, small, color, quick) => this.banner(big, small, color, quick ? 1.1 : 2.0);
+    Hud.goal = (team, scorer, assister, own) => { this.goalBanner(team, scorer, assister, own); if (Touch.on && Game.match && Game.match.human && Game.match.human.team === team) Touch.buzz([30, 50, 30]); };
+    Hud.flowReady = () => {};
+    Hud.lockHint = () => this.lockHint();
+    Hud.flash = (hex) => { const fl = $('flash'); fl.className = ''; fl.style.background = hex || '#ffffff'; fl.animate([{ opacity: 0.45 }, { opacity: 0 }], { duration: 260, easing: 'steps(4)' }); };
+    this.renderLobby();
+  },
+  /* ---------- templates ---------- */
+  tplLobby() {
+    return `<section id="scr-lobby" class="screen">
+      <div class="topbar">
+        <span class="chip">SEASON 1 &middot; VOXEL CUP</span>
+        <div class="right">
+          <span class="emer" title="Emeralds"><img class="px" id="lob-em-ico" alt=""><span id="lob-em">0</span></span>
+          <button class="iconbtn" id="btn-fs" type="button" hidden>FULLSCREEN</button>
+          <button class="iconbtn" id="btn-mute" type="button">SOUND ON</button>
+          <button class="iconbtn" id="btn-gfx" type="button">GRAPHICS: AUTO</button>
+        </div>
+      </div>
+      <div class="lobby-main">
+        <h1 class="title"><span class="t1">EGO</span><span class="t2">BLOCKS</span></h1>
+        <p class="tagline">5v5 voxel football. Pick a style, find your Flow, climb from Wood to Obsidian.</p>
+        <nav class="menu" aria-label="Main menu">
+          <button class="btn blue" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
+          <button class="btn" id="go-quick" type="button">QUICK MATCH <span class="sub">NO RANK CHANGE</span></button>
+          <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">NO RULES &middot; ITEMS</span></button>
+          <button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button>
+          <button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button>
+          <button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button>
+        </nav>
+      </div>
+      <div class="lobby-foot">
+        <div class="profile panel">
+          <img class="badge px" id="pro-badge" alt="">
+          <div><div class="label">RANK</div><div class="tier" id="pro-tier">WOOD</div></div>
+          <div><div class="rpbar" id="pro-rp"></div><div class="label" id="pro-rptxt" style="margin-top:6px">0 RP</div></div>
+          <div class="equip-row"><span class="label">STYLE</span><b id="pro-style">ROOKIE</b><span class="rar" id="pro-style-r" data-r="Rare">RARE</span><span class="label">FLOW</span><b id="pro-flow">NONE</b></div>
+          <div class="label" id="pro-rec" style="grid-column:1/-1">0 W &middot; 0 D &middot; 0 L</div>
+        </div>
+        <p class="notice" id="lob-notice"></p>
+      </div>
+    </section>`;
+  },
+  tplSpins() {
+    return `<section id="scr-spins" class="screen sub-screen" hidden>
+      <div class="sub-wrap">
+        <div class="sub-head"><h2>SPINS</h2><div class="right" style="display:flex;gap:12px;align-items:center"><span class="emer"><img class="px" id="spin-em-ico" alt=""><span id="spin-em">0</span></span><button class="btn small" id="spin-back" type="button">BACK</button></div></div>
+        <div class="tabs" role="tablist"><button class="tab" id="tab-style" role="tab" type="button">STYLE SPIN</button><button class="tab" id="tab-flow" role="tab" type="button">FLOW SPIN</button></div>
+        <div class="panel reel-box"><div class="reel-marker"></div><div class="reel" id="reel"></div></div>
+        <div class="spin-ctl">
+          <button class="btn emerald" id="spin-go" type="button">SPIN <span class="sub">200 EMERALDS</span></button>
+          <div style="display:grid;gap:6px"><span class="label" id="spin-pity">LEGENDARY+ GUARANTEED IN 30 SPINS</span><div class="odds" id="spin-odds"></div></div>
+        </div>
+        <div class="result-line" id="spin-result"></div>
+        <div class="label" id="spin-owned"></div>
+      </div>
+    </section>`;
+  },
+  tplLocker() {
+    return `<section id="scr-locker" class="screen sub-screen" hidden>
+      <div class="sub-wrap">
+        <div class="sub-head"><h2>LOCKER</h2><button class="btn small" id="locker-back" type="button">BACK</button></div>
+        <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button></div>
+        <div class="locker"><div class="grid-cards" id="locker-grid"></div><div class="panel detail" id="locker-detail"></div></div>
+      </div>
+    </section>`;
+  },
+  tplHowto() {
+    const row = (k, t) => `<span>${k}</span><span>${t}</span>`;
+    const key = (k) => `<span class="key">${k}</span>`;
+    return `<section id="scr-howto" class="screen sub-screen" hidden>
+      <div class="sub-wrap">
+        <div class="sub-head"><h2>HOW TO PLAY</h2><button class="btn small" id="howto-back" type="button">BACK</button></div>
+        <div class="howto">
+          <section class="panel touchsec"><h3>TOUCH</h3><div class="ctrl">
+            ${row(key('LEFT THUMB'), 'Touch anywhere on the left and drag to move. Push past the outer ring to sprint')}
+            ${row(key('RIGHT THUMB'), 'Drag anywhere on the right to turn the camera. The crosshair is where shots go')}
+            ${row(key('SHOOT'), 'Hold to charge, let go to shoot. Drag on it while holding to aim')}
+            ${row(key('PASS'), 'Tap to pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for one')}
+            ${row(key('DODGE') + key('TACKLE'), 'One button. With the ball it dodges a tackle, without it you slide')}
+            ${row(key('JUMP'), 'Jump. With the ball it flicks it over a defender')}
+            ${row(key('ARC'), 'Your three style abilities, then FLOW when the bar is full')}
+            ${row(key('DOUBLE TAP'), 'Double tap the right side to face the goal')}
+            ${row(key('SCORE'), 'Tap the score for the scoreboard. The top right button pauses')}
+          </div></section>
+          <section class="panel"><h3>KEYBOARD + MOUSE</h3><div class="ctrl">
+            ${row(key('W') + key('A') + key('S') + key('D'), 'Move')}
+            ${row(key('MOUSE'), 'Aim the camera. Click the pitch to lock the mouse')}
+            ${row(key('SHIFT'), 'Sprint (uses stamina)')}
+            ${row(key('HOLD LMB'), 'Charge a shot, release to shoot where you aim')}
+            ${row(key('RMB'), 'Pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for a pass')}
+            ${row(key('SPACE'), 'Jump. With the ball it flicks it over defenders')}
+            ${row(key('C'), 'Dribble dodge. Beats one tackle. 2 charges')}
+            ${row(key('F'), 'Slide tackle')}
+            ${row(key('Q') + key('E') + key('R'), 'Style abilities')}
+            ${row(key('G'), 'Activate Flow when the bar is full')}
+            ${row(key('X'), 'Use item (Lawless)')}
+            ${row(key('TAB'), 'Scoreboard')}
+            ${row(key('ESC'), 'Pause')}
+            ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
+          </div></section>
+          <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
+            ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}
+            ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Dodge')}${row(key('X'), 'Slide tackle')}
+            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}
+          </div></section>
+          <section class="panel"><h3>WINNING THE BALL</h3><ul>
+            <li><b>Run into a loose ball</b> to dribble it. You cannot run through a carrier, you have to tackle.</li>
+            <li><b>Slide tackles</b> pop the ball loose and floor the carrier. Miss, and you are stuck on the grass.</li>
+            <li><b>Dodge right as the slide comes in.</b> A dodged tackle is an ankle breaker and fills your Flow.</li>
+            <li><b>Hold A or D (or the stick left or right) as you release a shot</b> to bend it.</li>
+            <li><b>The keeper</b> reacts to where the ball is going. Corners, curlers and fakes beat him.</li>
+          </ul></section>
+          <section class="panel"><h3>FLOW, SPINS, RANK</h3><ul>
+            <li><b>Flow</b> fills from completed passes, dodges, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
+            <li><b>Emeralds:</b> win 150, draw 80, loss 50, plus 20 a goal and 10 an assist.</li>
+            <li><b>Spins</b> cost 200. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
+            <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Bots get sharper as you climb.</li>
+            <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
+            <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
+          </ul></section>
+        </div>
+      </div>
+    </section>`;
+  },
+  tplHud() {
+    return `<section id="hud" hidden>
+      <div class="hud-mode"><span class="chip" id="hud-mode">RANKED</span><img class="px" id="hud-badge" alt=""></div>
+      <div class="scorebar"><div class="team blue"><span class="nm">BLUE</span><span id="sc0">0</span></div><div class="clock"><span id="clock">4:00</span><small id="clock-sub"></small></div><div class="team orange"><span id="sc1">0</span><span class="nm">ORANGE</span></div></div>
+      <div class="hud-em emer"><img class="px" id="hud-em-ico" alt=""><span id="hud-em">0</span></div>
+      <div class="crosshair" id="xhair"></div>
+      <div class="charge" id="charge" hidden><i id="charge-fill"></i><span id="charge-txt">POWER</span></div>
+      <div class="toasts" id="toasts"></div>
+      <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
+      <canvas id="minimap" width="132" height="200"></canvas>
+      <div class="dock">
+        <div class="flowbar" id="flowbar"><div class="lbl"><span id="flow-name">FLOW</span><b id="flow-txt">0%</b></div><div class="track"><div class="fill" id="flow-fill"></div><div class="ticks"></div></div></div>
+        <div class="stamina" id="stamina"></div>
+        <div class="hotbar" id="hotbar"></div>
+      </div>
+      <div class="itemslot" id="itemslot" hidden><div class="slot"><img class="px" id="item-img" alt=""><span class="key k">X</span><span class="nm" id="item-nm"></span></div></div>
+      <div class="hint" id="hint" hidden></div>
+    </section>`;
+  },
+  tplPause() {
+    return `<section id="scr-pause" class="overlay" hidden>
+      <div class="dialog panel">
+        <h2>PAUSED</h2>
+        <div class="set">
+          <span>Graphics</span><div class="seg" id="set-q"><button type="button" data-q="auto">AUTO</button><button type="button" data-q="low">LOW</button><button type="button" data-q="med">MED</button><button type="button" data-q="high">HIGH</button></div>
+          <label for="set-sens">Look sensitivity</label><input type="range" id="set-sens" min="0.3" max="2.5" step="0.05">
+          <span>Invert camera Y</span><div class="seg" id="set-inv"><button type="button" data-v="0">OFF</button><button type="button" data-v="1">ON</button></div>
+          <span class="t-only">Button size</span><div class="seg t-only" id="set-btn"><button type="button" data-v="0.85">S</button><button type="button" data-v="1">M</button><button type="button" data-v="1.15">L</button></div>
+          <span class="t-only">Aim assist</span><div class="seg t-only" id="set-assist"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
+          <span>Sound</span><div class="seg" id="set-snd"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
+          <span class="fs-only" hidden>Fullscreen</span><div class="seg fs-only" id="set-fs" hidden><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
+        </div>
+        <div class="row"><button class="btn blue" id="p-resume" type="button">RESUME</button><button class="btn" id="p-forfeit" type="button">FORFEIT</button></div>
+        <p class="label" id="p-note">Click the pitch after resuming to lock the mouse again.</p>
+      </div>
+    </section>`;
+  },
+  tplResults() {
+    return `<section id="scr-results" class="overlay" hidden>
+      <div class="dialog panel" style="width:min(620px,100%)">
+        <h2 id="r-title">VICTORY</h2>
+        <div class="res-score" id="r-score"></div>
+        <div class="res-grid" id="r-stats"></div>
+        <div class="earn" id="r-earn"></div>
+        <div class="rankline" id="r-rank"></div>
+        <div class="row"><button class="btn blue" id="r-again" type="button">PLAY AGAIN</button><button class="btn" id="r-lobby" type="button">LOBBY</button></div>
+      </div>
+    </section>`;
+  },
+  /* ---------- wiring ---------- */
+  bind() {
+    const click = (id, fn) => $(id).addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); });
+    click('go-ranked', () => Game.startMatch('ranked'));
+    click('go-quick', () => Game.startMatch('quick'));
+    click('go-lawless', () => Game.startMatch('lawless'));
+    click('go-spins', () => this.openSpins());
+    click('go-locker', () => this.openLocker());
+    click('go-howto', () => this.show('howto'));
+    click('spin-back', () => { if (!this.spinning) this.show('lobby'); });
+    click('locker-back', () => this.show('lobby'));
+    click('howto-back', () => this.show('lobby'));
+    click('tab-style', () => { if (!this.spinning) { this.spinKind = 'style'; this.renderSpins(true); } });
+    click('tab-flow', () => { if (!this.spinning) { this.spinKind = 'flow'; this.renderSpins(true); } });
+    click('spin-go', () => this.spin());
+    click('ltab-style', () => { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.renderLocker(); });
+    click('ltab-flow', () => { this.lockerTab = 'flow'; this.lockerSel = Save.data.flow || 'NONE'; this.renderLocker(); });
+    click('btn-mute', () => { Save.data.settings.mute = !Save.data.settings.mute; Sfx.setMuted(Save.data.settings.mute); Save.save(); this.renderLobby(); });
+    click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
+    click('p-resume', () => Game.resume());
+    $('p-forfeit').addEventListener('click', () => {
+      Sfx.click();
+      const b = $('p-forfeit');
+      if (b.dataset.armed) { delete b.dataset.armed; Game.forfeit(); }
+      else { b.dataset.armed = '1'; b.textContent = Game.match && Game.match.cfg.ranked ? 'CONFIRM: -15 RP' : 'CONFIRM FORFEIT'; }
+    });
+    click('r-again', () => Game.startMatch(Game.lastMode || 'quick'));
+    click('r-lobby', () => Game.toLobby());
+    $('set-q').addEventListener('click', (e) => { const q = e.target.dataset.q; if (!q) return; Save.data.settings.quality = q; Game.applyQuality(); Save.save(); this.renderPause(); });
+    $('set-sens').addEventListener('input', (e) => { Save.data.settings.sens = parseFloat(e.target.value) || 1; Save.save(); });
+    $('set-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.invertY = v === '1'; Save.save(); this.renderPause(); });
+    $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Sfx.setMuted(Save.data.settings.mute); Save.save(); this.renderPause(); });
+    $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
+    $('set-assist').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.assist = v === '1'; Save.save(); this.renderPause(); });
+    $('set-fs').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; if ((v === '1') !== Touch.isFs()) Touch.toggleFs(); });
+    click('btn-fs', () => Touch.toggleFs());
+    window.addEventListener('keydown', (e) => {
+      if (Game.state === 'match' || Game.state === 'paused') return;
+      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto') && !this.spinning) this.show('lobby');
+    });
+  },
+  show(name) {
+    this.cur = name;
+    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', hud: 'hud' };
+    for (const k in map) $(map[k]).hidden = k !== name;
+    if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
+    if (name === 'lobby') this.renderLobby();
+    if (name === 'howto') { Save.data.howto = true; Save.save(); }
+  },
+  /* ---------- lobby ---------- */
+  renderLobby() {
+    const d = Save.data, tier = tierOf(d.rp);
+    const em = iconURL('emerald');
+    $('lob-em-ico').src = em; $('lob-em').textContent = d.emeralds;
+    $('btn-mute').textContent = d.settings.mute ? 'SOUND OFF' : 'SOUND ON';
+    $('btn-gfx').textContent = 'GRAPHICS: ' + d.settings.quality.toUpperCase();
+    $('rank-sub').textContent = TIER_NAMES[tier] + ' · ' + d.rp + ' RP';
+    $('locker-sub').textContent = STYLES[d.style].name + (d.flow ? ' · ' + FLOWS[d.flow].name : '');
+    $('pro-badge').src = badgeURL(tier);
+    $('pro-tier').textContent = TIER_NAMES[tier];
+    const inTier = tier >= 5 ? 10 : Math.floor((d.rp % 100) / 10);
+    $('pro-rp').innerHTML = Array.from({ length: 10 }, (_, i) => `<i class="${i < inTier ? 'on' : ''}"></i>`).join('');
+    $('pro-rptxt').textContent = tier >= 5 ? d.rp + ' RP · TOP TIER' : d.rp + ' RP · ' + (100 - (d.rp % 100)) + ' TO ' + TIER_NAMES[tier + 1];
+    $('pro-style').textContent = STYLES[d.style].name;
+    $('pro-style-r').dataset.r = STYLES[d.style].rarity; $('pro-style-r').textContent = STYLES[d.style].rarity.toUpperCase();
+    $('pro-flow').textContent = d.flow ? FLOWS[d.flow].name : 'NONE';
+    $('pro-rec').textContent = d.stats.wins + ' W · ' + d.stats.draws + ' D · ' + d.stats.losses + ' L · ' + d.stats.goals + ' GOALS';
+    const notes = [];
+    if (!Save.ok) notes.push('This browser is blocking storage, so progress will not be saved after you close the page.');
+    if (Touch.on) notes.push(window.innerHeight > window.innerWidth ? 'Touch controls are on. Turn your phone sideways for a much wider view of the pitch.' : 'Touch controls are on. Left thumb moves, right thumb aims and shoots.');
+    $('lob-notice').textContent = notes.join(' ');
+    const fsb = $('btn-fs');
+    fsb.hidden = !(Touch.on && Touch.fsAvailable());
+    fsb.textContent = Touch.isFs() ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
+  },
+  /* ---------- HUD ---------- */
+  buildHud(m) {
+    const p = m.human;
+    $('hud-mode').textContent = m.cfg.name;
+    $('hud-badge').src = badgeURL(tierOf(Save.data.rp)); $('hud-badge').hidden = !m.cfg.ranked;
+    $('hud-em-ico').src = iconURL('emerald'); $('hud-em').textContent = Save.data.emeralds;
+    const hb = $('hotbar');
+    let html = '';
+    p.abil.forEach((a, i) => {
+      html += `<div class="slot" id="slot${i}"><img class="px" src="${iconURL(a.def.icon, p.aura)}" alt=""><span class="key k">${KEYS3[i]}</span><div class="cd"></div><div class="num"></div><span class="nm">${esc(a.def.name)}</span></div>`;
+    });
+    html += '<div class="sep"></div>';
+    html += `<div class="slot small" id="slot-c"><img class="px" src="${iconURL('dash', '#ffffff')}" alt=""><span class="key k">C</span><div class="cd"></div><div class="pips"><i></i><i></i></div><span class="nm">DODGE</span></div>`;
+    html += `<div class="slot small" id="slot-f"><img class="px" src="${iconURL('tackle', '#e8e1cf')}" alt=""><span class="key k">F</span><div class="cd"></div><div class="num"></div><span class="nm">TACKLE</span></div>`;
+    html += `<div class="slot small" id="slot-g"><img class="px" src="${iconURL('flame', p.aura)}" alt=""><span class="key k">G</span><div class="cd"></div><span class="nm">FLOW</span></div>`;
+    hb.innerHTML = html;
+    this.slots = [0, 1, 2].map((i) => ({ el: $('slot' + i), cd: $('slot' + i).querySelector('.cd'), num: $('slot' + i).querySelector('.num'), last: -1 }));
+    this.slotC = { el: $('slot-c'), cd: $('slot-c').querySelector('.cd'), pips: $('slot-c').querySelectorAll('.pips i') };
+    this.slotF = { el: $('slot-f'), cd: $('slot-f').querySelector('.cd'), num: $('slot-f').querySelector('.num') };
+    this.slotG = { el: $('slot-g') };
+    const st = $('stamina');
+    st.innerHTML = '';
+    this.drums = [];
+    for (let i = 0; i < 10; i++) { const im = document.createElement('img'); im.className = 'px'; im.alt = ''; st.appendChild(im); this.drums.push({ el: im, v: '' }); }
+    this.drumURL = { full: iconURL('drum'), half: iconURL('drum', '#fff', 'half'), empty: iconURL('drum', '#fff', 'empty') };
+    $('flowbar').style.setProperty('--aura', p.aura);
+    $('flow-name').textContent = p.flowId ? 'FLOW · ' + FLOWS[p.flowId].name : 'FLOW';
+    $('itemslot').hidden = !m.cfg.items;
+    this.mm = $('minimap').getContext('2d');
+    this.hudCache = {};
+    $('banner').hidden = true; $('toasts').innerHTML = '';
+    this.hintT = Save.data.stats.played < 2 ? 9 : 0;
+    if (Touch.on && window.innerHeight > window.innerWidth) this.hintT = Math.max(this.hintT, 6);
+    Touch.build(m);
+    this.lockHint();
+  },
+  setText(id, v) { const c = this.hudCache; if (c[id] !== v) { c[id] = v; $(id).textContent = v; } },
+  updateHud(m, dt) {
+    const p = m.human; if (!p) return;
+    this.setText('sc0', String(m.score[0])); this.setText('sc1', String(m.score[1]));
+    if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL'); }
+    else { this.setText('clock', fmtTime(m.clock)); this.setText('clock-sub', ''); }
+    this.setText('hud-em', String(Save.data.emeralds));
+    p.abil.forEach((a, i) => {
+      const s = this.slots[i], frac = a.cd > 0 ? a.cd / (a.def.cd) : 0;
+      const key = Math.round(frac * 60);
+      if (s.last !== key) { s.last = key; s.cd.style.setProperty('--p', (frac * 360).toFixed(1) + 'deg'); s.num.textContent = a.cd > 0 ? Math.ceil(a.cd) : ''; s.el.classList.toggle('ready', a.cd <= 0); }
+    });
+    const fxActive = p.fx.burst > 0 || p.fx.turbo > 0 || p.fx.shuffle > 0 || p.fx.lockdown > 0 || p.fx.skyTrap > 0 || p.fx.vision > 0;
+    this.slots.forEach((s, i) => { const id = p.abil[i].id; const on = (id === 'burst' && p.fx.burst > 0) || (id === 'turbo' && p.fx.turbo > 0) || (id === 'undeadShuffle' && p.fx.shuffle > 0) || (id === 'lockdown' && p.fx.lockdown > 0) || (id === 'skyTrap' && p.fx.skyTrap > 0) || (id === 'vision' && p.fx.vision > 0); s.el.classList.toggle('active', fxActive && on); });
+    const C = this.slotC;
+    C.pips.forEach((pip, i) => pip.classList.toggle('on', i < p.dodgeCharges));
+    C.cd.style.setProperty('--p', (p.dodgeCharges >= 2 ? 0 : (1 - p.dodgeRe / 4) * 360).toFixed(1) + 'deg');
+    const tf = p.tackleCd > 0 ? p.tackleCd / (2.2 * p.mods.tackleCd) : 0;
+    this.slotF.cd.style.setProperty('--p', (clamp(tf, 0, 1) * 360).toFixed(1) + 'deg');
+    this.slotF.num.textContent = p.tackleCd > 0 ? Math.ceil(p.tackleCd) : '';
+    this.slotG.el.classList.toggle('ready', p.flow >= 100 && p.flowT <= 0);
+    this.slotG.el.classList.toggle('active', p.flowT > 0);
+    const fpct = p.flowT > 0 ? p.flowT / 15 * 100 : p.flow;
+    $('flow-fill').style.width = fpct.toFixed(1) + '%';
+    this.setText('flow-txt', p.flowT > 0 ? 'IN FLOW ' + Math.ceil(p.flowT) + 's' : p.flow >= 100 ? (Touch.on ? 'READY' : 'READY [G]') : Math.floor(p.flow) + '%');
+    $('flowbar').classList.toggle('ready', p.flow >= 100 && p.flowT <= 0);
+    for (let i = 0; i < 10; i++) {
+      const v = p.stamina - i * 10, want = v >= 7.5 ? 'full' : v >= 2.5 ? 'half' : 'empty';
+      if (this.drums[i].v !== want) { this.drums[i].v = want; this.drums[i].el.src = this.drumURL[want]; }
+    }
+    const ch = $('charge');
+    if (p.charging || p.passHold > 0.24) {
+      ch.hidden = false;
+      const lob = !p.charging;
+      ch.classList.toggle('lob', lob);
+      $('charge-fill').style.width = (lob ? 100 : Math.max(28, p.charge * 100)).toFixed(0) + '%';
+      this.setText('charge-txt', lob ? 'LOB' : p.charge >= 1 ? 'MAX POWER' : 'POWER');
+    } else ch.hidden = true;
+    $('xhair').style.filter = m.aimOnTarget ? 'drop-shadow(0 0 0 #ffcb3d)' : '';
+    $('xhair').classList.toggle('on', m.aimOnTarget);
+    if (m.cfg.items) {
+      const it = p.item ? ITEMS[p.item] : null;
+      const key = it ? p.item : '';
+      if (this.hudCache.item !== key) { this.hudCache.item = key; $('item-img').src = it ? iconURL(it.icon) : iconURL('lock'); $('item-nm').textContent = it ? it.name : 'NO ITEM'; $('item-img').style.opacity = it ? 1 : 0.35; }
+    }
+    if (this.bannerT > 0) { this.bannerT -= dt; if (this.bannerT <= 0) $('banner').hidden = true; }
+    if (this.hintT > 0) { this.hintT -= dt; if (this.hintT <= 0) this.lockHint(); }
+    this.drawMinimap(m);
+    this.updateLabels(m, dt);
+    Touch.update(m, dt);
+    const board = Input.controls().board;
+    if (board) this.renderScoreboard(m);
+    $('scoreboard').hidden = !board;
+  },
+  lockHint() {
+    const h = $('hint'); if (!h) return;
+    if (Game.state !== 'match') { h.hidden = true; return; }
+    let txt = '';
+    if (Touch.on && !Input.usingPad) {
+      if (this.hintT > 0) {
+        const ctl = 'LEFT THUMB MOVES · DRAG THE RIGHT SIDE TO AIM · HOLD SHOOT, LET GO TO FIRE';
+        const tall = window.innerHeight > window.innerWidth;
+        txt = !tall ? ctl : Save.data.stats.played < 2 ? 'TURN SIDEWAYS FOR A WIDER VIEW · HOLD SHOOT, LET GO TO FIRE' : 'TURN YOUR PHONE SIDEWAYS FOR A WIDER VIEW';
+      }
+    } else if (Input.lockFailed && !Input.usingPad) txt = 'MOUSE LOCK IS BLOCKED HERE. TURN THE CAMERA WITH THE ARROW KEYS.';
+    else if (!Input.locked && !Input.usingPad) txt = 'CLICK THE PITCH TO LOCK THE MOUSE';
+    else if (this.hintT > 0) txt = 'HOLD LMB TO SHOOT · RMB TO PASS · C DODGES A TACKLE · F TO SLIDE';
+    h.textContent = txt; h.hidden = !txt;
+  },
+  drawMinimap(m) {
+    const g = this.mm; if (!g) return;
+    const W = 132, H = 200, kx = W / (F.BOARD_X * 2 + 1), kz = H / (F.BOARD_Z * 2 + 1);
+    const X = (x) => (F.BOARD_X + 0.5 - x) * kx, Z = (z) => (F.BOARD_Z + 0.5 - z) * kz;
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = 'rgba(46,110,40,0.85)'; g.fillRect(X(F.W), Z(F.L), (F.W * 2) * kx, (F.L * 2) * kz);
+    g.strokeStyle = 'rgba(245,239,224,0.7)'; g.lineWidth = 1;
+    g.strokeRect(Math.round(X(F.W)) + 0.5, Math.round(Z(F.L)) + 0.5, Math.round(F.W * 2 * kx), Math.round(F.L * 2 * kz));
+    g.beginPath(); g.moveTo(X(F.W), Math.round(Z(0)) + 0.5); g.lineTo(X(-F.W), Math.round(Z(0)) + 0.5); g.stroke();
+    g.fillStyle = TEAM[1].hex; g.fillRect(X(F.GW), Z(F.L + 1.5), F.GW * 2 * kx, 2);
+    g.fillStyle = TEAM[0].hex; g.fillRect(X(F.GW), Z(-F.L) - 0, F.GW * 2 * kx, 2);
+    for (const it of m.items) { g.fillStyle = '#ffcb3d'; g.fillRect(X(it.x) - 2, Z(it.z) - 2, 4, 4); }
+    for (const p of m.players) {
+      const x = X(p.pos.x), z = Z(p.pos.z);
+      g.fillStyle = '#090b16'; g.fillRect(x - 3.5, z - 3.5, 7, 7);
+      g.fillStyle = p.isGK ? (p.team === 0 ? '#22b866' : '#8e4bd6') : TEAM[p.team].hex; g.fillRect(x - 2.5, z - 2.5, 5, 5);
+      if (p.isHuman) { g.strokeStyle = '#ffcb3d'; g.lineWidth = 2; g.strokeRect(x - 4.5, z - 4.5, 9, 9); }
+    }
+    const b = m.ball; g.fillStyle = '#ffffff'; g.fillRect(X(b.pos.x) - 2, Z(b.pos.z) - 2, 4, 4);
+    if (m.human) {
+      const h = m.human, x = X(h.pos.x), z = Z(h.pos.z), fx = Math.sin(m.camYaw), fz = Math.cos(m.camYaw);
+      g.strokeStyle = 'rgba(255,203,61,0.9)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, z); g.lineTo(x - fx * 12, z - fz * 12 * (kz / kx)); g.stroke();
+    }
+  },
+  /* floating labels above players */
+  flabel(p, text, color) {
+    if (!p || Game.state !== 'match') return;
+    let slot = this.labels.find((l) => l.p === p && l.t > 0) || this.labels.find((l) => l.t <= 0) || this.labels.reduce((a, b) => (a.t < b.t ? a : b));
+    slot.p = p; slot.t = text === '!' ? 0.9 : 1.25; slot.text = text; slot.color = color || '#f5efe0';
+    slot.el.textContent = text; slot.el.style.setProperty('--c', slot.color);
+    slot.el.classList.toggle('call', text === '!');
+    slot.el.hidden = false;
+  },
+  updateLabels(m, dt) {
+    const cam = World.camera, w = window.innerWidth, h = window.innerHeight;
+    const proj = (p, yOff) => { _v4.set(p.pos.x, p.pos.y + yOff, p.pos.z).project(cam); return { x: (_v4.x * 0.5 + 0.5) * w, y: (-_v4.y * 0.5 + 0.5) * h, ok: _v4.z < 1 && Math.abs(_v4.x) < 1.1 && Math.abs(_v4.y) < 1.1 }; };
+    for (const l of this.labels) {
+      if (l.t <= 0 || !l.p) { if (!l.el.hidden) l.el.hidden = true; continue; }
+      l.t -= dt;
+      const s = proj(l.p, 2.35 + (1.25 - l.t) * 0.4);
+      if (!s.ok || l.t <= 0) { l.el.hidden = true; continue; }
+      l.el.hidden = false;
+      l.el.style.left = s.x.toFixed(0) + 'px'; l.el.style.top = s.y.toFixed(0) + 'px';
+      l.el.style.opacity = Math.min(1, l.t * 3).toFixed(2);
+    }
+    const hp = m.human;
+    if (hp && (m.phase === 'kickoff' || m.phase === 'out')) {
+      const s = proj(hp, 2.5);
+      this.youLabel.hidden = !s.ok; this.youLabel.style.left = s.x.toFixed(0) + 'px'; this.youLabel.style.top = s.y.toFixed(0) + 'px';
+    } else this.youLabel.hidden = true;
+  },
+  toast(text, cls = '') {
+    if (Game.state !== 'match') return;
+    const wrap = $('toasts');
+    while (wrap.children.length >= 4) wrap.removeChild(wrap.firstChild);
+    const d = document.createElement('div');
+    d.className = 'toast ' + cls; d.textContent = text;
+    wrap.appendChild(d);
+    setTimeout(() => { if (d.parentNode) d.parentNode.removeChild(d); }, 1700);
+  },
+  banner(big, small, color, dur = 2.0) {
+    const b = $('banner');
+    $('banner-big').textContent = big; $('banner-small').textContent = small || '';
+    b.style.setProperty('--bc', color || '#3d7dff');
+    b.hidden = false; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+    this.bannerT = dur;
+  },
+  goalBanner(team, scorer, assister, own) {
+    let small = own ? 'OWN GOAL' : (scorer ? '#' + scorer.number + ' ' + scorer.name + ' · ' + scorer.style.name + ' STYLE' : '');
+    if (assister) small += '  ·  ASSIST #' + assister.number + ' ' + assister.name;
+    this.banner('GOAL!', small, TEAM[team].hex, 3.4);
+  },
+  renderScoreboard(m) {
+    const now = m.time;
+    if (this._sbT && now - this._sbT < 0.25) return;
+    this._sbT = now;
+    const rows = (team) => m.teams[team].map((p) => `<tr class="${p.isHuman ? 'me' : ''}"><td class="tb" style="background:${TEAM[team].hex}"></td><td>#${p.number} ${esc(p.name)}</td><td>${p.isGK ? 'KEEPER' : esc(p.style.name)}</td><td>${p.stats.goals}</td><td>${p.stats.assists}</td><td>${p.stats.shots}</td><td>${p.stats.tackles}</td><td>${p.stats.saves}</td></tr>`).join('');
+    const th = (lg, sm) => `<th><span class="lg">${lg}</span><span class="sm">${sm}</span></th>`;
+    $('scoreboard').innerHTML = `<table><thead><tr><th class="tb"></th><th>PLAYER</th><th>STYLE</th><th>G</th><th>A</th>${th('SHOTS', 'SH')}${th('TACKLES', 'TK')}${th('SAVES', 'SV')}</tr></thead><tbody>${rows(0)}${rows(1)}</tbody></table>`;
+  },
+  /* ---------- pause + results ---------- */
+  renderPause() {
+    const s = Save.data.settings;
+    $('set-q').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.q === s.quality));
+    $('set-inv').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !!s.invertY));
+    $('set-snd').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !s.mute));
+    $('set-sens').value = s.sens;
+    $('set-btn').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', Math.abs(parseFloat(b.dataset.v) - (s.btn || 1)) < 0.01));
+    $('set-assist').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.assist !== false)));
+    const fs = Touch.on && Touch.fsAvailable();
+    document.querySelectorAll('#scr-pause .fs-only').forEach((el) => { el.hidden = !fs; });
+    $('set-fs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === Touch.isFs()));
+    $('p-note').textContent = Touch.on ? 'Tip: double tap the right side of the screen to face the goal you attack.' : 'Click the pitch after resuming to lock the mouse again.';
+    const f = $('p-forfeit'); delete f.dataset.armed; f.textContent = 'FORFEIT';
+  },
+  showPause(on) {
+    if (on) { this.renderPause(); $('scoreboard').hidden = true; Touch.board = false; for (const l of this.labels) { l.t = 0; l.el.hidden = true; } this.youLabel.hidden = true; }
+    $('scr-pause').hidden = !on;
+  },
+  showResults(r) {
+    const titles = { win: ['VICTORY', '#2ee38f'], draw: ['DRAW', '#ffcb3d'], loss: ['DEFEAT', '#ff4d5e'], forfeit: ['FORFEIT', '#ff4d5e'] };
+    const [t, c] = titles[r.res];
+    $('r-title').textContent = t; $('r-title').style.color = c;
+    $('r-score').innerHTML = `<span class="b">BLUE ${r.score[0]}</span><span>:</span><span class="o">${r.score[1]} ORANGE</span><span class="chip">${esc(r.modeName)}</span>`;
+    const s = r.human || { goals: 0, assists: 0, shots: 0, tackles: 0 };
+    $('r-stats').innerHTML = [['GOALS', s.goals], ['ASSISTS', s.assists], ['SHOTS', s.shots], ['TACKLES', s.tackles]].map(([k, v]) => `<div><span class="label">${k}</span><b>${v}</b></div>`).join('');
+    $('r-earn').innerHTML = r.earn.map(([k, v]) => `<div><span>${esc(k)}</span><span>+${v}</span></div>`).join('') + `<div class="tot"><span>EMERALDS EARNED</span><span>+${r.emeralds}</span></div>`;
+    if (r.ranked) {
+      const tier = tierOf(r.rpAfter), moved = tierOf(r.rpBefore) !== tier;
+      const delta = r.rpAfter - r.rpBefore;
+      $('r-rank').innerHTML = `<img class="px" src="${badgeURL(tier)}" alt=""><div><div class="label">${moved ? (tier > tierOf(r.rpBefore) ? 'PROMOTED' : 'DEMOTED') : 'RANK'}</div><div style="font-family:var(--font-display);font-size:34px;line-height:1">${TIER_NAMES[tier]} · ${r.rpAfter} RP <span style="color:${delta >= 0 ? 'var(--emerald)' : 'var(--danger)'}">${delta >= 0 ? '+' : ''}${delta}</span></div></div>`;
+      $('r-rank').hidden = false;
+    } else { $('r-rank').hidden = true; }
+    $('hint').hidden = true;
+    $('scr-results').hidden = false;
+  },
+  hideOverlays() { $('scr-results').hidden = true; $('scr-pause').hidden = true; },
+  /* ---------- spins ---------- */
+  openSpins() { this.show('spins'); this.renderSpins(true); },
+  renderSpins(resetReel) {
+    const d = Save.data, kind = this.spinKind;
+    $('tab-style').setAttribute('aria-selected', kind === 'style'); $('tab-flow').setAttribute('aria-selected', kind === 'flow');
+    $('spin-em-ico').src = iconURL('emerald'); $('spin-em').textContent = d.emeralds;
+    const left = 30 - d.pity[kind];
+    $('spin-pity').textContent = 'LEGENDARY OR BETTER GUARANTEED IN ' + left + (left === 1 ? ' SPIN' : ' SPINS');
+    $('spin-odds').innerHTML = RARITIES.map((r, i) => `<span class="rar" data-r="${r}">${r.toUpperCase()} ${RARITY_ODDS[i]}%</span>`).join('');
+    $('spin-go').disabled = this.spinning || d.emeralds < 200;
+    $('spin-go').innerHTML = d.emeralds < 200 ? 'SPIN <span class="sub">NEED 200 EMERALDS</span>' : 'SPIN <span class="sub">200 EMERALDS</span>';
+    const owned = kind === 'style' ? d.styles.length + ' / ' + STYLE_IDS.length + ' STYLES OWNED' : d.flows.length + ' / ' + FLOW_IDS.length + ' FLOWS OWNED';
+    $('spin-owned').textContent = owned + '. WIN MATCHES TO EARN MORE EMERALDS.';
+    if (resetReel) { $('spin-result').innerHTML = ''; this.buildReel(kind, null); }
+  },
+  cardHTML(kind, id) {
+    const src = kind === 'style' ? STYLES[id] : FLOWS[id];
+    return `<div class="card" data-r="${src.rarity}" style="--rc:${RARITY_HEX[src.rarity]}" data-id="${id}"><span class="cv"></span><span class="nm">${esc(src.name)}</span><span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span></div>`;
+  },
+  fillCardArt(el, kind, id) {
+    const holder = el.querySelector('.cv');
+    const cv = kind === 'style' ? portraitCanvas(id, 72) : flowEmblemCanvas(id, 72);
+    holder.replaceWith(cv);
+  },
+  buildReel(kind, winner) {
+    const reel = $('reel');
+    const ids = kind === 'style' ? STYLE_IDS : FLOW_IDS;
+    const N = 46, WIN = 40;
+    const items = [];
+    for (let i = 0; i < N; i++) {
+      if (winner && i === WIN) { items.push(winner); continue; }
+      const r = rollRarity(0);
+      const pool = poolFor(kind, r);
+      items.push(pool.length ? pick(pool) : pick(ids));
+    }
+    reel.innerHTML = items.map((id) => this.cardHTML(kind, id)).join('');
+    reel.querySelectorAll('.card').forEach((el, i) => this.fillCardArt(el, kind, items[i]));
+    reel.style.transition = 'none';
+    reel.style.transform = 'translateX(-75px)';
+    return { WIN };
+  },
+  spin() {
+    if (this.spinning) return;
+    const d = Save.data, kind = this.spinKind;
+    if (d.emeralds < 200) { Sfx.deny(); return; }
+    Sfx.init();
+    d.emeralds -= 200;
+    const pity = d.pity[kind];
+    const r = rollRarity(pity);
+    d.pity[kind] = r >= 2 ? 0 : pity + 1;
+    const pool = poolFor(kind, r);
+    const id = pick(pool);
+    const owned = kind === 'style' ? d.styles : d.flows;
+    const dupe = owned.includes(id);
+    if (dupe) d.emeralds += 50; else owned.push(id);
+    d.stats.spins = (d.stats.spins || 0) + 1;
+    Save.save();
+    this.spinning = true;
+    this.renderSpins(false);
+    $('spin-result').innerHTML = '';
+    const { WIN } = this.buildReel(kind, id);
+    const reel = $('reel');
+    // on a short screen the reel can sit above the fold once you have scrolled to the button
+    const box = reel.parentElement.getBoundingClientRect();
+    if (box.top < 0 || box.bottom > window.innerHeight) { try { reel.parentElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) { reel.parentElement.scrollIntoView(); } }
+    const CW = 162;
+    const target = -(WIN * CW + 75) + rand(-55, 55);
+    const dur = 4.6 + r * 0.35;
+    const t0 = performance.now();
+    let lastIdx = 0;
+    const step = (now) => {
+      const t = Math.min(1, (now - t0) / 1000 / dur);
+      const e = 1 - Math.pow(1 - t, 4);
+      const x = -75 + (target + 75) * e;
+      reel.style.transform = 'translateX(' + x.toFixed(1) + 'px)';
+      const idx = Math.floor((-x) / CW);
+      if (idx !== lastIdx) { lastIdx = idx; Sfx.tick(); }
+      if (t < 1) requestAnimationFrame(step);
+      else this.spinDone(kind, id, r, dupe);
+    };
+    requestAnimationFrame(step);
+  },
+  spinDone(kind, id, r, dupe) {
+    this.spinning = false;
+    const src = kind === 'style' ? STYLES[id] : FLOWS[id];
+    Sfx.fanfare(r);
+    const card = $('reel').querySelectorAll('.card')[40];
+    if (card) { card.style.transform = 'translateY(-8px) scale(1.06)'; card.style.transition = 'transform .2s steps(3)'; }
+    const fl = $('flash');
+    if (r >= 2) {
+      fl.className = r === 4 ? 'rainbow' : '';
+      fl.style.background = r === 4 ? '' : RARITY_HEX[src.rarity];
+      fl.animate([{ opacity: r === 4 ? 0.95 : 0.5 }, { opacity: 0 }], { duration: r === 4 ? 1400 : 650, easing: 'steps(6)' });
+    }
+    if (r >= 3) $('scr-spins').animate([{ transform: 'translate(6px,0)' }, { transform: 'translate(-6px,3px)' }, { transform: 'translate(4px,-3px)' }, { transform: 'translate(0,0)' }], { duration: 380, iterations: r === 4 ? 3 : 1 });
+    const tag = dupe ? '<span class="tag dupe">DUPLICATE · +50 EMERALDS</span>' : '<span class="tag">NEW</span>';
+    $('spin-result').innerHTML = `<span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${tag}${!dupe ? '<button class="btn small" id="spin-equip" type="button">EQUIP</button>' : ''}`;
+    const eq = $('spin-equip');
+    if (eq) eq.addEventListener('click', () => { Sfx.click(); if (kind === 'style') Save.data.style = id; else Save.data.flow = id; Save.save(); eq.textContent = 'EQUIPPED'; eq.disabled = true; });
+    this.renderSpins(false);
+  },
+  /* ---------- locker ---------- */
+  openLocker() { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.show('locker'); this.renderLocker(); },
+  renderLocker() {
+    const d = Save.data, tab = this.lockerTab;
+    $('ltab-style').setAttribute('aria-selected', tab === 'style'); $('ltab-flow').setAttribute('aria-selected', tab === 'flow');
+    const grid = $('locker-grid');
+    let ids = tab === 'style' ? STYLE_IDS : ['NONE'].concat(FLOW_IDS);
+    grid.innerHTML = ids.map((id) => {
+      const src = id === 'NONE' ? { name: 'NO FLOW', rarity: 'Rare' } : (tab === 'style' ? STYLES[id] : FLOWS[id]);
+      const owned = id === 'NONE' || (tab === 'style' ? d.styles.includes(id) : d.flows.includes(id));
+      const equipped = tab === 'style' ? d.style === id : (d.flow || 'NONE') === id;
+      return `<button type="button" class="lcard ${owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${id === 'NONE' ? '#5a5f78' : RARITY_HEX[src.rarity]}"><span class="nm">${esc(src.name)}</span><span class="meta">${id === 'NONE' ? '<span class="chip">BASE</span>' : `<span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span>`}<span class="label">${equipped ? 'EQUIPPED' : owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
+    }).join('');
+    grid.querySelectorAll('.lcard').forEach((b) => b.addEventListener('click', () => { Sfx.click(); this.lockerSel = b.dataset.id; this.renderLocker(); }));
+    this.renderLockerDetail();
+  },
+  renderLockerDetail() {
+    const d = Save.data, tab = this.lockerTab, id = this.lockerSel;
+    const det = $('locker-detail');
+    if (tab === 'style') {
+      const st = STYLES[id]; const owned = d.styles.includes(id);
+      det.innerHTML = `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px"><span class="rar" data-r="${st.rarity}" style="justify-self:start">${st.rarity.toUpperCase()}</span><h3>${esc(st.name)}</h3><p style="margin:0;color:var(--muted);max-width:46ch">${esc(st.blurb)}</p></div></div>
+        <div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}</div>
+        ${owned ? `<button class="btn ${d.style === id ? '' : 'blue'}" id="lk-equip" type="button" ${d.style === id ? 'disabled' : ''}>${d.style === id ? 'EQUIPPED' : 'EQUIP ' + esc(st.name)}</button>` : `<p class="label">LOCKED. ROLL IT FROM STYLE SPINS (${st.rarity.toUpperCase()}).</p>`}`;
+      det.querySelector('.cv').replaceWith(portraitCanvas(id, 96));
+    } else {
+      const fl = id === 'NONE' ? null : FLOWS[id];
+      const owned = id === 'NONE' || d.flows.includes(id);
+      const eqd = (d.flow || 'NONE') === id;
+      det.innerHTML = `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px">${fl ? `<span class="rar" data-r="${fl.rarity}" style="justify-self:start">${fl.rarity.toUpperCase()}</span>` : '<span class="chip" style="justify-self:start">BASE</span>'}<h3>${fl ? esc(fl.name) : 'NO FLOW'}</h3></div></div>
+        <p style="margin:0;font-size:22px">${esc(fl ? fl.desc : RAW_FLOW_DESC)}</p>
+        <p style="margin:0;color:var(--muted)">Fill the Flow bar with completed passes, dodges, tackles and shots on target. Press G for 15 seconds of Flow: glowing eyes, a swirling aura and this buff.</p>
+        ${owned ? `<button class="btn ${eqd ? '' : 'blue'}" id="lk-equip" type="button" ${eqd ? 'disabled' : ''}>${eqd ? 'EQUIPPED' : 'EQUIP'}</button>` : `<p class="label">LOCKED. ROLL IT FROM FLOW SPINS (${fl.rarity.toUpperCase()}).</p>`}`;
+      det.querySelector('.cv').replaceWith(flowEmblemCanvas(id === 'NONE' ? null : id, 96));
+    }
+    const eq = $('lk-equip');
+    if (eq) eq.addEventListener('click', () => { Sfx.click(); if (tab === 'style') d.style = id; else d.flow = id === 'NONE' ? null : id; Save.save(); this.renderLocker(); });
+  },
+};
