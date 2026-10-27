@@ -167,7 +167,7 @@ function makeBlockTextures() {
     return streak ? [240, 252, 255] : shadeRGB(hexRGB('#9fe4ff'), n(0.9, 1.05));
   });
   // advertising boards: 8 original brands
-  const brands = [['EGO BLOCKS', '#1a3c9e', '#ffffff'], ['VOXEL COLA', '#c42a2a', '#fff3c9'], ['CUBE AIR', '#f2efe6', '#1a3c9e'], ['EMERALD BANK', '#0e7a48', '#d9ffe9'],
+  const brands = [['SCORZ', '#1a3c9e', '#ffffff'], ['VOXEL COLA', '#c42a2a', '#fff3c9'], ['CUBE AIR', '#f2efe6', '#1a3c9e'], ['EMERALD BANK', '#0e7a48', '#d9ffe9'],
     ['BLOCKBALL', '#ffcb3d', '#2b1b00'], ['PIXEL FUEL', '#1d1f2e', '#ff8a2a'], ['STRIKER 9', '#3d7dff', '#ffffff'], ['GRASS MAX', '#2a6b2a', '#eaffd1']];
   const ac = mkCanvas(128 * brands.length, 16), ag = ac.getContext('2d');
   brands.forEach((b, i) => {

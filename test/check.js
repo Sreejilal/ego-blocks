@@ -28,6 +28,11 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   await page.reload(); await page.waitForTimeout(1200);
   check('progress is saved between visits', await page.evaluate(() => EGO.Save.data.emeralds === 4321));
 
+  await page.evaluate(() => { localStorage.removeItem('scorz.save.v1'); localStorage.setItem('egoblocks.save.v1', JSON.stringify({ emeralds: 777, rp: 130 })); });
+  await page.reload(); await page.waitForTimeout(1200);
+  const moved = await page.evaluate(() => { const n = JSON.parse(localStorage.getItem('scorz.save.v1') || 'null'); return { em: EGO.Save.data.emeralds, rp: EGO.Save.data.rp, newKey: n && n.emeralds, oldKey: localStorage.getItem('egoblocks.save.v1') }; });
+  check('old EGO BLOCKS saves carry over to SCORZ', moved.em === 777 && moved.rp === 130 && moved.newKey === 777 && moved.oldKey === null, moved);
+
   check('no errors in the console', logs.length === 0, logs.slice(0, 5));
   console.log(results.join('\n'));
   await browser.close();

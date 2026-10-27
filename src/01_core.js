@@ -1,6 +1,6 @@
 
 /* =====================================================================
-   EGO BLOCKS  |  core utilities, field constants, save data, audio
+   SCORZ  |  core utilities, field constants, save data, audio
    ===================================================================== */
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -67,7 +67,8 @@ const GRAV = 22;
 
 /* ---------- save data ---------- */
 const Save = {
-  key: 'egoblocks.save.v1',
+  key: 'scorz.save.v1',
+  oldKeys: ['egoblocks.save.v1'], // saves from before the rename to SCORZ
   data: null,
   ok: true,
   defaults() {
@@ -80,9 +81,12 @@ const Save = {
     };
   },
   load() {
-    let d = null;
-    try { const raw = window.localStorage.getItem(this.key); if (raw) d = JSON.parse(raw); }
-    catch (e) { this.ok = false; }
+    let d = null, migrated = null;
+    try {
+      let raw = window.localStorage.getItem(this.key);
+      if (!raw) for (const k of this.oldKeys) { raw = window.localStorage.getItem(k); if (raw) { migrated = k; break; } }
+      if (raw) d = JSON.parse(raw);
+    } catch (e) { this.ok = false; }
     const def = this.defaults();
     const out = Object.assign({}, def, d && typeof d === 'object' ? d : {});
     out.pity = Object.assign({}, def.pity, out.pity || {});
@@ -100,6 +104,8 @@ const Save = {
     out.emeralds = Math.max(0, Math.floor(Number(out.emeralds) || 0));
     out.rp = Math.max(0, Math.floor(Number(out.rp) || 0));
     this.data = out;
+    // copy an old save to the new key; the old one is only removed once the copy is written
+    if (migrated) { this.save(); if (this.ok) try { window.localStorage.removeItem(migrated); } catch (e) {} }
   },
   validate() {
     const d = this.data;

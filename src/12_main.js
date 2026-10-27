@@ -188,7 +188,7 @@ window.addEventListener('load', () => {
     Game.start();
   } catch (err) {
     const b = document.getElementById('boot') || document.getElementById('app');
-    if (b) { b.style.display = 'grid'; b.innerHTML = '<div style="max-width:40ch;text-align:center;font-family:var(--font-body);font-size:18px;padding:16px">EGO BLOCKS could not start.<br><br>' + esc(err && err.message ? err.message : String(err)) + '</div>'; }
+    if (b) { b.style.display = 'grid'; b.innerHTML = '<div style="max-width:40ch;text-align:center;font-family:var(--font-body);font-size:18px;padding:16px">SCORZ could not start.<br><br>' + esc(err && err.message ? err.message : String(err)) + '</div>'; }
     console.error(err);
   }
 });

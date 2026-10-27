@@ -1,4 +1,4 @@
-# EGO BLOCKS
+# SCORZ
 
 5v5 voxel football that runs in a web browser: ranked play, 7 styles with abilities, Flow, spins,
 a Lawless mode with items, and keyboard, controller and phone touch controls.

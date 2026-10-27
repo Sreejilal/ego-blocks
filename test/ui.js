@@ -40,7 +40,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await page.evaluate(() => EGO.Game.stepManual(240, true));
   await sleep(300);
   await page.screenshot({ path: __dirname + '/shots/u9_results.png' });
-  console.log('RESULTS', JSON.stringify(await page.evaluate(() => ({ state: EGO.Game.state, em: EGO.Save.data.emeralds, rp: EGO.Save.data.rp, stats: EGO.Save.data.stats, saved: JSON.parse(localStorage.getItem('egoblocks.save.v1') || 'null') !== null }))));
+  console.log('RESULTS', JSON.stringify(await page.evaluate(() => ({ state: EGO.Game.state, em: EGO.Save.data.emeralds, rp: EGO.Save.data.rp, stats: EGO.Save.data.stats, saved: JSON.parse(localStorage.getItem('scorz.save.v1') || 'null') !== null }))));
   await page.click('#r-lobby'); await sleep(400);
   await page.evaluate(() => EGO.Game.manual = false);
   await sleep(600);

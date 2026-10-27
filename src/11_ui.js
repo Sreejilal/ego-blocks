@@ -37,7 +37,7 @@ const UI = {
         </div>
       </div>
       <div class="lobby-main">
-        <h1 class="title"><span class="t1">EGO</span><span class="t2">BLOCKS</span></h1>
+        <h1 class="title"><span class="t1">SCOR<em class="t2">Z</em></span></h1>
         <p class="tagline">5v5 voxel football. Pick a style, find your Flow, climb from Wood to Obsidian.</p>
         <nav class="menu" aria-label="Main menu">
           <button class="btn blue" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>

@@ -1,4 +1,4 @@
-# EGO BLOCKS: notes for Claude Code
+# SCORZ (formerly EGO BLOCKS): notes for Claude Code
 
 A 5v5 voxel football game (anime "ego striker" feel, blocky art) that runs in a web browser.
 The whole game is one HTML page built from the small files in `src/`. No frameworks, no bundler.
