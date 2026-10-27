@@ -270,6 +270,25 @@ const World = {
     bm.receiveShadow = om.receiveShadow = gm.receiveShadow = false;
     this.scene.add(bm, om, gm);
     this.stand = { sideIn, endIn, sideLen, endLen, outerX, outerZ, wallTop };
+    // upper deck behind and above the bowl, opened up for the higher tiers
+    const UP = 5, ub = new VoxBuilder(true), uo = new VoxBuilder(true), ug = new VoxBuilder();
+    const ux = outerX + 1, uz = outerZ + 1, uBase = wallTop + 0.4, uRise = 1.15;
+    for (let i = 0; i < UP; i++) {
+      const top = uBase + (i + 1) * uRise;
+      ub.box(-ux - (i + 1) * DEP, uBase - 2, -sideLen, -ux - i * DEP, top, sideLen, '#ffffff', { uv: 1, ao: 0.62 });
+      uo.box(ux + i * DEP, uBase - 2, -sideLen, ux + (i + 1) * DEP, top, sideLen, '#ffffff', { uv: 1, ao: 0.62 });
+      ub.box(-endLen, uBase - 2, -uz - (i + 1) * DEP, endLen, top, -uz - i * DEP, '#ffffff', { uv: 1, ao: 0.62 });
+      uo.box(-endLen, uBase - 2, uz + i * DEP, endLen, top, uz + (i + 1) * DEP, '#ffffff', { uv: 1, ao: 0.62 });
+    }
+    const uox = ux + UP * DEP, uoz = uz + UP * DEP, uTop = uBase + UP * uRise + 1.4;
+    ug.box(-uox - 1, 0, -sideLen - 1, -uox, uTop, sideLen + 1, '#ffffff', { uv: 1 });
+    ug.box(uox, 0, -sideLen - 1, uox + 1, uTop, sideLen + 1, '#ffffff', { uv: 1 });
+    ug.box(-endLen - 1, 0, -uoz - 1, endLen + 1, uTop, -uoz, '#ffffff', { uv: 1 });
+    ug.box(-endLen - 1, 0, uoz, endLen + 1, uTop, uoz + 1, '#ffffff', { uv: 1 });
+    this.upper = new THREE.Group();
+    this.upper.add(ub.mesh(mkMats(T.seatHome)), uo.mesh(mkMats(T.seatAway)), ug.mesh(stone));
+    this.scene.add(this.upper);
+    this.upperRows = { UP, ux, uz, uBase, uRise };
   },
   buildFans() {
     const { ROWS, DEP, RISE, BASE } = this.standRows;
@@ -286,6 +305,20 @@ const World = {
       for (let x = -endLen + 0.6; x <= endLen - 0.6; x += 1.05) {
         add(x, top, -endIn - (i + 0.5) * DEP, 0, R() < 0.9 ? 0 : 1);
         add(x, top, endIn + (i + 0.5) * DEP, Math.PI, R() < 0.9 ? 1 : 0);
+      }
+    }
+    // upper deck fans come last, so a half-full stadium fills from the front rows
+    const U = this.upperRows;
+    this.lowerFans = spots.length;
+    for (let i = 0; i < U.UP; i++) {
+      const top = U.uBase + (i + 1) * U.uRise;
+      for (let z = -sideLen + 0.6; z <= sideLen - 0.6; z += 1.05) {
+        add(-U.ux - (i + 0.5) * DEP, top, z, Math.PI / 2, R() < 0.86 ? 0 : 1);
+        add(U.ux + (i + 0.5) * DEP, top, z, -Math.PI / 2, R() < 0.86 ? 1 : 0);
+      }
+      for (let x = -endLen + 0.6; x <= endLen - 0.6; x += 1.05) {
+        add(x, top, -U.uz - (i + 0.5) * DEP, 0, R() < 0.9 ? 0 : 1);
+        add(x, top, U.uz + (i + 0.5) * DEP, Math.PI, R() < 0.9 ? 1 : 0);
       }
     }
     // fan geometry: shirt body + head + two raised-able arms
@@ -499,6 +532,15 @@ const World = {
       col.setXYZ(i, c.r * k, c.g * k, c.b * k);
     }
     col.needsUpdate = true;
+  },
+  /** the stadium for a rank tier: how full it is, the upper deck from Gold up, and how loud */
+  setTier(tier) {
+    this.tier = tier;
+    const n = Math.round(this.fanCount * TIER_FANS[tier]);
+    this.fans.count = n;
+    this.upper.visible = tier >= 3;
+    if (!this.upper.visible) this.fans.count = Math.min(n, this.lowerFans);
+    Sfx.setLoud(TIER_LOUD[tier]);
   },
   setSun(dir) { SUN_DIR.copy(dir); if (this.sky) this.sky.material.uniforms.sunDir.value.copy(dir); },
   render() { this.renderer.render(this.scene, this.camera); },

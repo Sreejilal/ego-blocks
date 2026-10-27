@@ -168,7 +168,7 @@ const AI = {
       }
     }
     a.think -= dt;
-    if (a.think <= 0) { a.think = lerp(0.34, 0.14, m.skill(p)) * rand(0.8, 1.25); this.decide(m, p); }
+    if (a.think <= 0) { a.think = lerp(0.44, 0.12, Math.min(1, m.skill(p))) * rand(0.8, 1.25); this.decide(m, p); } // reactions
     if (a.wantShot) {
       if (b.owner !== p || p.state !== 'free') { a.wantShot = null; p.charging = false; p.charge = 0; }
       else {
@@ -300,7 +300,7 @@ const AI = {
       if (t.isHuman || t === m.caller) score += 3 + (t.callT > 0 ? 9 : 0) + (t.fx.call > 0 ? 30 : 0);
       if (t.ai.runT > 0) score += 3;
       if (m.prog(t.team, t.pos) > F.L - 12 && Math.abs(t.pos.x) < 10) score += 3;
-      score += rand(-1.5, 1.5) * (1 - sk);
+      score += rand(-3, 3) * (1 - sk); // weaker bots often pick the wrong pass
       if (!best || score > best.score) best = { mate: t, score, d, blocked };
     }
     return best;
@@ -411,8 +411,9 @@ const AI = {
     const away = d > 0.01 ? (c.vel.x * (c.pos.x - p.pos.x) + c.vel.z * (c.pos.z - p.pos.z)) / d : 0;
     if (away > 5.5 && d > 1.4 && chance(0.4 + 0.5 * sk)) return;
     if (d < trig && d > 0.5 && Math.random() < (1.0 + 3.0 * sk) * dt) {
-      const lead = 0.14;
-      m.tackle(p, c.pos.x + c.vel.x * lead - p.pos.x, c.pos.z + c.vel.z * lead - p.pos.z);
+      // smart tacklers lead the carrier; weak ones dive in late and off line
+      const lead = 0.14 * sk + rand(-0.25, 0.1) * (1 - sk), off = rand(-0.9, 0.9) * (1 - sk);
+      m.tackle(p, c.pos.x + c.vel.x * lead - p.pos.x + off, c.pos.z + c.vel.z * lead - p.pos.z - off);
     }
   },
   reactTackle(m, c, t) {
@@ -453,7 +454,7 @@ const AI = {
         let py = b.straightT > 0 ? b.pos.y + b.vel.y * t : b.pos.y + b.vel.y * t - 0.5 * BALL_G * t * t;
         if (py < BALL_R) py = BALL_R + Math.min(1.2, Math.abs(py) * 0.4);
         if (Math.abs(px) < F.GW + 1.0 && py < F.GH + 0.9) {
-          if (a.react == null) a.react = lerp(0.3, 0.09, sk) * rand(0.8, 1.2);
+          if (a.react == null) a.react = lerp(0.4, 0.08, Math.min(1, sk)) * rand(0.8, 1.2);
           a.react -= dt;
           if (a.react <= 0) {
             const tk = Math.max(0.06, (p.pos.z - b.pos.z) / b.vel.z);

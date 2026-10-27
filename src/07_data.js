@@ -394,7 +394,11 @@ const teamSizeFor = (mode, rp) => { if (mode !== 'ranked') return 3; const t = t
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /** bot difficulty 0..1 from rank points */
-const difficultyFor = (rp) => clamp(0.22 + Math.min(rp, 560) / 560 * 0.72, 0.22, 0.94);
+/* each tier is a clear step: bot skill (reactions, passing, tackles, keepers) and how full and loud the stadium is */
+const TIER_SKILL = [0.15, 0.33, 0.5, 0.65, 0.8, 1.0];
+const TIER_FANS = [0.25, 0.36, 0.48, 0.62, 0.8, 1];
+const TIER_LOUD = [0.7, 0.8, 0.9, 1.0, 1.15, 1.3];
+const difficultyFor = (rp) => TIER_SKILL[tierOf(rp)];
 
 function rollRarity(pity) {
   if (pity >= 29) { const r = Math.random() * 17; return r < 12 ? 2 : r < 16.5 ? 3 : 4; }

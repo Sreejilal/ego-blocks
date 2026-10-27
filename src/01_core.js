@@ -141,7 +141,7 @@ const Save = {
 /* ---------- WebAudio retro sound ---------- */
 const Sfx = (() => {
   let ctx = null, master = null, bus = null, noiseBuf = null, crowdGain = null, crowdFilter = null;
-  let muted = false, crowdBase = 0;
+  let muted = false, crowdBase = 0, loud = 1;
   const now = () => ctx.currentTime;
   function init() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume().catch(() => {}); return; }
@@ -219,12 +219,14 @@ const Sfx = (() => {
       else if (kind === 2) { whistleBlast(t, 0.16); whistleBlast(t + 0.24, 0.36); }
       else whistleBlast(t, 0.38);
     },
+    setLoud(k) { loud = k; },
     setCrowd(level) {
-      crowdBase = level * 0.07;
+      crowdBase = level * 0.07 * loud;
       if (ctx && crowdGain) crowdGain.gain.setTargetAtTime(muted ? 0 : crowdBase, now(), 0.6);
     },
     roar(level = 1) {
       if (!ctx || muted || !crowdGain) return;
+      level *= loud;
       const t = now();
       crowdGain.gain.cancelScheduledValues(t);
       crowdGain.gain.setValueAtTime(Math.max(crowdGain.gain.value, 0.0001), t);

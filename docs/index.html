@@ -676,7 +676,7 @@ const Save = {
 /* ---------- WebAudio retro sound ---------- */
 const Sfx = (() => {
   let ctx = null, master = null, bus = null, noiseBuf = null, crowdGain = null, crowdFilter = null;
-  let muted = false, crowdBase = 0;
+  let muted = false, crowdBase = 0, loud = 1;
   const now = () => ctx.currentTime;
   function init() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume().catch(() => {}); return; }
@@ -754,12 +754,14 @@ const Sfx = (() => {
       else if (kind === 2) { whistleBlast(t, 0.16); whistleBlast(t + 0.24, 0.36); }
       else whistleBlast(t, 0.38);
     },
+    setLoud(k) { loud = k; },
     setCrowd(level) {
-      crowdBase = level * 0.07;
+      crowdBase = level * 0.07 * loud;
       if (ctx && crowdGain) crowdGain.gain.setTargetAtTime(muted ? 0 : crowdBase, now(), 0.6);
     },
     roar(level = 1) {
       if (!ctx || muted || !crowdGain) return;
+      level *= loud;
       const t = now();
       crowdGain.gain.cancelScheduledValues(t);
       crowdGain.gain.setValueAtTime(Math.max(crowdGain.gain.value, 0.0001), t);
@@ -1662,6 +1664,25 @@ const World = {
     bm.receiveShadow = om.receiveShadow = gm.receiveShadow = false;
     this.scene.add(bm, om, gm);
     this.stand = { sideIn, endIn, sideLen, endLen, outerX, outerZ, wallTop };
+    // upper deck behind and above the bowl, opened up for the higher tiers
+    const UP = 5, ub = new VoxBuilder(true), uo = new VoxBuilder(true), ug = new VoxBuilder();
+    const ux = outerX + 1, uz = outerZ + 1, uBase = wallTop + 0.4, uRise = 1.15;
+    for (let i = 0; i < UP; i++) {
+      const top = uBase + (i + 1) * uRise;
+      ub.box(-ux - (i + 1) * DEP, uBase - 2, -sideLen, -ux - i * DEP, top, sideLen, '#ffffff', { uv: 1, ao: 0.62 });
+      uo.box(ux + i * DEP, uBase - 2, -sideLen, ux + (i + 1) * DEP, top, sideLen, '#ffffff', { uv: 1, ao: 0.62 });
+      ub.box(-endLen, uBase - 2, -uz - (i + 1) * DEP, endLen, top, -uz - i * DEP, '#ffffff', { uv: 1, ao: 0.62 });
+      uo.box(-endLen, uBase - 2, uz + i * DEP, endLen, top, uz + (i + 1) * DEP, '#ffffff', { uv: 1, ao: 0.62 });
+    }
+    const uox = ux + UP * DEP, uoz = uz + UP * DEP, uTop = uBase + UP * uRise + 1.4;
+    ug.box(-uox - 1, 0, -sideLen - 1, -uox, uTop, sideLen + 1, '#ffffff', { uv: 1 });
+    ug.box(uox, 0, -sideLen - 1, uox + 1, uTop, sideLen + 1, '#ffffff', { uv: 1 });
+    ug.box(-endLen - 1, 0, -uoz - 1, endLen + 1, uTop, -uoz, '#ffffff', { uv: 1 });
+    ug.box(-endLen - 1, 0, uoz, endLen + 1, uTop, uoz + 1, '#ffffff', { uv: 1 });
+    this.upper = new THREE.Group();
+    this.upper.add(ub.mesh(mkMats(T.seatHome)), uo.mesh(mkMats(T.seatAway)), ug.mesh(stone));
+    this.scene.add(this.upper);
+    this.upperRows = { UP, ux, uz, uBase, uRise };
   },
   buildFans() {
     const { ROWS, DEP, RISE, BASE } = this.standRows;
@@ -1678,6 +1699,20 @@ const World = {
       for (let x = -endLen + 0.6; x <= endLen - 0.6; x += 1.05) {
         add(x, top, -endIn - (i + 0.5) * DEP, 0, R() < 0.9 ? 0 : 1);
         add(x, top, endIn + (i + 0.5) * DEP, Math.PI, R() < 0.9 ? 1 : 0);
+      }
+    }
+    // upper deck fans come last, so a half-full stadium fills from the front rows
+    const U = this.upperRows;
+    this.lowerFans = spots.length;
+    for (let i = 0; i < U.UP; i++) {
+      const top = U.uBase + (i + 1) * U.uRise;
+      for (let z = -sideLen + 0.6; z <= sideLen - 0.6; z += 1.05) {
+        add(-U.ux - (i + 0.5) * DEP, top, z, Math.PI / 2, R() < 0.86 ? 0 : 1);
+        add(U.ux + (i + 0.5) * DEP, top, z, -Math.PI / 2, R() < 0.86 ? 1 : 0);
+      }
+      for (let x = -endLen + 0.6; x <= endLen - 0.6; x += 1.05) {
+        add(x, top, -U.uz - (i + 0.5) * DEP, 0, R() < 0.9 ? 0 : 1);
+        add(x, top, U.uz + (i + 0.5) * DEP, Math.PI, R() < 0.9 ? 1 : 0);
       }
     }
     // fan geometry: shirt body + head + two raised-able arms
@@ -1891,6 +1926,15 @@ const World = {
       col.setXYZ(i, c.r * k, c.g * k, c.b * k);
     }
     col.needsUpdate = true;
+  },
+  /** the stadium for a rank tier: how full it is, the upper deck from Gold up, and how loud */
+  setTier(tier) {
+    this.tier = tier;
+    const n = Math.round(this.fanCount * TIER_FANS[tier]);
+    this.fans.count = n;
+    this.upper.visible = tier >= 3;
+    if (!this.upper.visible) this.fans.count = Math.min(n, this.lowerFans);
+    Sfx.setLoud(TIER_LOUD[tier]);
   },
   setSun(dir) { SUN_DIR.copy(dir); if (this.sky) this.sky.material.uniforms.sunDir.value.copy(dir); },
   render() { this.renderer.render(this.scene, this.camera); },
@@ -3083,7 +3127,11 @@ const teamSizeFor = (mode, rp) => { if (mode !== 'ranked') return 3; const t = t
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /** bot difficulty 0..1 from rank points */
-const difficultyFor = (rp) => clamp(0.22 + Math.min(rp, 560) / 560 * 0.72, 0.22, 0.94);
+/* each tier is a clear step: bot skill (reactions, passing, tackles, keepers) and how full and loud the stadium is */
+const TIER_SKILL = [0.15, 0.33, 0.5, 0.65, 0.8, 1.0];
+const TIER_FANS = [0.25, 0.36, 0.48, 0.62, 0.8, 1];
+const TIER_LOUD = [0.7, 0.8, 0.9, 1.0, 1.15, 1.3];
+const difficultyFor = (rp) => TIER_SKILL[tierOf(rp)];
 
 function rollRarity(pity) {
   if (pity >= 29) { const r = Math.random() * 17; return r < 12 ? 2 : r < 16.5 ? 3 : 4; }
@@ -3117,6 +3165,7 @@ const MATCH_LEN = 240, GOLDEN_LEN = 120;
 class Match {
   constructor(mode, d, opts = {}) {
     this.mode = mode; this.cfg = MODES[mode] || MODES.quick; this.d = d;
+    this.tier = opts.tier != null ? opts.tier : tierOf(Save.data.rp);
     this.size = ROSTERS[opts.size] ? opts.size : teamSizeFor(mode, Save.data.rp);
     this.scene = World.scene;
     this.time = 0; this.clock = opts.length || MATCH_LEN; this.golden = false; this.goldenClock = GOLDEN_LEN;
@@ -3151,12 +3200,14 @@ class Match {
         const flow = human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
         const look = human ? (opts.look || Save.data.look) : botLook();
         const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[1] : null, number: num, name: human ? 'YOU' : names.pop() });
-        if (!human && team === 1) p.speedMul = 1 + 0.045 * this.d;
+        if (!human && team === 1) p.speedMul = 1 + 0.045 * (opts.teamD ? opts.teamD[1] : this.d);
         this.players.push(p); this.teams[team].push(p);
         if (human) this.human = p;
       }
     }
     if (!this.human) this.human = null;
+    // bot skill for each side: your teammates are never hopeless; a test can set both (e.g. Wood vs Obsidian)
+    this.teamD = opts.teamD || (this.human ? [Math.max(0.55, this.d), this.d] : [this.d, this.d]);
   }
   dispose() {
     for (const p of this.players) p.dispose();
@@ -3177,7 +3228,7 @@ class Match {
   oppGoalZ(team) { return this.dir(team) * F.L; }
   ownGoalZ(team) { return -this.dir(team) * F.L; }
   prog(team, pos) { return pos.z * this.dir(team); }
-  skill(p) { const s = (this.human && p.team === this.human.team) ? Math.max(0.6, this.d) : this.d; return p.isGK ? Math.min(1.2, s + 0.08 + (5 - this.size) * 0.07) : s; } // keepers get a boost in small teams, where they face more shots
+  skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.size) * 0.07, 0.45, 1.2) : s; } // keepers get a boost in small teams, where they face more shots
   opponents(p) { return this.teams[1 - p.team]; }
   inOwnBox(p, pos = p.pos) {
     const gz = this.ownGoalZ(p.team);
@@ -3203,7 +3254,8 @@ class Match {
       p.setState('kickoff'); p.onGround = true;
       p.ai.wantShot = null; p.ai.dodgeIn = -1; p.ai.task = 'pos'; p.ai.receive = null; p.ai.runT = 0;
     }
-    if (first) Hud.banner(this.cfg.name, this.mode === 'ranked' ? 'WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15' : this.mode === 'lawless' ? (Touch.on ? 'GRAB THE ? BLOCKS \u00b7 TAP ITEM TO USE' : 'GRAB THE ? BLOCKS \u00b7 X USES YOUR ITEM') : 'NO RANK ON THE LINE', TEAM[0].hex);
+    if (first && this.mode === 'ranked') Hud.banner('VS ' + TIER_NAMES[this.tier], TEAM[1].full + ' \u00b7 ' + TIER_NAMES[this.tier] + ' BOTS \u00b7 WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15', TIER_MATS[this.tier].a);
+    else if (first) Hud.banner(this.cfg.name, this.mode === 'ranked' ? 'WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15' : this.mode === 'lawless' ? (Touch.on ? 'GRAB THE ? BLOCKS \u00b7 TAP ITEM TO USE' : 'GRAB THE ? BLOCKS \u00b7 X USES YOUR ITEM') : 'NO RANK ON THE LINE', TEAM[0].hex);
     else Hud.banner('KICKOFF', TEAM[team].name + ' BALL', TEAM[team].hex);
     if (!first && this.human && Touch.on) Touch.faceGoal(this);
   }
@@ -3433,6 +3485,10 @@ class Match {
       vx = (tx - from.x) / (D || 1) * v0; vz = (tz - from.z) / (D || 1) * v0; vy = 0.5;
     }
     if (o.through) Object.assign(extra, o.through);
+    if (!p.isHuman) { // low-skill bots misplace passes a little
+      const e = 1 - Math.min(1, this.skill(p)), a = rand(-0.1, 0.1) * e, k = 1 + rand(-0.12, 0.12) * e, c = Math.cos(a), sn = Math.sin(a);
+      const nx = (vx * c - vz * sn) * k, nz = (vx * sn + vz * c) * k; vx = nx; vz = nz;
+    }
     if (o.style) {
       extra.kickStyle = o.style;
       if (o.style === 'backheel' || o.style === 'nolook') extra.keepYaw = true;
@@ -4371,7 +4427,7 @@ const AI = {
       }
     }
     a.think -= dt;
-    if (a.think <= 0) { a.think = lerp(0.34, 0.14, m.skill(p)) * rand(0.8, 1.25); this.decide(m, p); }
+    if (a.think <= 0) { a.think = lerp(0.44, 0.12, Math.min(1, m.skill(p))) * rand(0.8, 1.25); this.decide(m, p); } // reactions
     if (a.wantShot) {
       if (b.owner !== p || p.state !== 'free') { a.wantShot = null; p.charging = false; p.charge = 0; }
       else {
@@ -4503,7 +4559,7 @@ const AI = {
       if (t.isHuman || t === m.caller) score += 3 + (t.callT > 0 ? 9 : 0) + (t.fx.call > 0 ? 30 : 0);
       if (t.ai.runT > 0) score += 3;
       if (m.prog(t.team, t.pos) > F.L - 12 && Math.abs(t.pos.x) < 10) score += 3;
-      score += rand(-1.5, 1.5) * (1 - sk);
+      score += rand(-3, 3) * (1 - sk); // weaker bots often pick the wrong pass
       if (!best || score > best.score) best = { mate: t, score, d, blocked };
     }
     return best;
@@ -4614,8 +4670,9 @@ const AI = {
     const away = d > 0.01 ? (c.vel.x * (c.pos.x - p.pos.x) + c.vel.z * (c.pos.z - p.pos.z)) / d : 0;
     if (away > 5.5 && d > 1.4 && chance(0.4 + 0.5 * sk)) return;
     if (d < trig && d > 0.5 && Math.random() < (1.0 + 3.0 * sk) * dt) {
-      const lead = 0.14;
-      m.tackle(p, c.pos.x + c.vel.x * lead - p.pos.x, c.pos.z + c.vel.z * lead - p.pos.z);
+      // smart tacklers lead the carrier; weak ones dive in late and off line
+      const lead = 0.14 * sk + rand(-0.25, 0.1) * (1 - sk), off = rand(-0.9, 0.9) * (1 - sk);
+      m.tackle(p, c.pos.x + c.vel.x * lead - p.pos.x + off, c.pos.z + c.vel.z * lead - p.pos.z - off);
     }
   },
   reactTackle(m, c, t) {
@@ -4656,7 +4713,7 @@ const AI = {
         let py = b.straightT > 0 ? b.pos.y + b.vel.y * t : b.pos.y + b.vel.y * t - 0.5 * BALL_G * t * t;
         if (py < BALL_R) py = BALL_R + Math.min(1.2, Math.abs(py) * 0.4);
         if (Math.abs(px) < F.GW + 1.0 && py < F.GH + 0.9) {
-          if (a.react == null) a.react = lerp(0.3, 0.09, sk) * rand(0.8, 1.2);
+          if (a.react == null) a.react = lerp(0.4, 0.08, Math.min(1, sk)) * rand(0.8, 1.2);
           a.react -= dt;
           if (a.react <= 0) {
             const tk = Math.max(0.06, (p.pos.z - b.pos.z) / b.vel.z);
@@ -5714,7 +5771,7 @@ const UI = {
             <li><b>Spins</b> cost 200. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
-            <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Bots get sharper as you climb.</li>
+            <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
             <li><b>Team size:</b> Quick Match and Lawless are 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
@@ -5859,7 +5916,7 @@ const UI = {
   /* ---------- HUD ---------- */
   buildHud(m) {
     const p = m.human;
-    $('hud-mode').textContent = m.cfg.name + ' · ' + m.size + 'V' + m.size;
+    $('hud-mode').textContent = m.cfg.name + ' · ' + m.size + 'V' + m.size + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
     $('hud-badge').src = badgeURL(tierOf(Save.data.rp)); $('hud-badge').hidden = !m.cfg.ranked;
     $('hud-em-ico').src = iconURL('emerald'); $('hud-em').textContent = Save.data.emeralds;
     for (const t of [0, 1]) { // the score bar wears each club's shirt
@@ -6243,7 +6300,7 @@ const Game = {
     Input.releaseLock();
     this.state = 'lobby';
     World.setSun(SUN_LOBBY);
-    const me = sideFor(Save.data.club); World.paintCrowd(me, me);
+    const me = sideFor(Save.data.club); World.paintCrowd(me, me); World.setTier(tierOf(Save.data.rp));
     TimeCtl.reset(); FX.clear();
     UI.hideOverlays(); UI.show('lobby');
     Showcase.show();
@@ -6257,7 +6314,7 @@ const Game = {
     TimeCtl.reset(); FX.clear();
     this.match = new Match(mode, difficultyFor(Save.data.rp), { size: teamSizeFor(mode, Save.data.rp) });
     this.lastMode = mode; this.ended = false;
-    World.paintCrowd(TEAM[0], TEAM[1]);
+    World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
     World.setSun(SUN_MATCH);
     Cam.reset(0);
     this.state = 'match';
@@ -6374,11 +6431,13 @@ const Game = {
 
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
+  TIER_SKILL, tierOf,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Player, TEAM, rollRarity, poolFor,
   CLUB_IDS, sideFor, matchSides, kitClash,
   /** run a full bot-vs-bot match off-screen and report what happened */
-  simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0) {
-    const m = new Match(mode, d, { noHuman: true, autopilot: true, length: seconds, size: size || (mode === 'ranked' ? 5 : 3) });
+  /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
+  simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {
+    const m = new Match(mode, d, { noHuman: true, autopilot: true, length: seconds, size: size || (mode === 'ranked' ? 5 : 3), teamD });
     const log = { goals: 0, outs: 0, saves: 0, tackles: 0, passes: 0, shots: 0, possessionSwaps: 0, abilities: 0, flows: 0, phases: {} };
     const origOut = m.onOut.bind(m); m.onOut = function () { log.outs++; return origOut(); };
     const origAb = m.useAbility.bind(m); m.useAbility = function (p, i) { const r = origAb(p, i); if (r) log.abilities++; return r; };

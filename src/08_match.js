@@ -16,6 +16,7 @@ const MATCH_LEN = 240, GOLDEN_LEN = 120;
 class Match {
   constructor(mode, d, opts = {}) {
     this.mode = mode; this.cfg = MODES[mode] || MODES.quick; this.d = d;
+    this.tier = opts.tier != null ? opts.tier : tierOf(Save.data.rp);
     this.size = ROSTERS[opts.size] ? opts.size : teamSizeFor(mode, Save.data.rp);
     this.scene = World.scene;
     this.time = 0; this.clock = opts.length || MATCH_LEN; this.golden = false; this.goldenClock = GOLDEN_LEN;
@@ -50,12 +51,14 @@ class Match {
         const flow = human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
         const look = human ? (opts.look || Save.data.look) : botLook();
         const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[1] : null, number: num, name: human ? 'YOU' : names.pop() });
-        if (!human && team === 1) p.speedMul = 1 + 0.045 * this.d;
+        if (!human && team === 1) p.speedMul = 1 + 0.045 * (opts.teamD ? opts.teamD[1] : this.d);
         this.players.push(p); this.teams[team].push(p);
         if (human) this.human = p;
       }
     }
     if (!this.human) this.human = null;
+    // bot skill for each side: your teammates are never hopeless; a test can set both (e.g. Wood vs Obsidian)
+    this.teamD = opts.teamD || (this.human ? [Math.max(0.55, this.d), this.d] : [this.d, this.d]);
   }
   dispose() {
     for (const p of this.players) p.dispose();
@@ -76,7 +79,7 @@ class Match {
   oppGoalZ(team) { return this.dir(team) * F.L; }
   ownGoalZ(team) { return -this.dir(team) * F.L; }
   prog(team, pos) { return pos.z * this.dir(team); }
-  skill(p) { const s = (this.human && p.team === this.human.team) ? Math.max(0.6, this.d) : this.d; return p.isGK ? Math.min(1.2, s + 0.08 + (5 - this.size) * 0.07) : s; } // keepers get a boost in small teams, where they face more shots
+  skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.size) * 0.07, 0.45, 1.2) : s; } // keepers get a boost in small teams, where they face more shots
   opponents(p) { return this.teams[1 - p.team]; }
   inOwnBox(p, pos = p.pos) {
     const gz = this.ownGoalZ(p.team);
@@ -102,7 +105,8 @@ class Match {
       p.setState('kickoff'); p.onGround = true;
       p.ai.wantShot = null; p.ai.dodgeIn = -1; p.ai.task = 'pos'; p.ai.receive = null; p.ai.runT = 0;
     }
-    if (first) Hud.banner(this.cfg.name, this.mode === 'ranked' ? 'WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15' : this.mode === 'lawless' ? (Touch.on ? 'GRAB THE ? BLOCKS \u00b7 TAP ITEM TO USE' : 'GRAB THE ? BLOCKS \u00b7 X USES YOUR ITEM') : 'NO RANK ON THE LINE', TEAM[0].hex);
+    if (first && this.mode === 'ranked') Hud.banner('VS ' + TIER_NAMES[this.tier], TEAM[1].full + ' \u00b7 ' + TIER_NAMES[this.tier] + ' BOTS \u00b7 WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15', TIER_MATS[this.tier].a);
+    else if (first) Hud.banner(this.cfg.name, this.mode === 'ranked' ? 'WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15' : this.mode === 'lawless' ? (Touch.on ? 'GRAB THE ? BLOCKS \u00b7 TAP ITEM TO USE' : 'GRAB THE ? BLOCKS \u00b7 X USES YOUR ITEM') : 'NO RANK ON THE LINE', TEAM[0].hex);
     else Hud.banner('KICKOFF', TEAM[team].name + ' BALL', TEAM[team].hex);
     if (!first && this.human && Touch.on) Touch.faceGoal(this);
   }
@@ -332,6 +336,10 @@ class Match {
       vx = (tx - from.x) / (D || 1) * v0; vz = (tz - from.z) / (D || 1) * v0; vy = 0.5;
     }
     if (o.through) Object.assign(extra, o.through);
+    if (!p.isHuman) { // low-skill bots misplace passes a little
+      const e = 1 - Math.min(1, this.skill(p)), a = rand(-0.1, 0.1) * e, k = 1 + rand(-0.12, 0.12) * e, c = Math.cos(a), sn = Math.sin(a);
+      const nx = (vx * c - vz * sn) * k, nz = (vx * sn + vz * c) * k; vx = nx; vz = nz;
+    }
     if (o.style) {
       extra.kickStyle = o.style;
       if (o.style === 'backheel' || o.style === 'nolook') extra.keepYaw = true;
