@@ -1,11 +1,13 @@
 /* =====================================================================
    Showcase: your player on a lit spot in the stadium for the start
-   screen. Juggles a ball and turns toward the mouse or a finger drag.
+   screen and the Locker. Juggles a ball (or plays a goal celebration)
+   and turns toward the mouse, or spins when you drag it in the Locker.
    The page decides where the player goes: the camera fits the player
-   into the box of the current "stage" element (#lob-stage).
+   into the box of the current "stage" element (#lob-stage, #lk-fit).
    ===================================================================== */
 const SHOW_FOV = 34, SHOW_H = 2.55, SHOW_MID = 1.08, SHOW_CAM_Y = 1.2, SHOW_YAW = Math.PI + 0.3, SHOW_G = 13;
 const SHOW_FACE = -0.55; // the player stands turned a little toward the menu, so the ball never hides the face
+const SHOW_FACE_LOCKER = -0.2;
 // each touch: [body part, ball height, reach in front, side, how high it pops above the next touch]
 const JUGGLE = [
   ['R', 0.55, 0.5, -0.12, 0.7], ['L', 0.55, 0.5, 0.12, 0.65], ['R', 0.55, 0.5, -0.12, 0.75], ['K', 0.86, 0.62, -0.12, 0.45],
@@ -13,7 +15,7 @@ const JUGGLE = [
 ];
 
 const Showcase = {
-  p: null, key: '', on: false, t: 0, turn: SHOW_FACE, turnTo: SHOW_FACE, drag: null, rect: null, stageId: 'lob-stage', j: { i: 0, t: 0 }, sparkT: 0, css: '',
+  p: null, key: '', on: false, t: 0, turn: SHOW_FACE, turnTo: SHOW_FACE, drag: null, dragX: 0, rect: null, stageId: 'lob-stage', mode: 'lobby', spec: null, j: { i: 0, t: 0 }, sparkT: 0, css: '',
   init() {
     const T = World.T;
     const g = this.group = new THREE.Group();
@@ -35,32 +37,45 @@ const Showcase = {
     g.visible = false;
     World.scene.add(g);
     // the player looks toward the mouse, or toward a finger dragged on the stage
+    // in the Locker a drag spins the player all the way round instead
     window.addEventListener('pointermove', (e) => {
       if (!this.on) return;
+      if (this.mode === 'locker') { if (e.pointerId === this.drag) { this.turnTo += (e.clientX - this.dragX) * 0.012; this.dragX = e.clientX; } return; }
       if (e.pointerType === 'mouse' || e.pointerId === this.drag) this.point(e.clientX);
     });
     window.addEventListener('pointerdown', (e) => {
-      if (!this.on || e.pointerType === 'mouse') return;
+      if (!this.on || (e.pointerType === 'mouse' && this.mode !== 'locker')) return;
       const st = $(this.stageId);
-      if (st && e.target && st.contains(e.target)) { this.drag = e.pointerId; this.point(e.clientX); }
+      if (st && e.target && st.contains(e.target)) { this.drag = e.pointerId; this.dragX = e.clientX; if (this.mode !== 'locker') this.point(e.clientX); }
     });
-    const lift = (e) => { if (e.pointerId === this.drag) { this.drag = null; this.turnTo = SHOW_FACE; } };
+    const lift = (e) => { if (e.pointerId === this.drag) { this.drag = null; if (this.mode !== 'locker') this.turnTo = SHOW_FACE; } };
     window.addEventListener('pointerup', lift);
     window.addEventListener('pointercancel', lift);
-    document.addEventListener('mouseleave', () => { if (this.drag == null) this.turnTo = SHOW_FACE; });
+    document.addEventListener('mouseleave', () => { if (this.drag == null && this.mode !== 'locker') this.turnTo = SHOW_FACE; });
   },
   point(x) {
     const cx = this.rect ? this.rect.cx : window.innerWidth / 2;
     this.turnTo = SHOW_FACE + clamp((x - cx) / (window.innerWidth || 1) * 1.7, -0.5, 0.8);
   },
-  /** (re)build the model when the equipped style or Flow changed */
+  /** which box the player stands in: 'lobby' follows the mouse, 'locker' spins on drag */
+  setStage(id, mode) {
+    if (this.stageId === id && this.mode === mode) return;
+    this.stageId = id; this.mode = mode; this.rect = null; this.drag = null;
+    this.turn = this.turnTo = mode === 'locker' ? SHOW_FACE_LOCKER : SHOW_FACE;
+    if (mode === 'lobby') this.spec = null;
+  },
+  /** try on a look before equipping it: { style, flow, look, celebrate }. null goes back to what is equipped */
+  preview(spec) { this.spec = spec; this.ensure(); },
+  /** (re)build the model when the style, Flow or skins changed */
   ensure() {
     if (!this.group) return;
-    const d = Save.data, key = d.style + '|' + (d.flow || '');
+    const d = Save.data, sp = this.spec || {};
+    const style = sp.style || d.style, flow = sp.flow !== undefined ? sp.flow : d.flow, look = Object.assign({}, d.look, sp.look || {});
+    const key = [style, flow || '', SKIN_SLOTS.map((s) => look[s.id]).join(',')].join('|');
     if (this.p && this.key === key) return;
     if (this.p) this.p.dispose();
-    this.key = key;
-    this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: 'ST', human: true, style: d.style, flow: d.flow, number: 10, name: 'YOU', skin: SKIN_TONES[1] });
+    this.key = key; this.flow = flow;
+    this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: 'ST', human: true, style, flow, look, number: 10, name: 'YOU', skin: SKIN_TONES[1] });
     const aura = col(this.p.aura);
     this.ringMat.color.copy(aura); this.glowMat.color.copy(aura); this.beamMat.color.copy(col('#fff1d6')).lerp(aura, 0.35);
     this.p.P.root.visible = this.p.blob.visible = this.on;
@@ -86,11 +101,41 @@ const Showcase = {
   update(dt) {
     if (!this.on || !this.p) return;
     this.t += dt;
-    this.animate(dt);
+    if (this.spec && this.spec.celebrate) this.celebrate(dt); else if (this.mode === 'locker') this.idle(dt); else this.animate(dt);
     this.frame();
+  },
+  /** Locker pose: stand still with the ball at your feet, so the whole outfit is in view */
+  idle(dt) {
+    const p = this.p, P = p.P;
+    if (p.state !== 'free') p.setState('free');
+    this.turn = damp(this.turn, this.turnTo, 6, dt);
+    const yaw = SHOW_YAW + this.turn, b = Math.sin(this.t * 2.1);
+    P.root.position.set(0, 0, 0); P.root.rotation.y = yaw;
+    P.body.position.y = 0.72 + b * 0.012; P.body.rotation.set(0.02, 0, Math.sin(this.t * 1.1) * 0.015);
+    P.legL.rotation.set(0, 0, 0.04); P.legR.rotation.set(-0.08, 0, -0.06);
+    P.armL.rotation.set(Math.sin(this.t * 1.3) * 0.05, 0, 0.12 + b * 0.02); P.armR.rotation.set(-Math.sin(this.t * 1.3) * 0.05, 0, -0.12 - b * 0.02);
+    P.headP.rotation.set(0.04 + Math.sin(this.t * 0.7) * 0.03, -this.turn * 0.25, 0);
+    P.eyes.visible = !!this.flow;
+    p.blob.position.set(0, 0.025, 0); p.blob.scale.set(1, 1, 1);
+    const sy = Math.sin(yaw), cy = Math.cos(yaw), fwd = 0.34, side = -0.44;
+    this.ball.position.set(sy * fwd + cy * side, BALL_R, cy * fwd - sy * side);
+  },
+  /** loop the goal celebration in place, with the ball resting on the grass */
+  celebrate(dt) {
+    const p = this.p;
+    if (p.state !== 'celebrate') { p.setState('celebrate', 0); p._meteor = -1; }
+    p.stateT += dt;
+    if (p.stateT > 6.8) { p.stateT = 0; p._meteor = -1; }
+    p.pos.set(0, 0, 0); p.vel.set(0, 0, 0); p.onGround = true;
+    this.turn = damp(this.turn, this.turnTo, 5, dt);
+    p.yaw = SHOW_YAW + this.turn;
+    p.animate(dt);
+    p.P.eyes.visible = !!this.flow;
+    this.ball.position.set(Math.sin(p.yaw + 1.2) * 0.9, BALL_R, Math.cos(p.yaw + 1.2) * 0.9);
   },
   animate(dt) {
     const p = this.p, P = p.P, j = this.j, n = JUGGLE.length;
+    if (p.state !== 'free') { p.setState('free'); P.body.position.y = 0.72; }
     j.t += dt;
     let a = JUGGLE[j.i], b = JUGGLE[(j.i + 1) % n], s = this.segment(a, b);
     while (j.t >= s.dur) { j.t -= s.dur; j.i = (j.i + 1) % n; a = b; b = JUGGLE[(j.i + 1) % n]; s = this.segment(a, b); }
@@ -111,7 +156,7 @@ const Showcase = {
     P.armR.rotation.set(-Math.sin(this.t * 1.7) * 0.12, 0, -0.3 - 0.22 * L - Math.sin(this.t * 2.1) * 0.04);
     const look = clamp(Math.atan2(1.68 - by, Math.max(0.2, fwd)) * 0.45, -0.5, 0.55);
     P.headP.rotation.set(look - 0.3 * H, (this.turn - SHOW_FACE) * 0.3, 0);
-    P.eyes.visible = !!Save.data.flow;
+    P.eyes.visible = !!this.flow;
     p.blob.position.set(0, 0.025, 0); p.blob.scale.set(1, 1, 1);
     // ball in the player's frame: forward is (sin yaw, cos yaw), side is (cos yaw, -sin yaw)
     const sy = Math.sin(yaw), cy = Math.cos(yaw);
@@ -147,8 +192,8 @@ const Showcase = {
     const css = (r.cx / W * 100).toFixed(1) + '%|' + (r.cy / H * 100).toFixed(1) + '%';
     if (css !== this.css) {
       this.css = css;
-      const sec = $('scr-lobby'), [x, y] = css.split('|');
-      sec.style.setProperty('--stx', x); sec.style.setProperty('--sty', y);
+      const sec = st && st.closest('.screen'), [x, y] = css.split('|');
+      if (sec) { sec.style.setProperty('--stx', x); sec.style.setProperty('--sty', y); }
     }
   },
 };

@@ -198,8 +198,24 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .result-line .tag { font-family: var(--font-label); font-size: 12px; padding: 4px 8px; background: var(--emerald); color: var(--ink); }
 .result-line .tag.dupe { background: var(--muted); }
 
-/* locker */
-.locker { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
+/* locker: your player in 3D on the left (the camera fits it into #lk-fit), cards and details on the right.
+   The page itself does not scroll; only the right side does, so the preview stays in view */
+#scr-locker { overflow: hidden; background: radial-gradient(ellipse 22% 46% at var(--stx, 20%) var(--sty, 50%), rgba(9,11,22,.1) 35%, rgba(9,11,22,.9) 100%); }
+.lk-wrap { height: 100%; grid-template-rows: auto minmax(0, 1fr); }
+.locker { display: grid; grid-template-columns: minmax(220px, 340px) minmax(0, 1fr); gap: 16px; min-height: 0; }
+.lk-stage { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 8px; min-height: 0; }
+.lk-fit { position: relative; min-height: 0; touch-action: none; cursor: grab; }
+.lk-fit:active { cursor: grabbing; }
+.lk-drag { position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%); white-space: nowrap; text-shadow: 1px 1px 0 var(--ink); pointer-events: none; }
+.lk-cap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 10px 12px; }
+.lk-cap b { font-family: var(--font-display); font-size: 30px; font-weight: 400; line-height: .9; }
+.lk-cap .btn, .lk-cap .lk-lock { margin-left: auto; }
+.lk-side { display: grid; grid-auto-rows: max-content; gap: 10px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+.lk-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
+.lk-body .detail { position: sticky; top: 0; }
+.tabs.slots .tab { font-size: 20px; padding: 4px 10px 7px; }
+.lcard .art { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.lcard canvas { width: 40px; height: 40px; flex: none; }
 .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .lcard { text-align: left; cursor: pointer; display: grid; gap: 6px; padding: 10px; background: var(--slate-2); border: var(--px) solid var(--ink); box-shadow: inset 4px 0 0 var(--rc, var(--r-rare)), inset 0 -5px 0 rgba(0,0,0,.3); }
 .lcard[aria-pressed="true"] { outline: var(--px) solid var(--text); outline-offset: -6px; }
@@ -332,7 +348,11 @@ input[type="range"] { accent-color: var(--gold); width: 160px; }
 #flash.rainbow { background: linear-gradient(90deg, #ff4d5e, #ffcb3d, #2ee38f, #4aa8ff, #b65cff); }
 #boot { position: absolute; inset: 0; display: grid; place-items: center; background: var(--ink); font-family: var(--font-display); font-size: 40px; color: var(--muted); }
 @media (max-width: 760px) {
-  .locker { grid-template-columns: 1fr; }
+  .locker { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(200px, 40vh) minmax(0, 1fr); }
+  .lk-body { grid-template-columns: minmax(0, 1fr); }
+  .lk-body .detail { position: static; }
+  .lk-cap b { font-size: 24px; }
+  .lk-cap .btn { font-size: 20px; padding: 4px 10px 7px; }
   .scorebar .team { font-size: 34px; padding: 3px 8px 5px; }
   .scorebar .team .nm { display: none; }
   .flowbar { width: 300px; }
@@ -435,6 +455,10 @@ body.touch .howto .touchsec { order: -1; }
   .flabel { font-size: 18px; }
   .sub-head h2 { font-size: 40px; }
   .sub-wrap { gap: 8px; }
+  .locker { grid-template-columns: minmax(0, 230px) minmax(0, 1fr); grid-template-rows: none; gap: 12px; }
+  .lk-cap { padding: 6px 8px; gap: 4px 8px; }
+  .lk-cap b { font-size: 22px; }
+  .lk-side { gap: 6px; }
   .screen { padding-block: 10px; }
   .tab { font-size: 22px; padding: 4px 12px 7px; }
   .reel-box { padding: 8px 0; }
@@ -580,7 +604,8 @@ const Save = {
   defaults() {
     return {
       v: 1, emeralds: 500, styles: ['ROOKIE'], flows: [], style: 'ROOKIE', flow: null,
-      rp: 0, pity: { style: 0, flow: 0 },
+      skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
+      rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
       settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true },
       howto: false,
@@ -596,6 +621,10 @@ const Save = {
     const def = this.defaults();
     const out = Object.assign({}, def, d && typeof d === 'object' ? d : {});
     out.pity = Object.assign({}, def.pity, out.pity || {});
+    for (const k in out.pity) out.pity[k] = clamp(Math.floor(Number(out.pity[k]) || 0), 0, 29);
+    out.look = Object.assign({}, def.look, out.look && typeof out.look === 'object' ? out.look : {});
+    if (!Array.isArray(out.skins)) out.skins = [];
+    out.skins = out.skins.filter((s) => typeof s === 'string');
     out.stats = Object.assign({}, def.stats, out.stats || {});
     out.settings = Object.assign({}, def.settings, out.settings || {});
     const st = out.settings;
@@ -620,6 +649,13 @@ const Save = {
     d.flows = d.flows.filter((f) => FLOWS[f]);
     if (!STYLES[d.style] || !d.styles.includes(d.style)) d.style = 'ROOKIE';
     if (d.flow && (!FLOWS[d.flow] || !d.flows.includes(d.flow))) d.flow = null;
+    d.skins = d.skins.filter((s, i) => SKINS[s] && !SKINS[s].base && d.skins.indexOf(s) === i);
+    const look = {};
+    for (const sl of SKIN_SLOTS) {
+      const id = d.look[sl.id], sk = SKINS[id];
+      look[sl.id] = sk && sk.slot === sl.id && (sk.base || d.skins.includes(id)) ? id : sl.base;
+    }
+    d.look = look;
   },
   save() {
     try { window.localStorage.setItem(this.key, JSON.stringify(this.data)); this.ok = true; }
@@ -1038,7 +1074,7 @@ function makePlayerSkin(o) {
     for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) { g.fillStyle = rgbStr(shadeRGB(base, lerp(a, b, R()))); g.fillRect(x + xx, y + yy, 1, 1); }
   };
   const px = (x, y, hex) => { g.fillStyle = hex; g.fillRect(x, y, 1, 1); };
-  const { jersey, trim, shorts, socks, boots, skin, hair, number, gloves, eye } = o;
+  const { jersey, trim, shorts, socks, boots, skin, hair, number, gloves, eye, sparkle } = o;
   // head
   fillN(8, 0, 8, 8, hair, 0.82, 1.08);                       // top
   fillN(16, 0, 8, 8, skin, 0.92, 1.0);                       // bottom (chin)
@@ -1065,7 +1101,13 @@ function makePlayerSkin(o) {
   // legs: shorts, socks, boots
   fillN(4, 16, 4, 4, shorts); fillN(8, 16, 4, 4, '#1a1a1f');
   for (let s = 0; s < 4; s++) { fillN(s * 4, 20, 4, 4, shorts); fillN(s * 4, 24, 4, 6, socks); g.fillStyle = trim; g.fillRect(s * 4, 25, 4, 1); fillN(s * 4, 30, 4, 2, boots, 0.85, 1.1); }
+  if (sparkle) for (let s = 0; s < 4; s++) { px(s * 4 + (s % 2), 30, '#ffffff'); px(s * 4 + 2 + (s % 2), 31, '#ffe9a8'); }
+  fillN(8, 16, 4, 4, boots, 0.7, 0.85); // boot soles
   return Tex.fromCanvas(c);
+}
+function makePrismTexture() {
+  const cols = ['#ff4d5e', '#ff9a3c', '#ffcb3d', '#2ee38f', '#4aa8ff', '#b65cff'].map(hexRGB);
+  return Tex.pixels(12, 8, (x, y) => shadeRGB(cols[Math.floor((x + y) / 2) % 6], y === 0 ? 1.1 : 0.95), { repeat: true });
 }
 function makeHairTexture(hex, seed) {
   const R = mulberry32(seed);
@@ -1144,16 +1186,30 @@ const ICON_MAPS = {
   bolt: ['............', '......YYY...', '.....YYY....', '....YYY.....', '...YYYYYY...', '......YYY...', '.....YYY....', '....YYY.....', '...YY.......', '..Y.........', '............', '............'],
   lock: ['............', '....kkkk....', '...k....k...', '...k....k...', '..kkkkkkkk..', '..kggggggk..', '..kggkkggk..', '..kggkkggk..', '..kggggggk..', '..kkkkkkkk..', '............', '............'],
   jump: ['............', '.....kk.....', '....kwwk....', '...kwwwwk...', '..kwwwwwwk..', '.kwwwwwwwwk.', '.kkkkwwkkkk.', '....kwwk....', '....kwwk....', '....kwwk....', '....kkkk....', '............'],
+  boot: ['............', '............', '............', '...kkkk.....', '...kAAk.....', '...kAAk.....', '...kAAkkkk..', '..kAAAAAAAk.', '..kAAAAAAAAk', '..kkkkkkkkkk', '...w.w.w.w..', '............'],
+  glove: ['............', '....k.k.k...', '...kAkAkAk..', '...kAkAkAk..', '.k.kAAAAAk..', 'kAkkAAAAAk..', 'kAAAAAAAAk..', '.kAAAAAAAk..', '..kAAAAAk...', '..kwwwwwk...', '..kkkkkkk...', '............'],
+  band: ['............', '...kkkkkk...', '..kHHHHHHk..', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kSSSSSSSSk.', '.kSwkSSkwSk.', '.kSSSSSSSSk.', '.kSSSSSSSSk.', '..kSSSSSSk..', '...kkkkkk...', '............'],
+  mask: ['............', '...kkkkkk...', '..kHHHHHHk..', '.kHHHHHHHHk.', '.kSSSSSSSSk.', '.kSwkSSkwSk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '..kAAAAAAk..', '...kkkkkk...', '............'],
+  chain: ['............', '.A........A.', '.A........A.', '..A......A..', '..A......A..', '...A....A...', '...A....A...', '....A..A....', '.....AA.....', '....kAAk....', '....kAAk....', '.....kk.....'],
+  celeb: ['............', '..A......A..', '..A..kk..A..', '...A.kk.A...', '....AAAA....', '.....AA.....', '.....AA.....', '....A..A....', '...A....A...', '..A......A..', '............', '............'],
   pause: ['............', '............', '.kkkk..kkkk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kkkk..kkkk.', '............', '............'],
 };
 const ICON_PAL_BASE = {
   k: '#0a0c17', w: '#f5f1e6', L: '#c9ffe4', l: '#7ff5bd', E: '#2ee38f', e: '#149e5c', m: '#8a3a1c', M: '#c4622d', h: '#e89a5c', d: '#7a5233',
   r: '#7a1010', R: '#e0302a', G: '#1f7a18', g: '#9aa1ad', s: '#3a3f4f', o: '#ff8a2a', O: '#ffd23d', b: '#9fd4ff', c: '#8fd8ff', Y: '#ffd23d',
+  H: '#3b2a22', S: '#e8b48a',
 };
+const PRISM_COLS = ['#ff4d5e', '#ff9a3c', '#ffcb3d', '#2ee38f', '#4aa8ff', '#b65cff'];
 const _iconCache = new Map();
 function iconURL(name, aura = '#ffffff', variant = '') {
   const key = name + '|' + aura + '|' + variant;
   if (_iconCache.has(key)) return _iconCache.get(key);
+  const url = iconCanvas(name, aura, variant).toDataURL('image/png');
+  _iconCache.set(key, url);
+  return url;
+}
+/** the same pixel icon as a 48x48 canvas */
+function iconCanvas(name, aura = '#ffffff', variant = '') {
   let map = ICON_MAPS[name];
   const pal = Object.assign({}, ICON_PAL_BASE, { A: aura });
   if (name === 'emerald') Object.assign(pal, { k: '#0a3d27' });
@@ -1168,10 +1224,11 @@ function iconURL(name, aura = '#ffffff', variant = '') {
     pal.Z = '#2c3150'; pal.z = '#565c80';
   }
   const S = 4, c = mkCanvas(12 * S, 12 * S), g = c.getContext('2d');
-  map.forEach((row, y) => row.split('').forEach((ch, x) => { if (pal[ch]) { g.fillStyle = pal[ch]; g.fillRect(x * S, y * S, S, S); } }));
-  const url = c.toDataURL('image/png');
-  _iconCache.set(key, url);
-  return url;
+  map.forEach((row, y) => row.split('').forEach((ch, x) => {
+    const fill = variant === 'prism' && ch === 'A' ? PRISM_COLS[Math.floor((x + y) / 2) % 6] : pal[ch];
+    if (fill) { g.fillStyle = fill; g.fillRect(x * S, y * S, S, S); }
+  }));
+  return c;
 }
 const TIER_MATS = [
   { name: 'WOOD', a: '#a8743f', b: '#7d5229', hl: '#d29a5c', pat: 'plank' },
@@ -1210,23 +1267,44 @@ function badgeURL(tier) {
   _iconCache.set(key, url);
   return url;
 }
-/** pixel portrait of a style (head front + hair + aura frame) */
-function portraitCanvas(styleId, size = 96) {
-  const st = STYLES[styleId];
+/** pixel portrait of a style (head front + hair + aura frame); `look` can swap the haircut and colour */
+function portraitCanvas(styleId, size = 96, look = null) {
+  const st = STYLES[styleId] || STYLES.ROOKIE;
   const c = mkCanvas(16, 16), g = c.getContext('2d');
   g.fillStyle = st.aura; g.globalAlpha = 0.28; g.fillRect(0, 0, 16, 16); g.globalAlpha = 1;
-  const skin = '#e8b48a', hair = st.hair;
+  const skin = '#e8b48a', hair = (look && look.hair) || st.hair, shape = (look && look.hairShape) || st.hairShape;
   g.fillStyle = '#0a0c17'; g.fillRect(3, 3, 10, 11);
   g.fillStyle = skin; g.fillRect(4, 4, 8, 9);
   g.fillStyle = hair; g.fillRect(4, 3, 8, 3); g.fillRect(3, 4, 1, 4); g.fillRect(12, 4, 1, 4);
-  if (st.hairShape === 'long') { g.fillRect(3, 4, 1, 9); g.fillRect(12, 4, 1, 9); }
-  if (st.hairShape === 'fluffy') { g.fillRect(3, 2, 10, 2); }
-  if (st.hairShape === 'spiky') { g.fillRect(4, 2, 1, 1); g.fillRect(7, 2, 1, 1); g.fillRect(10, 2, 1, 1); }
+  if (look && look.prism) ['#ff4d5e', '#ff9a3c', '#ffcb3d', '#2ee38f', '#4aa8ff', '#b65cff', '#ff4d5e', '#ffcb3d'].forEach((h, i) => { g.fillStyle = h; g.fillRect(4 + i, 3, 1, 3); });
+  g.fillStyle = hair;
+  if (shape === 'long') { g.fillRect(3, 4, 1, 9); g.fillRect(12, 4, 1, 9); }
+  if (shape === 'bob') { g.fillRect(3, 4, 1, 6); g.fillRect(12, 4, 1, 6); }
+  if (shape === 'fluffy') { g.fillRect(3, 2, 10, 2); }
+  if (shape === 'spiky') { g.fillRect(4, 2, 1, 1); g.fillRect(7, 2, 1, 1); g.fillRect(10, 2, 1, 1); }
+  if (shape === 'messy') { g.fillRect(5, 2, 2, 1); g.fillRect(9, 2, 1, 1); }
+  if (shape === 'swept') { g.fillRect(4, 2, 8, 1); g.fillRect(11, 1, 2, 1); }
+  if (shape === 'bun') { g.fillRect(6, 1, 4, 2); }
+  if (shape === 'flattop') { g.fillRect(4, 0, 8, 3); }
+  if (shape === 'mohawk') { g.fillStyle = skin; g.fillRect(4, 3, 3, 2); g.fillRect(9, 3, 3, 2); g.fillStyle = hair; g.fillRect(7, 0, 2, 5); }
   g.fillStyle = '#f7f7f2'; g.fillRect(5, 8, 2, 1); g.fillRect(9, 8, 2, 1);
   g.fillStyle = st.aura; g.fillRect(6, 8, 1, 1); g.fillRect(9, 8, 1, 1);
   g.fillStyle = '#7a4a30'; g.fillRect(7, 11, 2, 1);
   const out = mkCanvas(size, size), og = out.getContext('2d');
   og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size);
+  out.className = 'px';
+  return out;
+}
+/** card art for a skin: a portrait for hair and colours, a pixel icon for the rest */
+const SKIN_ICON = { boots: 'boot', gloves: 'glove', band: 'band', mask: 'mask', chain: 'chain', celeb: 'celeb' };
+function skinCanvas(id, size = 96) {
+  const sk = SKINS[id];
+  if (sk.slot === 'hair') return portraitCanvas('ROOKIE', size, { hairShape: sk.shape || 'short', hair: '#6b3e22' });
+  if (sk.slot === 'color') return portraitCanvas('ROOKIE', size, { hair: sk.hex || '#3b2a22', prism: sk.prism });
+  const name = sk.acc ? SKIN_ICON[sk.acc] : sk.slot === 'acc' ? 'lock' : SKIN_ICON[sk.slot];
+  const src = iconCanvas(name, sk.hex || (sk.slot === 'celeb' ? RARITY_HEX[sk.rarity] : '#8a8fa8'), sk.prism || sk.sparkle || sk.rarity === 'Generational' ? 'prism' : '');
+  const out = mkCanvas(size, size), og = out.getContext('2d');
+  og.imageSmoothingEnabled = false; og.drawImage(src, 0, 0, size, size);
   out.className = 'px';
   return out;
 }
@@ -2012,7 +2090,33 @@ const HAIR_SHAPES = {
   messy: [[-0.28, -0.06, -0.28, 0.28, 0.12, 0.28], [-0.3, -0.26, -0.2, -0.2, 0.02, 0.1], [0.2, -0.22, -0.24, 0.3, 0.02, 0.06], [-0.1, 0.1, -0.12, 0.08, 0.22, 0.06], [0.06, 0.1, 0.06, 0.2, 0.18, 0.2], [-0.24, -0.3, -0.31, 0.2, 0.0, -0.2]],
   fluffy: [[-0.31, -0.08, -0.31, 0.31, 0.17, 0.31], [-0.32, -0.3, -0.31, -0.22, 0.0, 0.16], [0.22, -0.3, -0.31, 0.32, 0.0, 0.16], [-0.3, -0.36, -0.33, 0.3, 0.0, -0.18]],
   spiky: [[-0.26, -0.06, -0.26, 0.26, 0.1, 0.26], [-0.2, 0.1, -0.16, -0.08, 0.26, -0.04], [0.02, 0.1, -0.06, 0.14, 0.3, 0.06], [-0.1, 0.1, 0.08, 0.02, 0.22, 0.2], [0.12, 0.1, -0.22, 0.24, 0.24, -0.1], [-0.22, 0.1, 0.02, -0.12, 0.2, 0.14], [-0.26, -0.24, -0.29, 0.26, 0.0, -0.18]],
+  bun: [[-0.26, -0.05, -0.26, 0.26, 0.08, 0.26], [-0.26, -0.22, -0.29, 0.26, 0.0, -0.18], [-0.11, 0.08, -0.24, 0.11, 0.27, -0.04]],
+  flattop: [[-0.27, -0.06, -0.27, 0.27, 0.27, 0.27], [-0.27, -0.16, -0.29, 0.27, 0.0, -0.18]],
+  mohawk: [[-0.25, -0.03, -0.25, 0.25, 0.02, 0.25], [-0.06, 0.0, -0.29, 0.06, 0.14, 0.25], [-0.05, 0.14, 0.1, 0.05, 0.25, 0.21], [-0.05, 0.14, -0.07, 0.05, 0.31, 0.05], [-0.05, 0.14, -0.25, 0.05, 0.24, -0.12]],
 };
+/** headband size: hug the head, or the hair where the band crosses it (head-local y 0.355 to 0.415) */
+const _bandCache = {};
+function bandGeo(shape) {
+  if (_bandCache[shape]) return _bandCache[shape];
+  let x = 0.25, zf = 0.25, zb = 0.25;
+  for (const b of HAIR_SHAPES[shape] || HAIR_SHAPES.short) {
+    if (b[4] + 0.48 < 0.355 || b[1] + 0.48 > 0.415) continue;
+    x = Math.max(x, -b[0] + 0.012, b[3] + 0.012); zb = Math.max(zb, -b[2] + 0.012); zf = Math.max(zf, b[5] + 0.012);
+  }
+  const v = new VoxBuilder(); v.box(-x, 0.355, -zb, x, 0.415, zf, '#ffffff', { ao: 0.85 });
+  return (_bandCache[shape] = v.geometry());
+}
+let _accGeo = null;
+function accGeo() {
+  if (_accGeo) return _accGeo;
+  const mask = new VoxBuilder(); mask.box(-0.255, 0.0, -0.06, 0.255, 0.19, 0.258, '#ffffff', { ao: 0.8 });
+  mask.box(-0.258, 0.07, 0.2, 0.258, 0.1, 0.262, '#9a9fb0', { ao: 1 });
+  // a chain hangs from the collar in a V, with a square pendant
+  const chain = new VoxBuilder(), c = 0.022;
+  for (let i = 0; i <= 6; i++) { const t = i / 6, x = 0.14 * (1 - t), y = 0.71 - 0.19 * t; for (const s of [1, -1]) chain.box(s * x - c, y - c, 0.128, s * x + c, y + c, 0.155, '#ffffff', { ao: 0.9 }); }
+  chain.box(-0.045, 0.43, 0.128, 0.045, 0.52, 0.17, '#ffffff', { ao: 0.9 });
+  return (_accGeo = { mask: mask.geometry(), chain: chain.geometry() });
+}
 const _hairGeoCache = {}, _hairMatCache = {}, _eyeMatCache = {};
 function hairGeo(shape) {
   if (_hairGeoCache[shape]) return _hairGeoCache[shape];
@@ -2020,7 +2124,7 @@ function hairGeo(shape) {
   for (const b of HAIR_SHAPES[shape] || HAIR_SHAPES.short) v.box(b[0], b[1], b[2], b[3], b[4], b[5], '#ffffff', { uv: 6, ao: 0.82 });
   return (_hairGeoCache[shape] = v.geometry());
 }
-function hairMat(hex) { return _hairMatCache[hex] || (_hairMatCache[hex] = new THREE.MeshLambertMaterial({ map: makeHairTexture(hex, hex.length * 31 + parseInt(hex.slice(1, 3), 16)), vertexColors: true })); }
+function hairMat(hex) { return _hairMatCache[hex] || (_hairMatCache[hex] = new THREE.MeshLambertMaterial({ map: hex === 'prism' ? makePrismTexture() : makeHairTexture(hex, hex.length * 31 + parseInt(hex.slice(1, 3), 16)), vertexColors: true })); }
 function eyeMat(hex) { return _eyeMatCache[hex] || (_eyeMatCache[hex] = new THREE.MeshBasicMaterial({ color: lin(hex), toneMapped: false })); }
 
 class Player {
@@ -2031,6 +2135,7 @@ class Player {
     this.styleId = o.style; this.style = STYLES[o.style];
     this.flowId = o.flow || null;
     this.skin = o.skin || pick(SKIN_TONES);
+    this.look = lookFor(o.style, o.look || {});
     this.pos = V3(); this.vel = V3(); this.yaw = 0; this.onGround = true; this.airT = 0;
     this.mx = 0; this.mz = 0; this.sprint = false; this.faceYaw = null; this.exhausted = false;
     this.stamina = 100; this.stamDelay = 0;
@@ -2056,9 +2161,10 @@ class Player {
   buildModel() {
     const team = TEAM[this.team];
     const kit = this.isGK ? Object.assign({}, team, team.gk) : team;
+    const L = this.look;
     this.skinTex = makePlayerSkin({
-      jersey: kit.jersey, trim: kit.trim, shorts: kit.shorts, socks: kit.socks, boots: kit.boots,
-      skin: this.skin, hair: this.style.hair, number: this.number, gloves: this.isGK ? '#f2f2ea' : null, eye: pick(EYE_COLS),
+      jersey: kit.jersey, trim: kit.trim, shorts: kit.shorts, socks: kit.socks, boots: L.boots || kit.boots, sparkle: L.sparkle,
+      skin: this.skin, hair: L.hair, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: pick(EYE_COLS),
       seed: this.team * 97 + this.number * 13 + 7,
     });
     this.mat = new THREE.MeshLambertMaterial({ map: this.skinTex });
@@ -2069,12 +2175,18 @@ class Player {
     mk(G.body, this.mat, body, 0, 0.36, 0);
     const headP = new THREE.Group(); headP.position.y = 0.72; body.add(headP);
     mk(G.head, this.mat, headP, 0, 0.24, 0);
-    mk(hairGeo(this.style.hairShape), hairMat(this.style.hair), headP, 0, 0.48, 0);
+    mk(hairGeo(L.hairShape), hairMat(L.prism ? 'prism' : L.hair), headP, 0, 0.48, 0);
+    if (L.acc) {
+      const am = this.accMat = new THREE.MeshLambertMaterial({ color: lin(L.acc.hex), vertexColors: true, emissive: lin(L.acc.hex), emissiveIntensity: L.acc.glow || 0.08 });
+      if (L.acc.kind === 'band') mk(bandGeo(L.hairShape), am, headP, 0, 0, 0);
+      else if (L.acc.kind === 'mask') mk(accGeo().mask, am, headP, 0, 0, 0);
+    }
     const eyes = new THREE.Mesh(G.eyes, eyeMat(this.style.aura)); eyes.position.set(0, 0.21, 0.236); eyes.visible = false; headP.add(eyes);
     const armL = new THREE.Group(); armL.position.set(0.35, 0.68, 0); body.add(armL); mk(G.arm, this.mat, armL, 0, -0.3, 0);
     const armR = new THREE.Group(); armR.position.set(-0.35, 0.68, 0); body.add(armR); mk(G.arm, this.mat, armR, 0, -0.3, 0);
     const legL = new THREE.Group(); legL.position.set(0.12, 0, 0); body.add(legL); mk(G.leg, this.mat, legL, 0, -0.36, 0);
     const legR = new THREE.Group(); legR.position.set(-0.12, 0, 0); body.add(legR); mk(G.leg, this.mat, legR, 0, -0.36, 0);
+    if (L.acc && L.acc.kind === 'chain') mk(accGeo().chain, this.accMat, body, 0, 0, 0);
     this.P = { root, body, headP, armL, armR, legL, legR, eyes };
     this.blob = new THREE.Mesh(G.blob, G.blobMat);
     this.m.scene.add(root, this.blob);
@@ -2083,6 +2195,7 @@ class Player {
     this.m.scene.remove(this.P.root, this.blob);
     for (const k of ['ring', 'bubble', 'ice']) if (this[k]) { this.m.scene.remove(this[k]); this[k].material.dispose(); }
     this.skinTex.dispose(); this.mat.dispose();
+    if (this.accMat) this.accMat.dispose();
   }
   setState(s, dur = 0) { this.state = s; this.stateT = 0; this.stateDur = dur; }
   computeMods() {
@@ -2226,7 +2339,7 @@ class Player {
     // targets
     let bx = run * 0.14, bz = 0, by = 0.72 + Math.abs(Math.cos(this.animPhase)) * 0.05 * run;
     let lL = s * 0.9 * run, lR = -s * 0.9 * run, aL = -s * 0.8 * run, aR = s * 0.8 * run, aLz = 0.06, aRz = -0.06;
-    let hx = 0;
+    let hx = 0, snapX = false;
     if (!this.onGround && st === 'free') { lL = -0.55; lR = 0.35; aL = -0.5; aR = -0.3; aLz = 0.5; aRz = -0.5; }
     if (this.charging) { lR = 0.4 + this.charge * 0.8; aLz = 0.7; aRz = -0.35; bx = -0.05 - this.charge * 0.08; }
     if (this.kickT >= 0) {
@@ -2253,12 +2366,36 @@ class Player {
       }
       case 'dash': bx = 0.32; aL = 0.7; aR = 0.7; lL = s * 1.1; lR = -s * 1.1; break;
       case 'windup': bx = 0.5; by = 0.6; aL = 0.9; aR = 0.9; aLz = 0.4; aRz = -0.4; lL = -0.5; lR = 0.4; break;
-      case 'celebrate': { const j = Math.abs(Math.sin(this.stateT * 9)); by = 0.72 + j * 0.25; aL = aR = 0; aLz = 2.6 + Math.sin(this.stateT * 14) * 0.3; aRz = -2.6 - Math.sin(this.stateT * 14) * 0.3; lL = lR = 0; bx = 0; break; }
+      case 'celebrate': {
+        const t = this.stateT, c = this.look.celeb;
+        lL = lR = 0; bx = 0; aL = aR = 0;
+        if (c === 'plane') { aLz = 1.55; aRz = -1.55; bz = Math.sin(t * 3.2) * 0.38; bx = 0.18; lL = Math.sin(t * 9) * 0.5; lR = -lL; by = 0.72 + Math.abs(Math.cos(t * 9)) * 0.05; }
+        else if (c === 'shush') { aR = -2.55; aRz = 0.35; aL = 0.1; aLz = 0.35; hx = -0.08 + Math.sin(t * 2.2) * 0.06; bz = Math.sin(t * 1.6) * 0.05; }
+        else if (c === 'robot') {
+          const q = Math.floor(t * 3.2) % 4, st4 = [[-1.5, 0, 0.3], [0, -1.5, -0.3], [-1.5, -1.5, 0.3], [0, 0, -0.3]][q];
+          aL = st4[0]; aR = st4[1]; aLz = 0.1; aRz = -0.1; bz = st4[2] * 0.25; hx = q % 2 ? 0.15 : -0.1;
+        } else if (c === 'knees') {
+          const k = Math.min(1, t / 0.25);
+          by = 0.72 - 0.42 * k; bx = -0.42 * k; lL = lR = 1.25 * k; aLz = 2.2 + Math.sin(t * 6) * 0.15; aRz = -2.2 - Math.sin(t * 6) * 0.15; aL = aR = 0.3; hx = -0.35 * k;
+        } else if (c === 'flip') {
+          const ph = (t % 1.3) / 1.3, f = clamp((ph - 0.12) / 0.5, 0, 1);
+          snapX = true;
+          by = 0.72 + Math.sin(Math.PI * f) * 1.0; bx = -TAU * smooth(f); lL = -1.1 * Math.sin(Math.PI * f); lR = 0.3; aLz = 2.4; aRz = -2.4;
+        } else if (c === 'meteor') {
+          const ph = (t % 1.7) / 1.7, up = ph < 0.55 ? Math.sin(ph / 0.55 * Math.PI / 2) : ph < 0.7 ? 1 : Math.max(0, 1 - (ph - 0.7) / 0.1);
+          by = 0.72 + up * 2.4; aLz = 2.7; aRz = -2.7; lL = -0.4 * up; lR = 0.4 * up;
+          if (ph > 0.8 && ph < 0.9) bx = 0.25;
+          const k = Math.floor(t / 1.7);
+          if (ph >= 0.8 && this._meteor !== k) { this._meteor = k; FX.ring(this.pos.x, 0.2, this.pos.z, this.aura, 1.6, 26); FX.sparks(this.pos.x, 0.4, this.pos.z, this.aura, 18, 7); Shake.add(this.isHuman ? 0.25 : 0); }
+        } else { const j = Math.abs(Math.sin(t * 9)); by = 0.72 + j * 0.25; aLz = 2.6 + Math.sin(t * 14) * 0.3; aRz = -2.6 - Math.sin(t * 14) * 0.3; }
+        break;
+      }
     }
     if (this.flipT >= 0) { bx = -this.flipT * TAU; lL = -1.2; lR = 0.3; }
     const k = st === 'frozen' ? 0 : 1 - Math.exp(-22 * dt);
     const r = (o, prop, v) => { o.rotation[prop] += (v - o.rotation[prop]) * k; };
-    r(P.body, 'x', bx); r(P.body, 'z', bz); P.body.position.y += (by - P.body.position.y) * k;
+    r(P.body, 'x', bx); r(P.body, 'z', bz);
+    if (snapX) P.body.rotation.x = bx; // full flips are set directly, easing would unwind them P.body.position.y += (by - P.body.position.y) * k;
     r(P.legL, 'x', lL); r(P.legR, 'x', lR);
     r(P.armL, 'x', aL); r(P.armR, 'x', aR); r(P.armL, 'z', aLz); r(P.armR, 'z', aRz);
     r(P.headP, 'x', hx);
@@ -2699,6 +2836,83 @@ const ITEMS = {
 };
 const ITEM_IDS = Object.keys(ITEMS);
 
+/* ---------- skins: looks only, they never change stats ----------
+   Every slot has a free base skin that everyone owns. The rest come from Skin Spins (and later the game pass). */
+const SKIN_SLOTS = [
+  { id: 'hair', name: 'HAIR', base: 'STYLE_HAIR' }, { id: 'color', name: 'COLOUR', base: 'STYLE_COLOR' },
+  { id: 'boots', name: 'BOOTS', base: 'TEAM_BOOTS' }, { id: 'gloves', name: 'GLOVES', base: 'NO_GLOVES' },
+  { id: 'acc', name: 'EXTRA', base: 'NO_ACC' }, { id: 'celeb', name: 'GOAL', base: 'JUMP' },
+];
+const SKINS = {
+  STYLE_HAIR: { slot: 'hair', name: 'STYLE CUT', rarity: 'Rare', base: true, desc: 'The haircut that comes with your style.' },
+  CROP: { slot: 'hair', name: 'CROP', rarity: 'Rare', shape: 'short' },
+  MANE: { slot: 'hair', name: 'MANE', rarity: 'Rare', shape: 'long' },
+  BOB: { slot: 'hair', name: 'BOB', rarity: 'Rare', shape: 'bob' },
+  TOP_BUN: { slot: 'hair', name: 'TOP BUN', rarity: 'Rare', shape: 'bun' },
+  SWEEP: { slot: 'hair', name: 'SWEEP', rarity: 'Epic', shape: 'swept' },
+  BED_HEAD: { slot: 'hair', name: 'BED HEAD', rarity: 'Epic', shape: 'messy' },
+  FLAT_TOP: { slot: 'hair', name: 'FLAT TOP', rarity: 'Epic', shape: 'flattop' },
+  CLOUD: { slot: 'hair', name: 'CLOUD', rarity: 'Legendary', shape: 'fluffy' },
+  SPIKES: { slot: 'hair', name: 'SPIKES', rarity: 'Legendary', shape: 'spiky' },
+  MOHAWK: { slot: 'hair', name: 'MOHAWK', rarity: 'Mythic', shape: 'mohawk' },
+  STYLE_COLOR: { slot: 'color', name: 'STYLE COLOUR', rarity: 'Rare', base: true, desc: 'The hair colour that comes with your style.' },
+  JET: { slot: 'color', name: 'JET', rarity: 'Rare', hex: '#15131b' },
+  CHESTNUT: { slot: 'color', name: 'CHESTNUT', rarity: 'Rare', hex: '#6b3e22' },
+  SANDY: { slot: 'color', name: 'SANDY', rarity: 'Rare', hex: '#d8b06a' },
+  SNOW: { slot: 'color', name: 'SNOW', rarity: 'Epic', hex: '#eef1f7' },
+  CRIMSON: { slot: 'color', name: 'CRIMSON', rarity: 'Epic', hex: '#c8283a' },
+  OCEAN: { slot: 'color', name: 'OCEAN', rarity: 'Epic', hex: '#2a64ff' },
+  MINT: { slot: 'color', name: 'MINT', rarity: 'Legendary', hex: '#4fe3a1' },
+  VIOLET: { slot: 'color', name: 'VIOLET', rarity: 'Legendary', hex: '#9150e8' },
+  SUNSET: { slot: 'color', name: 'SUNSET', rarity: 'Mythic', hex: '#ff7a2a' },
+  PRISM: { slot: 'color', name: 'PRISM', rarity: 'Generational', hex: '#b65cff', prism: true },
+  TEAM_BOOTS: { slot: 'boots', name: 'TEAM BOOTS', rarity: 'Rare', base: true, desc: 'Plain boots in your team colours.' },
+  CHALK: { slot: 'boots', name: 'CHALK', rarity: 'Rare', hex: '#f4efe0' },
+  BLACKOUT: { slot: 'boots', name: 'BLACKOUT', rarity: 'Rare', hex: '#121217' },
+  LIME: { slot: 'boots', name: 'LIME', rarity: 'Epic', hex: '#a6ff2e' },
+  MAGMA: { slot: 'boots', name: 'MAGMA', rarity: 'Epic', hex: '#ff4a1c' },
+  ICE: { slot: 'boots', name: 'ICE', rarity: 'Legendary', hex: '#8fe6ff' },
+  GOLDEN: { slot: 'boots', name: 'GOLDEN', rarity: 'Mythic', hex: '#ffcc33' },
+  STARDUST: { slot: 'boots', name: 'STARDUST', rarity: 'Generational', hex: '#241a5a', sparkle: true },
+  NO_GLOVES: { slot: 'gloves', name: 'BARE HANDS', rarity: 'Rare', base: true, desc: 'No gloves.' },
+  BLACK_GLOVES: { slot: 'gloves', name: 'NIGHT GLOVES', rarity: 'Rare', hex: '#1a1a22' },
+  WHITE_GLOVES: { slot: 'gloves', name: 'CHALK GLOVES', rarity: 'Rare', hex: '#f2f2ea' },
+  RED_GLOVES: { slot: 'gloves', name: 'RED GLOVES', rarity: 'Epic', hex: '#d8262e' },
+  GOLD_GLOVES: { slot: 'gloves', name: 'GOLD GLOVES', rarity: 'Legendary', hex: '#ffc93d' },
+  NO_ACC: { slot: 'acc', name: 'NOTHING', rarity: 'Rare', base: true, desc: 'No extra.' },
+  RED_BAND: { slot: 'acc', name: 'RED HEADBAND', rarity: 'Rare', acc: 'band', hex: '#e0302a' },
+  WHITE_BAND: { slot: 'acc', name: 'WHITE HEADBAND', rarity: 'Rare', acc: 'band', hex: '#f4f1e8' },
+  BLACK_BAND: { slot: 'acc', name: 'BLACK HEADBAND', rarity: 'Epic', acc: 'band', hex: '#17171d' },
+  FACE_MASK: { slot: 'acc', name: 'FACE MASK', rarity: 'Epic', acc: 'mask', hex: '#22242e' },
+  SILVER_CHAIN: { slot: 'acc', name: 'SILVER CHAIN', rarity: 'Epic', acc: 'chain', hex: '#d9dde4' },
+  GOLD_CHAIN: { slot: 'acc', name: 'GOLD CHAIN', rarity: 'Legendary', acc: 'chain', hex: '#ffc93d' },
+  CHROME_MASK: { slot: 'acc', name: 'CHROME MASK', rarity: 'Mythic', acc: 'mask', hex: '#b8c4d6', glow: 0.35 },
+  ICE_CHAIN: { slot: 'acc', name: 'ICE CHAIN', rarity: 'Generational', acc: 'chain', hex: '#7ff6ff', glow: 0.8 },
+  JUMP: { slot: 'celeb', name: 'BIG JUMP', rarity: 'Rare', base: true, celeb: 'jump', desc: 'Jump for joy with both arms up.' },
+  AIRPLANE: { slot: 'celeb', name: 'AIRPLANE', rarity: 'Rare', celeb: 'plane', desc: 'Arms out wide, tilting side to side.' },
+  SHUSH: { slot: 'celeb', name: 'SHUSH', rarity: 'Epic', celeb: 'shush', desc: 'A finger to the lips for the away fans.' },
+  ROBOT: { slot: 'celeb', name: 'ROBOT', rarity: 'Epic', celeb: 'robot', desc: 'Stiff, stepped robot dance moves.' },
+  KNEE_SLIDE: { slot: 'celeb', name: 'KNEE SLIDE', rarity: 'Legendary', celeb: 'knees', desc: 'Drop to the knees, lean back and soak it in.' },
+  BACKFLIP: { slot: 'celeb', name: 'BACKFLIP', rarity: 'Mythic', celeb: 'flip', desc: 'Backflip after backflip.' },
+  METEOR: { slot: 'celeb', name: 'METEOR', rarity: 'Generational', celeb: 'meteor', desc: 'Leap sky high, then slam down in a ring of light.' },
+};
+const SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base);
+/** the concrete colours and shapes a player model is built from: the style's defaults with skins on top */
+function lookFor(styleId, look = {}) {
+  const st = STYLES[styleId] || STYLES.ROOKIE, S = (slot) => SKINS[look[slot]] || {};
+  const acc = S('acc');
+  return {
+    hairShape: S('hair').shape || st.hairShape, hair: S('color').hex || st.hair, prism: !!S('color').prism,
+    boots: S('boots').hex || null, sparkle: !!S('boots').sparkle, gloves: S('gloves').hex || null,
+    acc: acc.acc ? { kind: acc.acc, hex: acc.hex, glow: acc.glow || 0 } : null, celeb: S('celeb').celeb || 'jump',
+  };
+}
+/** bots wear a few skins too, so matches show them off */
+function botLook() {
+  const any = (slot, p) => (chance(p) ? pick(SKIN_IDS.filter((k) => SKINS[k].slot === slot)) : null);
+  return { boots: any('boots', 0.4), color: any('color', 0.2), acc: any('acc', 0.22), gloves: any('gloves', 0.15), celeb: any('celeb', 0.6) };
+}
+
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /** bot difficulty 0..1 from rank points */
@@ -2712,6 +2926,7 @@ function rollRarity(pity) {
 }
 function poolFor(kind, rarityIdx) {
   const rar = RARITIES[rarityIdx];
+  if (kind === 'skin') return SKIN_IDS.filter((k) => SKINS[k].rarity === rar);
   const src = kind === 'style' ? STYLES : FLOWS;
   return Object.keys(src).filter((k) => src[k].rarity === rar);
 }
@@ -2759,7 +2974,8 @@ class Match {
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
         const style = human ? (opts.style || Save.data.style) : pick(STYLE_IDS);
         const flow = human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
-        const p = new Player(this, { team, role, human, style, flow, number: num, name: human ? 'YOU' : names.pop() });
+        const look = human ? (opts.look || Save.data.look) : botLook();
+        const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[1] : null, number: num, name: human ? 'YOU' : names.pop() });
         if (!human && team === 1) p.speedMul = 1 + 0.045 * this.d;
         this.players.push(p); this.teams[team].push(p);
         if (human) this.human = p;
@@ -4789,12 +5005,14 @@ const Touch = {
 /* ---- 11_showcase.js ---- */
 /* =====================================================================
    Showcase: your player on a lit spot in the stadium for the start
-   screen. Juggles a ball and turns toward the mouse or a finger drag.
+   screen and the Locker. Juggles a ball (or plays a goal celebration)
+   and turns toward the mouse, or spins when you drag it in the Locker.
    The page decides where the player goes: the camera fits the player
-   into the box of the current "stage" element (#lob-stage).
+   into the box of the current "stage" element (#lob-stage, #lk-fit).
    ===================================================================== */
 const SHOW_FOV = 34, SHOW_H = 2.55, SHOW_MID = 1.08, SHOW_CAM_Y = 1.2, SHOW_YAW = Math.PI + 0.3, SHOW_G = 13;
 const SHOW_FACE = -0.55; // the player stands turned a little toward the menu, so the ball never hides the face
+const SHOW_FACE_LOCKER = -0.2;
 // each touch: [body part, ball height, reach in front, side, how high it pops above the next touch]
 const JUGGLE = [
   ['R', 0.55, 0.5, -0.12, 0.7], ['L', 0.55, 0.5, 0.12, 0.65], ['R', 0.55, 0.5, -0.12, 0.75], ['K', 0.86, 0.62, -0.12, 0.45],
@@ -4802,7 +5020,7 @@ const JUGGLE = [
 ];
 
 const Showcase = {
-  p: null, key: '', on: false, t: 0, turn: SHOW_FACE, turnTo: SHOW_FACE, drag: null, rect: null, stageId: 'lob-stage', j: { i: 0, t: 0 }, sparkT: 0, css: '',
+  p: null, key: '', on: false, t: 0, turn: SHOW_FACE, turnTo: SHOW_FACE, drag: null, dragX: 0, rect: null, stageId: 'lob-stage', mode: 'lobby', spec: null, j: { i: 0, t: 0 }, sparkT: 0, css: '',
   init() {
     const T = World.T;
     const g = this.group = new THREE.Group();
@@ -4824,32 +5042,45 @@ const Showcase = {
     g.visible = false;
     World.scene.add(g);
     // the player looks toward the mouse, or toward a finger dragged on the stage
+    // in the Locker a drag spins the player all the way round instead
     window.addEventListener('pointermove', (e) => {
       if (!this.on) return;
+      if (this.mode === 'locker') { if (e.pointerId === this.drag) { this.turnTo += (e.clientX - this.dragX) * 0.012; this.dragX = e.clientX; } return; }
       if (e.pointerType === 'mouse' || e.pointerId === this.drag) this.point(e.clientX);
     });
     window.addEventListener('pointerdown', (e) => {
-      if (!this.on || e.pointerType === 'mouse') return;
+      if (!this.on || (e.pointerType === 'mouse' && this.mode !== 'locker')) return;
       const st = $(this.stageId);
-      if (st && e.target && st.contains(e.target)) { this.drag = e.pointerId; this.point(e.clientX); }
+      if (st && e.target && st.contains(e.target)) { this.drag = e.pointerId; this.dragX = e.clientX; if (this.mode !== 'locker') this.point(e.clientX); }
     });
-    const lift = (e) => { if (e.pointerId === this.drag) { this.drag = null; this.turnTo = SHOW_FACE; } };
+    const lift = (e) => { if (e.pointerId === this.drag) { this.drag = null; if (this.mode !== 'locker') this.turnTo = SHOW_FACE; } };
     window.addEventListener('pointerup', lift);
     window.addEventListener('pointercancel', lift);
-    document.addEventListener('mouseleave', () => { if (this.drag == null) this.turnTo = SHOW_FACE; });
+    document.addEventListener('mouseleave', () => { if (this.drag == null && this.mode !== 'locker') this.turnTo = SHOW_FACE; });
   },
   point(x) {
     const cx = this.rect ? this.rect.cx : window.innerWidth / 2;
     this.turnTo = SHOW_FACE + clamp((x - cx) / (window.innerWidth || 1) * 1.7, -0.5, 0.8);
   },
-  /** (re)build the model when the equipped style or Flow changed */
+  /** which box the player stands in: 'lobby' follows the mouse, 'locker' spins on drag */
+  setStage(id, mode) {
+    if (this.stageId === id && this.mode === mode) return;
+    this.stageId = id; this.mode = mode; this.rect = null; this.drag = null;
+    this.turn = this.turnTo = mode === 'locker' ? SHOW_FACE_LOCKER : SHOW_FACE;
+    if (mode === 'lobby') this.spec = null;
+  },
+  /** try on a look before equipping it: { style, flow, look, celebrate }. null goes back to what is equipped */
+  preview(spec) { this.spec = spec; this.ensure(); },
+  /** (re)build the model when the style, Flow or skins changed */
   ensure() {
     if (!this.group) return;
-    const d = Save.data, key = d.style + '|' + (d.flow || '');
+    const d = Save.data, sp = this.spec || {};
+    const style = sp.style || d.style, flow = sp.flow !== undefined ? sp.flow : d.flow, look = Object.assign({}, d.look, sp.look || {});
+    const key = [style, flow || '', SKIN_SLOTS.map((s) => look[s.id]).join(',')].join('|');
     if (this.p && this.key === key) return;
     if (this.p) this.p.dispose();
-    this.key = key;
-    this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: 'ST', human: true, style: d.style, flow: d.flow, number: 10, name: 'YOU', skin: SKIN_TONES[1] });
+    this.key = key; this.flow = flow;
+    this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: 'ST', human: true, style, flow, look, number: 10, name: 'YOU', skin: SKIN_TONES[1] });
     const aura = col(this.p.aura);
     this.ringMat.color.copy(aura); this.glowMat.color.copy(aura); this.beamMat.color.copy(col('#fff1d6')).lerp(aura, 0.35);
     this.p.P.root.visible = this.p.blob.visible = this.on;
@@ -4875,11 +5106,41 @@ const Showcase = {
   update(dt) {
     if (!this.on || !this.p) return;
     this.t += dt;
-    this.animate(dt);
+    if (this.spec && this.spec.celebrate) this.celebrate(dt); else if (this.mode === 'locker') this.idle(dt); else this.animate(dt);
     this.frame();
+  },
+  /** Locker pose: stand still with the ball at your feet, so the whole outfit is in view */
+  idle(dt) {
+    const p = this.p, P = p.P;
+    if (p.state !== 'free') p.setState('free');
+    this.turn = damp(this.turn, this.turnTo, 6, dt);
+    const yaw = SHOW_YAW + this.turn, b = Math.sin(this.t * 2.1);
+    P.root.position.set(0, 0, 0); P.root.rotation.y = yaw;
+    P.body.position.y = 0.72 + b * 0.012; P.body.rotation.set(0.02, 0, Math.sin(this.t * 1.1) * 0.015);
+    P.legL.rotation.set(0, 0, 0.04); P.legR.rotation.set(-0.08, 0, -0.06);
+    P.armL.rotation.set(Math.sin(this.t * 1.3) * 0.05, 0, 0.12 + b * 0.02); P.armR.rotation.set(-Math.sin(this.t * 1.3) * 0.05, 0, -0.12 - b * 0.02);
+    P.headP.rotation.set(0.04 + Math.sin(this.t * 0.7) * 0.03, -this.turn * 0.25, 0);
+    P.eyes.visible = !!this.flow;
+    p.blob.position.set(0, 0.025, 0); p.blob.scale.set(1, 1, 1);
+    const sy = Math.sin(yaw), cy = Math.cos(yaw), fwd = 0.34, side = -0.44;
+    this.ball.position.set(sy * fwd + cy * side, BALL_R, cy * fwd - sy * side);
+  },
+  /** loop the goal celebration in place, with the ball resting on the grass */
+  celebrate(dt) {
+    const p = this.p;
+    if (p.state !== 'celebrate') { p.setState('celebrate', 0); p._meteor = -1; }
+    p.stateT += dt;
+    if (p.stateT > 6.8) { p.stateT = 0; p._meteor = -1; }
+    p.pos.set(0, 0, 0); p.vel.set(0, 0, 0); p.onGround = true;
+    this.turn = damp(this.turn, this.turnTo, 5, dt);
+    p.yaw = SHOW_YAW + this.turn;
+    p.animate(dt);
+    p.P.eyes.visible = !!this.flow;
+    this.ball.position.set(Math.sin(p.yaw + 1.2) * 0.9, BALL_R, Math.cos(p.yaw + 1.2) * 0.9);
   },
   animate(dt) {
     const p = this.p, P = p.P, j = this.j, n = JUGGLE.length;
+    if (p.state !== 'free') { p.setState('free'); P.body.position.y = 0.72; }
     j.t += dt;
     let a = JUGGLE[j.i], b = JUGGLE[(j.i + 1) % n], s = this.segment(a, b);
     while (j.t >= s.dur) { j.t -= s.dur; j.i = (j.i + 1) % n; a = b; b = JUGGLE[(j.i + 1) % n]; s = this.segment(a, b); }
@@ -4900,7 +5161,7 @@ const Showcase = {
     P.armR.rotation.set(-Math.sin(this.t * 1.7) * 0.12, 0, -0.3 - 0.22 * L - Math.sin(this.t * 2.1) * 0.04);
     const look = clamp(Math.atan2(1.68 - by, Math.max(0.2, fwd)) * 0.45, -0.5, 0.55);
     P.headP.rotation.set(look - 0.3 * H, (this.turn - SHOW_FACE) * 0.3, 0);
-    P.eyes.visible = !!Save.data.flow;
+    P.eyes.visible = !!this.flow;
     p.blob.position.set(0, 0.025, 0); p.blob.scale.set(1, 1, 1);
     // ball in the player's frame: forward is (sin yaw, cos yaw), side is (cos yaw, -sin yaw)
     const sy = Math.sin(yaw), cy = Math.cos(yaw);
@@ -4936,8 +5197,8 @@ const Showcase = {
     const css = (r.cx / W * 100).toFixed(1) + '%|' + (r.cy / H * 100).toFixed(1) + '%';
     if (css !== this.css) {
       this.css = css;
-      const sec = $('scr-lobby'), [x, y] = css.split('|');
-      sec.style.setProperty('--stx', x); sec.style.setProperty('--sty', y);
+      const sec = st && st.closest('.screen'), [x, y] = css.split('|');
+      if (sec) { sec.style.setProperty('--stx', x); sec.style.setProperty('--sty', y); }
     }
   },
 };
@@ -4951,7 +5212,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const KEYS3 = ['Q', 'E', 'R'];
 
 const UI = {
-  labels: [], toastsN: 0, bannerT: 0, spinning: false, spinKind: 'style', lockerTab: 'style', lockerSel: null,
+  labels: [], toastsN: 0, bannerT: 0, spinning: false, spinKind: 'style', lockerTab: 'style', lockerSel: null, skinSlot: 'hair',
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
@@ -5010,7 +5271,7 @@ const UI = {
     return `<section id="scr-spins" class="screen sub-screen" hidden>
       <div class="sub-wrap">
         <div class="sub-head"><h2>SPINS</h2><div class="right" style="display:flex;gap:12px;align-items:center"><span class="emer"><img class="px" id="spin-em-ico" alt=""><span id="spin-em">0</span></span><button class="btn small" id="spin-back" type="button">BACK</button></div></div>
-        <div class="tabs" role="tablist"><button class="tab" id="tab-style" role="tab" type="button">STYLE SPIN</button><button class="tab" id="tab-flow" role="tab" type="button">FLOW SPIN</button></div>
+        <div class="tabs" role="tablist"><button class="tab" id="tab-style" role="tab" type="button">STYLE SPIN</button><button class="tab" id="tab-flow" role="tab" type="button">FLOW SPIN</button><button class="tab" id="tab-skin" role="tab" type="button">SKIN SPIN</button></div>
         <div class="panel reel-box"><div class="reel-marker"></div><div class="reel" id="reel"></div></div>
         <div class="spin-ctl">
           <button class="btn emerald" id="spin-go" type="button">SPIN <span class="sub">200 EMERALDS</span></button>
@@ -5023,10 +5284,16 @@ const UI = {
   },
   tplLocker() {
     return `<section id="scr-locker" class="screen sub-screen" hidden>
-      <div class="sub-wrap">
+      <div class="sub-wrap lk-wrap">
         <div class="sub-head"><h2>LOCKER</h2><button class="btn small" id="locker-back" type="button">BACK</button></div>
-        <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button></div>
-        <div class="locker"><div class="grid-cards" id="locker-grid"></div><div class="panel detail" id="locker-detail"></div></div>
+        <div class="locker">
+          <div class="lk-stage"><div class="lk-fit" id="lk-fit" title="Drag to turn your player"><span class="label lk-drag">DRAG TO TURN</span></div><div class="lk-cap panel" id="lk-cap"></div></div>
+          <div class="lk-side">
+            <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button><button class="tab" id="ltab-skin" role="tab" type="button">SKINS</button></div>
+            <div class="tabs slots" id="lk-slots" role="tablist" hidden></div>
+            <div class="lk-body"><div class="grid-cards" id="locker-grid"></div><div class="panel detail" id="locker-detail"></div></div>
+          </div>
+        </div>
       </div>
     </section>`;
   },
@@ -5080,6 +5347,7 @@ const UI = {
             <li><b>Flow</b> fills from completed passes, dodges, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
             <li><b>Emeralds:</b> win 150, draw 80, loss 50, plus 20 a goal and 10 an assist.</li>
             <li><b>Spins</b> cost 200. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
+            <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Bots get sharper as you climb.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
@@ -5151,9 +5419,12 @@ const UI = {
     click('howto-back', () => this.show('lobby'));
     click('tab-style', () => { if (!this.spinning) { this.spinKind = 'style'; this.renderSpins(true); } });
     click('tab-flow', () => { if (!this.spinning) { this.spinKind = 'flow'; this.renderSpins(true); } });
+    click('tab-skin', () => { if (!this.spinning) { this.spinKind = 'skin'; this.renderSpins(true); } });
     click('spin-go', () => this.spin());
     click('ltab-style', () => { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.renderLocker(); });
     click('ltab-flow', () => { this.lockerTab = 'flow'; this.lockerSel = Save.data.flow || 'NONE'; this.renderLocker(); });
+    click('ltab-skin', () => { this.lockerTab = 'skin'; this.lockerSel = Save.data.look[this.skinSlot]; this.renderLocker(); });
+    $('lk-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); this.skinSlot = b.dataset.slot; this.lockerSel = Save.data.look[this.skinSlot]; this.renderLocker(); });
     click('btn-mute', () => { Save.data.settings.mute = !Save.data.settings.mute; Sfx.setMuted(Save.data.settings.mute); Save.save(); this.renderLobby(); });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('p-resume', () => Game.resume());
@@ -5183,6 +5454,7 @@ const UI = {
     const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
+    if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else Showcase.setStage('lob-stage', 'lobby');
     if (name === 'lobby') { this.renderLobby(); Showcase.ensure(); }
     if (name === 'howto') { Save.data.howto = true; Save.save(); }
   },
@@ -5438,29 +5710,29 @@ const UI = {
   openSpins() { this.show('spins'); this.renderSpins(true); },
   renderSpins(resetReel) {
     const d = Save.data, kind = this.spinKind;
-    $('tab-style').setAttribute('aria-selected', kind === 'style'); $('tab-flow').setAttribute('aria-selected', kind === 'flow');
+    for (const k of ['style', 'flow', 'skin']) $('tab-' + k).setAttribute('aria-selected', kind === k);
     $('spin-em-ico').src = iconURL('emerald'); $('spin-em').textContent = d.emeralds;
     const left = 30 - d.pity[kind];
     $('spin-pity').textContent = 'LEGENDARY OR BETTER GUARANTEED IN ' + left + (left === 1 ? ' SPIN' : ' SPINS');
     $('spin-odds').innerHTML = RARITIES.map((r, i) => `<span class="rar" data-r="${r}">${r.toUpperCase()} ${RARITY_ODDS[i]}%</span>`).join('');
     $('spin-go').disabled = this.spinning || d.emeralds < 200;
     $('spin-go').innerHTML = d.emeralds < 200 ? 'SPIN <span class="sub">NEED 200 EMERALDS</span>' : 'SPIN <span class="sub">200 EMERALDS</span>';
-    const owned = kind === 'style' ? d.styles.length + ' / ' + STYLE_IDS.length + ' STYLES OWNED' : d.flows.length + ' / ' + FLOW_IDS.length + ' FLOWS OWNED';
+    const owned = kind === 'style' ? d.styles.length + ' / ' + STYLE_IDS.length + ' STYLES OWNED' : kind === 'flow' ? d.flows.length + ' / ' + FLOW_IDS.length + ' FLOWS OWNED' : d.skins.length + ' / ' + SKIN_IDS.length + ' SKINS OWNED (LOOKS ONLY)';
     $('spin-owned').textContent = owned + '. WIN MATCHES TO EARN MORE EMERALDS.';
     if (resetReel) { $('spin-result').innerHTML = ''; this.buildReel(kind, null); }
   },
   cardHTML(kind, id) {
-    const src = kind === 'style' ? STYLES[id] : FLOWS[id];
+    const src = kind === 'style' ? STYLES[id] : kind === 'flow' ? FLOWS[id] : SKINS[id];
     return `<div class="card" data-r="${src.rarity}" style="--rc:${RARITY_HEX[src.rarity]}" data-id="${id}"><span class="cv"></span><span class="nm">${esc(src.name)}</span><span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span></div>`;
   },
   fillCardArt(el, kind, id) {
     const holder = el.querySelector('.cv');
-    const cv = kind === 'style' ? portraitCanvas(id, 72) : flowEmblemCanvas(id, 72);
+    const cv = kind === 'style' ? portraitCanvas(id, 72) : kind === 'flow' ? flowEmblemCanvas(id, 72) : skinCanvas(id, 72);
     holder.replaceWith(cv);
   },
   buildReel(kind, winner) {
     const reel = $('reel');
-    const ids = kind === 'style' ? STYLE_IDS : FLOW_IDS;
+    const ids = kind === 'style' ? STYLE_IDS : kind === 'flow' ? FLOW_IDS : SKIN_IDS;
     const N = 46, WIN = 40;
     const items = [];
     for (let i = 0; i < N; i++) {
@@ -5486,7 +5758,7 @@ const UI = {
     d.pity[kind] = r >= 2 ? 0 : pity + 1;
     const pool = poolFor(kind, r);
     const id = pick(pool);
-    const owned = kind === 'style' ? d.styles : d.flows;
+    const owned = kind === 'style' ? d.styles : kind === 'flow' ? d.flows : d.skins;
     const dupe = owned.includes(id);
     if (dupe) d.emeralds += 50; else owned.push(id);
     d.stats.spins = (d.stats.spins || 0) + 1;
@@ -5518,7 +5790,7 @@ const UI = {
   },
   spinDone(kind, id, r, dupe) {
     this.spinning = false;
-    const src = kind === 'style' ? STYLES[id] : FLOWS[id];
+    const src = kind === 'style' ? STYLES[id] : kind === 'flow' ? FLOWS[id] : SKINS[id];
     Sfx.fanfare(r);
     const card = $('reel').querySelectorAll('.card')[40];
     if (card) { card.style.transform = 'translateY(-8px) scale(1.06)'; card.style.transition = 'transform .2s steps(3)'; }
@@ -5530,48 +5802,77 @@ const UI = {
     }
     if (r >= 3) $('scr-spins').animate([{ transform: 'translate(6px,0)' }, { transform: 'translate(-6px,3px)' }, { transform: 'translate(4px,-3px)' }, { transform: 'translate(0,0)' }], { duration: 380, iterations: r === 4 ? 3 : 1 });
     const tag = dupe ? '<span class="tag dupe">DUPLICATE · +50 EMERALDS</span>' : '<span class="tag">NEW</span>';
-    $('spin-result').innerHTML = `<span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${tag}${!dupe ? '<button class="btn small" id="spin-equip" type="button">EQUIP</button>' : ''}`;
+    const slotName = kind === 'skin' ? '<span class="label">' + SKIN_SLOTS.find((sl) => sl.id === src.slot).name + ' SKIN</span>' : '';
+    $('spin-result').innerHTML = `<span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${slotName}${tag}${!dupe ? '<button class="btn small" id="spin-equip" type="button">EQUIP</button>' : ''}`;
     const eq = $('spin-equip');
-    if (eq) eq.addEventListener('click', () => { Sfx.click(); if (kind === 'style') Save.data.style = id; else Save.data.flow = id; Save.save(); eq.textContent = 'EQUIPPED'; eq.disabled = true; });
+    if (eq) eq.addEventListener('click', () => { Sfx.click(); if (kind === 'style') Save.data.style = id; else if (kind === 'flow') Save.data.flow = id; else Save.data.look[src.slot] = id; Save.save(); eq.textContent = 'EQUIPPED'; eq.disabled = true; });
     this.renderSpins(false);
   },
   /* ---------- locker ---------- */
   openLocker() { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.show('locker'); this.renderLocker(); },
+  /** what a card in the current tab stands for */
+  lockerItem(id) {
+    const d = Save.data, tab = this.lockerTab;
+    if (tab === 'style') { const st = STYLES[id]; return { name: st.name, rarity: st.rarity, owned: d.styles.includes(id), equipped: d.style === id, from: 'STYLE SPINS' }; }
+    if (tab === 'flow') { const fl = id === 'NONE' ? null : FLOWS[id]; return { name: fl ? fl.name : 'NO FLOW', rarity: fl ? fl.rarity : 'Rare', base: !fl, owned: !fl || d.flows.includes(id), equipped: (d.flow || 'NONE') === id, from: 'FLOW SPINS' }; }
+    const sk = SKINS[id];
+    return { name: sk.name, rarity: sk.rarity, base: !!sk.base, owned: !!sk.base || d.skins.includes(id), equipped: d.look[sk.slot] === id, from: 'SKIN SPINS' };
+  },
+  lockerArt(id, size) {
+    const tab = this.lockerTab;
+    return tab === 'style' ? portraitCanvas(id, size, lookFor(id, Save.data.look)) : tab === 'flow' ? flowEmblemCanvas(id === 'NONE' ? null : id, size) : skinCanvas(id, size);
+  },
   renderLocker() {
     const d = Save.data, tab = this.lockerTab;
-    $('ltab-style').setAttribute('aria-selected', tab === 'style'); $('ltab-flow').setAttribute('aria-selected', tab === 'flow');
+    for (const t of ['style', 'flow', 'skin']) $('ltab-' + t).setAttribute('aria-selected', tab === t);
+    const slots = $('lk-slots');
+    slots.hidden = tab !== 'skin';
+    if (tab === 'skin') slots.innerHTML = SKIN_SLOTS.map((sl) => `<button class="tab" type="button" role="tab" data-slot="${sl.id}" aria-selected="${this.skinSlot === sl.id}">${sl.name}</button>`).join('');
+    const ids = tab === 'style' ? STYLE_IDS : tab === 'flow' ? ['NONE'].concat(FLOW_IDS)
+      : [SKIN_SLOTS.find((sl) => sl.id === this.skinSlot).base].concat(SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
     const grid = $('locker-grid');
-    let ids = tab === 'style' ? STYLE_IDS : ['NONE'].concat(FLOW_IDS);
     grid.innerHTML = ids.map((id) => {
-      const src = id === 'NONE' ? { name: 'NO FLOW', rarity: 'Rare' } : (tab === 'style' ? STYLES[id] : FLOWS[id]);
-      const owned = id === 'NONE' || (tab === 'style' ? d.styles.includes(id) : d.flows.includes(id));
-      const equipped = tab === 'style' ? d.style === id : (d.flow || 'NONE') === id;
-      return `<button type="button" class="lcard ${owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${id === 'NONE' ? '#5a5f78' : RARITY_HEX[src.rarity]}"><span class="nm">${esc(src.name)}</span><span class="meta">${id === 'NONE' ? '<span class="chip">BASE</span>' : `<span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span>`}<span class="label">${equipped ? 'EQUIPPED' : owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
+      const it = this.lockerItem(id);
+      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.base ? '<span class="chip">FREE</span>' : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.equipped ? 'EQUIPPED' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
     }).join('');
-    grid.querySelectorAll('.lcard').forEach((b) => b.addEventListener('click', () => { Sfx.click(); this.lockerSel = b.dataset.id; this.renderLocker(); }));
+    grid.querySelectorAll('.lcard').forEach((b) => {
+      b.querySelector('.cv').replaceWith(this.lockerArt(b.dataset.id, 40));
+      b.addEventListener('click', () => { Sfx.click(); this.lockerSel = b.dataset.id; this.renderLocker(); });
+    });
     this.renderLockerDetail();
+    // the 3D player tries on whatever card is picked, owned or not
+    const id = this.lockerSel, spec = { look: {} };
+    if (tab === 'style') spec.style = id;
+    else if (tab === 'flow') spec.flow = id === 'NONE' ? null : id;
+    else { spec.look[SKINS[id].slot] = id; spec.celebrate = SKINS[id].slot === 'celeb'; }
+    Showcase.preview(spec);
   },
   renderLockerDetail() {
-    const d = Save.data, tab = this.lockerTab, id = this.lockerSel;
+    const d = Save.data, tab = this.lockerTab, id = this.lockerSel, it = this.lockerItem(id);
     const det = $('locker-detail');
+    const head = (sub, blurb) => `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px">${it.base ? '<span class="chip" style="justify-self:start">FREE</span>' : `<span class="rar" data-r="${it.rarity}" style="justify-self:start">${it.rarity.toUpperCase()}</span>`}<h3>${esc(it.name)}</h3>${sub ? `<span class="label">${sub}</span>` : ''}${blurb ? `<p style="margin:0;color:var(--muted);max-width:46ch">${esc(blurb)}</p>` : ''}</div></div>`;
     if (tab === 'style') {
-      const st = STYLES[id]; const owned = d.styles.includes(id);
-      det.innerHTML = `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px"><span class="rar" data-r="${st.rarity}" style="justify-self:start">${st.rarity.toUpperCase()}</span><h3>${esc(st.name)}</h3><p style="margin:0;color:var(--muted);max-width:46ch">${esc(st.blurb)}</p></div></div>
-        <div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}</div>
-        ${owned ? `<button class="btn ${d.style === id ? '' : 'blue'}" id="lk-equip" type="button" ${d.style === id ? 'disabled' : ''}>${d.style === id ? 'EQUIPPED' : 'EQUIP ' + esc(st.name)}</button>` : `<p class="label">LOCKED. ROLL IT FROM STYLE SPINS (${st.rarity.toUpperCase()}).</p>`}`;
-      det.querySelector('.cv').replaceWith(portraitCanvas(id, 96));
-    } else {
+      const st = STYLES[id];
+      det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}</div>`;
+    } else if (tab === 'flow') {
       const fl = id === 'NONE' ? null : FLOWS[id];
-      const owned = id === 'NONE' || d.flows.includes(id);
-      const eqd = (d.flow || 'NONE') === id;
-      det.innerHTML = `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px">${fl ? `<span class="rar" data-r="${fl.rarity}" style="justify-self:start">${fl.rarity.toUpperCase()}</span>` : '<span class="chip" style="justify-self:start">BASE</span>'}<h3>${fl ? esc(fl.name) : 'NO FLOW'}</h3></div></div>
-        <p style="margin:0;font-size:22px">${esc(fl ? fl.desc : RAW_FLOW_DESC)}</p>
-        <p style="margin:0;color:var(--muted)">Fill the Flow bar with completed passes, dodges, tackles and shots on target. Press G for 15 seconds of Flow: glowing eyes, a swirling aura and this buff.</p>
-        ${owned ? `<button class="btn ${eqd ? '' : 'blue'}" id="lk-equip" type="button" ${eqd ? 'disabled' : ''}>${eqd ? 'EQUIPPED' : 'EQUIP'}</button>` : `<p class="label">LOCKED. ROLL IT FROM FLOW SPINS (${fl.rarity.toUpperCase()}).</p>`}`;
-      det.querySelector('.cv').replaceWith(flowEmblemCanvas(id === 'NONE' ? null : id, 96));
+      det.innerHTML = head('', '') + `<p style="margin:0;font-size:22px">${esc(fl ? fl.desc : RAW_FLOW_DESC)}</p>
+        <p style="margin:0;color:var(--muted)">Fill the Flow bar with completed passes, dodges, tackles and shots on target. Press G for 15 seconds of Flow: glowing eyes, a swirling aura and this buff.</p>`;
+    } else {
+      const sk = SKINS[id], slot = SKIN_SLOTS.find((sl) => sl.id === sk.slot);
+      det.innerHTML = head(slot.name + ' SKIN', sk.desc || '') + `<p style="margin:0;color:var(--muted)">Skins only change how you look. They never change your stats.${sk.slot === 'celeb' ? ' You play it when you score.' : ''}</p>`;
     }
+    det.querySelector('.cv').replaceWith(this.lockerArt(id, 96));
+    // name, rarity and the equip button sit under the 3D preview
+    const cap = $('lk-cap');
+    cap.innerHTML = `${it.base ? '<span class="chip">FREE</span>' : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<b>${esc(it.name)}</b>`
+      + (it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`);
     const eq = $('lk-equip');
-    if (eq) eq.addEventListener('click', () => { Sfx.click(); if (tab === 'style') d.style = id; else d.flow = id === 'NONE' ? null : id; Save.save(); this.renderLocker(); });
+    if (eq) eq.addEventListener('click', () => {
+      Sfx.click();
+      if (tab === 'style') d.style = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else d.look[SKINS[id].slot] = id;
+      Save.save(); this.renderLocker();
+    });
   },
 };
 

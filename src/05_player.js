@@ -38,7 +38,33 @@ const HAIR_SHAPES = {
   messy: [[-0.28, -0.06, -0.28, 0.28, 0.12, 0.28], [-0.3, -0.26, -0.2, -0.2, 0.02, 0.1], [0.2, -0.22, -0.24, 0.3, 0.02, 0.06], [-0.1, 0.1, -0.12, 0.08, 0.22, 0.06], [0.06, 0.1, 0.06, 0.2, 0.18, 0.2], [-0.24, -0.3, -0.31, 0.2, 0.0, -0.2]],
   fluffy: [[-0.31, -0.08, -0.31, 0.31, 0.17, 0.31], [-0.32, -0.3, -0.31, -0.22, 0.0, 0.16], [0.22, -0.3, -0.31, 0.32, 0.0, 0.16], [-0.3, -0.36, -0.33, 0.3, 0.0, -0.18]],
   spiky: [[-0.26, -0.06, -0.26, 0.26, 0.1, 0.26], [-0.2, 0.1, -0.16, -0.08, 0.26, -0.04], [0.02, 0.1, -0.06, 0.14, 0.3, 0.06], [-0.1, 0.1, 0.08, 0.02, 0.22, 0.2], [0.12, 0.1, -0.22, 0.24, 0.24, -0.1], [-0.22, 0.1, 0.02, -0.12, 0.2, 0.14], [-0.26, -0.24, -0.29, 0.26, 0.0, -0.18]],
+  bun: [[-0.26, -0.05, -0.26, 0.26, 0.08, 0.26], [-0.26, -0.22, -0.29, 0.26, 0.0, -0.18], [-0.11, 0.08, -0.24, 0.11, 0.27, -0.04]],
+  flattop: [[-0.27, -0.06, -0.27, 0.27, 0.27, 0.27], [-0.27, -0.16, -0.29, 0.27, 0.0, -0.18]],
+  mohawk: [[-0.25, -0.03, -0.25, 0.25, 0.02, 0.25], [-0.06, 0.0, -0.29, 0.06, 0.14, 0.25], [-0.05, 0.14, 0.1, 0.05, 0.25, 0.21], [-0.05, 0.14, -0.07, 0.05, 0.31, 0.05], [-0.05, 0.14, -0.25, 0.05, 0.24, -0.12]],
 };
+/** headband size: hug the head, or the hair where the band crosses it (head-local y 0.355 to 0.415) */
+const _bandCache = {};
+function bandGeo(shape) {
+  if (_bandCache[shape]) return _bandCache[shape];
+  let x = 0.25, zf = 0.25, zb = 0.25;
+  for (const b of HAIR_SHAPES[shape] || HAIR_SHAPES.short) {
+    if (b[4] + 0.48 < 0.355 || b[1] + 0.48 > 0.415) continue;
+    x = Math.max(x, -b[0] + 0.012, b[3] + 0.012); zb = Math.max(zb, -b[2] + 0.012); zf = Math.max(zf, b[5] + 0.012);
+  }
+  const v = new VoxBuilder(); v.box(-x, 0.355, -zb, x, 0.415, zf, '#ffffff', { ao: 0.85 });
+  return (_bandCache[shape] = v.geometry());
+}
+let _accGeo = null;
+function accGeo() {
+  if (_accGeo) return _accGeo;
+  const mask = new VoxBuilder(); mask.box(-0.255, 0.0, -0.06, 0.255, 0.19, 0.258, '#ffffff', { ao: 0.8 });
+  mask.box(-0.258, 0.07, 0.2, 0.258, 0.1, 0.262, '#9a9fb0', { ao: 1 });
+  // a chain hangs from the collar in a V, with a square pendant
+  const chain = new VoxBuilder(), c = 0.022;
+  for (let i = 0; i <= 6; i++) { const t = i / 6, x = 0.14 * (1 - t), y = 0.71 - 0.19 * t; for (const s of [1, -1]) chain.box(s * x - c, y - c, 0.128, s * x + c, y + c, 0.155, '#ffffff', { ao: 0.9 }); }
+  chain.box(-0.045, 0.43, 0.128, 0.045, 0.52, 0.17, '#ffffff', { ao: 0.9 });
+  return (_accGeo = { mask: mask.geometry(), chain: chain.geometry() });
+}
 const _hairGeoCache = {}, _hairMatCache = {}, _eyeMatCache = {};
 function hairGeo(shape) {
   if (_hairGeoCache[shape]) return _hairGeoCache[shape];
@@ -46,7 +72,7 @@ function hairGeo(shape) {
   for (const b of HAIR_SHAPES[shape] || HAIR_SHAPES.short) v.box(b[0], b[1], b[2], b[3], b[4], b[5], '#ffffff', { uv: 6, ao: 0.82 });
   return (_hairGeoCache[shape] = v.geometry());
 }
-function hairMat(hex) { return _hairMatCache[hex] || (_hairMatCache[hex] = new THREE.MeshLambertMaterial({ map: makeHairTexture(hex, hex.length * 31 + parseInt(hex.slice(1, 3), 16)), vertexColors: true })); }
+function hairMat(hex) { return _hairMatCache[hex] || (_hairMatCache[hex] = new THREE.MeshLambertMaterial({ map: hex === 'prism' ? makePrismTexture() : makeHairTexture(hex, hex.length * 31 + parseInt(hex.slice(1, 3), 16)), vertexColors: true })); }
 function eyeMat(hex) { return _eyeMatCache[hex] || (_eyeMatCache[hex] = new THREE.MeshBasicMaterial({ color: lin(hex), toneMapped: false })); }
 
 class Player {
@@ -57,6 +83,7 @@ class Player {
     this.styleId = o.style; this.style = STYLES[o.style];
     this.flowId = o.flow || null;
     this.skin = o.skin || pick(SKIN_TONES);
+    this.look = lookFor(o.style, o.look || {});
     this.pos = V3(); this.vel = V3(); this.yaw = 0; this.onGround = true; this.airT = 0;
     this.mx = 0; this.mz = 0; this.sprint = false; this.faceYaw = null; this.exhausted = false;
     this.stamina = 100; this.stamDelay = 0;
@@ -82,9 +109,10 @@ class Player {
   buildModel() {
     const team = TEAM[this.team];
     const kit = this.isGK ? Object.assign({}, team, team.gk) : team;
+    const L = this.look;
     this.skinTex = makePlayerSkin({
-      jersey: kit.jersey, trim: kit.trim, shorts: kit.shorts, socks: kit.socks, boots: kit.boots,
-      skin: this.skin, hair: this.style.hair, number: this.number, gloves: this.isGK ? '#f2f2ea' : null, eye: pick(EYE_COLS),
+      jersey: kit.jersey, trim: kit.trim, shorts: kit.shorts, socks: kit.socks, boots: L.boots || kit.boots, sparkle: L.sparkle,
+      skin: this.skin, hair: L.hair, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: pick(EYE_COLS),
       seed: this.team * 97 + this.number * 13 + 7,
     });
     this.mat = new THREE.MeshLambertMaterial({ map: this.skinTex });
@@ -95,12 +123,18 @@ class Player {
     mk(G.body, this.mat, body, 0, 0.36, 0);
     const headP = new THREE.Group(); headP.position.y = 0.72; body.add(headP);
     mk(G.head, this.mat, headP, 0, 0.24, 0);
-    mk(hairGeo(this.style.hairShape), hairMat(this.style.hair), headP, 0, 0.48, 0);
+    mk(hairGeo(L.hairShape), hairMat(L.prism ? 'prism' : L.hair), headP, 0, 0.48, 0);
+    if (L.acc) {
+      const am = this.accMat = new THREE.MeshLambertMaterial({ color: lin(L.acc.hex), vertexColors: true, emissive: lin(L.acc.hex), emissiveIntensity: L.acc.glow || 0.08 });
+      if (L.acc.kind === 'band') mk(bandGeo(L.hairShape), am, headP, 0, 0, 0);
+      else if (L.acc.kind === 'mask') mk(accGeo().mask, am, headP, 0, 0, 0);
+    }
     const eyes = new THREE.Mesh(G.eyes, eyeMat(this.style.aura)); eyes.position.set(0, 0.21, 0.236); eyes.visible = false; headP.add(eyes);
     const armL = new THREE.Group(); armL.position.set(0.35, 0.68, 0); body.add(armL); mk(G.arm, this.mat, armL, 0, -0.3, 0);
     const armR = new THREE.Group(); armR.position.set(-0.35, 0.68, 0); body.add(armR); mk(G.arm, this.mat, armR, 0, -0.3, 0);
     const legL = new THREE.Group(); legL.position.set(0.12, 0, 0); body.add(legL); mk(G.leg, this.mat, legL, 0, -0.36, 0);
     const legR = new THREE.Group(); legR.position.set(-0.12, 0, 0); body.add(legR); mk(G.leg, this.mat, legR, 0, -0.36, 0);
+    if (L.acc && L.acc.kind === 'chain') mk(accGeo().chain, this.accMat, body, 0, 0, 0);
     this.P = { root, body, headP, armL, armR, legL, legR, eyes };
     this.blob = new THREE.Mesh(G.blob, G.blobMat);
     this.m.scene.add(root, this.blob);
@@ -109,6 +143,7 @@ class Player {
     this.m.scene.remove(this.P.root, this.blob);
     for (const k of ['ring', 'bubble', 'ice']) if (this[k]) { this.m.scene.remove(this[k]); this[k].material.dispose(); }
     this.skinTex.dispose(); this.mat.dispose();
+    if (this.accMat) this.accMat.dispose();
   }
   setState(s, dur = 0) { this.state = s; this.stateT = 0; this.stateDur = dur; }
   computeMods() {
@@ -252,7 +287,7 @@ class Player {
     // targets
     let bx = run * 0.14, bz = 0, by = 0.72 + Math.abs(Math.cos(this.animPhase)) * 0.05 * run;
     let lL = s * 0.9 * run, lR = -s * 0.9 * run, aL = -s * 0.8 * run, aR = s * 0.8 * run, aLz = 0.06, aRz = -0.06;
-    let hx = 0;
+    let hx = 0, snapX = false;
     if (!this.onGround && st === 'free') { lL = -0.55; lR = 0.35; aL = -0.5; aR = -0.3; aLz = 0.5; aRz = -0.5; }
     if (this.charging) { lR = 0.4 + this.charge * 0.8; aLz = 0.7; aRz = -0.35; bx = -0.05 - this.charge * 0.08; }
     if (this.kickT >= 0) {
@@ -279,12 +314,36 @@ class Player {
       }
       case 'dash': bx = 0.32; aL = 0.7; aR = 0.7; lL = s * 1.1; lR = -s * 1.1; break;
       case 'windup': bx = 0.5; by = 0.6; aL = 0.9; aR = 0.9; aLz = 0.4; aRz = -0.4; lL = -0.5; lR = 0.4; break;
-      case 'celebrate': { const j = Math.abs(Math.sin(this.stateT * 9)); by = 0.72 + j * 0.25; aL = aR = 0; aLz = 2.6 + Math.sin(this.stateT * 14) * 0.3; aRz = -2.6 - Math.sin(this.stateT * 14) * 0.3; lL = lR = 0; bx = 0; break; }
+      case 'celebrate': {
+        const t = this.stateT, c = this.look.celeb;
+        lL = lR = 0; bx = 0; aL = aR = 0;
+        if (c === 'plane') { aLz = 1.55; aRz = -1.55; bz = Math.sin(t * 3.2) * 0.38; bx = 0.18; lL = Math.sin(t * 9) * 0.5; lR = -lL; by = 0.72 + Math.abs(Math.cos(t * 9)) * 0.05; }
+        else if (c === 'shush') { aR = -2.55; aRz = 0.35; aL = 0.1; aLz = 0.35; hx = -0.08 + Math.sin(t * 2.2) * 0.06; bz = Math.sin(t * 1.6) * 0.05; }
+        else if (c === 'robot') {
+          const q = Math.floor(t * 3.2) % 4, st4 = [[-1.5, 0, 0.3], [0, -1.5, -0.3], [-1.5, -1.5, 0.3], [0, 0, -0.3]][q];
+          aL = st4[0]; aR = st4[1]; aLz = 0.1; aRz = -0.1; bz = st4[2] * 0.25; hx = q % 2 ? 0.15 : -0.1;
+        } else if (c === 'knees') {
+          const k = Math.min(1, t / 0.25);
+          by = 0.72 - 0.42 * k; bx = -0.42 * k; lL = lR = 1.25 * k; aLz = 2.2 + Math.sin(t * 6) * 0.15; aRz = -2.2 - Math.sin(t * 6) * 0.15; aL = aR = 0.3; hx = -0.35 * k;
+        } else if (c === 'flip') {
+          const ph = (t % 1.3) / 1.3, f = clamp((ph - 0.12) / 0.5, 0, 1);
+          snapX = true;
+          by = 0.72 + Math.sin(Math.PI * f) * 1.0; bx = -TAU * smooth(f); lL = -1.1 * Math.sin(Math.PI * f); lR = 0.3; aLz = 2.4; aRz = -2.4;
+        } else if (c === 'meteor') {
+          const ph = (t % 1.7) / 1.7, up = ph < 0.55 ? Math.sin(ph / 0.55 * Math.PI / 2) : ph < 0.7 ? 1 : Math.max(0, 1 - (ph - 0.7) / 0.1);
+          by = 0.72 + up * 2.4; aLz = 2.7; aRz = -2.7; lL = -0.4 * up; lR = 0.4 * up;
+          if (ph > 0.8 && ph < 0.9) bx = 0.25;
+          const k = Math.floor(t / 1.7);
+          if (ph >= 0.8 && this._meteor !== k) { this._meteor = k; FX.ring(this.pos.x, 0.2, this.pos.z, this.aura, 1.6, 26); FX.sparks(this.pos.x, 0.4, this.pos.z, this.aura, 18, 7); Shake.add(this.isHuman ? 0.25 : 0); }
+        } else { const j = Math.abs(Math.sin(t * 9)); by = 0.72 + j * 0.25; aLz = 2.6 + Math.sin(t * 14) * 0.3; aRz = -2.6 - Math.sin(t * 14) * 0.3; }
+        break;
+      }
     }
     if (this.flipT >= 0) { bx = -this.flipT * TAU; lL = -1.2; lR = 0.3; }
     const k = st === 'frozen' ? 0 : 1 - Math.exp(-22 * dt);
     const r = (o, prop, v) => { o.rotation[prop] += (v - o.rotation[prop]) * k; };
-    r(P.body, 'x', bx); r(P.body, 'z', bz); P.body.position.y += (by - P.body.position.y) * k;
+    r(P.body, 'x', bx); r(P.body, 'z', bz);
+    if (snapX) P.body.rotation.x = bx; // full flips are set directly, easing would unwind them P.body.position.y += (by - P.body.position.y) * k;
     r(P.legL, 'x', lL); r(P.legR, 'x', lR);
     r(P.armL, 'x', aL); r(P.armR, 'x', aR); r(P.armL, 'z', aLz); r(P.armR, 'z', aRz);
     r(P.headP, 'x', hx);

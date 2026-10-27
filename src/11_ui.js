@@ -6,7 +6,7 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const KEYS3 = ['Q', 'E', 'R'];
 
 const UI = {
-  labels: [], toastsN: 0, bannerT: 0, spinning: false, spinKind: 'style', lockerTab: 'style', lockerSel: null,
+  labels: [], toastsN: 0, bannerT: 0, spinning: false, spinKind: 'style', lockerTab: 'style', lockerSel: null, skinSlot: 'hair',
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
@@ -65,7 +65,7 @@ const UI = {
     return `<section id="scr-spins" class="screen sub-screen" hidden>
       <div class="sub-wrap">
         <div class="sub-head"><h2>SPINS</h2><div class="right" style="display:flex;gap:12px;align-items:center"><span class="emer"><img class="px" id="spin-em-ico" alt=""><span id="spin-em">0</span></span><button class="btn small" id="spin-back" type="button">BACK</button></div></div>
-        <div class="tabs" role="tablist"><button class="tab" id="tab-style" role="tab" type="button">STYLE SPIN</button><button class="tab" id="tab-flow" role="tab" type="button">FLOW SPIN</button></div>
+        <div class="tabs" role="tablist"><button class="tab" id="tab-style" role="tab" type="button">STYLE SPIN</button><button class="tab" id="tab-flow" role="tab" type="button">FLOW SPIN</button><button class="tab" id="tab-skin" role="tab" type="button">SKIN SPIN</button></div>
         <div class="panel reel-box"><div class="reel-marker"></div><div class="reel" id="reel"></div></div>
         <div class="spin-ctl">
           <button class="btn emerald" id="spin-go" type="button">SPIN <span class="sub">200 EMERALDS</span></button>
@@ -78,10 +78,16 @@ const UI = {
   },
   tplLocker() {
     return `<section id="scr-locker" class="screen sub-screen" hidden>
-      <div class="sub-wrap">
+      <div class="sub-wrap lk-wrap">
         <div class="sub-head"><h2>LOCKER</h2><button class="btn small" id="locker-back" type="button">BACK</button></div>
-        <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button></div>
-        <div class="locker"><div class="grid-cards" id="locker-grid"></div><div class="panel detail" id="locker-detail"></div></div>
+        <div class="locker">
+          <div class="lk-stage"><div class="lk-fit" id="lk-fit" title="Drag to turn your player"><span class="label lk-drag">DRAG TO TURN</span></div><div class="lk-cap panel" id="lk-cap"></div></div>
+          <div class="lk-side">
+            <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button><button class="tab" id="ltab-skin" role="tab" type="button">SKINS</button></div>
+            <div class="tabs slots" id="lk-slots" role="tablist" hidden></div>
+            <div class="lk-body"><div class="grid-cards" id="locker-grid"></div><div class="panel detail" id="locker-detail"></div></div>
+          </div>
+        </div>
       </div>
     </section>`;
   },
@@ -135,6 +141,7 @@ const UI = {
             <li><b>Flow</b> fills from completed passes, dodges, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
             <li><b>Emeralds:</b> win 150, draw 80, loss 50, plus 20 a goal and 10 an assist.</li>
             <li><b>Spins</b> cost 200. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
+            <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Bots get sharper as you climb.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
@@ -206,9 +213,12 @@ const UI = {
     click('howto-back', () => this.show('lobby'));
     click('tab-style', () => { if (!this.spinning) { this.spinKind = 'style'; this.renderSpins(true); } });
     click('tab-flow', () => { if (!this.spinning) { this.spinKind = 'flow'; this.renderSpins(true); } });
+    click('tab-skin', () => { if (!this.spinning) { this.spinKind = 'skin'; this.renderSpins(true); } });
     click('spin-go', () => this.spin());
     click('ltab-style', () => { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.renderLocker(); });
     click('ltab-flow', () => { this.lockerTab = 'flow'; this.lockerSel = Save.data.flow || 'NONE'; this.renderLocker(); });
+    click('ltab-skin', () => { this.lockerTab = 'skin'; this.lockerSel = Save.data.look[this.skinSlot]; this.renderLocker(); });
+    $('lk-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); this.skinSlot = b.dataset.slot; this.lockerSel = Save.data.look[this.skinSlot]; this.renderLocker(); });
     click('btn-mute', () => { Save.data.settings.mute = !Save.data.settings.mute; Sfx.setMuted(Save.data.settings.mute); Save.save(); this.renderLobby(); });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('p-resume', () => Game.resume());
@@ -238,6 +248,7 @@ const UI = {
     const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
+    if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else Showcase.setStage('lob-stage', 'lobby');
     if (name === 'lobby') { this.renderLobby(); Showcase.ensure(); }
     if (name === 'howto') { Save.data.howto = true; Save.save(); }
   },
@@ -493,29 +504,29 @@ const UI = {
   openSpins() { this.show('spins'); this.renderSpins(true); },
   renderSpins(resetReel) {
     const d = Save.data, kind = this.spinKind;
-    $('tab-style').setAttribute('aria-selected', kind === 'style'); $('tab-flow').setAttribute('aria-selected', kind === 'flow');
+    for (const k of ['style', 'flow', 'skin']) $('tab-' + k).setAttribute('aria-selected', kind === k);
     $('spin-em-ico').src = iconURL('emerald'); $('spin-em').textContent = d.emeralds;
     const left = 30 - d.pity[kind];
     $('spin-pity').textContent = 'LEGENDARY OR BETTER GUARANTEED IN ' + left + (left === 1 ? ' SPIN' : ' SPINS');
     $('spin-odds').innerHTML = RARITIES.map((r, i) => `<span class="rar" data-r="${r}">${r.toUpperCase()} ${RARITY_ODDS[i]}%</span>`).join('');
     $('spin-go').disabled = this.spinning || d.emeralds < 200;
     $('spin-go').innerHTML = d.emeralds < 200 ? 'SPIN <span class="sub">NEED 200 EMERALDS</span>' : 'SPIN <span class="sub">200 EMERALDS</span>';
-    const owned = kind === 'style' ? d.styles.length + ' / ' + STYLE_IDS.length + ' STYLES OWNED' : d.flows.length + ' / ' + FLOW_IDS.length + ' FLOWS OWNED';
+    const owned = kind === 'style' ? d.styles.length + ' / ' + STYLE_IDS.length + ' STYLES OWNED' : kind === 'flow' ? d.flows.length + ' / ' + FLOW_IDS.length + ' FLOWS OWNED' : d.skins.length + ' / ' + SKIN_IDS.length + ' SKINS OWNED (LOOKS ONLY)';
     $('spin-owned').textContent = owned + '. WIN MATCHES TO EARN MORE EMERALDS.';
     if (resetReel) { $('spin-result').innerHTML = ''; this.buildReel(kind, null); }
   },
   cardHTML(kind, id) {
-    const src = kind === 'style' ? STYLES[id] : FLOWS[id];
+    const src = kind === 'style' ? STYLES[id] : kind === 'flow' ? FLOWS[id] : SKINS[id];
     return `<div class="card" data-r="${src.rarity}" style="--rc:${RARITY_HEX[src.rarity]}" data-id="${id}"><span class="cv"></span><span class="nm">${esc(src.name)}</span><span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span></div>`;
   },
   fillCardArt(el, kind, id) {
     const holder = el.querySelector('.cv');
-    const cv = kind === 'style' ? portraitCanvas(id, 72) : flowEmblemCanvas(id, 72);
+    const cv = kind === 'style' ? portraitCanvas(id, 72) : kind === 'flow' ? flowEmblemCanvas(id, 72) : skinCanvas(id, 72);
     holder.replaceWith(cv);
   },
   buildReel(kind, winner) {
     const reel = $('reel');
-    const ids = kind === 'style' ? STYLE_IDS : FLOW_IDS;
+    const ids = kind === 'style' ? STYLE_IDS : kind === 'flow' ? FLOW_IDS : SKIN_IDS;
     const N = 46, WIN = 40;
     const items = [];
     for (let i = 0; i < N; i++) {
@@ -541,7 +552,7 @@ const UI = {
     d.pity[kind] = r >= 2 ? 0 : pity + 1;
     const pool = poolFor(kind, r);
     const id = pick(pool);
-    const owned = kind === 'style' ? d.styles : d.flows;
+    const owned = kind === 'style' ? d.styles : kind === 'flow' ? d.flows : d.skins;
     const dupe = owned.includes(id);
     if (dupe) d.emeralds += 50; else owned.push(id);
     d.stats.spins = (d.stats.spins || 0) + 1;
@@ -573,7 +584,7 @@ const UI = {
   },
   spinDone(kind, id, r, dupe) {
     this.spinning = false;
-    const src = kind === 'style' ? STYLES[id] : FLOWS[id];
+    const src = kind === 'style' ? STYLES[id] : kind === 'flow' ? FLOWS[id] : SKINS[id];
     Sfx.fanfare(r);
     const card = $('reel').querySelectorAll('.card')[40];
     if (card) { card.style.transform = 'translateY(-8px) scale(1.06)'; card.style.transition = 'transform .2s steps(3)'; }
@@ -585,47 +596,76 @@ const UI = {
     }
     if (r >= 3) $('scr-spins').animate([{ transform: 'translate(6px,0)' }, { transform: 'translate(-6px,3px)' }, { transform: 'translate(4px,-3px)' }, { transform: 'translate(0,0)' }], { duration: 380, iterations: r === 4 ? 3 : 1 });
     const tag = dupe ? '<span class="tag dupe">DUPLICATE · +50 EMERALDS</span>' : '<span class="tag">NEW</span>';
-    $('spin-result').innerHTML = `<span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${tag}${!dupe ? '<button class="btn small" id="spin-equip" type="button">EQUIP</button>' : ''}`;
+    const slotName = kind === 'skin' ? '<span class="label">' + SKIN_SLOTS.find((sl) => sl.id === src.slot).name + ' SKIN</span>' : '';
+    $('spin-result').innerHTML = `<span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${slotName}${tag}${!dupe ? '<button class="btn small" id="spin-equip" type="button">EQUIP</button>' : ''}`;
     const eq = $('spin-equip');
-    if (eq) eq.addEventListener('click', () => { Sfx.click(); if (kind === 'style') Save.data.style = id; else Save.data.flow = id; Save.save(); eq.textContent = 'EQUIPPED'; eq.disabled = true; });
+    if (eq) eq.addEventListener('click', () => { Sfx.click(); if (kind === 'style') Save.data.style = id; else if (kind === 'flow') Save.data.flow = id; else Save.data.look[src.slot] = id; Save.save(); eq.textContent = 'EQUIPPED'; eq.disabled = true; });
     this.renderSpins(false);
   },
   /* ---------- locker ---------- */
   openLocker() { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.show('locker'); this.renderLocker(); },
+  /** what a card in the current tab stands for */
+  lockerItem(id) {
+    const d = Save.data, tab = this.lockerTab;
+    if (tab === 'style') { const st = STYLES[id]; return { name: st.name, rarity: st.rarity, owned: d.styles.includes(id), equipped: d.style === id, from: 'STYLE SPINS' }; }
+    if (tab === 'flow') { const fl = id === 'NONE' ? null : FLOWS[id]; return { name: fl ? fl.name : 'NO FLOW', rarity: fl ? fl.rarity : 'Rare', base: !fl, owned: !fl || d.flows.includes(id), equipped: (d.flow || 'NONE') === id, from: 'FLOW SPINS' }; }
+    const sk = SKINS[id];
+    return { name: sk.name, rarity: sk.rarity, base: !!sk.base, owned: !!sk.base || d.skins.includes(id), equipped: d.look[sk.slot] === id, from: 'SKIN SPINS' };
+  },
+  lockerArt(id, size) {
+    const tab = this.lockerTab;
+    return tab === 'style' ? portraitCanvas(id, size, lookFor(id, Save.data.look)) : tab === 'flow' ? flowEmblemCanvas(id === 'NONE' ? null : id, size) : skinCanvas(id, size);
+  },
   renderLocker() {
     const d = Save.data, tab = this.lockerTab;
-    $('ltab-style').setAttribute('aria-selected', tab === 'style'); $('ltab-flow').setAttribute('aria-selected', tab === 'flow');
+    for (const t of ['style', 'flow', 'skin']) $('ltab-' + t).setAttribute('aria-selected', tab === t);
+    const slots = $('lk-slots');
+    slots.hidden = tab !== 'skin';
+    if (tab === 'skin') slots.innerHTML = SKIN_SLOTS.map((sl) => `<button class="tab" type="button" role="tab" data-slot="${sl.id}" aria-selected="${this.skinSlot === sl.id}">${sl.name}</button>`).join('');
+    const ids = tab === 'style' ? STYLE_IDS : tab === 'flow' ? ['NONE'].concat(FLOW_IDS)
+      : [SKIN_SLOTS.find((sl) => sl.id === this.skinSlot).base].concat(SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
     const grid = $('locker-grid');
-    let ids = tab === 'style' ? STYLE_IDS : ['NONE'].concat(FLOW_IDS);
     grid.innerHTML = ids.map((id) => {
-      const src = id === 'NONE' ? { name: 'NO FLOW', rarity: 'Rare' } : (tab === 'style' ? STYLES[id] : FLOWS[id]);
-      const owned = id === 'NONE' || (tab === 'style' ? d.styles.includes(id) : d.flows.includes(id));
-      const equipped = tab === 'style' ? d.style === id : (d.flow || 'NONE') === id;
-      return `<button type="button" class="lcard ${owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${id === 'NONE' ? '#5a5f78' : RARITY_HEX[src.rarity]}"><span class="nm">${esc(src.name)}</span><span class="meta">${id === 'NONE' ? '<span class="chip">BASE</span>' : `<span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span>`}<span class="label">${equipped ? 'EQUIPPED' : owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
+      const it = this.lockerItem(id);
+      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.base ? '<span class="chip">FREE</span>' : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.equipped ? 'EQUIPPED' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
     }).join('');
-    grid.querySelectorAll('.lcard').forEach((b) => b.addEventListener('click', () => { Sfx.click(); this.lockerSel = b.dataset.id; this.renderLocker(); }));
+    grid.querySelectorAll('.lcard').forEach((b) => {
+      b.querySelector('.cv').replaceWith(this.lockerArt(b.dataset.id, 40));
+      b.addEventListener('click', () => { Sfx.click(); this.lockerSel = b.dataset.id; this.renderLocker(); });
+    });
     this.renderLockerDetail();
+    // the 3D player tries on whatever card is picked, owned or not
+    const id = this.lockerSel, spec = { look: {} };
+    if (tab === 'style') spec.style = id;
+    else if (tab === 'flow') spec.flow = id === 'NONE' ? null : id;
+    else { spec.look[SKINS[id].slot] = id; spec.celebrate = SKINS[id].slot === 'celeb'; }
+    Showcase.preview(spec);
   },
   renderLockerDetail() {
-    const d = Save.data, tab = this.lockerTab, id = this.lockerSel;
+    const d = Save.data, tab = this.lockerTab, id = this.lockerSel, it = this.lockerItem(id);
     const det = $('locker-detail');
+    const head = (sub, blurb) => `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px">${it.base ? '<span class="chip" style="justify-self:start">FREE</span>' : `<span class="rar" data-r="${it.rarity}" style="justify-self:start">${it.rarity.toUpperCase()}</span>`}<h3>${esc(it.name)}</h3>${sub ? `<span class="label">${sub}</span>` : ''}${blurb ? `<p style="margin:0;color:var(--muted);max-width:46ch">${esc(blurb)}</p>` : ''}</div></div>`;
     if (tab === 'style') {
-      const st = STYLES[id]; const owned = d.styles.includes(id);
-      det.innerHTML = `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px"><span class="rar" data-r="${st.rarity}" style="justify-self:start">${st.rarity.toUpperCase()}</span><h3>${esc(st.name)}</h3><p style="margin:0;color:var(--muted);max-width:46ch">${esc(st.blurb)}</p></div></div>
-        <div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}</div>
-        ${owned ? `<button class="btn ${d.style === id ? '' : 'blue'}" id="lk-equip" type="button" ${d.style === id ? 'disabled' : ''}>${d.style === id ? 'EQUIPPED' : 'EQUIP ' + esc(st.name)}</button>` : `<p class="label">LOCKED. ROLL IT FROM STYLE SPINS (${st.rarity.toUpperCase()}).</p>`}`;
-      det.querySelector('.cv').replaceWith(portraitCanvas(id, 96));
-    } else {
+      const st = STYLES[id];
+      det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}</div>`;
+    } else if (tab === 'flow') {
       const fl = id === 'NONE' ? null : FLOWS[id];
-      const owned = id === 'NONE' || d.flows.includes(id);
-      const eqd = (d.flow || 'NONE') === id;
-      det.innerHTML = `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px">${fl ? `<span class="rar" data-r="${fl.rarity}" style="justify-self:start">${fl.rarity.toUpperCase()}</span>` : '<span class="chip" style="justify-self:start">BASE</span>'}<h3>${fl ? esc(fl.name) : 'NO FLOW'}</h3></div></div>
-        <p style="margin:0;font-size:22px">${esc(fl ? fl.desc : RAW_FLOW_DESC)}</p>
-        <p style="margin:0;color:var(--muted)">Fill the Flow bar with completed passes, dodges, tackles and shots on target. Press G for 15 seconds of Flow: glowing eyes, a swirling aura and this buff.</p>
-        ${owned ? `<button class="btn ${eqd ? '' : 'blue'}" id="lk-equip" type="button" ${eqd ? 'disabled' : ''}>${eqd ? 'EQUIPPED' : 'EQUIP'}</button>` : `<p class="label">LOCKED. ROLL IT FROM FLOW SPINS (${fl.rarity.toUpperCase()}).</p>`}`;
-      det.querySelector('.cv').replaceWith(flowEmblemCanvas(id === 'NONE' ? null : id, 96));
+      det.innerHTML = head('', '') + `<p style="margin:0;font-size:22px">${esc(fl ? fl.desc : RAW_FLOW_DESC)}</p>
+        <p style="margin:0;color:var(--muted)">Fill the Flow bar with completed passes, dodges, tackles and shots on target. Press G for 15 seconds of Flow: glowing eyes, a swirling aura and this buff.</p>`;
+    } else {
+      const sk = SKINS[id], slot = SKIN_SLOTS.find((sl) => sl.id === sk.slot);
+      det.innerHTML = head(slot.name + ' SKIN', sk.desc || '') + `<p style="margin:0;color:var(--muted)">Skins only change how you look. They never change your stats.${sk.slot === 'celeb' ? ' You play it when you score.' : ''}</p>`;
     }
+    det.querySelector('.cv').replaceWith(this.lockerArt(id, 96));
+    // name, rarity and the equip button sit under the 3D preview
+    const cap = $('lk-cap');
+    cap.innerHTML = `${it.base ? '<span class="chip">FREE</span>' : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<b>${esc(it.name)}</b>`
+      + (it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`);
     const eq = $('lk-equip');
-    if (eq) eq.addEventListener('click', () => { Sfx.click(); if (tab === 'style') d.style = id; else d.flow = id === 'NONE' ? null : id; Save.save(); this.renderLocker(); });
+    if (eq) eq.addEventListener('click', () => {
+      Sfx.click();
+      if (tab === 'style') d.style = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else d.look[SKINS[id].slot] = id;
+      Save.save(); this.renderLocker();
+    });
   },
 };

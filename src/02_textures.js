@@ -271,7 +271,7 @@ function makePlayerSkin(o) {
     for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) { g.fillStyle = rgbStr(shadeRGB(base, lerp(a, b, R()))); g.fillRect(x + xx, y + yy, 1, 1); }
   };
   const px = (x, y, hex) => { g.fillStyle = hex; g.fillRect(x, y, 1, 1); };
-  const { jersey, trim, shorts, socks, boots, skin, hair, number, gloves, eye } = o;
+  const { jersey, trim, shorts, socks, boots, skin, hair, number, gloves, eye, sparkle } = o;
   // head
   fillN(8, 0, 8, 8, hair, 0.82, 1.08);                       // top
   fillN(16, 0, 8, 8, skin, 0.92, 1.0);                       // bottom (chin)
@@ -298,7 +298,13 @@ function makePlayerSkin(o) {
   // legs: shorts, socks, boots
   fillN(4, 16, 4, 4, shorts); fillN(8, 16, 4, 4, '#1a1a1f');
   for (let s = 0; s < 4; s++) { fillN(s * 4, 20, 4, 4, shorts); fillN(s * 4, 24, 4, 6, socks); g.fillStyle = trim; g.fillRect(s * 4, 25, 4, 1); fillN(s * 4, 30, 4, 2, boots, 0.85, 1.1); }
+  if (sparkle) for (let s = 0; s < 4; s++) { px(s * 4 + (s % 2), 30, '#ffffff'); px(s * 4 + 2 + (s % 2), 31, '#ffe9a8'); }
+  fillN(8, 16, 4, 4, boots, 0.7, 0.85); // boot soles
   return Tex.fromCanvas(c);
+}
+function makePrismTexture() {
+  const cols = ['#ff4d5e', '#ff9a3c', '#ffcb3d', '#2ee38f', '#4aa8ff', '#b65cff'].map(hexRGB);
+  return Tex.pixels(12, 8, (x, y) => shadeRGB(cols[Math.floor((x + y) / 2) % 6], y === 0 ? 1.1 : 0.95), { repeat: true });
 }
 function makeHairTexture(hex, seed) {
   const R = mulberry32(seed);
@@ -377,16 +383,30 @@ const ICON_MAPS = {
   bolt: ['............', '......YYY...', '.....YYY....', '....YYY.....', '...YYYYYY...', '......YYY...', '.....YYY....', '....YYY.....', '...YY.......', '..Y.........', '............', '............'],
   lock: ['............', '....kkkk....', '...k....k...', '...k....k...', '..kkkkkkkk..', '..kggggggk..', '..kggkkggk..', '..kggkkggk..', '..kggggggk..', '..kkkkkkkk..', '............', '............'],
   jump: ['............', '.....kk.....', '....kwwk....', '...kwwwwk...', '..kwwwwwwk..', '.kwwwwwwwwk.', '.kkkkwwkkkk.', '....kwwk....', '....kwwk....', '....kwwk....', '....kkkk....', '............'],
+  boot: ['............', '............', '............', '...kkkk.....', '...kAAk.....', '...kAAk.....', '...kAAkkkk..', '..kAAAAAAAk.', '..kAAAAAAAAk', '..kkkkkkkkkk', '...w.w.w.w..', '............'],
+  glove: ['............', '....k.k.k...', '...kAkAkAk..', '...kAkAkAk..', '.k.kAAAAAk..', 'kAkkAAAAAk..', 'kAAAAAAAAk..', '.kAAAAAAAk..', '..kAAAAAk...', '..kwwwwwk...', '..kkkkkkk...', '............'],
+  band: ['............', '...kkkkkk...', '..kHHHHHHk..', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kSSSSSSSSk.', '.kSwkSSkwSk.', '.kSSSSSSSSk.', '.kSSSSSSSSk.', '..kSSSSSSk..', '...kkkkkk...', '............'],
+  mask: ['............', '...kkkkkk...', '..kHHHHHHk..', '.kHHHHHHHHk.', '.kSSSSSSSSk.', '.kSwkSSkwSk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '..kAAAAAAk..', '...kkkkkk...', '............'],
+  chain: ['............', '.A........A.', '.A........A.', '..A......A..', '..A......A..', '...A....A...', '...A....A...', '....A..A....', '.....AA.....', '....kAAk....', '....kAAk....', '.....kk.....'],
+  celeb: ['............', '..A......A..', '..A..kk..A..', '...A.kk.A...', '....AAAA....', '.....AA.....', '.....AA.....', '....A..A....', '...A....A...', '..A......A..', '............', '............'],
   pause: ['............', '............', '.kkkk..kkkk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kkkk..kkkk.', '............', '............'],
 };
 const ICON_PAL_BASE = {
   k: '#0a0c17', w: '#f5f1e6', L: '#c9ffe4', l: '#7ff5bd', E: '#2ee38f', e: '#149e5c', m: '#8a3a1c', M: '#c4622d', h: '#e89a5c', d: '#7a5233',
   r: '#7a1010', R: '#e0302a', G: '#1f7a18', g: '#9aa1ad', s: '#3a3f4f', o: '#ff8a2a', O: '#ffd23d', b: '#9fd4ff', c: '#8fd8ff', Y: '#ffd23d',
+  H: '#3b2a22', S: '#e8b48a',
 };
+const PRISM_COLS = ['#ff4d5e', '#ff9a3c', '#ffcb3d', '#2ee38f', '#4aa8ff', '#b65cff'];
 const _iconCache = new Map();
 function iconURL(name, aura = '#ffffff', variant = '') {
   const key = name + '|' + aura + '|' + variant;
   if (_iconCache.has(key)) return _iconCache.get(key);
+  const url = iconCanvas(name, aura, variant).toDataURL('image/png');
+  _iconCache.set(key, url);
+  return url;
+}
+/** the same pixel icon as a 48x48 canvas */
+function iconCanvas(name, aura = '#ffffff', variant = '') {
   let map = ICON_MAPS[name];
   const pal = Object.assign({}, ICON_PAL_BASE, { A: aura });
   if (name === 'emerald') Object.assign(pal, { k: '#0a3d27' });
@@ -401,10 +421,11 @@ function iconURL(name, aura = '#ffffff', variant = '') {
     pal.Z = '#2c3150'; pal.z = '#565c80';
   }
   const S = 4, c = mkCanvas(12 * S, 12 * S), g = c.getContext('2d');
-  map.forEach((row, y) => row.split('').forEach((ch, x) => { if (pal[ch]) { g.fillStyle = pal[ch]; g.fillRect(x * S, y * S, S, S); } }));
-  const url = c.toDataURL('image/png');
-  _iconCache.set(key, url);
-  return url;
+  map.forEach((row, y) => row.split('').forEach((ch, x) => {
+    const fill = variant === 'prism' && ch === 'A' ? PRISM_COLS[Math.floor((x + y) / 2) % 6] : pal[ch];
+    if (fill) { g.fillStyle = fill; g.fillRect(x * S, y * S, S, S); }
+  }));
+  return c;
 }
 const TIER_MATS = [
   { name: 'WOOD', a: '#a8743f', b: '#7d5229', hl: '#d29a5c', pat: 'plank' },
@@ -443,23 +464,44 @@ function badgeURL(tier) {
   _iconCache.set(key, url);
   return url;
 }
-/** pixel portrait of a style (head front + hair + aura frame) */
-function portraitCanvas(styleId, size = 96) {
-  const st = STYLES[styleId];
+/** pixel portrait of a style (head front + hair + aura frame); `look` can swap the haircut and colour */
+function portraitCanvas(styleId, size = 96, look = null) {
+  const st = STYLES[styleId] || STYLES.ROOKIE;
   const c = mkCanvas(16, 16), g = c.getContext('2d');
   g.fillStyle = st.aura; g.globalAlpha = 0.28; g.fillRect(0, 0, 16, 16); g.globalAlpha = 1;
-  const skin = '#e8b48a', hair = st.hair;
+  const skin = '#e8b48a', hair = (look && look.hair) || st.hair, shape = (look && look.hairShape) || st.hairShape;
   g.fillStyle = '#0a0c17'; g.fillRect(3, 3, 10, 11);
   g.fillStyle = skin; g.fillRect(4, 4, 8, 9);
   g.fillStyle = hair; g.fillRect(4, 3, 8, 3); g.fillRect(3, 4, 1, 4); g.fillRect(12, 4, 1, 4);
-  if (st.hairShape === 'long') { g.fillRect(3, 4, 1, 9); g.fillRect(12, 4, 1, 9); }
-  if (st.hairShape === 'fluffy') { g.fillRect(3, 2, 10, 2); }
-  if (st.hairShape === 'spiky') { g.fillRect(4, 2, 1, 1); g.fillRect(7, 2, 1, 1); g.fillRect(10, 2, 1, 1); }
+  if (look && look.prism) ['#ff4d5e', '#ff9a3c', '#ffcb3d', '#2ee38f', '#4aa8ff', '#b65cff', '#ff4d5e', '#ffcb3d'].forEach((h, i) => { g.fillStyle = h; g.fillRect(4 + i, 3, 1, 3); });
+  g.fillStyle = hair;
+  if (shape === 'long') { g.fillRect(3, 4, 1, 9); g.fillRect(12, 4, 1, 9); }
+  if (shape === 'bob') { g.fillRect(3, 4, 1, 6); g.fillRect(12, 4, 1, 6); }
+  if (shape === 'fluffy') { g.fillRect(3, 2, 10, 2); }
+  if (shape === 'spiky') { g.fillRect(4, 2, 1, 1); g.fillRect(7, 2, 1, 1); g.fillRect(10, 2, 1, 1); }
+  if (shape === 'messy') { g.fillRect(5, 2, 2, 1); g.fillRect(9, 2, 1, 1); }
+  if (shape === 'swept') { g.fillRect(4, 2, 8, 1); g.fillRect(11, 1, 2, 1); }
+  if (shape === 'bun') { g.fillRect(6, 1, 4, 2); }
+  if (shape === 'flattop') { g.fillRect(4, 0, 8, 3); }
+  if (shape === 'mohawk') { g.fillStyle = skin; g.fillRect(4, 3, 3, 2); g.fillRect(9, 3, 3, 2); g.fillStyle = hair; g.fillRect(7, 0, 2, 5); }
   g.fillStyle = '#f7f7f2'; g.fillRect(5, 8, 2, 1); g.fillRect(9, 8, 2, 1);
   g.fillStyle = st.aura; g.fillRect(6, 8, 1, 1); g.fillRect(9, 8, 1, 1);
   g.fillStyle = '#7a4a30'; g.fillRect(7, 11, 2, 1);
   const out = mkCanvas(size, size), og = out.getContext('2d');
   og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size);
+  out.className = 'px';
+  return out;
+}
+/** card art for a skin: a portrait for hair and colours, a pixel icon for the rest */
+const SKIN_ICON = { boots: 'boot', gloves: 'glove', band: 'band', mask: 'mask', chain: 'chain', celeb: 'celeb' };
+function skinCanvas(id, size = 96) {
+  const sk = SKINS[id];
+  if (sk.slot === 'hair') return portraitCanvas('ROOKIE', size, { hairShape: sk.shape || 'short', hair: '#6b3e22' });
+  if (sk.slot === 'color') return portraitCanvas('ROOKIE', size, { hair: sk.hex || '#3b2a22', prism: sk.prism });
+  const name = sk.acc ? SKIN_ICON[sk.acc] : sk.slot === 'acc' ? 'lock' : SKIN_ICON[sk.slot];
+  const src = iconCanvas(name, sk.hex || (sk.slot === 'celeb' ? RARITY_HEX[sk.rarity] : '#8a8fa8'), sk.prism || sk.sparkle || sk.rarity === 'Generational' ? 'prism' : '');
+  const out = mkCanvas(size, size), og = out.getContext('2d');
+  og.imageSmoothingEnabled = false; og.drawImage(src, 0, 0, size, size);
   out.className = 'px';
   return out;
 }

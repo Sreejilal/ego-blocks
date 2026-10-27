@@ -74,7 +74,8 @@ const Save = {
   defaults() {
     return {
       v: 1, emeralds: 500, styles: ['ROOKIE'], flows: [], style: 'ROOKIE', flow: null,
-      rp: 0, pity: { style: 0, flow: 0 },
+      skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
+      rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
       settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true },
       howto: false,
@@ -90,6 +91,10 @@ const Save = {
     const def = this.defaults();
     const out = Object.assign({}, def, d && typeof d === 'object' ? d : {});
     out.pity = Object.assign({}, def.pity, out.pity || {});
+    for (const k in out.pity) out.pity[k] = clamp(Math.floor(Number(out.pity[k]) || 0), 0, 29);
+    out.look = Object.assign({}, def.look, out.look && typeof out.look === 'object' ? out.look : {});
+    if (!Array.isArray(out.skins)) out.skins = [];
+    out.skins = out.skins.filter((s) => typeof s === 'string');
     out.stats = Object.assign({}, def.stats, out.stats || {});
     out.settings = Object.assign({}, def.settings, out.settings || {});
     const st = out.settings;
@@ -114,6 +119,13 @@ const Save = {
     d.flows = d.flows.filter((f) => FLOWS[f]);
     if (!STYLES[d.style] || !d.styles.includes(d.style)) d.style = 'ROOKIE';
     if (d.flow && (!FLOWS[d.flow] || !d.flows.includes(d.flow))) d.flow = null;
+    d.skins = d.skins.filter((s, i) => SKINS[s] && !SKINS[s].base && d.skins.indexOf(s) === i);
+    const look = {};
+    for (const sl of SKIN_SLOTS) {
+      const id = d.look[sl.id], sk = SKINS[id];
+      look[sl.id] = sk && sk.slot === sl.id && (sk.base || d.skins.includes(id)) ? id : sl.base;
+    }
+    d.look = look;
   },
   save() {
     try { window.localStorage.setItem(this.key, JSON.stringify(this.data)); this.ok = true; }

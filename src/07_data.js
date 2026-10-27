@@ -228,6 +228,83 @@ const ITEMS = {
 };
 const ITEM_IDS = Object.keys(ITEMS);
 
+/* ---------- skins: looks only, they never change stats ----------
+   Every slot has a free base skin that everyone owns. The rest come from Skin Spins (and later the game pass). */
+const SKIN_SLOTS = [
+  { id: 'hair', name: 'HAIR', base: 'STYLE_HAIR' }, { id: 'color', name: 'COLOUR', base: 'STYLE_COLOR' },
+  { id: 'boots', name: 'BOOTS', base: 'TEAM_BOOTS' }, { id: 'gloves', name: 'GLOVES', base: 'NO_GLOVES' },
+  { id: 'acc', name: 'EXTRA', base: 'NO_ACC' }, { id: 'celeb', name: 'GOAL', base: 'JUMP' },
+];
+const SKINS = {
+  STYLE_HAIR: { slot: 'hair', name: 'STYLE CUT', rarity: 'Rare', base: true, desc: 'The haircut that comes with your style.' },
+  CROP: { slot: 'hair', name: 'CROP', rarity: 'Rare', shape: 'short' },
+  MANE: { slot: 'hair', name: 'MANE', rarity: 'Rare', shape: 'long' },
+  BOB: { slot: 'hair', name: 'BOB', rarity: 'Rare', shape: 'bob' },
+  TOP_BUN: { slot: 'hair', name: 'TOP BUN', rarity: 'Rare', shape: 'bun' },
+  SWEEP: { slot: 'hair', name: 'SWEEP', rarity: 'Epic', shape: 'swept' },
+  BED_HEAD: { slot: 'hair', name: 'BED HEAD', rarity: 'Epic', shape: 'messy' },
+  FLAT_TOP: { slot: 'hair', name: 'FLAT TOP', rarity: 'Epic', shape: 'flattop' },
+  CLOUD: { slot: 'hair', name: 'CLOUD', rarity: 'Legendary', shape: 'fluffy' },
+  SPIKES: { slot: 'hair', name: 'SPIKES', rarity: 'Legendary', shape: 'spiky' },
+  MOHAWK: { slot: 'hair', name: 'MOHAWK', rarity: 'Mythic', shape: 'mohawk' },
+  STYLE_COLOR: { slot: 'color', name: 'STYLE COLOUR', rarity: 'Rare', base: true, desc: 'The hair colour that comes with your style.' },
+  JET: { slot: 'color', name: 'JET', rarity: 'Rare', hex: '#15131b' },
+  CHESTNUT: { slot: 'color', name: 'CHESTNUT', rarity: 'Rare', hex: '#6b3e22' },
+  SANDY: { slot: 'color', name: 'SANDY', rarity: 'Rare', hex: '#d8b06a' },
+  SNOW: { slot: 'color', name: 'SNOW', rarity: 'Epic', hex: '#eef1f7' },
+  CRIMSON: { slot: 'color', name: 'CRIMSON', rarity: 'Epic', hex: '#c8283a' },
+  OCEAN: { slot: 'color', name: 'OCEAN', rarity: 'Epic', hex: '#2a64ff' },
+  MINT: { slot: 'color', name: 'MINT', rarity: 'Legendary', hex: '#4fe3a1' },
+  VIOLET: { slot: 'color', name: 'VIOLET', rarity: 'Legendary', hex: '#9150e8' },
+  SUNSET: { slot: 'color', name: 'SUNSET', rarity: 'Mythic', hex: '#ff7a2a' },
+  PRISM: { slot: 'color', name: 'PRISM', rarity: 'Generational', hex: '#b65cff', prism: true },
+  TEAM_BOOTS: { slot: 'boots', name: 'TEAM BOOTS', rarity: 'Rare', base: true, desc: 'Plain boots in your team colours.' },
+  CHALK: { slot: 'boots', name: 'CHALK', rarity: 'Rare', hex: '#f4efe0' },
+  BLACKOUT: { slot: 'boots', name: 'BLACKOUT', rarity: 'Rare', hex: '#121217' },
+  LIME: { slot: 'boots', name: 'LIME', rarity: 'Epic', hex: '#a6ff2e' },
+  MAGMA: { slot: 'boots', name: 'MAGMA', rarity: 'Epic', hex: '#ff4a1c' },
+  ICE: { slot: 'boots', name: 'ICE', rarity: 'Legendary', hex: '#8fe6ff' },
+  GOLDEN: { slot: 'boots', name: 'GOLDEN', rarity: 'Mythic', hex: '#ffcc33' },
+  STARDUST: { slot: 'boots', name: 'STARDUST', rarity: 'Generational', hex: '#241a5a', sparkle: true },
+  NO_GLOVES: { slot: 'gloves', name: 'BARE HANDS', rarity: 'Rare', base: true, desc: 'No gloves.' },
+  BLACK_GLOVES: { slot: 'gloves', name: 'NIGHT GLOVES', rarity: 'Rare', hex: '#1a1a22' },
+  WHITE_GLOVES: { slot: 'gloves', name: 'CHALK GLOVES', rarity: 'Rare', hex: '#f2f2ea' },
+  RED_GLOVES: { slot: 'gloves', name: 'RED GLOVES', rarity: 'Epic', hex: '#d8262e' },
+  GOLD_GLOVES: { slot: 'gloves', name: 'GOLD GLOVES', rarity: 'Legendary', hex: '#ffc93d' },
+  NO_ACC: { slot: 'acc', name: 'NOTHING', rarity: 'Rare', base: true, desc: 'No extra.' },
+  RED_BAND: { slot: 'acc', name: 'RED HEADBAND', rarity: 'Rare', acc: 'band', hex: '#e0302a' },
+  WHITE_BAND: { slot: 'acc', name: 'WHITE HEADBAND', rarity: 'Rare', acc: 'band', hex: '#f4f1e8' },
+  BLACK_BAND: { slot: 'acc', name: 'BLACK HEADBAND', rarity: 'Epic', acc: 'band', hex: '#17171d' },
+  FACE_MASK: { slot: 'acc', name: 'FACE MASK', rarity: 'Epic', acc: 'mask', hex: '#22242e' },
+  SILVER_CHAIN: { slot: 'acc', name: 'SILVER CHAIN', rarity: 'Epic', acc: 'chain', hex: '#d9dde4' },
+  GOLD_CHAIN: { slot: 'acc', name: 'GOLD CHAIN', rarity: 'Legendary', acc: 'chain', hex: '#ffc93d' },
+  CHROME_MASK: { slot: 'acc', name: 'CHROME MASK', rarity: 'Mythic', acc: 'mask', hex: '#b8c4d6', glow: 0.35 },
+  ICE_CHAIN: { slot: 'acc', name: 'ICE CHAIN', rarity: 'Generational', acc: 'chain', hex: '#7ff6ff', glow: 0.8 },
+  JUMP: { slot: 'celeb', name: 'BIG JUMP', rarity: 'Rare', base: true, celeb: 'jump', desc: 'Jump for joy with both arms up.' },
+  AIRPLANE: { slot: 'celeb', name: 'AIRPLANE', rarity: 'Rare', celeb: 'plane', desc: 'Arms out wide, tilting side to side.' },
+  SHUSH: { slot: 'celeb', name: 'SHUSH', rarity: 'Epic', celeb: 'shush', desc: 'A finger to the lips for the away fans.' },
+  ROBOT: { slot: 'celeb', name: 'ROBOT', rarity: 'Epic', celeb: 'robot', desc: 'Stiff, stepped robot dance moves.' },
+  KNEE_SLIDE: { slot: 'celeb', name: 'KNEE SLIDE', rarity: 'Legendary', celeb: 'knees', desc: 'Drop to the knees, lean back and soak it in.' },
+  BACKFLIP: { slot: 'celeb', name: 'BACKFLIP', rarity: 'Mythic', celeb: 'flip', desc: 'Backflip after backflip.' },
+  METEOR: { slot: 'celeb', name: 'METEOR', rarity: 'Generational', celeb: 'meteor', desc: 'Leap sky high, then slam down in a ring of light.' },
+};
+const SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base);
+/** the concrete colours and shapes a player model is built from: the style's defaults with skins on top */
+function lookFor(styleId, look = {}) {
+  const st = STYLES[styleId] || STYLES.ROOKIE, S = (slot) => SKINS[look[slot]] || {};
+  const acc = S('acc');
+  return {
+    hairShape: S('hair').shape || st.hairShape, hair: S('color').hex || st.hair, prism: !!S('color').prism,
+    boots: S('boots').hex || null, sparkle: !!S('boots').sparkle, gloves: S('gloves').hex || null,
+    acc: acc.acc ? { kind: acc.acc, hex: acc.hex, glow: acc.glow || 0 } : null, celeb: S('celeb').celeb || 'jump',
+  };
+}
+/** bots wear a few skins too, so matches show them off */
+function botLook() {
+  const any = (slot, p) => (chance(p) ? pick(SKIN_IDS.filter((k) => SKINS[k].slot === slot)) : null);
+  return { boots: any('boots', 0.4), color: any('color', 0.2), acc: any('acc', 0.22), gloves: any('gloves', 0.15), celeb: any('celeb', 0.6) };
+}
+
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /** bot difficulty 0..1 from rank points */
@@ -241,6 +318,7 @@ function rollRarity(pity) {
 }
 function poolFor(kind, rarityIdx) {
   const rar = RARITIES[rarityIdx];
+  if (kind === 'skin') return SKIN_IDS.filter((k) => SKINS[k].rarity === rar);
   const src = kind === 'style' ? STYLES : FLOWS;
   return Object.keys(src).filter((k) => src[k].rarity === rar);
 }

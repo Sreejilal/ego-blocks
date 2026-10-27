@@ -189,8 +189,24 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .result-line .tag { font-family: var(--font-label); font-size: 12px; padding: 4px 8px; background: var(--emerald); color: var(--ink); }
 .result-line .tag.dupe { background: var(--muted); }
 
-/* locker */
-.locker { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
+/* locker: your player in 3D on the left (the camera fits it into #lk-fit), cards and details on the right.
+   The page itself does not scroll; only the right side does, so the preview stays in view */
+#scr-locker { overflow: hidden; background: radial-gradient(ellipse 22% 46% at var(--stx, 20%) var(--sty, 50%), rgba(9,11,22,.1) 35%, rgba(9,11,22,.9) 100%); }
+.lk-wrap { height: 100%; grid-template-rows: auto minmax(0, 1fr); }
+.locker { display: grid; grid-template-columns: minmax(220px, 340px) minmax(0, 1fr); gap: 16px; min-height: 0; }
+.lk-stage { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 8px; min-height: 0; }
+.lk-fit { position: relative; min-height: 0; touch-action: none; cursor: grab; }
+.lk-fit:active { cursor: grabbing; }
+.lk-drag { position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%); white-space: nowrap; text-shadow: 1px 1px 0 var(--ink); pointer-events: none; }
+.lk-cap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 10px 12px; }
+.lk-cap b { font-family: var(--font-display); font-size: 30px; font-weight: 400; line-height: .9; }
+.lk-cap .btn, .lk-cap .lk-lock { margin-left: auto; }
+.lk-side { display: grid; grid-auto-rows: max-content; gap: 10px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; }
+.lk-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
+.lk-body .detail { position: sticky; top: 0; }
+.tabs.slots .tab { font-size: 20px; padding: 4px 10px 7px; }
+.lcard .art { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.lcard canvas { width: 40px; height: 40px; flex: none; }
 .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .lcard { text-align: left; cursor: pointer; display: grid; gap: 6px; padding: 10px; background: var(--slate-2); border: var(--px) solid var(--ink); box-shadow: inset 4px 0 0 var(--rc, var(--r-rare)), inset 0 -5px 0 rgba(0,0,0,.3); }
 .lcard[aria-pressed="true"] { outline: var(--px) solid var(--text); outline-offset: -6px; }
@@ -323,7 +339,11 @@ input[type="range"] { accent-color: var(--gold); width: 160px; }
 #flash.rainbow { background: linear-gradient(90deg, #ff4d5e, #ffcb3d, #2ee38f, #4aa8ff, #b65cff); }
 #boot { position: absolute; inset: 0; display: grid; place-items: center; background: var(--ink); font-family: var(--font-display); font-size: 40px; color: var(--muted); }
 @media (max-width: 760px) {
-  .locker { grid-template-columns: 1fr; }
+  .locker { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(200px, 40vh) minmax(0, 1fr); }
+  .lk-body { grid-template-columns: minmax(0, 1fr); }
+  .lk-body .detail { position: static; }
+  .lk-cap b { font-size: 24px; }
+  .lk-cap .btn { font-size: 20px; padding: 4px 10px 7px; }
   .scorebar .team { font-size: 34px; padding: 3px 8px 5px; }
   .scorebar .team .nm { display: none; }
   .flowbar { width: 300px; }
@@ -426,6 +446,10 @@ body.touch .howto .touchsec { order: -1; }
   .flabel { font-size: 18px; }
   .sub-head h2 { font-size: 40px; }
   .sub-wrap { gap: 8px; }
+  .locker { grid-template-columns: minmax(0, 230px) minmax(0, 1fr); grid-template-rows: none; gap: 12px; }
+  .lk-cap { padding: 6px 8px; gap: 4px 8px; }
+  .lk-cap b { font-size: 22px; }
+  .lk-side { gap: 6px; }
   .screen { padding-block: 10px; }
   .tab { font-size: 22px; padding: 4px 12px 7px; }
   .reel-box { padding: 8px 0; }

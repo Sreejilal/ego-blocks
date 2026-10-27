@@ -40,7 +40,8 @@ class Match {
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
         const style = human ? (opts.style || Save.data.style) : pick(STYLE_IDS);
         const flow = human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
-        const p = new Player(this, { team, role, human, style, flow, number: num, name: human ? 'YOU' : names.pop() });
+        const look = human ? (opts.look || Save.data.look) : botLook();
+        const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[1] : null, number: num, name: human ? 'YOU' : names.pop() });
         if (!human && team === 1) p.speedMul = 1 + 0.045 * this.d;
         this.players.push(p); this.teams[team].push(p);
         if (human) this.human = p;
