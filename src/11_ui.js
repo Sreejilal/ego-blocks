@@ -10,7 +10,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -109,6 +109,7 @@ const UI = {
             ${row(key('ARC'), 'Your three style abilities, then FLOW when the bar is full')}
             ${row(key('DOUBLE TAP'), 'Double tap the right side to face the goal')}
             ${row(key('SCORE'), 'Tap the score for the scoreboard. The top right button pauses')}
+            ${row(key('CHAT'), 'Online: the bubble next to pause opens quick chat. Typing needs an account')}
             ${row(key('REPLAY'), 'After a goal, a nutmeg or an ankle breaker, tap REPLAY to watch it again')}
           </div></section>
           <section class="panel"><h3>KEYBOARD + MOUSE</h3><div class="ctrl">
@@ -124,6 +125,8 @@ const UI = {
             ${row(key('G'), 'Activate Flow when the bar is full')}
             ${row(key('X'), 'Use item (Lawless)')}
             ${row(key('TAB'), 'Scoreboard')}
+            ${row(key('1') + key('2') + key('3') + key('4'), 'Online: quick chat. PASS!, NICE!, GG, ON ME')}
+            ${row(key('T'), 'Online: open chat. Typing needs an account, quick chat works for everyone')}
             ${row(key('ESC'), 'Pause')}
             ${row(key('ENTER'), 'Watch the replay after a goal, a nutmeg or an ankle breaker. SAVE CLIP downloads it as a video')}
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
@@ -131,7 +134,7 @@ const UI = {
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}
             ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Dodge')}${row(key('X'), 'Slide tackle')}
-            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('R3'), 'Watch the replay when it is offered')}
+            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('R3'), 'Watch the replay when it is offered')}
           </div></section>
           <section class="panel"><h3>WINNING THE BALL</h3><ul>
             <li><b>Run into a loose ball</b> to dribble it. You cannot run through a carrier, you have to tackle.</li>
@@ -248,6 +251,7 @@ const UI = {
       <div class="crosshair" id="xhair"></div>
       <div class="charge" id="charge" hidden><i id="charge-fill"></i><span id="charge-txt">POWER</span></div>
       <div class="toasts" id="toasts"></div>
+      <div class="chatfeed" id="chatfeed" aria-live="polite"></div>
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
       <canvas id="minimap" width="132" height="200"></canvas>
       <div class="dock">
@@ -281,10 +285,12 @@ const UI = {
           <span>Invert camera Y</span><div class="seg" id="set-inv"><button type="button" data-v="0">OFF</button><button type="button" data-v="1">ON</button></div>
           <span class="t-only">Button size</span><div class="seg t-only" id="set-btn"><button type="button" data-v="0.85">S</button><button type="button" data-v="1">M</button><button type="button" data-v="1.15">L</button></div>
           <span class="t-only">Aim assist</span><div class="seg t-only" id="set-assist"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
+          <span>Chat</span><div class="seg" id="set-chat">${CHAT_SHOW.map(([v, n]) => `<button type="button" data-v="${v}">${n}</button>`).join('')}</div>
           <span>Cut-ins</span><div class="seg" id="set-cut"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Sound</span><div class="seg" id="set-snd"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span class="fs-only" hidden>Fullscreen</span><div class="seg fs-only" id="set-fs" hidden><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
         </div>
+        <div class="p-people" id="p-people" hidden></div>
         <div class="row"><button class="btn blue" id="p-resume" type="button">RESUME</button><button class="btn" id="p-forfeit" type="button">FORFEIT</button></div>
         <p class="label" id="p-note">Click the pitch after resuming to lock the mouse again.</p>
       </div>
@@ -349,6 +355,7 @@ const UI = {
     $('set-q').addEventListener('click', (e) => { const q = e.target.dataset.q; if (!q) return; Save.data.settings.quality = q; Game.applyQuality(); Save.save(); this.renderPause(); });
     $('set-sens').addEventListener('input', (e) => { Save.data.settings.sens = parseFloat(e.target.value) || 1; Save.save(); });
     $('set-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.invertY = v === '1'; Save.save(); this.renderPause(); });
+    $('set-chat').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Net.setChatShow(v); this.renderPause(); });
     $('set-cut').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.cutins = v === '1'; Save.save(); this.renderPause(); });
     $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Sfx.setMuted(Save.data.settings.mute); Save.save(); this.renderPause(); });
     $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
@@ -610,6 +617,8 @@ const UI = {
     $('set-inv').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !!s.invertY));
     $('set-snd').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !s.mute));
     $('set-cut').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.cutins !== false)));
+    $('set-chat').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.chat));
+    Net.renderPeople();
     $('set-sens').value = s.sens;
     $('set-btn').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', Math.abs(parseFloat(b.dataset.v) - (s.btn || 1)) < 0.01));
     $('set-assist').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.assist !== false)));
@@ -622,6 +631,7 @@ const UI = {
     $('scr-pause').querySelector('h2').textContent = Game.state === 'online' ? 'MENU' : 'PAUSED';
   },
   showPause(on) {
+    if (on && Net.chatOpen) Net.closeChat(false);
     if (on) { this.renderPause(); $('scoreboard').hidden = true; Touch.board = false; for (const l of this.labels) { l.t = 0; l.el.hidden = true; } this.youLabel.hidden = true; }
     $('scr-pause').hidden = !on;
   },

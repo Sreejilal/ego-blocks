@@ -135,6 +135,14 @@ so add a **persistent disk** (Render and Fly.io both have one) and point `DATA_D
 and then. Never put that file on GitHub (it is already in `.gitignore`). Accounts only hold a name, a
 hashed password and game progress, no email or real names.
 
+**Chat safety.** Quick chat (PASS!, NICE!, GG and so on) works for everyone. Typing messages needs an
+account. The server hides swear words and removes links, emails, @names and phone numbers before anyone
+sees a message, and slows down anyone who sends too many. Every player has MUTE and REPORT next to the
+other players' names (in the room, and in the menu during a match). Reports are saved to
+`server/data/reports.jsonl`, one line each, with what that player said. Read it now and then. When two
+players in a room report someone (or the only other player does), that person's typed chat stops in
+that room. Players can also set chat to ALL, QUICK or OFF. There is no voice chat on purpose.
+
 Things to know: one server runs every room; 20 or so players at once is fine on a small plan. There
 is no player prediction yet, so the further players are from the server, the more lag they feel.
 Pick a server region close to you and your friends.

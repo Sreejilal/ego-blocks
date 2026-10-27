@@ -9,6 +9,7 @@ const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', '
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook'];
 const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
 const NET_DELAY = 0.12; // seconds the picture runs behind the server
+const CHAT_SHOW = [['all', 'ALL'], ['quick', 'QUICK'], ['off', 'OFF']];
 
 /** the match as this screen knows it: models moved by snapshots, with what the HUD needs */
 class NetMatch {
@@ -38,6 +39,7 @@ for (const k of ['dir', 'oppGoalZ', 'ownGoalZ', 'prog', 'buildHill']) NetMatch.p
 
 const Net = {
   ws: null, id: null, room: null, nm: null, url: '', status: '', snaps: [], rt: 0, sendT: 0, pend: {}, paused: false, joinCode: null, lastBall: null,
+  muted: new Set(), reported: new Set(), log: [], logCode: null, chatOpen: false,
   tpl() {
     return `<section id="scr-online" class="screen sub-screen" hidden>
       <div class="sub-wrap">
@@ -50,6 +52,7 @@ const Net = {
           <p class="on-status" id="on-status"></p>
           <details class="on-adv"><summary class="label">SERVER ADDRESS</summary><div class="on-row"><input class="on-in" id="on-server" autocomplete="off" spellcheck="false"><button class="btn small" id="on-server-save" type="button">SAVE</button></div></details>
         </div>
+        <div class="on-split">
         <div class="panel on-box" id="on-room" hidden>
           <div class="on-code"><span class="label">ROOM CODE</span><b id="on-room-code">----</b><button class="btn small" id="on-copy" type="button">COPY INVITE LINK</button></div>
           <div class="on-teams"><div class="on-team" id="on-t0"></div><div class="on-team" id="on-t1"></div></div>
@@ -61,6 +64,15 @@ const Net = {
           </div>
           <p class="on-status" id="on-wait"></p>
           <button class="btn ghost" id="on-leave" type="button">LEAVE ROOM</button>
+        </div>
+        <div class="panel on-box on-chat" id="on-chat" hidden>
+          <div class="cp-head"><span class="label">CHAT</span><div class="seg" id="on-chatset">${CHAT_SHOW.map(([v, n]) => `<button type="button" data-v="${v}">${n}</button>`).join('')}</div></div>
+          <div class="chat-log" id="on-log" aria-live="polite"></div>
+          <div class="chat-quick" id="on-quick">${this.quickBtns()}</div>
+          <div class="on-row chat-type"><input class="on-in" id="on-say" maxlength="80" placeholder="TYPE A MESSAGE" autocomplete="off" spellcheck="false"><button class="btn small" id="on-send" type="button">SEND</button></div>
+          <p class="label chat-guest">SIGN IN ON THE PROFILE SCREEN TO TYPE MESSAGES. QUICK CHAT WORKS FOR EVERYONE.</p>
+          <p class="on-status" id="on-chat-note"></p>
+        </div>
         </div>
       </div>
     </section>`;
@@ -81,6 +93,24 @@ const Net = {
     click('on-switch', () => { const me = this.room && this.room.players.find((p) => p.id === this.id); if (me) this.send({ t: 'team', team: 1 - me.team }); });
     click('on-go', () => this.send({ t: 'start' }));
     click('on-leave', () => { this.send({ t: 'leave' }); this.room = null; this.renderRoom(); });
+    // chat
+    const quickClick = (el, close) => $(el).addEventListener('click', (e) => { const b = e.target.closest('[data-q]'); if (!b) return; Sfx.click(); this.quick(+b.dataset.q); if (close) this.closeChat(true); });
+    quickClick('on-quick', false); quickClick('cp-quick', true);
+    click('on-send', () => this.say('on-say'));
+    $('on-say').addEventListener('keydown', (e) => { if (e.code === 'Enter') this.say('on-say'); });
+    click('cp-send', () => { this.say('cp-say'); this.closeChat(true); });
+    $('cp-say').addEventListener('keydown', (e) => {
+      if (e.code === 'Enter') { e.preventDefault(); this.say('cp-say'); this.closeChat(true); }
+      else if (e.code === 'Escape') { e.stopPropagation(); this.closeChat(false); }
+    });
+    click('cp-close', () => this.closeChat(true));
+    $('on-chatset').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v) { Sfx.click(); this.setChatShow(v); } });
+    const people = (e) => {
+      const m = e.target.closest('[data-mute]'), r = e.target.closest('[data-report]');
+      if (m) { Sfx.click(); this.toggleMute(m.dataset.mute); }
+      else if (r) { Sfx.click(); if (!r.dataset.armed) { r.dataset.armed = '1'; r.textContent = 'SURE?'; } else this.send({ t: 'report', id: r.dataset.report }); }
+    };
+    $('on-room').addEventListener('click', people); $('p-people').addEventListener('click', people);
     $('on-mode').addEventListener('click', (e) => { const m = e.target.closest('[data-m]'); if (m && this.room) { Sfx.click(); this.send({ t: 'settings', mode: m.dataset.m, size: this.room.size }); } });
     $('on-size').addEventListener('click', (e) => { const s = e.target.closest('[data-s]'); if (s && this.room) { Sfx.click(); this.send({ t: 'settings', mode: this.room.mode, size: +s.dataset.s }); } });
     // an invite link opens straight into the room
@@ -122,7 +152,10 @@ const Net = {
   onMessage(m) {
     switch (m.t) {
       case 'welcome': this.id = m.id; break;
-      case 'room': this.room = m; this.renderRoom(); break;
+      case 'room': this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); break;
+      case 'chat': this.addChat(m); break;
+      case 'chat-note': this.note(m.text); Sfx.deny(); break;
+      case 'reported': this.reported.add(m.id); this.mute(m.id, true); this.note('REPORTED. THANKS. THEY ARE MUTED FOR YOU.'); break;
       case 'error': this.setStatus(m.text); $('on-wait').textContent = m.text; Sfx.deny(); break;
       case 'left': this.room = null; this.renderRoom(); break;
       case 'start': this.start(m); break;
@@ -134,13 +167,15 @@ const Net = {
   /* ---------- the room screen ---------- */
   renderRoom() {
     const R = this.room;
-    $('on-start').hidden = !!R; $('on-room').hidden = !R;
+    $('on-start').hidden = !!R; $('on-room').hidden = !R; $('on-chat').hidden = !R;
     if (!R) return;
+    if (R.code !== this.logCode) { this.logCode = R.code; this.log = []; $('on-chat-note').textContent = ''; this.renderLog(); }
+    this.renderChatUI();
     const host = R.host === this.id;
     $('on-room-code').textContent = R.code;
     for (const t of [0, 1]) {
       const list = R.players.filter((p) => p.team === t);
-      $('on-t' + t).innerHTML = `<span class="label">${t === 0 ? 'HOME' : 'AWAY'} · ${list.length} / ${R.size - 1}</span>` + list.map((p) => `<div class="on-p ${p.id === this.id ? 'me' : ''}">${esc(p.name)}${p.id === R.host ? ' <span class="chip">HOST</span>' : ''}${p.id === this.id ? ' <span class="chip">YOU</span>' : ''}</div>`).join('') + '<div class="on-p bot">+ BOTS</div>';
+      $('on-t' + t).innerHTML = `<span class="label">${t === 0 ? 'HOME' : 'AWAY'} · ${list.length} / ${R.size - 1}</span>` + list.map((p) => `<div class="on-p ${p.id === this.id ? 'me' : ''}">${esc(p.name)}${p.id === R.host ? ' <span class="chip">HOST</span>' : ''}${p.id === this.id ? ' <span class="chip">YOU</span>' : this.acts(p)}</div>`).join('') + '<div class="on-p bot">+ BOTS</div>';
     }
     $('on-host').hidden = !host;
     $('on-mode').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === R.mode));
@@ -157,6 +192,92 @@ const Net = {
     const done = () => { $('on-wait').textContent = 'INVITE LINK COPIED. SEND IT TO A FRIEND.'; };
     try { navigator.clipboard.writeText(link).then(done, () => { $('on-wait').textContent = link; }); } catch (e) { $('on-wait').textContent = link; }
   },
+  /* ---------- chat ---------- */
+  quickBtns() { return QUICK_CHAT.map((t, i) => `<button class="btn small" type="button" data-q="${i}">${i < 4 ? `<span class="key">${i + 1}</span> ` : ''}${t}</button>`).join(''); },
+  chatPopTpl() {
+    return `<div id="chat-pop" class="panel" hidden>
+      <div class="cp-head"><span class="label">QUICK CHAT</span><button class="btn ghost" id="cp-close" type="button">CLOSE</button></div>
+      <div class="chat-quick" id="cp-quick">${this.quickBtns()}</div>
+      <div class="on-row chat-type"><input class="on-in" id="cp-say" maxlength="80" placeholder="TYPE, THEN ENTER" autocomplete="off" spellcheck="false"><button class="btn small" id="cp-send" type="button">SEND</button></div>
+      <p class="label chat-guest">SIGN IN ON THE PROFILE SCREEN TO TYPE MESSAGES</p>
+    </div>`;
+  },
+  quick(i) { this.send({ t: 'chat', q: i }); },
+  say(id) { const el = $(id), text = el.value.trim(); el.value = ''; if (text) this.send({ t: 'chat', text: text.slice(0, 80) }); },
+  /** a line from the server; muted players and the chat setting decide what you see */
+  addChat(m) {
+    const show = Save.data.settings.chat;
+    if (this.muted.has(m.id) || show === 'off' || (show === 'quick' && m.q < 0)) return;
+    this.log.push(m); if (this.log.length > 40) this.log.shift();
+    this.renderLog();
+    if (Game.state === 'online') { this.feed(m); if (m.id !== this.id) Sfx.click(); }
+  },
+  line(m) {
+    const d = document.createElement('div');
+    d.className = 'cl' + (m.sys ? ' sys' : m.q >= 0 ? ' q' : '');
+    if (m.sys) { d.textContent = m.text; return d; }
+    const b = document.createElement('b'); b.className = 't' + m.team; b.textContent = m.name;
+    d.append(b, ' ' + m.text);
+    return d;
+  },
+  renderLog() {
+    const el = $('on-log'); if (!el) return;
+    if (Save.data.settings.chat === 'off') { el.replaceChildren(this.line({ sys: true, text: 'CHAT IS OFF. PICK ALL OR QUICK TO SEE IT.' })); return; }
+    el.replaceChildren(...this.log.map((m) => this.line(m)));
+    el.scrollTop = el.scrollHeight;
+  },
+  /** chat lines in the corner of the match screen, gone after 7 seconds */
+  feed(m) {
+    const wrap = $('chatfeed');
+    while (wrap.children.length >= 5) wrap.removeChild(wrap.firstChild);
+    const d = this.line(m); wrap.appendChild(d);
+    setTimeout(() => d.remove(), 7000);
+  },
+  note(text) { if (Game.state === 'online') this.feed({ sys: true, text }); else $('on-chat-note').textContent = text; },
+  setChatShow(v) { if (!CHAT_SHOW.some(([k]) => k === v)) return; Save.data.settings.chat = v; Save.save(); this.renderChatUI(); this.renderLog(); },
+  renderChatUI() {
+    const signed = !!Account.token;
+    document.querySelectorAll('.chat-type').forEach((el) => { el.hidden = !signed; });
+    document.querySelectorAll('.chat-guest').forEach((el) => { el.hidden = signed; });
+    $('on-chatset').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === Save.data.settings.chat));
+  },
+  /** MUTE / REPORT next to everyone else in the room and in the match menu */
+  acts(p) {
+    return `<span class="on-acts"><button class="btn ghost tiny" type="button" data-mute="${esc(p.id)}">${this.muted.has(p.id) ? 'UNMUTE' : 'MUTE'}</button>`
+      + (this.reported.has(p.id) ? '<span class="label">REPORTED</span>' : `<button class="btn ghost tiny" type="button" data-report="${esc(p.id)}">REPORT</button>`) + '</span>';
+  },
+  mute(id, on) {
+    if (on) { this.muted.add(id); this.log = this.log.filter((m) => m.id !== id); } else this.muted.delete(id);
+    this.renderLog(); this.renderRoom(); this.renderPeople();
+  },
+  toggleMute(id) { this.mute(id, !this.muted.has(id)); },
+  renderPeople() {
+    const el = $('p-people'), R = this.room, on = Game.state === 'online' && !!R;
+    el.hidden = !on; if (!on) return;
+    const others = R.players.filter((p) => p.id !== this.id);
+    el.innerHTML = '<span class="label">PLAYERS</span>' + (others.length ? others.map((p) => `<div class="on-p">${esc(p.name)}${this.acts(p)}</div>`).join('') : '<p class="label">ONLY YOU AND BOTS</p>');
+  },
+  typing() { const a = document.activeElement; return !!(a && a.id === 'cp-say'); },
+  openChat() {
+    if (this.chatOpen || Game.state !== 'online') return;
+    this.chatOpen = true; this.renderChatUI();
+    $('chat-pop').hidden = false;
+    Input.down.clear(); Input.releaseLock();
+    if (Account.token && !Touch.on) setTimeout(() => $('cp-say').focus(), 0);
+  },
+  closeChat(relock) {
+    if (!this.chatOpen) return;
+    this.chatOpen = false; $('chat-pop').hidden = true;
+    if (this.typing()) document.activeElement.blur();
+    if (relock && Game.state === 'online' && !this.paused) Input.requestLock();
+  },
+  /** in a match: 1 to 4 (or VIEW + D-pad) send a phrase, T opens the chat box */
+  chatKeys() {
+    const E = Input.edges;
+    for (let i = 0; i < 4; i++) if (E.has('Digit' + (i + 1)) || E.has('Numpad' + (i + 1))) this.quick(i);
+    if (Input.padHeld(PAD.BACK)) ['PadUp', 'PadRight', 'PadDown', 'PadLeft'].forEach((k, i) => { if (E.has(k)) this.quick(i); });
+    if (E.has('KeyT')) this.openChat();
+  },
   /* ---------- the match ---------- */
   start(msg) {
     if (Game.match) { Game.match.dispose(); Game.match = null; }
@@ -169,7 +290,7 @@ const Net = {
     const me = nm.human;
     Cam.reset(me && me.team === 1 ? Math.PI : 0);
     Game.state = 'online';
-    UI.show('hud'); UI.buildHud(nm);
+    UI.show('hud'); UI.buildHud(nm); $('chatfeed').replaceChildren();
     Sfx.init(); Sfx.setCrowd(0.55);
     Input.consumeEdges(); Input.requestLock();
   },
@@ -250,7 +371,7 @@ const Net = {
   },
   /** remember button presses until the next send, so a quick tap is never lost */
   collect(c) {
-    if (!c) return;
+    if (!c) { this.held = null; return; }
     const P = this.pend;
     P.jump = P.jump || c.jump; P.sd = P.sd || c.shootDown; P.su = P.su || c.shootUp; P.pd = P.pd || c.passDown; P.pu = P.pu || c.passUp;
     P.dodge = P.dodge || c.dodge; P.tackle = P.tackle || c.tackle; P.flow = P.flow || c.flow;
@@ -266,8 +387,10 @@ const Net = {
   /** one frame of an online match */
   frame(rdt) {
     const nm = this.nm; if (!nm) return;
-    if (!this.paused) Cam.look(rdt);
-    this.collect(this.paused ? null : Input.controls());
+    const busy = this.paused || this.typing();
+    if (!busy) Cam.look(rdt);
+    this.collect(busy ? null : Input.controls());
+    if (!busy) this.chatKeys();
     this.sendT -= rdt;
     if (this.sendT <= 0) { this.sendT = 1 / 30; this.sendInput(); }
     Input.consumeEdges();
@@ -284,6 +407,7 @@ const Net = {
     nm.score = m.score;
     nm.result = { res: a > b ? 'win' : a < b ? 'loss' : 'draw', human: mine ? mine.stats : { goals: 0, assists: 0, shots: 0, tackles: 0 } };
     if (mine && mine.feats) nm.feats = mine.feats;
+    this.closeChat(false);
     Game.finishMatch(false);
     $('r-again').textContent = 'BACK TO ROOM'; $('r-lobby').textContent = 'LEAVE ROOM';
   },

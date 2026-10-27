@@ -316,6 +316,32 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .passline .pl-ch { color: var(--emerald); } .passline .pl-tier { color: var(--gold); }
 @media (max-width: 560px) { .gp-top { grid-template-columns: minmax(0, 1fr); } }
 
+/* chat: the room panel, the box in a match, the lines in the corner */
+.on-split { display: grid; grid-template-columns: minmax(0, 640px) minmax(0, 440px); gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .on-split { grid-template-columns: minmax(0, 640px); } }
+.on-chat { gap: 8px; }
+.cp-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.chat-log { height: 190px; overflow-y: auto; background: var(--ink); padding: 8px 10px; box-sizing: border-box; }
+.cl { font-size: 18px; line-height: 1.25; overflow-wrap: anywhere; }
+.cl b { font-family: var(--font-display); font-weight: 400; font-size: 22px; margin-right: 4px; }
+.cl b.t0 { color: #7fa9ff; } .cl b.t1 { color: #ffa064; }
+.cl.q { color: var(--gold); }
+.cl.sys { color: var(--muted); font-family: var(--font-label); font-size: 12px; letter-spacing: .08em; }
+.chat-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-quick .btn { font-size: 20px; padding: 4px 10px 7px; }
+body.touch .chat-quick .key { display: none; }
+.on-acts { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; vertical-align: middle; }
+.btn.ghost.tiny { font-size: 16px; padding: 2px 5px; }
+.p-people { display: grid; gap: 4px; }
+.p-people .on-p { font-size: 22px; }
+#hud .chatfeed { left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(232px + env(safe-area-inset-bottom, 0px)); width: min(360px, 40vw); display: grid; justify-items: start; gap: 3px; }
+#hud .chatfeed .cl { background: rgba(9,11,22,.74); padding: 3px 8px; font-size: 16px; animation: toastIn .18s steps(3); }
+#hud .chatfeed .cl b { font-size: 19px; }
+body.touch #hud .chatfeed { bottom: auto; top: calc(112px + env(safe-area-inset-top, 0px)); left: max(10px, env(safe-area-inset-left, 0px)); width: min(300px, 36vw); }
+#chat-pop { position: absolute; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(540px, calc(100% - 32px)); padding: 12px; display: grid; gap: 8px; box-sizing: border-box; z-index: 30; }
+body.touch #chat-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0px)); }
+@media (orientation: portrait) { body.touch #hud .chatfeed { top: calc(220px + env(safe-area-inset-top, 0px)); width: min(300px, 64vw); } }
+
 /* account and friends (on the Profile screen) */
 .pf-acc { padding: 16px; display: grid; gap: 10px; }
 .pf-acc h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: .9; }

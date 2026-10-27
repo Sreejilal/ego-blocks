@@ -11,11 +11,12 @@ const Input = {
   init(canvas) {
     this.canvas = canvas;
     window.addEventListener('keydown', (e) => {
+      if (e.target && e.target.tagName === 'INPUT' && e.code !== 'Escape') return; // typing a name or a chat message
       const inGame = Game.playing();
       if (inGame && GAME_KEYS.has(e.code)) e.preventDefault();
       if (e.code === 'Tab' && Game.playing()) e.preventDefault();
       if (!e.repeat) { this.down.add(e.code); this.edges.add(e.code); }
-      if (e.code === 'Escape') Game.onEscape();
+      if (e.code === 'Escape') { if (Net.chatOpen) Net.closeChat(false); else Game.onEscape(); }
       this.usingPad = false;
     });
     window.addEventListener('keyup', (e) => { this.down.delete(e.code); this.up.add(e.code); });
@@ -23,6 +24,7 @@ const Input = {
     canvas.addEventListener('mousedown', (e) => {
       if (!Game.playing() || Net.paused) return;
       e.preventDefault();
+      if (Net.chatOpen) Net.closeChat(false);
       Sfx.init();
       if (!this.locked && !this.lockFailed) { this.requestLock(); return; }
       if (e.button === 0) { this.mouseL = true; this.edges.add('Mouse0'); }
@@ -81,6 +83,7 @@ const Input = {
   axis(i) { const p = this.pad; if (!p || !p.axes[i]) return 0; const v = p.axes[i]; return Math.abs(v) < 0.16 ? 0 : v; },
   controls() {
     const k = this.down, e = this.edges, u = this.up;
+    const chatPad = Game.state === 'online' && this.padHeld(PAD.BACK); // online, VIEW + D-pad picks a quick-chat phrase
     let mx = (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0);
     let my = (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0);
     const lx = this.axis(0), ly = this.axis(1);
@@ -95,9 +98,9 @@ const Input = {
       passDown: e.has('Mouse2') || e.has('PadLT') || e.has('PadRB') || e.has('T_pass'), passUp: u.has('Mouse2') || u.has('PadLT') || u.has('PadRB') || u.has('T_pass'),
       dodge: e.has('KeyC') || e.has('PadB') || e.has('T_dodge'),
       tackle: e.has('KeyF') || e.has('PadX') || e.has('T_tackle'),
-      ab: [e.has('KeyQ') || e.has('PadLeft') || e.has('T_ab0'), e.has('KeyE') || e.has('PadUp') || e.has('T_ab1'), e.has('KeyR') || e.has('PadRight') || e.has('T_ab2')],
+      ab: [e.has('KeyQ') || (e.has('PadLeft') && !chatPad) || e.has('T_ab0'), e.has('KeyE') || (e.has('PadUp') && !chatPad) || e.has('T_ab1'), e.has('KeyR') || (e.has('PadRight') && !chatPad) || e.has('T_ab2')],
       flow: e.has('KeyG') || e.has('PadY') || e.has('T_flow'),
-      item: e.has('KeyX') || e.has('PadDown') || e.has('T_item'),
+      item: e.has('KeyX') || (e.has('PadDown') && !chatPad) || e.has('T_item'),
       board: k.has('Tab') || this.padHeld(PAD.BACK) || T.board,
     };
   },

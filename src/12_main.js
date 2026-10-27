@@ -31,7 +31,7 @@ const Game = {
   },
   applyQuality() { const q = Save.data.settings.quality; World.setQuality(q === 'auto' ? this.autoQ : q); },
   toLobby() {
-    Replay.stop(); Replay.offer = null; Replay.hideOffer();
+    Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false);
     if (this.match) { this.match.dispose(); this.match = null; }
     Net.nm = null; Net.paused = false;
     Input.releaseLock();

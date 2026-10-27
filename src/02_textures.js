@@ -390,6 +390,7 @@ const ICON_MAPS = {
   beam: ['............', '............', '........kkk.', '.......kwwwk', 'AAAAAAAkwkwk', 'wwwwwwwkwwwk', 'AAAAAAAkwkwk', '.......kwwwk', '........kkk.', '............', '............', '............'],
   flip: ['............', '...AAAAA....', '..A.....A...', '.A.......A..', '.A.......A..', '.A......AAA.', '.A.......A..', '............', '....kkk.....', '...kwwwk....', '...kwwwk....', '....kkk.....'],
   shield: ['............', '..AAAAAAAA..', '..AwwwwwwA..', '..AwwwwwwA..', '..AwwwwwwA..', '..AwwwwwwA..', '...AwwwwA...', '...AwwwwA...', '....AwwA....', '.....AA.....', '............', '............'],
+  chat: ['............', '.kkkkkkkkkk.', 'kwwwwwwwwwwk', 'kwwwwwwwwwwk', 'kwkkwkkwkkwk', 'kwkkwkkwkkwk', 'kwwwwwwwwwwk', 'kwwwwwwwwwwk', '.kkkwwkkkkk.', '...kwk......', '...kk.......', '............'],
   call: ['............', '..AAAAAAAA..', '.AAAAwwAAAA.', '.AAAAwwAAAA.', '.AAAAwwAAAA.', '.AAAAwwAAAA.', '.AAAAAAAAAA.', '.AAAAwwAAAA.', '..AAAAAAAA..', '....AA......', '...AA.......', '............'],
   tackle: ['............', '............', '............', '............', '.....kkk....', '....kAAAk...', 'kkkkAAAAk...', 'kAAAAAAAk...', 'kAAAAAAAAkk.', '.kkkkkkkkkk.', 'd.d.d.d.....', '............'],
   flame: ['............', '.....A......', '....AA......', '....AAA..A..', '...AAwAA.A..', '..AAwwAAAA..', '..AwwwwAAA..', '..AwwwwwAA..', '..AAwwwAA...', '...AAAAA....', '............', '............'],

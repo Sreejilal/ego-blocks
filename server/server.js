@@ -15,6 +15,8 @@ const { WebSocketServer } = require('ws');
 const THREE = require('three');
 const G = require('./headless').load();
 const Accounts = require('./accounts');
+const Filter = require('./filter');
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 
 const PORT = Number(process.env.PORT) || 8787;
 const STEP = 1 / 60, SNAP_EVERY = 3;
@@ -114,6 +116,42 @@ function toCtl(m, prev) {
 const EDGES = ['jump', 'shootDown', 'shootUp', 'passDown', 'passUp', 'dodge', 'tackle', 'flow'];
 function clearEdges(c) { for (const k of EDGES) c[k] = false; c.ab = [false, false, false]; }
 
+/* ---------- chat ---------- */
+const CHAT_MAX = 5, CHAT_WINDOW = 8000; // at most 5 messages in 8 seconds
+function chat(me, room, m) {
+  const now = Date.now();
+  me.chatTimes = (me.chatTimes || []).filter((t) => now - t < CHAT_WINDOW);
+  if (me.chatTimes.length >= CHAT_MAX) { send(me.ws, { t: 'chat-note', text: 'SLOW DOWN A LITTLE' }); return; }
+  let text, q = -1;
+  if (Number.isInteger(m.q) && m.q >= 0 && m.q < G.QUICK_CHAT.length) { q = m.q; text = G.QUICK_CHAT[q]; }
+  else {
+    // typed chat only for signed-in players, and never for someone the room has reported
+    if (!me.account) { send(me.ws, { t: 'chat-note', text: 'SIGN IN ON THE PROFILE SCREEN TO TYPE MESSAGES' }); return; }
+    if (room.silenced.has(me.id)) { send(me.ws, { t: 'chat-note', text: 'YOUR TYPED CHAT IS OFF IN THIS ROOM' }); return; }
+    text = Filter.clean(m.text).text;
+    if (!text) return;
+  }
+  me.chatTimes.push(now);
+  const line = { t: 'chat', id: me.id, name: me.name, team: me.team, text, q };
+  room.log.push({ id: me.id, name: me.name, text, at: now }); if (room.log.length > 60) room.log.shift();
+  broadcast(room, line);
+}
+/** a report keeps the last things that player said, for the owner to read in reports.jsonl */
+function report(me, room, m) {
+  const target = room.players.find((p) => p.id === m.id);
+  if (!target || target === me) return;
+  const key = me.id + '>' + target.id;
+  if (room.reports.has(key)) { send(me.ws, { t: 'reported', id: target.id }); return; }
+  room.reports.add(key);
+  const entry = { at: new Date().toISOString(), room: room.code, by: me.account || me.name, byAccount: !!me.account, player: target.name, account: target.account || null,
+    said: room.log.filter((l) => l.id === target.id).slice(-12).map((l) => l.text) };
+  try { fs.mkdirSync(DATA_DIR, { recursive: true }); fs.appendFileSync(path.join(DATA_DIR, 'reports.jsonl'), JSON.stringify(entry) + '\n'); } catch (e) { console.error('could not save a report:', e.message); }
+  // enough reports in this room (2, or everyone else when there are only two of you): their typed chat stops here
+  const others = room.players.length - 1, by = [...room.reports].filter((k) => k.endsWith('>' + target.id)).length;
+  if (by >= Math.min(2, others)) room.silenced.add(target.id);
+  send(me.ws, { t: 'reported', id: target.id });
+}
+
 /* ---------- matches ---------- */
 function startMatch(room) {
   const humans = room.players.map((p) => ({ id: p.id, team: p.team, name: p.name, style: p.style, flow: p.flow, look: p.look }));
@@ -205,7 +243,7 @@ wss.on('connection', (ws) => {
       }
       case 'create': {
         leave(me);
-        const r = { code: newCode(), host: me.id, hostClub: me.club, mode: 'quick', size: 3, players: [], match: null, events: [] };
+        const r = { code: newCode(), host: me.id, hostClub: me.club, mode: 'quick', size: 3, players: [], match: null, events: [], log: [], reports: new Set(), silenced: new Set() };
         rooms.set(r.code, r); join(me, r);
         break;
       }
@@ -241,6 +279,8 @@ wss.on('connection', (ws) => {
           if (p) { const c = toCtl(m, p.ctl); for (const k of EDGES) c[k] = c[k] || (p.ctl && p.ctl[k]); c.ab = c.ab.map((v, i) => v || (p.ctl && p.ctl.ab[i])); p.ctl = c; }
         }
         break;
+      case 'chat': if (room) chat(me, room, m); break;
+      case 'report': if (room) report(me, room, m); break;
       case 'leave': leave(me); send(ws, { t: 'left' }); break;
     }
   });

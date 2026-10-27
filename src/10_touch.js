@@ -23,7 +23,7 @@ const Touch = {
     return `<div class="stick idle" id="t-stick"><div class="ring"></div><div class="base"></div><div class="knob"></div><b class="lb">MOVE</b></div>`
       + btn('shoot', 'big', 'SHOOT', '<span class="chg"></span>') + btn('pass', 'pass', 'PASS') + btn('dt', 'dt', 'TACKLE', '<span class="pips"><i></i><i></i></span>') + btn('jump', '', 'JUMP')
       + btn('ab0', 'ab', '') + btn('ab1', 'ab', '') + btn('ab2', 'ab', '') + btn('flow', 'flow off', 'FLOW') + btn('item', 'item off', 'ITEM')
-      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
+      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
   },
   init() {
     const el = document.createElement('div');
@@ -39,6 +39,7 @@ const Touch = {
     this.st = $('t-stick');
     const icon = (a, url) => { if (this.parts[a].ic) this.parts[a].ic.style.backgroundImage = 'url(' + url + ')'; };
     icon('pause', iconURL('pause'));
+    icon('chat', iconURL('chat'));
     icon('shoot', iconURL('shot', '#ffffff'));
     icon('pass', iconURL('pass', '#a9c7ff'));
     icon('jump', iconURL('jump'));
@@ -120,6 +121,8 @@ const Touch = {
     for (const [a, deg] of arc) put(a, ...pol(deg, R2), 58 * s);
     this.b.item.hidden = !lawless;
     put('pause', W - Math.max(raw.r, 8) - 30, raw.t + 30, 46);
+    put('chat', W - Math.max(raw.r, 8) - 86, raw.t + 30, 46);
+    this.b.chat.hidden = Game.state !== 'online';
     this.R = 58 * s;
     this.ghost.x = sa.l + (portrait ? 80 : 104) * s;
     this.ghost.y = H - sa.b - (portrait ? 150 : 100) * s;
@@ -146,7 +149,7 @@ const Touch = {
     const rec = { kind: 'btn', act, el: btn, x0: x, y0: y, lx: x, ly: y, looking: false };
     this.ptrs.set(id, rec);
     btn.classList.add('down');
-    if (act === 'pause' || act === 'board') return; // these act on release
+    if (act === 'pause' || act === 'board' || act === 'chat') return; // these act on release
     if (act === 'dt') { const m = Game.match, p = m && m.human; act = p && m.ball.owner === p ? 'dodge' : 'tackle'; rec.act = act; }
     this.held.add(act);
     Input.edges.add('T_' + act);
@@ -182,6 +185,7 @@ const Touch = {
     } else if (r.kind === 'btn') {
       r.el.classList.remove('down');
       if (r.act === 'pause') { if (e) Game.pause(); return; }
+      if (r.act === 'chat') { if (e) Net.openChat(); return; }
       if (r.act === 'board') { if (e) { this.board = !this.board; this.boardT = 8; } return; }
       this.held.delete(r.act);
       Input.up.add('T_' + r.act);

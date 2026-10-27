@@ -325,6 +325,32 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .passline .pl-ch { color: var(--emerald); } .passline .pl-tier { color: var(--gold); }
 @media (max-width: 560px) { .gp-top { grid-template-columns: minmax(0, 1fr); } }
 
+/* chat: the room panel, the box in a match, the lines in the corner */
+.on-split { display: grid; grid-template-columns: minmax(0, 640px) minmax(0, 440px); gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .on-split { grid-template-columns: minmax(0, 640px); } }
+.on-chat { gap: 8px; }
+.cp-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.chat-log { height: 190px; overflow-y: auto; background: var(--ink); padding: 8px 10px; box-sizing: border-box; }
+.cl { font-size: 18px; line-height: 1.25; overflow-wrap: anywhere; }
+.cl b { font-family: var(--font-display); font-weight: 400; font-size: 22px; margin-right: 4px; }
+.cl b.t0 { color: #7fa9ff; } .cl b.t1 { color: #ffa064; }
+.cl.q { color: var(--gold); }
+.cl.sys { color: var(--muted); font-family: var(--font-label); font-size: 12px; letter-spacing: .08em; }
+.chat-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-quick .btn { font-size: 20px; padding: 4px 10px 7px; }
+body.touch .chat-quick .key { display: none; }
+.on-acts { display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; vertical-align: middle; }
+.btn.ghost.tiny { font-size: 16px; padding: 2px 5px; }
+.p-people { display: grid; gap: 4px; }
+.p-people .on-p { font-size: 22px; }
+#hud .chatfeed { left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(232px + env(safe-area-inset-bottom, 0px)); width: min(360px, 40vw); display: grid; justify-items: start; gap: 3px; }
+#hud .chatfeed .cl { background: rgba(9,11,22,.74); padding: 3px 8px; font-size: 16px; animation: toastIn .18s steps(3); }
+#hud .chatfeed .cl b { font-size: 19px; }
+body.touch #hud .chatfeed { bottom: auto; top: calc(112px + env(safe-area-inset-top, 0px)); left: max(10px, env(safe-area-inset-left, 0px)); width: min(300px, 36vw); }
+#chat-pop { position: absolute; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(540px, calc(100% - 32px)); padding: 12px; display: grid; gap: 8px; box-sizing: border-box; z-index: 30; }
+body.touch #chat-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0px)); }
+@media (orientation: portrait) { body.touch #hud .chatfeed { top: calc(220px + env(safe-area-inset-top, 0px)); width: min(300px, 64vw); } }
+
 /* account and friends (on the Profile screen) */
 .pf-acc { padding: 16px; display: grid; gap: 10px; }
 .pf-acc h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: .9; }
@@ -755,7 +781,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
-      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '' },
+      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all' },
       howto: false,
     };
   },
@@ -795,6 +821,7 @@ const Save = {
     st.sens = clamp(Number(st.sens) || 1, 0.3, 2.5);
     st.btn = [0.85, 1, 1.15].includes(Number(st.btn)) ? Number(st.btn) : 1;
     st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false; st.server = typeof st.server === 'string' ? st.server.slice(0, 200) : '';
+    st.chat = ['all', 'quick', 'off'].includes(st.chat) ? st.chat : 'all';
     out.account = out.account && typeof out.account === 'object' && typeof out.account.token === 'string' && typeof out.account.user === 'string' ? { user: out.account.user.slice(0, 12), token: out.account.token.slice(0, 128) } : null;
     out.name = String(out.name || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12);
     if (!Array.isArray(out.styles)) out.styles = ['ROOKIE'];
@@ -1367,6 +1394,7 @@ const ICON_MAPS = {
   beam: ['............', '............', '........kkk.', '.......kwwwk', 'AAAAAAAkwkwk', 'wwwwwwwkwwwk', 'AAAAAAAkwkwk', '.......kwwwk', '........kkk.', '............', '............', '............'],
   flip: ['............', '...AAAAA....', '..A.....A...', '.A.......A..', '.A.......A..', '.A......AAA.', '.A.......A..', '............', '....kkk.....', '...kwwwk....', '...kwwwk....', '....kkk.....'],
   shield: ['............', '..AAAAAAAA..', '..AwwwwwwA..', '..AwwwwwwA..', '..AwwwwwwA..', '..AwwwwwwA..', '...AwwwwA...', '...AwwwwA...', '....AwwA....', '.....AA.....', '............', '............'],
+  chat: ['............', '.kkkkkkkkkk.', 'kwwwwwwwwwwk', 'kwwwwwwwwwwk', 'kwkkwkkwkkwk', 'kwkkwkkwkkwk', 'kwwwwwwwwwwk', 'kwwwwwwwwwwk', '.kkkwwkkkkk.', '...kwk......', '...kk.......', '............'],
   call: ['............', '..AAAAAAAA..', '.AAAAwwAAAA.', '.AAAAwwAAAA.', '.AAAAwwAAAA.', '.AAAAwwAAAA.', '.AAAAAAAAAA.', '.AAAAwwAAAA.', '..AAAAAAAA..', '....AA......', '...AA.......', '............'],
   tackle: ['............', '............', '............', '............', '.....kkk....', '....kAAAk...', 'kkkkAAAAk...', 'kAAAAAAAk...', 'kAAAAAAAAkk.', '.kkkkkkkkkk.', 'd.d.d.d.....', '............'],
   flame: ['............', '.....A......', '....AA......', '....AAA..A..', '...AAwAA.A..', '..AAwwAAAA..', '..AwwwwAAA..', '..AwwwwwAA..', '..AAwwwAA...', '...AAAAA....', '............', '............'],
@@ -3482,6 +3510,8 @@ const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /** bot difficulty 0..1 from rank points */
 /* each tier is a clear step: bot skill (reactions, passing, tackles, keepers) and how full and loud the stadium is */
+/** quick-chat phrases, the same list on the server and in the game. The first four have keys 1 to 4 */
+const QUICK_CHAT = ['PASS!', 'NICE!', 'GG', 'ON ME', 'SHOOT!', 'DEFEND!', 'THANKS', 'SORRY'];
 const TIER_SKILL = [0.15, 0.33, 0.5, 0.65, 0.8, 1.0];
 const TIER_FANS = [0.25, 0.36, 0.48, 0.62, 0.8, 1];
 const TIER_LOUD = [0.7, 0.8, 0.9, 1.0, 1.15, 1.3];
@@ -5330,11 +5360,12 @@ const Input = {
   init(canvas) {
     this.canvas = canvas;
     window.addEventListener('keydown', (e) => {
+      if (e.target && e.target.tagName === 'INPUT' && e.code !== 'Escape') return; // typing a name or a chat message
       const inGame = Game.playing();
       if (inGame && GAME_KEYS.has(e.code)) e.preventDefault();
       if (e.code === 'Tab' && Game.playing()) e.preventDefault();
       if (!e.repeat) { this.down.add(e.code); this.edges.add(e.code); }
-      if (e.code === 'Escape') Game.onEscape();
+      if (e.code === 'Escape') { if (Net.chatOpen) Net.closeChat(false); else Game.onEscape(); }
       this.usingPad = false;
     });
     window.addEventListener('keyup', (e) => { this.down.delete(e.code); this.up.add(e.code); });
@@ -5342,6 +5373,7 @@ const Input = {
     canvas.addEventListener('mousedown', (e) => {
       if (!Game.playing() || Net.paused) return;
       e.preventDefault();
+      if (Net.chatOpen) Net.closeChat(false);
       Sfx.init();
       if (!this.locked && !this.lockFailed) { this.requestLock(); return; }
       if (e.button === 0) { this.mouseL = true; this.edges.add('Mouse0'); }
@@ -5400,6 +5432,7 @@ const Input = {
   axis(i) { const p = this.pad; if (!p || !p.axes[i]) return 0; const v = p.axes[i]; return Math.abs(v) < 0.16 ? 0 : v; },
   controls() {
     const k = this.down, e = this.edges, u = this.up;
+    const chatPad = Game.state === 'online' && this.padHeld(PAD.BACK); // online, VIEW + D-pad picks a quick-chat phrase
     let mx = (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0);
     let my = (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0);
     const lx = this.axis(0), ly = this.axis(1);
@@ -5414,9 +5447,9 @@ const Input = {
       passDown: e.has('Mouse2') || e.has('PadLT') || e.has('PadRB') || e.has('T_pass'), passUp: u.has('Mouse2') || u.has('PadLT') || u.has('PadRB') || u.has('T_pass'),
       dodge: e.has('KeyC') || e.has('PadB') || e.has('T_dodge'),
       tackle: e.has('KeyF') || e.has('PadX') || e.has('T_tackle'),
-      ab: [e.has('KeyQ') || e.has('PadLeft') || e.has('T_ab0'), e.has('KeyE') || e.has('PadUp') || e.has('T_ab1'), e.has('KeyR') || e.has('PadRight') || e.has('T_ab2')],
+      ab: [e.has('KeyQ') || (e.has('PadLeft') && !chatPad) || e.has('T_ab0'), e.has('KeyE') || (e.has('PadUp') && !chatPad) || e.has('T_ab1'), e.has('KeyR') || (e.has('PadRight') && !chatPad) || e.has('T_ab2')],
       flow: e.has('KeyG') || e.has('PadY') || e.has('T_flow'),
-      item: e.has('KeyX') || e.has('PadDown') || e.has('T_item'),
+      item: e.has('KeyX') || (e.has('PadDown') && !chatPad) || e.has('T_item'),
       board: k.has('Tab') || this.padHeld(PAD.BACK) || T.board,
     };
   },
@@ -5539,7 +5572,7 @@ const Touch = {
     return `<div class="stick idle" id="t-stick"><div class="ring"></div><div class="base"></div><div class="knob"></div><b class="lb">MOVE</b></div>`
       + btn('shoot', 'big', 'SHOOT', '<span class="chg"></span>') + btn('pass', 'pass', 'PASS') + btn('dt', 'dt', 'TACKLE', '<span class="pips"><i></i><i></i></span>') + btn('jump', '', 'JUMP')
       + btn('ab0', 'ab', '') + btn('ab1', 'ab', '') + btn('ab2', 'ab', '') + btn('flow', 'flow off', 'FLOW') + btn('item', 'item off', 'ITEM')
-      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
+      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
   },
   init() {
     const el = document.createElement('div');
@@ -5555,6 +5588,7 @@ const Touch = {
     this.st = $('t-stick');
     const icon = (a, url) => { if (this.parts[a].ic) this.parts[a].ic.style.backgroundImage = 'url(' + url + ')'; };
     icon('pause', iconURL('pause'));
+    icon('chat', iconURL('chat'));
     icon('shoot', iconURL('shot', '#ffffff'));
     icon('pass', iconURL('pass', '#a9c7ff'));
     icon('jump', iconURL('jump'));
@@ -5636,6 +5670,8 @@ const Touch = {
     for (const [a, deg] of arc) put(a, ...pol(deg, R2), 58 * s);
     this.b.item.hidden = !lawless;
     put('pause', W - Math.max(raw.r, 8) - 30, raw.t + 30, 46);
+    put('chat', W - Math.max(raw.r, 8) - 86, raw.t + 30, 46);
+    this.b.chat.hidden = Game.state !== 'online';
     this.R = 58 * s;
     this.ghost.x = sa.l + (portrait ? 80 : 104) * s;
     this.ghost.y = H - sa.b - (portrait ? 150 : 100) * s;
@@ -5662,7 +5698,7 @@ const Touch = {
     const rec = { kind: 'btn', act, el: btn, x0: x, y0: y, lx: x, ly: y, looking: false };
     this.ptrs.set(id, rec);
     btn.classList.add('down');
-    if (act === 'pause' || act === 'board') return; // these act on release
+    if (act === 'pause' || act === 'board' || act === 'chat') return; // these act on release
     if (act === 'dt') { const m = Game.match, p = m && m.human; act = p && m.ball.owner === p ? 'dodge' : 'tackle'; rec.act = act; }
     this.held.add(act);
     Input.edges.add('T_' + act);
@@ -5698,6 +5734,7 @@ const Touch = {
     } else if (r.kind === 'btn') {
       r.el.classList.remove('down');
       if (r.act === 'pause') { if (e) Game.pause(); return; }
+      if (r.act === 'chat') { if (e) Net.openChat(); return; }
       if (r.act === 'board') { if (e) { this.board = !this.board; this.boardT = 8; } return; }
       this.held.delete(r.act);
       Input.up.add('T_' + r.act);
@@ -5973,6 +6010,7 @@ const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', '
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook'];
 const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
 const NET_DELAY = 0.12; // seconds the picture runs behind the server
+const CHAT_SHOW = [['all', 'ALL'], ['quick', 'QUICK'], ['off', 'OFF']];
 
 /** the match as this screen knows it: models moved by snapshots, with what the HUD needs */
 class NetMatch {
@@ -6002,6 +6040,7 @@ for (const k of ['dir', 'oppGoalZ', 'ownGoalZ', 'prog', 'buildHill']) NetMatch.p
 
 const Net = {
   ws: null, id: null, room: null, nm: null, url: '', status: '', snaps: [], rt: 0, sendT: 0, pend: {}, paused: false, joinCode: null, lastBall: null,
+  muted: new Set(), reported: new Set(), log: [], logCode: null, chatOpen: false,
   tpl() {
     return `<section id="scr-online" class="screen sub-screen" hidden>
       <div class="sub-wrap">
@@ -6014,6 +6053,7 @@ const Net = {
           <p class="on-status" id="on-status"></p>
           <details class="on-adv"><summary class="label">SERVER ADDRESS</summary><div class="on-row"><input class="on-in" id="on-server" autocomplete="off" spellcheck="false"><button class="btn small" id="on-server-save" type="button">SAVE</button></div></details>
         </div>
+        <div class="on-split">
         <div class="panel on-box" id="on-room" hidden>
           <div class="on-code"><span class="label">ROOM CODE</span><b id="on-room-code">----</b><button class="btn small" id="on-copy" type="button">COPY INVITE LINK</button></div>
           <div class="on-teams"><div class="on-team" id="on-t0"></div><div class="on-team" id="on-t1"></div></div>
@@ -6025,6 +6065,15 @@ const Net = {
           </div>
           <p class="on-status" id="on-wait"></p>
           <button class="btn ghost" id="on-leave" type="button">LEAVE ROOM</button>
+        </div>
+        <div class="panel on-box on-chat" id="on-chat" hidden>
+          <div class="cp-head"><span class="label">CHAT</span><div class="seg" id="on-chatset">${CHAT_SHOW.map(([v, n]) => `<button type="button" data-v="${v}">${n}</button>`).join('')}</div></div>
+          <div class="chat-log" id="on-log" aria-live="polite"></div>
+          <div class="chat-quick" id="on-quick">${this.quickBtns()}</div>
+          <div class="on-row chat-type"><input class="on-in" id="on-say" maxlength="80" placeholder="TYPE A MESSAGE" autocomplete="off" spellcheck="false"><button class="btn small" id="on-send" type="button">SEND</button></div>
+          <p class="label chat-guest">SIGN IN ON THE PROFILE SCREEN TO TYPE MESSAGES. QUICK CHAT WORKS FOR EVERYONE.</p>
+          <p class="on-status" id="on-chat-note"></p>
+        </div>
         </div>
       </div>
     </section>`;
@@ -6045,6 +6094,24 @@ const Net = {
     click('on-switch', () => { const me = this.room && this.room.players.find((p) => p.id === this.id); if (me) this.send({ t: 'team', team: 1 - me.team }); });
     click('on-go', () => this.send({ t: 'start' }));
     click('on-leave', () => { this.send({ t: 'leave' }); this.room = null; this.renderRoom(); });
+    // chat
+    const quickClick = (el, close) => $(el).addEventListener('click', (e) => { const b = e.target.closest('[data-q]'); if (!b) return; Sfx.click(); this.quick(+b.dataset.q); if (close) this.closeChat(true); });
+    quickClick('on-quick', false); quickClick('cp-quick', true);
+    click('on-send', () => this.say('on-say'));
+    $('on-say').addEventListener('keydown', (e) => { if (e.code === 'Enter') this.say('on-say'); });
+    click('cp-send', () => { this.say('cp-say'); this.closeChat(true); });
+    $('cp-say').addEventListener('keydown', (e) => {
+      if (e.code === 'Enter') { e.preventDefault(); this.say('cp-say'); this.closeChat(true); }
+      else if (e.code === 'Escape') { e.stopPropagation(); this.closeChat(false); }
+    });
+    click('cp-close', () => this.closeChat(true));
+    $('on-chatset').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v) { Sfx.click(); this.setChatShow(v); } });
+    const people = (e) => {
+      const m = e.target.closest('[data-mute]'), r = e.target.closest('[data-report]');
+      if (m) { Sfx.click(); this.toggleMute(m.dataset.mute); }
+      else if (r) { Sfx.click(); if (!r.dataset.armed) { r.dataset.armed = '1'; r.textContent = 'SURE?'; } else this.send({ t: 'report', id: r.dataset.report }); }
+    };
+    $('on-room').addEventListener('click', people); $('p-people').addEventListener('click', people);
     $('on-mode').addEventListener('click', (e) => { const m = e.target.closest('[data-m]'); if (m && this.room) { Sfx.click(); this.send({ t: 'settings', mode: m.dataset.m, size: this.room.size }); } });
     $('on-size').addEventListener('click', (e) => { const s = e.target.closest('[data-s]'); if (s && this.room) { Sfx.click(); this.send({ t: 'settings', mode: this.room.mode, size: +s.dataset.s }); } });
     // an invite link opens straight into the room
@@ -6086,7 +6153,10 @@ const Net = {
   onMessage(m) {
     switch (m.t) {
       case 'welcome': this.id = m.id; break;
-      case 'room': this.room = m; this.renderRoom(); break;
+      case 'room': this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); break;
+      case 'chat': this.addChat(m); break;
+      case 'chat-note': this.note(m.text); Sfx.deny(); break;
+      case 'reported': this.reported.add(m.id); this.mute(m.id, true); this.note('REPORTED. THANKS. THEY ARE MUTED FOR YOU.'); break;
       case 'error': this.setStatus(m.text); $('on-wait').textContent = m.text; Sfx.deny(); break;
       case 'left': this.room = null; this.renderRoom(); break;
       case 'start': this.start(m); break;
@@ -6098,13 +6168,15 @@ const Net = {
   /* ---------- the room screen ---------- */
   renderRoom() {
     const R = this.room;
-    $('on-start').hidden = !!R; $('on-room').hidden = !R;
+    $('on-start').hidden = !!R; $('on-room').hidden = !R; $('on-chat').hidden = !R;
     if (!R) return;
+    if (R.code !== this.logCode) { this.logCode = R.code; this.log = []; $('on-chat-note').textContent = ''; this.renderLog(); }
+    this.renderChatUI();
     const host = R.host === this.id;
     $('on-room-code').textContent = R.code;
     for (const t of [0, 1]) {
       const list = R.players.filter((p) => p.team === t);
-      $('on-t' + t).innerHTML = `<span class="label">${t === 0 ? 'HOME' : 'AWAY'} · ${list.length} / ${R.size - 1}</span>` + list.map((p) => `<div class="on-p ${p.id === this.id ? 'me' : ''}">${esc(p.name)}${p.id === R.host ? ' <span class="chip">HOST</span>' : ''}${p.id === this.id ? ' <span class="chip">YOU</span>' : ''}</div>`).join('') + '<div class="on-p bot">+ BOTS</div>';
+      $('on-t' + t).innerHTML = `<span class="label">${t === 0 ? 'HOME' : 'AWAY'} · ${list.length} / ${R.size - 1}</span>` + list.map((p) => `<div class="on-p ${p.id === this.id ? 'me' : ''}">${esc(p.name)}${p.id === R.host ? ' <span class="chip">HOST</span>' : ''}${p.id === this.id ? ' <span class="chip">YOU</span>' : this.acts(p)}</div>`).join('') + '<div class="on-p bot">+ BOTS</div>';
     }
     $('on-host').hidden = !host;
     $('on-mode').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === R.mode));
@@ -6121,6 +6193,92 @@ const Net = {
     const done = () => { $('on-wait').textContent = 'INVITE LINK COPIED. SEND IT TO A FRIEND.'; };
     try { navigator.clipboard.writeText(link).then(done, () => { $('on-wait').textContent = link; }); } catch (e) { $('on-wait').textContent = link; }
   },
+  /* ---------- chat ---------- */
+  quickBtns() { return QUICK_CHAT.map((t, i) => `<button class="btn small" type="button" data-q="${i}">${i < 4 ? `<span class="key">${i + 1}</span> ` : ''}${t}</button>`).join(''); },
+  chatPopTpl() {
+    return `<div id="chat-pop" class="panel" hidden>
+      <div class="cp-head"><span class="label">QUICK CHAT</span><button class="btn ghost" id="cp-close" type="button">CLOSE</button></div>
+      <div class="chat-quick" id="cp-quick">${this.quickBtns()}</div>
+      <div class="on-row chat-type"><input class="on-in" id="cp-say" maxlength="80" placeholder="TYPE, THEN ENTER" autocomplete="off" spellcheck="false"><button class="btn small" id="cp-send" type="button">SEND</button></div>
+      <p class="label chat-guest">SIGN IN ON THE PROFILE SCREEN TO TYPE MESSAGES</p>
+    </div>`;
+  },
+  quick(i) { this.send({ t: 'chat', q: i }); },
+  say(id) { const el = $(id), text = el.value.trim(); el.value = ''; if (text) this.send({ t: 'chat', text: text.slice(0, 80) }); },
+  /** a line from the server; muted players and the chat setting decide what you see */
+  addChat(m) {
+    const show = Save.data.settings.chat;
+    if (this.muted.has(m.id) || show === 'off' || (show === 'quick' && m.q < 0)) return;
+    this.log.push(m); if (this.log.length > 40) this.log.shift();
+    this.renderLog();
+    if (Game.state === 'online') { this.feed(m); if (m.id !== this.id) Sfx.click(); }
+  },
+  line(m) {
+    const d = document.createElement('div');
+    d.className = 'cl' + (m.sys ? ' sys' : m.q >= 0 ? ' q' : '');
+    if (m.sys) { d.textContent = m.text; return d; }
+    const b = document.createElement('b'); b.className = 't' + m.team; b.textContent = m.name;
+    d.append(b, ' ' + m.text);
+    return d;
+  },
+  renderLog() {
+    const el = $('on-log'); if (!el) return;
+    if (Save.data.settings.chat === 'off') { el.replaceChildren(this.line({ sys: true, text: 'CHAT IS OFF. PICK ALL OR QUICK TO SEE IT.' })); return; }
+    el.replaceChildren(...this.log.map((m) => this.line(m)));
+    el.scrollTop = el.scrollHeight;
+  },
+  /** chat lines in the corner of the match screen, gone after 7 seconds */
+  feed(m) {
+    const wrap = $('chatfeed');
+    while (wrap.children.length >= 5) wrap.removeChild(wrap.firstChild);
+    const d = this.line(m); wrap.appendChild(d);
+    setTimeout(() => d.remove(), 7000);
+  },
+  note(text) { if (Game.state === 'online') this.feed({ sys: true, text }); else $('on-chat-note').textContent = text; },
+  setChatShow(v) { if (!CHAT_SHOW.some(([k]) => k === v)) return; Save.data.settings.chat = v; Save.save(); this.renderChatUI(); this.renderLog(); },
+  renderChatUI() {
+    const signed = !!Account.token;
+    document.querySelectorAll('.chat-type').forEach((el) => { el.hidden = !signed; });
+    document.querySelectorAll('.chat-guest').forEach((el) => { el.hidden = signed; });
+    $('on-chatset').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === Save.data.settings.chat));
+  },
+  /** MUTE / REPORT next to everyone else in the room and in the match menu */
+  acts(p) {
+    return `<span class="on-acts"><button class="btn ghost tiny" type="button" data-mute="${esc(p.id)}">${this.muted.has(p.id) ? 'UNMUTE' : 'MUTE'}</button>`
+      + (this.reported.has(p.id) ? '<span class="label">REPORTED</span>' : `<button class="btn ghost tiny" type="button" data-report="${esc(p.id)}">REPORT</button>`) + '</span>';
+  },
+  mute(id, on) {
+    if (on) { this.muted.add(id); this.log = this.log.filter((m) => m.id !== id); } else this.muted.delete(id);
+    this.renderLog(); this.renderRoom(); this.renderPeople();
+  },
+  toggleMute(id) { this.mute(id, !this.muted.has(id)); },
+  renderPeople() {
+    const el = $('p-people'), R = this.room, on = Game.state === 'online' && !!R;
+    el.hidden = !on; if (!on) return;
+    const others = R.players.filter((p) => p.id !== this.id);
+    el.innerHTML = '<span class="label">PLAYERS</span>' + (others.length ? others.map((p) => `<div class="on-p">${esc(p.name)}${this.acts(p)}</div>`).join('') : '<p class="label">ONLY YOU AND BOTS</p>');
+  },
+  typing() { const a = document.activeElement; return !!(a && a.id === 'cp-say'); },
+  openChat() {
+    if (this.chatOpen || Game.state !== 'online') return;
+    this.chatOpen = true; this.renderChatUI();
+    $('chat-pop').hidden = false;
+    Input.down.clear(); Input.releaseLock();
+    if (Account.token && !Touch.on) setTimeout(() => $('cp-say').focus(), 0);
+  },
+  closeChat(relock) {
+    if (!this.chatOpen) return;
+    this.chatOpen = false; $('chat-pop').hidden = true;
+    if (this.typing()) document.activeElement.blur();
+    if (relock && Game.state === 'online' && !this.paused) Input.requestLock();
+  },
+  /** in a match: 1 to 4 (or VIEW + D-pad) send a phrase, T opens the chat box */
+  chatKeys() {
+    const E = Input.edges;
+    for (let i = 0; i < 4; i++) if (E.has('Digit' + (i + 1)) || E.has('Numpad' + (i + 1))) this.quick(i);
+    if (Input.padHeld(PAD.BACK)) ['PadUp', 'PadRight', 'PadDown', 'PadLeft'].forEach((k, i) => { if (E.has(k)) this.quick(i); });
+    if (E.has('KeyT')) this.openChat();
+  },
   /* ---------- the match ---------- */
   start(msg) {
     if (Game.match) { Game.match.dispose(); Game.match = null; }
@@ -6133,7 +6291,7 @@ const Net = {
     const me = nm.human;
     Cam.reset(me && me.team === 1 ? Math.PI : 0);
     Game.state = 'online';
-    UI.show('hud'); UI.buildHud(nm);
+    UI.show('hud'); UI.buildHud(nm); $('chatfeed').replaceChildren();
     Sfx.init(); Sfx.setCrowd(0.55);
     Input.consumeEdges(); Input.requestLock();
   },
@@ -6214,7 +6372,7 @@ const Net = {
   },
   /** remember button presses until the next send, so a quick tap is never lost */
   collect(c) {
-    if (!c) return;
+    if (!c) { this.held = null; return; }
     const P = this.pend;
     P.jump = P.jump || c.jump; P.sd = P.sd || c.shootDown; P.su = P.su || c.shootUp; P.pd = P.pd || c.passDown; P.pu = P.pu || c.passUp;
     P.dodge = P.dodge || c.dodge; P.tackle = P.tackle || c.tackle; P.flow = P.flow || c.flow;
@@ -6230,8 +6388,10 @@ const Net = {
   /** one frame of an online match */
   frame(rdt) {
     const nm = this.nm; if (!nm) return;
-    if (!this.paused) Cam.look(rdt);
-    this.collect(this.paused ? null : Input.controls());
+    const busy = this.paused || this.typing();
+    if (!busy) Cam.look(rdt);
+    this.collect(busy ? null : Input.controls());
+    if (!busy) this.chatKeys();
     this.sendT -= rdt;
     if (this.sendT <= 0) { this.sendT = 1 / 30; this.sendInput(); }
     Input.consumeEdges();
@@ -6248,6 +6408,7 @@ const Net = {
     nm.score = m.score;
     nm.result = { res: a > b ? 'win' : a < b ? 'loss' : 'draw', human: mine ? mine.stats : { goals: 0, assists: 0, shots: 0, tackles: 0 } };
     if (mine && mine.feats) nm.feats = mine.feats;
+    this.closeChat(false);
     Game.finishMatch(false);
     $('r-again').textContent = 'BACK TO ROOM'; $('r-lobby').textContent = 'LEAVE ROOM';
   },
@@ -6767,7 +6928,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>';
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -6866,6 +7027,7 @@ const UI = {
             ${row(key('ARC'), 'Your three style abilities, then FLOW when the bar is full')}
             ${row(key('DOUBLE TAP'), 'Double tap the right side to face the goal')}
             ${row(key('SCORE'), 'Tap the score for the scoreboard. The top right button pauses')}
+            ${row(key('CHAT'), 'Online: the bubble next to pause opens quick chat. Typing needs an account')}
             ${row(key('REPLAY'), 'After a goal, a nutmeg or an ankle breaker, tap REPLAY to watch it again')}
           </div></section>
           <section class="panel"><h3>KEYBOARD + MOUSE</h3><div class="ctrl">
@@ -6881,6 +7043,8 @@ const UI = {
             ${row(key('G'), 'Activate Flow when the bar is full')}
             ${row(key('X'), 'Use item (Lawless)')}
             ${row(key('TAB'), 'Scoreboard')}
+            ${row(key('1') + key('2') + key('3') + key('4'), 'Online: quick chat. PASS!, NICE!, GG, ON ME')}
+            ${row(key('T'), 'Online: open chat. Typing needs an account, quick chat works for everyone')}
             ${row(key('ESC'), 'Pause')}
             ${row(key('ENTER'), 'Watch the replay after a goal, a nutmeg or an ankle breaker. SAVE CLIP downloads it as a video')}
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
@@ -6888,7 +7052,7 @@ const UI = {
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}
             ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Dodge')}${row(key('X'), 'Slide tackle')}
-            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('R3'), 'Watch the replay when it is offered')}
+            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('R3'), 'Watch the replay when it is offered')}
           </div></section>
           <section class="panel"><h3>WINNING THE BALL</h3><ul>
             <li><b>Run into a loose ball</b> to dribble it. You cannot run through a carrier, you have to tackle.</li>
@@ -7005,6 +7169,7 @@ const UI = {
       <div class="crosshair" id="xhair"></div>
       <div class="charge" id="charge" hidden><i id="charge-fill"></i><span id="charge-txt">POWER</span></div>
       <div class="toasts" id="toasts"></div>
+      <div class="chatfeed" id="chatfeed" aria-live="polite"></div>
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
       <canvas id="minimap" width="132" height="200"></canvas>
       <div class="dock">
@@ -7038,10 +7203,12 @@ const UI = {
           <span>Invert camera Y</span><div class="seg" id="set-inv"><button type="button" data-v="0">OFF</button><button type="button" data-v="1">ON</button></div>
           <span class="t-only">Button size</span><div class="seg t-only" id="set-btn"><button type="button" data-v="0.85">S</button><button type="button" data-v="1">M</button><button type="button" data-v="1.15">L</button></div>
           <span class="t-only">Aim assist</span><div class="seg t-only" id="set-assist"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
+          <span>Chat</span><div class="seg" id="set-chat">${CHAT_SHOW.map(([v, n]) => `<button type="button" data-v="${v}">${n}</button>`).join('')}</div>
           <span>Cut-ins</span><div class="seg" id="set-cut"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Sound</span><div class="seg" id="set-snd"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span class="fs-only" hidden>Fullscreen</span><div class="seg fs-only" id="set-fs" hidden><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
         </div>
+        <div class="p-people" id="p-people" hidden></div>
         <div class="row"><button class="btn blue" id="p-resume" type="button">RESUME</button><button class="btn" id="p-forfeit" type="button">FORFEIT</button></div>
         <p class="label" id="p-note">Click the pitch after resuming to lock the mouse again.</p>
       </div>
@@ -7106,6 +7273,7 @@ const UI = {
     $('set-q').addEventListener('click', (e) => { const q = e.target.dataset.q; if (!q) return; Save.data.settings.quality = q; Game.applyQuality(); Save.save(); this.renderPause(); });
     $('set-sens').addEventListener('input', (e) => { Save.data.settings.sens = parseFloat(e.target.value) || 1; Save.save(); });
     $('set-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.invertY = v === '1'; Save.save(); this.renderPause(); });
+    $('set-chat').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Net.setChatShow(v); this.renderPause(); });
     $('set-cut').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.cutins = v === '1'; Save.save(); this.renderPause(); });
     $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Sfx.setMuted(Save.data.settings.mute); Save.save(); this.renderPause(); });
     $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
@@ -7367,6 +7535,8 @@ const UI = {
     $('set-inv').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !!s.invertY));
     $('set-snd').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !s.mute));
     $('set-cut').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.cutins !== false)));
+    $('set-chat').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.chat));
+    Net.renderPeople();
     $('set-sens').value = s.sens;
     $('set-btn').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', Math.abs(parseFloat(b.dataset.v) - (s.btn || 1)) < 0.01));
     $('set-assist').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.assist !== false)));
@@ -7379,6 +7549,7 @@ const UI = {
     $('scr-pause').querySelector('h2').textContent = Game.state === 'online' ? 'MENU' : 'PAUSED';
   },
   showPause(on) {
+    if (on && Net.chatOpen) Net.closeChat(false);
     if (on) { this.renderPause(); $('scoreboard').hidden = true; Touch.board = false; for (const l of this.labels) { l.t = 0; l.el.hidden = true; } this.youLabel.hidden = true; }
     $('scr-pause').hidden = !on;
   },
@@ -7567,7 +7738,7 @@ const Game = {
   },
   applyQuality() { const q = Save.data.settings.quality; World.setQuality(q === 'auto' ? this.autoQ : q); },
   toLobby() {
-    Replay.stop(); Replay.offer = null; Replay.hideOffer();
+    Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false);
     if (this.match) { this.match.dispose(); this.match = null; }
     Net.nm = null; Net.paused = false;
     Input.releaseLock();

@@ -583,6 +583,8 @@ const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /** bot difficulty 0..1 from rank points */
 /* each tier is a clear step: bot skill (reactions, passing, tackles, keepers) and how full and loud the stadium is */
+/** quick-chat phrases, the same list on the server and in the game. The first four have keys 1 to 4 */
+const QUICK_CHAT = ['PASS!', 'NICE!', 'GG', 'ON ME', 'SHOOT!', 'DEFEND!', 'THANKS', 'SORRY'];
 const TIER_SKILL = [0.15, 0.33, 0.5, 0.65, 0.8, 1.0];
 const TIER_FANS = [0.25, 0.36, 0.48, 0.62, 0.8, 1];
 const TIER_LOUD = [0.7, 0.8, 0.9, 1.0, 1.15, 1.3];

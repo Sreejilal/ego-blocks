@@ -46,6 +46,7 @@ file in file-name order into ONE function scope. There are no imports or exports
 - `npm run server` starts it on port 8787 (or `PORT`). `MATCH_SECONDS` and `GOLDEN_SECONDS` shorten matches for tests.
 - Online modes: quick, koth, volleys, duel (not Lawless yet). Several humans per match: `Match` takes `opts.humans`, each human has `p.ctl`, `p.camYaw`, `p.aimV`, and toasts take the player they are for.
 - Tests: `node test/server_proto.js` (protocol) and `node test/online.js` (two real browsers).
+- Chat: quick phrases are `QUICK_CHAT` (07_data.js, shared with the server). The server checks every message (`chat()` and `report()` in server.js, the filter in `server/filter.js`): typed chat only for signed-in players, 5 messages per 8 seconds, reports go to `DATA_DIR/reports.jsonl`. Mute is on the player's side (`Net.muted`). Keys: 1 to 4 and T, VIEW + D-pad on a controller, the bubble button on touch. Test: `node test/chat.js`.
 - Accounts: `server/accounts.js` (scrypt-hashed passwords, hashed tokens, JSON file in `DATA_DIR`), HTTP API under `/api/` in server.js, client in `src/11_account.js` on the Profile screen. Friends only ever get `Accounts.card()`, never the whole save. Test: `node test/accounts.js`.
 
 ## Rules to keep
