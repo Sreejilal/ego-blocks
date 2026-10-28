@@ -419,6 +419,18 @@ body.touch #chat-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0
 .flowbar .ticks { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), var(--ink) calc(10% - 2px) 10%); }
 .flowbar.ready .lbl b { color: var(--gold); animation: blink .6s steps(2) infinite; }
 .awakebar .track { height: 8px; }
+/* computers: the Awakening gauge stands on the right side, its key under it; the bar at the top is for phones */
+body:not(.touch) #hud .awakebar { display: none; }
+body.touch #hud .awakeside { display: none; }
+#hud .awakeside { right: max(18px, env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); display: grid; justify-items: center; gap: 6px; width: 76px; text-align: center; }
+.awakeside .aw-name { font-family: var(--font-label); font-size: 10px; letter-spacing: .1em; line-height: 1.2; text-shadow: 2px 2px 0 var(--ink); }
+.awakeside .aw-track { position: relative; width: 20px; height: 170px; background: var(--ink); border: 2px solid var(--ink); box-shadow: 3px 3px 0 rgba(0,0,0,.4); }
+.awakeside .aw-track i { position: absolute; left: 0; right: 0; bottom: 0; height: 0%; background: linear-gradient(0deg, var(--aura, #fff), #ffffff); }
+.awakeside b { font-family: var(--font-label); font-size: 11px; letter-spacing: .08em; text-shadow: 2px 2px 0 var(--ink); }
+.awakeside.ready b { color: var(--gold); animation: blink .6s steps(2) infinite; }
+.awakeside.ready .aw-track { box-shadow: 0 0 14px var(--aura, #fff), 3px 3px 0 rgba(0,0,0,.4); }
+.awakeside.active .aw-track i { animation: blink .4s steps(2) infinite; }
+@media (max-height: 560px) { .awakeside .aw-track { height: 110px; } }
 .awakebar .fill { background: linear-gradient(90deg, var(--aura, #fff), #ffffff); }
 .awakebar.active .fill { animation: blink .4s steps(2) infinite; }
 .slot.awaken.ready, .slot.awaken.active { box-shadow: 0 0 0 2px #fff, 0 0 14px var(--gold); }

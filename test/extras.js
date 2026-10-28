@@ -47,11 +47,11 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
   const aw = await A.evaluate(() => {
     const m = EGO.Game.match, h = m.human; for (const a of h.abil) a.cd = 8; h.awake = 100; h.flow = 0;
     EGO.Input.edges.add('KeyZ'); EGO.Game.stepManual(3, false);
-    return { t: +h.awakeT.toFixed(1), cds: h.abil.map((a) => a.cd), cdRate: h.mods.cdRate, speed: +h.mods.speed.toFixed(2), drain: h.mods.stamDrain, bar: document.getElementById('awake-txt').textContent, slot: document.getElementById('slot-z').classList.contains('active') };
+    return { t: +h.awakeT.toFixed(1), cds: h.abil.map((a) => a.cd), cdRate: h.mods.cdRate, speed: +h.mods.speed.toFixed(2), drain: h.mods.stamDrain, bar: document.getElementById('awake-txt').textContent, slot: document.getElementById('awakeside').classList.contains('active') && !document.getElementById('awakeside').hidden };
   });
   check('Z awakens you: 20s, cooldowns reset and recharge twice as fast', aw.t > 19 && aw.cds.every((c) => c < 0.1) && aw.cdRate === 2, aw);
   check("the style's own power: RED LINE is faster and sprinting is free", aw.speed >= 1.25 && aw.drain === 0, aw);
-  check('the HUD shows the Awakening bar and the Z slot lit up', /AWAKENED/.test(aw.bar) && aw.slot, aw);
+  check('the HUD shows the Awakening gauge on the side, lit up', /AWAKENED/.test(aw.bar) && aw.slot, aw);
   const longer = await A.evaluate(() => { const m = EGO.Game.match, h = m.human; h.fx.turbo = 0; const i = h.abil.findIndex((a) => a.def.name === 'TURBO'); h.abil[i].cd = 0; m.useAbility(h, i); return +h.fx.turbo.toFixed(2); });
   const normal = await A.evaluate(() => { const m = EGO.Game.match, h = m.human; h.awakeT = 0; h.fx.turbo = 0; const i = h.abil.findIndex((a) => a.def.name === 'TURBO'); h.abil[i].cd = 0; m.useAbility(h, i); return +h.fx.turbo.toFixed(2); });
   check('awakened, abilities last 50% longer', normal > 0 && Math.abs(longer - normal * 1.5) < 0.05, { awakened: longer, normal });

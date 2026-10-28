@@ -258,6 +258,7 @@ const UI = {
       <div class="charge" id="charge" hidden><i id="charge-fill"></i><span id="charge-txt">POWER</span></div>
       <div class="toasts" id="toasts"></div>
       <div class="chatfeed" id="chatfeed" aria-live="polite"></div>
+      <div class="awakeside" id="awakeside" hidden><span class="aw-name" id="aws-name"></span><div class="aw-track"><i id="aws-fill"></i></div><b id="aws-txt">0%</b><span class="key k">Z</span></div>
       <div class="idle-warn" id="idle-warn" hidden role="alert"><b id="idle-big"></b><span id="idle-small"></span></div>
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
       <canvas id="minimap" width="132" height="200"></canvas>
@@ -481,14 +482,11 @@ const UI = {
     });
     html += '<div class="sep"></div>';
     html += `<div class="slot small" id="slot-c"><img class="px" src="${iconURL('dash', '#ffffff')}" alt=""><span class="key k">C</span><div class="cd"></div><div class="pips"><i></i></div><span class="nm">FEINT</span></div>`;
-    html += `<div class="slot small" id="slot-f"><img class="px" src="${iconURL('tackle', '#e8e1cf')}" alt=""><span class="key k">F</span><div class="cd"></div><div class="num"></div><span class="nm">TACKLE</span></div>`;
     html += `<div class="slot small" id="slot-g"><img class="px" src="${iconURL('flame', p.aura)}" alt=""><span class="key k">G</span><div class="cd"></div><span class="nm">FLOW</span></div>`;
-    if (p.style.awaken) html += `<div class="slot small awaken" id="slot-z"><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><span class="key k">Z</span><div class="cd"></div><span class="nm">AWAKEN</span></div>`;
     hb.innerHTML = html;
     this.slots = [0, 1, 2].map((i) => ({ el: $('slot' + i), cd: $('slot' + i).querySelector('.cd'), num: $('slot' + i).querySelector('.num'), last: -1 }));
     this.slotC = { el: $('slot-c'), cd: $('slot-c').querySelector('.cd'), pips: $('slot-c').querySelectorAll('.pips i') };
-    this.slotF = { el: $('slot-f'), cd: $('slot-f').querySelector('.cd'), num: $('slot-f').querySelector('.num') };
-    this.slotG = { el: $('slot-g') }; this.slotZ = $('slot-z');
+    this.slotG = { el: $('slot-g') };
     const st = $('stamina');
     st.innerHTML = '';
     this.drums = [];
@@ -498,6 +496,8 @@ const UI = {
     $('flow-name').textContent = p.flowId ? 'FLOW · ' + FLOWS[p.flowId].name : 'FLOW';
     if (p.flowId && FLOWS[p.flowId]) $('flowbar').style.setProperty('--aura', FLOWS[p.flowId].color);
     $('awakebar').style.setProperty('--aura', p.aura); $('awakebar').hidden = !p.style.awaken;
+    $('awakeside').style.setProperty('--aura', p.aura); $('awakeside').hidden = !p.style.awaken;
+    $('aws-name').textContent = p.style.awaken ? p.style.awaken.name : '';
     $('awake-name').textContent = p.style.awaken ? (Touch.on ? '' : 'AWAKENING · ') + p.style.awaken.name : 'AWAKENING'; // phones: just the name, the bar is narrow
     $('itemslot').hidden = !m.cfg.items;
     this.mm = $('minimap').getContext('2d');
@@ -526,9 +526,6 @@ const UI = {
     C.pips.forEach((pip, i) => pip.classList.toggle('on', i < p.dodgeCharges));
     C.cd.style.setProperty('--p', (p.dodgeCharges >= 1 ? 0 : (1 - p.dodgeRe / FEINT_CD) * 360).toFixed(1) + 'deg');
     const has = m.ball.owner === p; $('xhair').classList.toggle('ball', has); $('balltag').hidden = !has; // a frame and BALL while you have the ball
-    const tf = p.tackleCd > 0 ? p.tackleCd / (2.2 * p.mods.tackleCd) : 0;
-    this.slotF.cd.style.setProperty('--p', (clamp(tf, 0, 1) * 360).toFixed(1) + 'deg');
-    this.slotF.num.textContent = p.tackleCd > 0 ? Math.ceil(p.tackleCd) : '';
     this.slotG.el.classList.toggle('ready', p.flow >= 100 && p.flowT <= 0);
     this.slotG.el.classList.toggle('active', p.flowT > 0);
     const fpct = p.flowT > 0 ? p.flowT / 15 * 100 : p.flow;
@@ -537,10 +534,12 @@ const UI = {
     $('flowbar').classList.toggle('ready', p.flow >= 100 && p.flowT <= 0);
     if (p.style.awaken) {
       const ar = p.awake >= 100 && p.awakeT <= 0;
-      $('awake-fill').style.width = (p.awakeT > 0 ? p.awakeT / AWAKEN_TIME * 100 : p.awake).toFixed(1) + '%';
+      const apct = (p.awakeT > 0 ? p.awakeT / AWAKEN_TIME * 100 : p.awake).toFixed(1) + '%';
+      $('awake-fill').style.width = apct; $('aws-fill').style.height = apct;
+      this.setText('aws-txt', p.awakeT > 0 ? Math.ceil(p.awakeT) + 's' : ar ? 'READY' : Math.floor(p.awake) + '%');
+      $('awakeside').classList.toggle('ready', ar); $('awakeside').classList.toggle('active', p.awakeT > 0);
       this.setText('awake-txt', p.awakeT > 0 ? (Touch.on ? '' : 'AWAKENED ') + Math.ceil(p.awakeT) + 's' : ar ? (Touch.on ? 'READY' : 'READY [Z]') : Math.floor(p.awake) + '%');
       $('awakebar').classList.toggle('ready', ar); $('awakebar').classList.toggle('active', p.awakeT > 0);
-      if (this.slotZ) { this.slotZ.classList.toggle('ready', ar); this.slotZ.classList.toggle('active', p.awakeT > 0); }
     }
     for (let i = 0; i < 10; i++) {
       const v = p.stamina - i * 10, want = v >= 7.5 ? 'full' : v >= 2.5 ? 'half' : 'empty';
