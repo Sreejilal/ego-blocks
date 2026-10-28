@@ -50,6 +50,7 @@ const Net = {
           <button class="btn blue" id="on-create" type="button">CREATE A ROOM <span class="sub">GET A CODE FOR FRIENDS</span></button>
           <div class="on-row"><input class="on-in code" id="on-code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false"><button class="btn" id="on-join" type="button">JOIN</button></div>
           <p class="on-status" id="on-status"></p>
+          <p class="label on-privacy">TO PLAY ONLINE, YOUR NAME AND YOUR CONTROLS GO TO THE SCORZ SERVER. IT ONLY USES THEM TO RUN THE MATCH.</p>
           <details class="on-adv"><summary class="label">SERVER ADDRESS</summary><div class="on-row"><input class="on-in" id="on-server" autocomplete="off" spellcheck="false"><button class="btn small" id="on-server-save" type="button">SAVE</button></div></details>
         </div>
         <div class="on-split">
@@ -92,7 +93,7 @@ const Net = {
     click('on-copy', () => this.copyInvite());
     click('on-switch', () => { const me = this.room && this.room.players.find((p) => p.id === this.id); if (me) this.send({ t: 'team', team: 1 - me.team }); });
     click('on-go', () => this.send({ t: 'start' }));
-    click('on-leave', () => { this.send({ t: 'leave' }); this.room = null; this.renderRoom(); });
+    click('on-leave', () => { this.send({ t: 'leave' }); this.room = null; this.renderRoom(); Portal.room(null); });
     // chat
     const quickClick = (el, close) => $(el).addEventListener('click', (e) => { const b = e.target.closest('[data-q]'); if (!b) return; Sfx.click(); this.quick(+b.dataset.q); if (close) this.closeChat(true); });
     quickClick('on-quick', false); quickClick('cp-quick', true);
@@ -118,7 +119,7 @@ const Net = {
   },
   /** where the server is: your saved address, the invite link's, or the server that sent you this page */
   serverUrl() {
-    const s = (Save.data.settings && Save.data.settings.server) || this.urlOverride;
+    const s = (!BUILD.portal && Save.data.settings && Save.data.settings.server) || this.urlOverride || BUILD.server;
     if (s) return s;
     if (location.protocol === 'file:' || !location.host) return 'ws://localhost:8787/ws';
     return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
@@ -140,7 +141,7 @@ const Net = {
     ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } this.onMessage(m); };
     ws.onclose = () => {
       const wasPlaying = Game.state === 'online';
-      this.ws = null; this.room = null;
+      this.ws = null; this.room = null; Portal.room(null);
       if (wasPlaying) { Game.toLobby(); UI.show('online'); }
       this.renderRoom();
       this.setStatus(wasPlaying ? 'LOST THE CONNECTION TO THE SERVER' : 'CANNOT REACH THE SERVER. IS IT RUNNING? (SEE SERVER ADDRESS)');
@@ -152,12 +153,12 @@ const Net = {
   onMessage(m) {
     switch (m.t) {
       case 'welcome': this.id = m.id; break;
-      case 'room': this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); break;
+      case 'room': this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); Portal.room(m); break;
       case 'chat': this.addChat(m); break;
       case 'chat-note': this.note(m.text); Sfx.deny(); break;
       case 'reported': this.reported.add(m.id); this.mute(m.id, true); this.note('REPORTED. THANKS. THEY ARE MUTED FOR YOU.'); break;
       case 'error': this.setStatus(m.text); $('on-wait').textContent = m.text; Sfx.deny(); break;
-      case 'left': this.room = null; this.renderRoom(); break;
+      case 'left': this.room = null; this.renderRoom(); Portal.room(null); break;
       case 'start': this.start(m); break;
       case 'snap': this.onSnap(m); break;
       case 'stats': if (this.nm) m.st.forEach((s, i) => { const p = this.nm.players[i]; if (p) Object.assign(p.stats, { goals: s[0], assists: s[1], shots: s[2], tackles: s[3], saves: s[4] }); }); break;
@@ -167,7 +168,7 @@ const Net = {
   /* ---------- the room screen ---------- */
   renderRoom() {
     const R = this.room;
-    $('on-start').hidden = !!R; $('on-room').hidden = !R; $('on-chat').hidden = !R;
+    $('on-start').hidden = !!R; $('on-room').hidden = !R; $('on-chat').hidden = !R || !Portal.chatAllowed();
     if (!R) return;
     if (R.code !== this.logCode) { this.logCode = R.code; this.log = []; $('on-chat-note').textContent = ''; this.renderLog(); }
     this.renderChatUI();
@@ -183,6 +184,7 @@ const Net = {
     $('on-wait').textContent = R.state === 'match' ? 'A MATCH IS ON. YOU PLAY IN THE NEXT ONE.' : host ? 'SHARE THE CODE, THEN PRESS START.' : 'WAITING FOR THE HOST TO START.';
   },
   inviteLink() {
+    if (Portal.on) return Portal.inviteLink(this.room ? this.room.code : '');
     const base = location.origin && location.origin !== 'null' ? location.origin + location.pathname : '';
     const sameHost = this.url === (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
     return base + '?room=' + (this.room ? this.room.code : '') + (sameHost ? '' : '&server=' + encodeURIComponent(this.url));
@@ -206,6 +208,7 @@ const Net = {
   say(id) { const el = $(id), text = el.value.trim(); el.value = ''; if (text) this.send({ t: 'chat', text: text.slice(0, 80) }); },
   /** a line from the server; muted players and the chat setting decide what you see */
   addChat(m) {
+    if (!Portal.chatAllowed()) return;
     const show = Save.data.settings.chat;
     if (this.muted.has(m.id) || show === 'off' || (show === 'quick' && m.q < 0)) return;
     this.log.push(m); if (this.log.length > 40) this.log.shift();
@@ -238,7 +241,7 @@ const Net = {
   renderChatUI() {
     const signed = !!Account.token;
     document.querySelectorAll('.chat-type').forEach((el) => { el.hidden = !signed; });
-    document.querySelectorAll('.chat-guest').forEach((el) => { el.hidden = signed; });
+    document.querySelectorAll('.chat-guest').forEach((el) => { el.hidden = signed; if (Portal.on) el.textContent = 'QUICK CHAT WORKS FOR EVERYONE. TYPED CHAT IS OFF HERE.'; });
     $('on-chatset').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === Save.data.settings.chat));
   },
   /** MUTE / REPORT next to everyone else in the room and in the match menu */
@@ -259,7 +262,7 @@ const Net = {
   },
   typing() { const a = document.activeElement; return !!(a && a.id === 'cp-say'); },
   openChat() {
-    if (this.chatOpen || Game.state !== 'online') return;
+    if (this.chatOpen || Game.state !== 'online' || !Portal.chatAllowed()) return;
     this.chatOpen = true; this.renderChatUI();
     $('chat-pop').hidden = false;
     Input.down.clear(); Input.releaseLock();
@@ -273,6 +276,7 @@ const Net = {
   },
   /** in a match: 1 to 4 (or VIEW + D-pad) send a phrase, T opens the chat box */
   chatKeys() {
+    if (!Portal.chatAllowed()) return;
     const E = Input.edges;
     for (let i = 0; i < 4; i++) if (E.has('Digit' + (i + 1)) || E.has('Numpad' + (i + 1))) this.quick(i);
     if (Input.padHeld(PAD.BACK)) ['PadUp', 'PadRight', 'PadDown', 'PadLeft'].forEach((k, i) => { if (E.has(k)) this.quick(i); });

@@ -316,6 +316,10 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .passline .pl-ch { color: var(--emerald); } .passline .pl-tier { color: var(--gold); }
 @media (max-width: 560px) { .gp-top { grid-template-columns: minmax(0, 1fr); } }
 
+/* CrazyGames: blocks the screen while a video ad may play */
+#ad-block { position: absolute; inset: 0; z-index: 90; background: rgba(9,11,22,.5); }
+.on-privacy { color: var(--muted); max-width: 60ch; }
+
 /* online: are you there? */
 #hud .idle-warn { left: 50%; top: 30%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); box-sizing: border-box; display: grid; justify-items: center; gap: 6px; text-align: center; padding: 12px 20px; background: rgba(9,11,22,.88); border: var(--px) solid var(--gold); box-shadow: 4px 4px 0 rgba(0,0,0,.45); }
 #hud .idle-warn b { font-family: var(--font-display); font-weight: 400; font-size: clamp(34px, 7vw, 56px); line-height: .9; color: var(--gold); }

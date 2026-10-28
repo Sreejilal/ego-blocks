@@ -251,7 +251,8 @@ wss.on('connection', (ws) => {
         if (me.account && online.get(me.account) === me) online.delete(me.account);
         me.account = acc ? acc.user : null;
         if (acc) online.set(acc.user, me);
-        me.name = acc ? acc.user : clean(m.name, 12) || 'PLAYER';
+        const typed = clean(m.name, 12) || 'PLAYER';
+        me.name = acc ? acc.user : Filter.clean(typed).changed ? 'PLAYER' + (10 + Math.floor(Math.random() * 90)) : typed; // no rude names or numbers
         me.style = G.STYLES[m.style] ? m.style : 'ROOKIE';
         me.flow = G.FLOWS[m.flow] ? m.flow : null;
         me.look = {}; if (m.look && typeof m.look === 'object') for (const s of G.SKIN_SLOTS) if (G.SKINS[m.look[s.id]] && G.SKINS[m.look[s.id]].slot === s.id) me.look[s.id] = m.look[s.id];

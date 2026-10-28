@@ -127,7 +127,7 @@ const UI = {
             ${row(key('TAB'), 'Scoreboard')}
             ${row(key('1') + key('2') + key('3') + key('4'), 'Online: quick chat. PASS!, NICE!, GG, ON ME')}
             ${row(key('T'), 'Online: open chat. Typing needs an account, quick chat works for everyone')}
-            ${row(key('ESC'), 'Pause')}
+            ${row(key('ESC') + key('P'), 'Pause')}
             ${row(key('ENTER'), 'Watch the replay after a goal, a nutmeg or an ankle breaker. SAVE CLIP downloads it as a video')}
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
           </div></section>
@@ -342,7 +342,7 @@ const UI = {
     click('ltab-club', () => { this.lockerTab = 'club'; this.lockerSel = Save.data.club; this.renderLocker(); });
     click('ltab-skin', () => { this.lockerTab = 'skin'; this.lockerSel = Save.data.look[this.skinSlot]; this.renderLocker(); });
     $('lk-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); this.skinSlot = b.dataset.slot; this.lockerSel = Save.data.look[this.skinSlot]; this.renderLocker(); });
-    click('btn-mute', () => { Save.data.settings.mute = !Save.data.settings.mute; Sfx.setMuted(Save.data.settings.mute); Save.save(); this.renderLobby(); });
+    click('btn-mute', () => { Save.data.settings.mute = !Save.data.settings.mute; Portal.applyMute(); Save.save(); this.renderLobby(); });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('p-resume', () => Game.resume());
     $('p-forfeit').addEventListener('click', () => {
@@ -358,7 +358,7 @@ const UI = {
     $('set-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.invertY = v === '1'; Save.save(); this.renderPause(); });
     $('set-chat').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Net.setChatShow(v); this.renderPause(); });
     $('set-cut').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.cutins = v === '1'; Save.save(); this.renderPause(); });
-    $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Sfx.setMuted(Save.data.settings.mute); Save.save(); this.renderPause(); });
+    $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Portal.applyMute(); Save.save(); this.renderPause(); });
     $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
     $('set-assist').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.assist = v === '1'; Save.save(); this.renderPause(); });
     $('set-fs').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; if ((v === '1') !== Touch.isFs()) Touch.toggleFs(); });

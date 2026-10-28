@@ -75,14 +75,80 @@ To update it later: run `npm run build` and upload the new `docs/index.html`.
 4. After a minute or two the Pages screen shows your game's link (usually `https://YOUR-NAME.github.io/ego-blocks/`).
 5. From then on: build, commit, and push (Claude can do all three: "build, commit and push"). The site updates by itself.
 
-### Option C: CrazyGames (later, when the game is more finished)
+### Option C: CrazyGames (their own build of the game)
 
-- Submit at the CrazyGames developer portal: https://developer.crazygames.com
-- Start with **Basic Launch**: no SDK is needed, but there are no ads or earnings, and the content has to fit PEGI 12.
-- If they pick your game for **Full Launch**, you add the CrazyGames SDK (gameplay start and stop events), and ads are only allowed through their SDK.
-- Size is not a problem: this game is about 1 MB and the limit for the first download is 50 MB.
-- Online multiplayer there needs your own server, their room and invite features, chat moderation (at least a swear filter), and CrazyGames usernames shown in game.
-- Their requirement pages: https://docs.crazygames.com/requirements/intro/
+CrazyGames gets a special copy of the game that talks to their website through their SDK. The
+GitHub and itch.io copies stay exactly as they are.
+
+**What the CrazyGames copy does differently**
+
+- Loads their SDK and tells them when a match starts and stops (pause, results and replays count as stops).
+- Saves progress in their Data module, so signed-in CrazyGames players keep it on every device. A save
+  already on that device is copied in once.
+- Uses the CrazyGames account: our own name-and-password accounts and friends are hidden there (their
+  rules allow no other logins). Signed-in players play under their CrazyGames name. Typed chat is off
+  there because it needs our accounts; quick chat still works.
+- Follows their mute and chat-off settings. Their mute wins over the game's sound button.
+- Asks for a video ad at the final whistle. Their SDK decides if one plays (at most one every 3 minutes,
+  and none at all in Basic Launch). The game is paused and silent while it plays.
+- Celebrates wins with their `happytime` effect.
+- Online rooms: shares the room with their page so their invite and JOIN buttons work, uses their invite
+  link, opens straight into a room when a friend's invite is used, and starts a new room right away when
+  they launch the game in instant multiplayer mode.
+- No fullscreen button (their page has one) and no server address box. P pauses as well as ESC, because
+  ESC leaves fullscreen.
+
+**Step 1: make the files**
+
+```
+npm run build:crazygames
+npm run covers
+```
+
+- `dist/crazygames/index.html` is the game for CrazyGames (about 1.1 MB, one file).
+- `dist/covers/` has the three cover pictures they ask for: `cover-landscape-1920x1080.png`,
+  `cover-portrait-800x1200.png` and `cover-square-800x800.png` (title only, as their rules say).
+
+Online play on CrazyGames needs your hosted server (see section 5). Build with its address baked in:
+
+```
+$env:SCORZ_SERVER="wss://your-server-address/ws"; npm run build:crazygames
+```
+
+Without it, PLAY WITH FRIENDS is simply hidden in the CrazyGames copy and everything else works.
+
+**Step 2: upload**
+
+1. Make a developer account at https://developer.crazygames.com and start a new game submission.
+2. Choose HTML5 as the type. Upload `dist/crazygames/index.html`. If the form asks for a folder or a zip,
+   zip the `dist/crazygames` folder (it only holds `index.html`) and upload that.
+3. Use their preview to play one match on a computer and one on a phone before you submit.
+
+**Step 3: the form** (what to put in each part)
+
+- **Title:** SCORZ
+- **Description:** Voxel football for 3v3 up to 5v5. Pick a style with three abilities, fill your Flow
+  bar, and climb ranked from Wood to Obsidian. Play quick matches, Lawless mode with items, a featured
+  mode that changes every 3 hours, and online rooms with friends.
+- **Controls:** WASD move, mouse aims, Shift sprints, hold left click to shoot, right click passes,
+  Space jumps, C dodges, F slide tackles, Q E R abilities, G Flow, ESC or P pauses. Controller and touch
+  are supported (the How to Play screen lists them all).
+- **Genre and tags:** Sports, Football (Soccer), 3D, Multiplayer.
+- **Orientation:** landscape. **Mobile:** yes (touch controls are built in).
+- **SDK:** yes, the CrazyGames HTML5 SDK v3.
+- **Progress save:** pick "Yes, using the Data Module from the CrazyGames SDK". If you skip this, their
+  Data module is off and the game falls back to saving on the device only.
+- **Multiplayer:** yes if you baked in a server. Lobby size: 2 to 8 players per room (the rest are bots).
+- **Covers:** the three files from `dist/covers/`.
+- **Preview video:** optional. If you add one, it must be 15 to 20 seconds, no sound, 1080p landscape and
+  portrait, and start on your cover picture.
+- **Age:** it fits PEGI 12. There is no blood or fighting, just football and slide tackles.
+
+**What happens next**
+
+- They start with **Basic Launch**: real players try it, ads stay off, and they look at how long people play.
+- If they pick it for **Full Launch**, ads turn on (already wired in), and you earn a share of the ad money.
+- Their rules change sometimes. Check https://docs.crazygames.com/requirements/intro/ before you submit.
 
 ## 5. Play online with friends (the SCORZ server)
 
@@ -161,6 +227,7 @@ src/            the game's source code (edit these)
 build.js        builds docs/index.html
 docs/index.html the finished game (play it, upload it)
 server/         the online server (npm run server)
+tools/covers.js makes the CrazyGames cover pictures (npm run covers)
 test/           automatic tests (npm test)
 CLAUDE.md       instructions Claude Code reads
 ROADMAP.md      your feature list as prompts

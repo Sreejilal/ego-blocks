@@ -4,6 +4,10 @@
  *
  *   node build.js              -> docs/index.html  (the public game: open it, or host it anywhere)
  *   node build.js --artifact   -> also dist/ego-blocks.html (body-only version for a claude.ai artifact)
+ *   node build.js --crazygames -> also dist/crazygames/index.html (with the CrazyGames SDK, for their portal)
+ *
+ * SCORZ_SERVER=wss://your-server/ws bakes an online server address into the builds
+ * (needed on CrazyGames and on GitHub Pages, which cannot run the server themselves).
  *
  * docs/index.html is fully self-contained when `npm install` has been run:
  * Three.js and the three pixel fonts are inlined, so it works offline, on
@@ -32,7 +36,10 @@ const js = modules.map((f) => `/* ---- ${f} ---- */\n` + fs.readFileSync(path.jo
 
 // every module shares one scope inside this wrapper, in file-name order
 const guard = "if (typeof THREE === 'undefined') { var bt = document.getElementById('boot'); if (bt) bt.textContent = 'COULD NOT LOAD THE 3D ENGINE. CHECK YOUR CONNECTION AND RELOAD.'; return; }";
-const game = "(function () {\n'use strict';\n" + guard + '\n' + js + '\n})();\n';
+const SERVER = String(process.env.SCORZ_SERVER || '').trim();
+if (SERVER && !/^wss?:\/\/[^\s'"<>]+$/.test(SERVER)) { console.error('SCORZ_SERVER must look like wss://your-server/ws'); process.exit(1); }
+const gameFor = (cfg) => "(function () {\n'use strict';\n" + guard + '\nconst BUILD = ' + JSON.stringify(cfg) + ';\n' + js + '\n})();\n';
+const game = gameFor({ portal: null, server: SERVER });
 
 // ---- 2. syntax check without running anything ------------------------------
 try { new vm.Script(game, { filename: 'game.js' }); }
@@ -58,14 +65,14 @@ if (fontFiles.every((f) => fs.existsSync(f.p))) {
 } else fontTag = fontLinks;
 
 // ---- 5. the public page ----------------------------------------------------
-const page = `<!doctype html>
+const pageFor = (code, extraHead) => `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#090b16">
 <meta name="description" content="SCORZ: voxel football in your browser, 3v3 up to 5v5. Pick a style, find your Flow, climb from Wood to Obsidian.">
-${titleM[0]}
+${titleM[0]}${extraHead}
 ${fontTag}
 ${styleM[0]}
 </head>
@@ -73,15 +80,25 @@ ${styleM[0]}
 ${bodyPart}
 ${threeTag}
 <script>
-${safeScript(game)}</script>
+${safeScript(code)}</script>
 </body>
 </html>
 `;
+const page = pageFor(game, '');
 fs.mkdirSync(path.join(ROOT, 'docs'), { recursive: true });
 fs.writeFileSync(path.join(ROOT, 'docs', 'index.html'), page);
 console.log('built docs/index.html', (page.length / 1024).toFixed(0) + ' KB,', modules.length, 'modules,', inlined.length ? 'inlined: ' + inlined.join(' + ') : 'using CDN (run npm install to inline)');
 
-// ---- 6. claude.ai artifact version (body only; the host adds the skeleton) --
+// ---- 6. the CrazyGames page: their SDK in <head>, nothing else changes ------
+if (process.argv.includes('--crazygames')) {
+  const cg = pageFor(gameFor({ portal: 'crazygames', server: SERVER }), '\n<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>');
+  const outDir = process.env.SCORZ_CG_OUT || path.join(ROOT, 'dist', 'crazygames'); // tests build into a temp folder
+  fs.mkdirSync(outDir, { recursive: true });
+  fs.writeFileSync(path.join(outDir, 'index.html'), cg);
+  console.log('built ' + path.relative(ROOT, path.join(outDir, 'index.html')), (cg.length / 1024).toFixed(0) + ' KB,', SERVER ? 'online server ' + SERVER : 'no online server (PLAY WITH FRIENDS is hidden; set SCORZ_SERVER)');
+}
+
+// ---- 7. claude.ai artifact version (body only; the host adds the skeleton) --
 if (process.argv.includes('--artifact')) {
   const out = head + `\n<script src="${THREE_CDN}"></script>\n<script>\n${safeScript(game)}</script>\n`;
   fs.mkdirSync(path.join(ROOT, 'dist'), { recursive: true });

@@ -17,6 +17,7 @@ const Input = {
       if (e.code === 'Tab' && Game.playing()) e.preventDefault();
       if (!e.repeat) { this.down.add(e.code); this.edges.add(e.code); }
       if (e.code === 'Escape') { if (Net.chatOpen) Net.closeChat(false); else Game.onEscape(); }
+      else if (e.code === 'KeyP' && !e.repeat && (Game.playing() || Game.state === 'paused')) Game.onEscape(); // P pauses too: in fullscreen ESC only leaves fullscreen
       this.usingPad = false;
     });
     window.addEventListener('keyup', (e) => { this.down.delete(e.code); this.up.add(e.code); });

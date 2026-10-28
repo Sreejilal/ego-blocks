@@ -8,7 +8,7 @@ const Game = {
   playing() { return this.state === 'match' || this.state === 'online'; },
   start() {
     Save.load(); Save.validate();
-    Sfx.setMuted(Save.data.settings.mute);
+    Portal.applyMute();
     World.init($('gl'));
     FX.init(World.scene);
     Touch.detect();
@@ -121,6 +121,8 @@ const Game = {
     Input.releaseLock();
     UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle });
     if (res === 'win') Sfx.fanfare(2);
+    if (res === 'win' && !idle) Portal.happy();
+    Portal.midgame();
     Sfx.setCrowd(0.3);
   },
   perfCheck(rdt) {
@@ -140,6 +142,7 @@ const Game = {
     if (!(rdt > 0)) rdt = 0;
     rdt = Math.min(rdt, 0.05);
     this.time += rdt;
+    Portal.tick();
     Input.pollPad();
     Touch.sync();
     const m = this.match;
@@ -198,8 +201,8 @@ const Game = {
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Player, TEAM, rollRarity, poolFor,
-  CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
+  CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {
@@ -233,10 +236,11 @@ window.EGO = {
 window.addEventListener('load', () => {
   try {
     if (typeof THREE === 'undefined') throw new Error('3D engine failed to load. Check your connection and reload the page.');
-    Game.start();
-  } catch (err) {
-    const b = document.getElementById('boot') || document.getElementById('app');
-    if (b) { b.style.display = 'grid'; b.innerHTML = '<div style="max-width:40ch;text-align:center;font-family:var(--font-body);font-size:18px;padding:16px">SCORZ could not start.<br><br>' + esc(err && err.message ? err.message : String(err)) + '</div>'; }
-    console.error(err);
-  }
+    Portal.boot().then(() => { try { Game.start(); Portal.ready(); } catch (err) { bootFail(err); } });
+  } catch (err) { bootFail(err); }
 });
+function bootFail(err) {
+  const b = document.getElementById('boot') || document.getElementById('app');
+  if (b) { b.style.display = 'grid'; b.innerHTML = '<div style="max-width:40ch;text-align:center;font-family:var(--font-body);font-size:18px;padding:16px">SCORZ could not start.<br><br>' + esc(err && err.message ? err.message : String(err)) + '</div>'; }
+  console.error(err);
+}

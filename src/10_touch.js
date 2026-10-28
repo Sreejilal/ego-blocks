@@ -122,7 +122,7 @@ const Touch = {
     this.b.item.hidden = !lawless;
     put('pause', W - Math.max(raw.r, 8) - 30, raw.t + 30, 46);
     put('chat', W - Math.max(raw.r, 8) - 86, raw.t + 30, 46);
-    this.b.chat.hidden = Game.state !== 'online';
+    this.b.chat.hidden = Game.state !== 'online' || !Portal.chatAllowed();
     this.R = 58 * s;
     this.ghost.x = sa.l + (portrait ? 80 : 104) * s;
     this.ghost.y = H - sa.b - (portrait ? 150 : 100) * s;
@@ -305,7 +305,7 @@ const Touch = {
     if (c.chg !== chg) { c.chg = chg; b.shoot.style.setProperty('--c', chg + '%'); }
   },
   /* ---------- fullscreen (only where the page is allowed to) ---------- */
-  fsAvailable() { return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); },
+  fsAvailable() { return !BUILD.portal && !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); }, // portals have their own fullscreen button
   isFs() { return !!(document.fullscreenElement || document.webkitFullscreenElement); },
   toggleFs() {
     const d = document, el = d.documentElement;

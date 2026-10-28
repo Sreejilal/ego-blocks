@@ -33,12 +33,20 @@ file in file-name order into ONE function scope. There are no imports or exports
 | `10_input.js` | keyboard, mouse, pointer lock, gamepad, and the camera (`Cam`) |
 | `10_touch.js` | `Touch`: phone controls (floating stick, drag to look, thumb arc of buttons) |
 | `11_account.js` | `Account`: optional sign-in, progress sync to the server, friends and their profile cards |
+| `11_crazy.js` | `Portal`: the CrazyGames SDK, only active in the CrazyGames build (gameplay start/stop, Data module saves, their account, mute and chat settings, midgame ad at the final whistle, rooms and invites) |
 | `11_net.js` | `Net`: online rooms (code, invite link, teams) and `NetMatch`, which draws an online match from server snapshots and sends your controls |
 | `11_replay.js` | `Replay`: records the last 10s (player poses + ball every frame), offers replays after your goals, nutmegs and ankle breakers, saves clips with MediaRecorder |
 | `11_reveal.js` | `Reveal`: the 3D spin (block drops, shakes in the rarity colour, cracks open). The roll happens in `UI.spin()` first |
 | `11_showcase.js` | `Showcase`: your player on a lit spot on the start screen. The camera fits the player into the `#lob-stage` box |
 | `11_ui.js` | `UI`: all menus and the HUD (lobby, pause, results, spins, locker, how to play) |
 | `12_main.js` | `Game`: state machine, main loop, rewards, auto graphics, `window.EGO` test hooks |
+
+## Builds
+
+- `npm run build` makes `docs/index.html` (GitHub Pages, itch.io). `npm run build:crazygames` makes `dist/crazygames/index.html`, the same game with the CrazyGames SDK script in `<head>`.
+- build.js puts `const BUILD = { portal, server }` at the top of the game code. `BUILD.portal` is `'crazygames'` only in that build. `SCORZ_SERVER=wss://.../ws` sets `BUILD.server`, the online server address baked into the page. Only use `BUILD` in files 10_ and later (the server's headless loader does not have it).
+- Every `Portal` call does nothing when the SDK is not running, so the normal build behaves exactly as before. On CrazyGames our own accounts are hidden (no other logins allowed there).
+- `npm run covers` makes the three cover images in `dist/covers/` from the lobby scene. Test: `node test/crazygames.js` (uses a stand-in SDK).
 
 ## Online server
 

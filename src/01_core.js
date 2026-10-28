@@ -72,6 +72,8 @@ const GRAV = 22;
 const Save = {
   key: 'scorz.save.v1',
   oldKeys: ['egoblocks.save.v1'], // saves from before the rename to SCORZ
+  backend: null, // the CrazyGames Data module on their portal, otherwise localStorage
+  store() { return this.backend || window.localStorage; },
   data: null,
   ok: true,
   defaults() {
@@ -88,8 +90,8 @@ const Save = {
   load() {
     let d = null, migrated = null;
     try {
-      let raw = window.localStorage.getItem(this.key);
-      if (!raw) for (const k of this.oldKeys) { raw = window.localStorage.getItem(k); if (raw) { migrated = k; break; } }
+      let raw = this.store().getItem(this.key);
+      if (!raw && !this.backend) for (const k of this.oldKeys) { raw = window.localStorage.getItem(k); if (raw) { migrated = k; break; } }
       if (raw) d = JSON.parse(raw);
     } catch (e) { this.ok = false; }
     const def = this.defaults();
@@ -153,7 +155,7 @@ const Save = {
     d.look = look;
   },
   save() {
-    try { window.localStorage.setItem(this.key, JSON.stringify(this.data)); this.ok = true; }
+    try { this.store().setItem(this.key, JSON.stringify(this.data)); this.ok = true; }
     catch (e) { this.ok = false; }
     if (typeof Account !== 'undefined') Account.changed(); // signed in: send it to the server soon
   },
@@ -165,7 +167,7 @@ const Sfx = (() => {
   let muted = false, crowdBase = 0, loud = 1;
   const now = () => ctx.currentTime;
   function init() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume().catch(() => {}); return; }
+    if (ctx) { if (ctx.state !== 'running') ctx.resume().catch(() => {}); return; } // iPhones can leave it 'interrupted'
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; return; }
     master = ctx.createGain(); master.gain.value = muted ? 0 : 0.75; master.connect(ctx.destination);
     const comp = ctx.createDynamicsCompressor();

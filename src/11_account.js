@@ -9,6 +9,7 @@ const GUEST_KEY = 'scorz.save.guest'; // the guest progress, kept aside while yo
 const Account = {
   user: null, token: null, friends: [], requests: [], pending: false, syncT: 0, msg: '',
   init() {
+    if (Portal.on) return; // on CrazyGames only their account is allowed
     const a = Save.data.account;
     if (a && a.token) { this.user = a.user; this.token = a.token; this.refresh(); }
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.upload(true); });
@@ -77,6 +78,7 @@ const Account = {
   },
   /* ---------- the Profile screen panels ---------- */
   html() {
+    if (Portal.on) return Portal.accountHtml();
     if (!this.token) {
       return `<h3>ACCOUNT</h3><p class="pf-note">You are playing as a guest, and your progress stays in this browser. Make an account (just a name and a password) to keep it on the SCORZ server, play on any device and add friends.</p>
         <div class="on-row"><input class="on-in" id="ac-user" maxlength="12" placeholder="NAME" autocomplete="username" spellcheck="false"><input class="on-in" id="ac-pass" type="password" maxlength="64" placeholder="PASSWORD" autocomplete="current-password"></div>
@@ -93,6 +95,7 @@ const Account = {
       <p class="on-status" id="ac-msg">${esc(this.msg)}</p>${rq}${fr || '<p class="label">NO FRIENDS YET. ADD ONE BY THEIR SCORZ NAME.</p>'}`;
   },
   bind(el) {
+    if (Portal.on) { Portal.bindAccount(); return; }
     const v = (id) => ($(id) ? $(id).value : '');
     const on = (id, fn) => { const b = $(id); if (b) b.addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); }); };
     on('ac-in', () => this.signIn(v('ac-user'), v('ac-pass'), false));

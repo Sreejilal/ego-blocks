@@ -325,6 +325,10 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .passline .pl-ch { color: var(--emerald); } .passline .pl-tier { color: var(--gold); }
 @media (max-width: 560px) { .gp-top { grid-template-columns: minmax(0, 1fr); } }
 
+/* CrazyGames: blocks the screen while a video ad may play */
+#ad-block { position: absolute; inset: 0; z-index: 90; background: rgba(9,11,22,.5); }
+.on-privacy { color: var(--muted); max-width: 60ch; }
+
 /* online: are you there? */
 #hud .idle-warn { left: 50%; top: 30%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); box-sizing: border-box; display: grid; justify-items: center; gap: 6px; text-align: center; padding: 12px 20px; background: rgba(9,11,22,.88); border: var(--px) solid var(--gold); box-shadow: 4px 4px 0 rgba(0,0,0,.45); }
 #hud .idle-warn b { font-family: var(--font-display); font-weight: 400; font-size: clamp(34px, 7vw, 56px); line-height: .9; color: var(--gold); }
@@ -704,6 +708,7 @@ body.touch .howto .touchsec { order: -1; }
 (function () {
 'use strict';
 if (typeof THREE === 'undefined') { var bt = document.getElementById('boot'); if (bt) bt.textContent = 'COULD NOT LOAD THE 3D ENGINE. CHECK YOUR CONNECTION AND RELOAD.'; return; }
+const BUILD = {"portal":null,"server":""};
 /* ---- 01_core.js ---- */
 
 /* =====================================================================
@@ -779,6 +784,8 @@ const GRAV = 22;
 const Save = {
   key: 'scorz.save.v1',
   oldKeys: ['egoblocks.save.v1'], // saves from before the rename to SCORZ
+  backend: null, // the CrazyGames Data module on their portal, otherwise localStorage
+  store() { return this.backend || window.localStorage; },
   data: null,
   ok: true,
   defaults() {
@@ -795,8 +802,8 @@ const Save = {
   load() {
     let d = null, migrated = null;
     try {
-      let raw = window.localStorage.getItem(this.key);
-      if (!raw) for (const k of this.oldKeys) { raw = window.localStorage.getItem(k); if (raw) { migrated = k; break; } }
+      let raw = this.store().getItem(this.key);
+      if (!raw && !this.backend) for (const k of this.oldKeys) { raw = window.localStorage.getItem(k); if (raw) { migrated = k; break; } }
       if (raw) d = JSON.parse(raw);
     } catch (e) { this.ok = false; }
     const def = this.defaults();
@@ -860,7 +867,7 @@ const Save = {
     d.look = look;
   },
   save() {
-    try { window.localStorage.setItem(this.key, JSON.stringify(this.data)); this.ok = true; }
+    try { this.store().setItem(this.key, JSON.stringify(this.data)); this.ok = true; }
     catch (e) { this.ok = false; }
     if (typeof Account !== 'undefined') Account.changed(); // signed in: send it to the server soon
   },
@@ -872,7 +879,7 @@ const Sfx = (() => {
   let muted = false, crowdBase = 0, loud = 1;
   const now = () => ctx.currentTime;
   function init() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume().catch(() => {}); return; }
+    if (ctx) { if (ctx.state !== 'running') ctx.resume().catch(() => {}); return; } // iPhones can leave it 'interrupted'
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; return; }
     master = ctx.createGain(); master.gain.value = muted ? 0 : 0.75; master.connect(ctx.destination);
     const comp = ctx.createDynamicsCompressor();
@@ -5373,6 +5380,7 @@ const Input = {
       if (e.code === 'Tab' && Game.playing()) e.preventDefault();
       if (!e.repeat) { this.down.add(e.code); this.edges.add(e.code); }
       if (e.code === 'Escape') { if (Net.chatOpen) Net.closeChat(false); else Game.onEscape(); }
+      else if (e.code === 'KeyP' && !e.repeat && (Game.playing() || Game.state === 'paused')) Game.onEscape(); // P pauses too: in fullscreen ESC only leaves fullscreen
       this.usingPad = false;
     });
     window.addEventListener('keyup', (e) => { this.down.delete(e.code); this.up.add(e.code); });
@@ -5678,7 +5686,7 @@ const Touch = {
     this.b.item.hidden = !lawless;
     put('pause', W - Math.max(raw.r, 8) - 30, raw.t + 30, 46);
     put('chat', W - Math.max(raw.r, 8) - 86, raw.t + 30, 46);
-    this.b.chat.hidden = Game.state !== 'online';
+    this.b.chat.hidden = Game.state !== 'online' || !Portal.chatAllowed();
     this.R = 58 * s;
     this.ghost.x = sa.l + (portrait ? 80 : 104) * s;
     this.ghost.y = H - sa.b - (portrait ? 150 : 100) * s;
@@ -5861,7 +5869,7 @@ const Touch = {
     if (c.chg !== chg) { c.chg = chg; b.shoot.style.setProperty('--c', chg + '%'); }
   },
   /* ---------- fullscreen (only where the page is allowed to) ---------- */
-  fsAvailable() { return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); },
+  fsAvailable() { return !BUILD.portal && !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); }, // portals have their own fullscreen button
   isFs() { return !!(document.fullscreenElement || document.webkitFullscreenElement); },
   toggleFs() {
     const d = document, el = d.documentElement;
@@ -5893,6 +5901,7 @@ const GUEST_KEY = 'scorz.save.guest'; // the guest progress, kept aside while yo
 const Account = {
   user: null, token: null, friends: [], requests: [], pending: false, syncT: 0, msg: '',
   init() {
+    if (Portal.on) return; // on CrazyGames only their account is allowed
     const a = Save.data.account;
     if (a && a.token) { this.user = a.user; this.token = a.token; this.refresh(); }
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.upload(true); });
@@ -5961,6 +5970,7 @@ const Account = {
   },
   /* ---------- the Profile screen panels ---------- */
   html() {
+    if (Portal.on) return Portal.accountHtml();
     if (!this.token) {
       return `<h3>ACCOUNT</h3><p class="pf-note">You are playing as a guest, and your progress stays in this browser. Make an account (just a name and a password) to keep it on the SCORZ server, play on any device and add friends.</p>
         <div class="on-row"><input class="on-in" id="ac-user" maxlength="12" placeholder="NAME" autocomplete="username" spellcheck="false"><input class="on-in" id="ac-pass" type="password" maxlength="64" placeholder="PASSWORD" autocomplete="current-password"></div>
@@ -5977,6 +5987,7 @@ const Account = {
       <p class="on-status" id="ac-msg">${esc(this.msg)}</p>${rq}${fr || '<p class="label">NO FRIENDS YET. ADD ONE BY THEIR SCORZ NAME.</p>'}`;
   },
   bind(el) {
+    if (Portal.on) { Portal.bindAccount(); return; }
     const v = (id) => ($(id) ? $(id).value : '');
     const on = (id, fn) => { const b = $(id); if (b) b.addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); }); };
     on('ac-in', () => this.signIn(v('ac-user'), v('ac-pass'), false));
@@ -6002,6 +6013,128 @@ const Account = {
     el.querySelector('.pf-face').replaceWith(portraitCanvas(d.style, 88, lookFor(d.style, d.look)));
     el.querySelectorAll('.pf-skin').forEach((s) => s.querySelector('.sv').replaceWith(skinCanvas(s.dataset.id, 32)));
     el.hidden = false;
+  },
+};
+
+/* ---- 11_crazy.js ---- */
+/* =====================================================================
+   Portal: the CrazyGames SDK. Only the CrazyGames build loads it
+   (npm run build:crazygames); everywhere else every call does nothing.
+   It reports gameplay start and stop, keeps progress in their Data
+   module, uses the CrazyGames username, follows their mute and chat
+   settings, asks for a video ad at the final whistle (their SDK
+   decides how often) and shares online rooms for their invite button.
+   ===================================================================== */
+const Portal = {
+  on: false, sdk: null, user: null, live: false, adMute: false, sdkMute: false, noChat: false, inRoom: false, adT: 0,
+  /** before the game starts: their SDK has to start first, it preloads the saved progress */
+  async boot() {
+    const W = window.CrazyGames;
+    if (BUILD.portal !== 'crazygames' || !W || !W.SDK) return;
+    const sdk = W.SDK;
+    try {
+      await Promise.race([sdk.init(), new Promise((ok, no) => setTimeout(() => no(new Error('the SDK took too long')), 8000))]);
+      if (sdk.environment === 'disabled') return;
+    } catch (e) { console.warn('CrazyGames SDK did not start:', e && e.message); return; }
+    this.sdk = sdk; this.on = true;
+    this.try(() => sdk.game.loadingStart());
+    // progress lives in their Data module (it follows a signed-in player to every device)
+    this.try(() => {
+      const data = sdk.data;
+      data.getItem(Save.key); // throws if the Data module is off for this game
+      if (!data.getItem(Save.key)) {
+        let raw = null; // a save from before: copy it in once
+        for (const k of [Save.key].concat(Save.oldKeys)) { try { raw = raw || window.localStorage.getItem(k); } catch (e) {} }
+        if (raw) data.setItem(Save.key, raw);
+      }
+      Save.backend = data;
+    });
+    this.readSettings(this.try(() => sdk.game.settings));
+    this.try(() => sdk.game.addSettingsChangeListener((s) => { this.readSettings(s); this.applyMute(); Net.renderRoom(); Touch.layout(); if (this.noChat) Net.closeChat(false); }));
+    this.user = (await this.tryAsync(() => sdk.user.getUser())) || null;
+    this.try(() => sdk.user.addAuthListener((u) => this.signedIn(u)));
+    this.try(() => sdk.game.addJoinRoomListener((p) => this.joinFrom(p)));
+  },
+  /** right after Game.start */
+  ready() {
+    if (BUILD.portal) { const adv = document.querySelector('.on-adv'); if (adv) adv.remove(); if (!BUILD.server) $('go-online').hidden = true; }
+    this.applyMute();
+    if (!this.on) return;
+    this.try(() => this.sdk.game.loadingStop());
+    const blk = document.createElement('div'); blk.id = 'ad-block'; blk.hidden = true; $('app').appendChild(blk);
+    if (this.user) this.useName();
+    const inv = this.try(() => this.sdk.game.inviteParams);
+    if (inv && inv.room && BUILD.server) this.joinFrom(inv);
+    else if (this.try(() => this.sdk.game.isInstantMultiplayer) && BUILD.server) { Net.open(); Net.connect(() => Net.send({ t: 'create' })); }
+  },
+  try(fn) { try { return fn(); } catch (e) { return undefined; } },
+  async tryAsync(fn) { try { return await fn(); } catch (e) { return undefined; } },
+  /** every frame: tell them when a match is being played, and when it stops (menu, results, replays) */
+  tick() {
+    if (!this.on) return;
+    const live = Game.state === 'match' || (Game.state === 'online' && !Net.paused);
+    if (live === this.live) return;
+    this.live = live;
+    this.try(() => (live ? this.sdk.game.gameplayStart() : this.sdk.game.gameplayStop()));
+  },
+  /** a win: their page celebrates with you */
+  happy() { if (this.on) { this.tick(); this.try(() => this.sdk.game.happytime()); } },
+  /** a video ad at the final whistle. Their SDK picks if one plays (at most one every 3 minutes) */
+  midgame() {
+    if (!this.on) return;
+    this.tick(); // gameplay stop goes out before the ad
+    const block = $('ad-block');
+    const done = () => { clearTimeout(this.adT); block.hidden = true; this.adMute = false; this.applyMute(); };
+    block.hidden = false;
+    this.adT = setTimeout(done, 6000); // no ad started: carry on
+    try {
+      this.sdk.ad.requestAd('midgame', {
+        adStarted: () => { clearTimeout(this.adT); this.adT = setTimeout(done, 120000); this.adMute = true; this.applyMute(); },
+        adFinished: done, adError: done,
+      });
+    } catch (e) { done(); }
+  },
+  /** sound is off when you turned it off, while an ad plays, or when their page mutes the game */
+  applyMute() { Sfx.setMuted(!!Save.data.settings.mute || this.adMute || this.sdkMute); },
+  readSettings(s) { s = s || {}; this.sdkMute = !!s.muteAudio; this.noChat = !!s.disableChat; },
+  chatAllowed() { return !this.noChat; },
+  /* ---------- their account ---------- */
+  useName() {
+    const n = Net.cleanName(this.user.username);
+    if (!n) return;
+    Save.data.name = n; Save.save();
+    const el = $('on-name'); if (el) { el.value = n; el.readOnly = true; }
+    Net.hello();
+  },
+  async signIn() { const u = await this.tryAsync(() => this.sdk.user.showAuthPrompt()); if (u) this.signedIn(u); },
+  signedIn(u) {
+    this.user = u || null; if (!this.user) return;
+    // their SDK has now loaded this account's progress (or moved the guest progress into it)
+    Save.load(); Save.validate(); this.useName(); this.applyMute();
+    UI.renderLobby(); Showcase.ensure(); if (UI.cur === 'profile') UI.renderProfile();
+  },
+  accountHtml() {
+    if (this.user) return `<h3>ACCOUNT</h3><div class="on-row"><span class="label">CRAZYGAMES ACCOUNT</span><b class="ac-name">${esc(this.user.username)}</b></div><p class="pf-note">Your progress is saved to your CrazyGames account, so it follows you to any device.</p>`;
+    const can = this.try(() => this.sdk.user.isUserAccountAvailable);
+    return `<h3>ACCOUNT</h3><p class="pf-note">You are playing as a guest, and your progress is saved on this device.${can ? ' Sign in to CrazyGames to keep it on every device and play under your CrazyGames name.' : ''}</p>`
+      + (can ? '<div class="on-row"><button class="btn small blue" id="cg-in" type="button">SIGN IN</button></div>' : '');
+  },
+  bindAccount() { const b = $('cg-in'); if (b) b.addEventListener('click', () => { Sfx.init(); Sfx.click(); this.signIn(); }); },
+  /* ---------- rooms and invites ---------- */
+  room(R) {
+    if (!this.on) return;
+    this.try(() => {
+      if (R) { this.inRoom = true; this.sdk.game.updateRoom({ roomId: R.code, isJoinable: R.players.length < (R.size - 1) * 2, inviteParams: { room: R.code } }); }
+      else if (this.inRoom) { this.inRoom = false; this.sdk.game.leftRoom(); }
+    });
+  },
+  inviteLink(code) { return this.try(() => this.sdk.game.inviteLink({ room: code })) || ''; },
+  /** a friend pressed JOIN on their page */
+  joinFrom(p) {
+    const code = p && String(p.room || '').toUpperCase();
+    if (!code || !BUILD.server || (Net.room && Net.room.code === code)) return;
+    if (Game.state !== 'lobby') Game.toLobby();
+    Net.open(); $('on-code').value = code; Net.join(code);
   },
 };
 
@@ -6058,6 +6191,7 @@ const Net = {
           <button class="btn blue" id="on-create" type="button">CREATE A ROOM <span class="sub">GET A CODE FOR FRIENDS</span></button>
           <div class="on-row"><input class="on-in code" id="on-code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false"><button class="btn" id="on-join" type="button">JOIN</button></div>
           <p class="on-status" id="on-status"></p>
+          <p class="label on-privacy">TO PLAY ONLINE, YOUR NAME AND YOUR CONTROLS GO TO THE SCORZ SERVER. IT ONLY USES THEM TO RUN THE MATCH.</p>
           <details class="on-adv"><summary class="label">SERVER ADDRESS</summary><div class="on-row"><input class="on-in" id="on-server" autocomplete="off" spellcheck="false"><button class="btn small" id="on-server-save" type="button">SAVE</button></div></details>
         </div>
         <div class="on-split">
@@ -6100,7 +6234,7 @@ const Net = {
     click('on-copy', () => this.copyInvite());
     click('on-switch', () => { const me = this.room && this.room.players.find((p) => p.id === this.id); if (me) this.send({ t: 'team', team: 1 - me.team }); });
     click('on-go', () => this.send({ t: 'start' }));
-    click('on-leave', () => { this.send({ t: 'leave' }); this.room = null; this.renderRoom(); });
+    click('on-leave', () => { this.send({ t: 'leave' }); this.room = null; this.renderRoom(); Portal.room(null); });
     // chat
     const quickClick = (el, close) => $(el).addEventListener('click', (e) => { const b = e.target.closest('[data-q]'); if (!b) return; Sfx.click(); this.quick(+b.dataset.q); if (close) this.closeChat(true); });
     quickClick('on-quick', false); quickClick('cp-quick', true);
@@ -6126,7 +6260,7 @@ const Net = {
   },
   /** where the server is: your saved address, the invite link's, or the server that sent you this page */
   serverUrl() {
-    const s = (Save.data.settings && Save.data.settings.server) || this.urlOverride;
+    const s = (!BUILD.portal && Save.data.settings && Save.data.settings.server) || this.urlOverride || BUILD.server;
     if (s) return s;
     if (location.protocol === 'file:' || !location.host) return 'ws://localhost:8787/ws';
     return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
@@ -6148,7 +6282,7 @@ const Net = {
     ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } this.onMessage(m); };
     ws.onclose = () => {
       const wasPlaying = Game.state === 'online';
-      this.ws = null; this.room = null;
+      this.ws = null; this.room = null; Portal.room(null);
       if (wasPlaying) { Game.toLobby(); UI.show('online'); }
       this.renderRoom();
       this.setStatus(wasPlaying ? 'LOST THE CONNECTION TO THE SERVER' : 'CANNOT REACH THE SERVER. IS IT RUNNING? (SEE SERVER ADDRESS)');
@@ -6160,12 +6294,12 @@ const Net = {
   onMessage(m) {
     switch (m.t) {
       case 'welcome': this.id = m.id; break;
-      case 'room': this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); break;
+      case 'room': this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); Portal.room(m); break;
       case 'chat': this.addChat(m); break;
       case 'chat-note': this.note(m.text); Sfx.deny(); break;
       case 'reported': this.reported.add(m.id); this.mute(m.id, true); this.note('REPORTED. THANKS. THEY ARE MUTED FOR YOU.'); break;
       case 'error': this.setStatus(m.text); $('on-wait').textContent = m.text; Sfx.deny(); break;
-      case 'left': this.room = null; this.renderRoom(); break;
+      case 'left': this.room = null; this.renderRoom(); Portal.room(null); break;
       case 'start': this.start(m); break;
       case 'snap': this.onSnap(m); break;
       case 'stats': if (this.nm) m.st.forEach((s, i) => { const p = this.nm.players[i]; if (p) Object.assign(p.stats, { goals: s[0], assists: s[1], shots: s[2], tackles: s[3], saves: s[4] }); }); break;
@@ -6175,7 +6309,7 @@ const Net = {
   /* ---------- the room screen ---------- */
   renderRoom() {
     const R = this.room;
-    $('on-start').hidden = !!R; $('on-room').hidden = !R; $('on-chat').hidden = !R;
+    $('on-start').hidden = !!R; $('on-room').hidden = !R; $('on-chat').hidden = !R || !Portal.chatAllowed();
     if (!R) return;
     if (R.code !== this.logCode) { this.logCode = R.code; this.log = []; $('on-chat-note').textContent = ''; this.renderLog(); }
     this.renderChatUI();
@@ -6191,6 +6325,7 @@ const Net = {
     $('on-wait').textContent = R.state === 'match' ? 'A MATCH IS ON. YOU PLAY IN THE NEXT ONE.' : host ? 'SHARE THE CODE, THEN PRESS START.' : 'WAITING FOR THE HOST TO START.';
   },
   inviteLink() {
+    if (Portal.on) return Portal.inviteLink(this.room ? this.room.code : '');
     const base = location.origin && location.origin !== 'null' ? location.origin + location.pathname : '';
     const sameHost = this.url === (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
     return base + '?room=' + (this.room ? this.room.code : '') + (sameHost ? '' : '&server=' + encodeURIComponent(this.url));
@@ -6214,6 +6349,7 @@ const Net = {
   say(id) { const el = $(id), text = el.value.trim(); el.value = ''; if (text) this.send({ t: 'chat', text: text.slice(0, 80) }); },
   /** a line from the server; muted players and the chat setting decide what you see */
   addChat(m) {
+    if (!Portal.chatAllowed()) return;
     const show = Save.data.settings.chat;
     if (this.muted.has(m.id) || show === 'off' || (show === 'quick' && m.q < 0)) return;
     this.log.push(m); if (this.log.length > 40) this.log.shift();
@@ -6246,7 +6382,7 @@ const Net = {
   renderChatUI() {
     const signed = !!Account.token;
     document.querySelectorAll('.chat-type').forEach((el) => { el.hidden = !signed; });
-    document.querySelectorAll('.chat-guest').forEach((el) => { el.hidden = signed; });
+    document.querySelectorAll('.chat-guest').forEach((el) => { el.hidden = signed; if (Portal.on) el.textContent = 'QUICK CHAT WORKS FOR EVERYONE. TYPED CHAT IS OFF HERE.'; });
     $('on-chatset').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === Save.data.settings.chat));
   },
   /** MUTE / REPORT next to everyone else in the room and in the match menu */
@@ -6267,7 +6403,7 @@ const Net = {
   },
   typing() { const a = document.activeElement; return !!(a && a.id === 'cp-say'); },
   openChat() {
-    if (this.chatOpen || Game.state !== 'online') return;
+    if (this.chatOpen || Game.state !== 'online' || !Portal.chatAllowed()) return;
     this.chatOpen = true; this.renderChatUI();
     $('chat-pop').hidden = false;
     Input.down.clear(); Input.releaseLock();
@@ -6281,6 +6417,7 @@ const Net = {
   },
   /** in a match: 1 to 4 (or VIEW + D-pad) send a phrase, T opens the chat box */
   chatKeys() {
+    if (!Portal.chatAllowed()) return;
     const E = Input.edges;
     for (let i = 0; i < 4; i++) if (E.has('Digit' + (i + 1)) || E.has('Numpad' + (i + 1))) this.quick(i);
     if (Input.padHeld(PAD.BACK)) ['PadUp', 'PadRight', 'PadDown', 'PadLeft'].forEach((k, i) => { if (E.has(k)) this.quick(i); });
@@ -7063,7 +7200,7 @@ const UI = {
             ${row(key('TAB'), 'Scoreboard')}
             ${row(key('1') + key('2') + key('3') + key('4'), 'Online: quick chat. PASS!, NICE!, GG, ON ME')}
             ${row(key('T'), 'Online: open chat. Typing needs an account, quick chat works for everyone')}
-            ${row(key('ESC'), 'Pause')}
+            ${row(key('ESC') + key('P'), 'Pause')}
             ${row(key('ENTER'), 'Watch the replay after a goal, a nutmeg or an ankle breaker. SAVE CLIP downloads it as a video')}
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
           </div></section>
@@ -7278,7 +7415,7 @@ const UI = {
     click('ltab-club', () => { this.lockerTab = 'club'; this.lockerSel = Save.data.club; this.renderLocker(); });
     click('ltab-skin', () => { this.lockerTab = 'skin'; this.lockerSel = Save.data.look[this.skinSlot]; this.renderLocker(); });
     $('lk-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); this.skinSlot = b.dataset.slot; this.lockerSel = Save.data.look[this.skinSlot]; this.renderLocker(); });
-    click('btn-mute', () => { Save.data.settings.mute = !Save.data.settings.mute; Sfx.setMuted(Save.data.settings.mute); Save.save(); this.renderLobby(); });
+    click('btn-mute', () => { Save.data.settings.mute = !Save.data.settings.mute; Portal.applyMute(); Save.save(); this.renderLobby(); });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('p-resume', () => Game.resume());
     $('p-forfeit').addEventListener('click', () => {
@@ -7294,7 +7431,7 @@ const UI = {
     $('set-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.invertY = v === '1'; Save.save(); this.renderPause(); });
     $('set-chat').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Net.setChatShow(v); this.renderPause(); });
     $('set-cut').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.cutins = v === '1'; Save.save(); this.renderPause(); });
-    $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Sfx.setMuted(Save.data.settings.mute); Save.save(); this.renderPause(); });
+    $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Portal.applyMute(); Save.save(); this.renderPause(); });
     $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
     $('set-assist').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.assist = v === '1'; Save.save(); this.renderPause(); });
     $('set-fs').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; if ((v === '1') !== Touch.isFs()) Touch.toggleFs(); });
@@ -7734,7 +7871,7 @@ const Game = {
   playing() { return this.state === 'match' || this.state === 'online'; },
   start() {
     Save.load(); Save.validate();
-    Sfx.setMuted(Save.data.settings.mute);
+    Portal.applyMute();
     World.init($('gl'));
     FX.init(World.scene);
     Touch.detect();
@@ -7847,6 +7984,8 @@ const Game = {
     Input.releaseLock();
     UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle });
     if (res === 'win') Sfx.fanfare(2);
+    if (res === 'win' && !idle) Portal.happy();
+    Portal.midgame();
     Sfx.setCrowd(0.3);
   },
   perfCheck(rdt) {
@@ -7866,6 +8005,7 @@ const Game = {
     if (!(rdt > 0)) rdt = 0;
     rdt = Math.min(rdt, 0.05);
     this.time += rdt;
+    Portal.tick();
     Input.pollPad();
     Touch.sync();
     const m = this.match;
@@ -7924,8 +8064,8 @@ const Game = {
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Player, TEAM, rollRarity, poolFor,
-  CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
+  CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {
@@ -7959,13 +8099,14 @@ window.EGO = {
 window.addEventListener('load', () => {
   try {
     if (typeof THREE === 'undefined') throw new Error('3D engine failed to load. Check your connection and reload the page.');
-    Game.start();
-  } catch (err) {
-    const b = document.getElementById('boot') || document.getElementById('app');
-    if (b) { b.style.display = 'grid'; b.innerHTML = '<div style="max-width:40ch;text-align:center;font-family:var(--font-body);font-size:18px;padding:16px">SCORZ could not start.<br><br>' + esc(err && err.message ? err.message : String(err)) + '</div>'; }
-    console.error(err);
-  }
+    Portal.boot().then(() => { try { Game.start(); Portal.ready(); } catch (err) { bootFail(err); } });
+  } catch (err) { bootFail(err); }
 });
+function bootFail(err) {
+  const b = document.getElementById('boot') || document.getElementById('app');
+  if (b) { b.style.display = 'grid'; b.innerHTML = '<div style="max-width:40ch;text-align:center;font-family:var(--font-body);font-size:18px;padding:16px">SCORZ could not start.<br><br>' + esc(err && err.message ? err.message : String(err)) + '</div>'; }
+  console.error(err);
+}
 
 })();
 </script>
