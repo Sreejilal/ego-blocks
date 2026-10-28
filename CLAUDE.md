@@ -41,6 +41,13 @@ file in file-name order into ONE function scope. There are no imports or exports
 | `11_ui.js` | `UI`: all menus and the HUD (lobby, pause, results, spins, locker, how to play) |
 | `12_main.js` | `Game`: state machine, main loop, rewards, auto graphics, `window.EGO` test hooks |
 
+## Flows, Awakenings, kits, daily
+
+- Each Flow in `FLOWS` has a `color`, an `fx` look (drawn by `FX.flow`, also on the start screen) and `mods`; `start` effects run when it switches on (`stamina`, `resetCd`).
+- Each style in `STYLES` has `awaken` (name, desc, `mods`, optional `perk`: `dodge` or `tank`). Big plays (`flowAdd` amounts of 10+) fill `p.awake`; Z or the Flow button starts it (`activateAwaken`) for `AWAKEN_TIME`. Awakened: cooldowns reset and run x2, ability `fx` set while awakened last 50% longer. Online sends `aw`/`awt` in `me` and flag 128.
+- The `kit` skin slot: skins with `pattern` and `trim`, drawn on the team's colours (`makePlayerSkin`), so sides stay readable. Keepers keep their kit.
+- `Daily` (07_data.js): `Save.data.daily`, a gift once per local day and one challenge from `DAILY_CHALLENGES`. No streaks on purpose. Test: `node test/extras.js`.
+
 ## Builds
 
 - `npm run build` makes `docs/index.html` (GitHub Pages, itch.io). `npm run build:crazygames` makes `dist/crazygames/index.html`, the same game with the CrazyGames SDK script in `<head>`.

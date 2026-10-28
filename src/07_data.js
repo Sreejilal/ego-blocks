@@ -7,16 +7,16 @@ const RARITY_HEX = { Rare: '#4aa8ff', Epic: '#b65cff', Legendary: '#ffc53a', Myt
 const NEED_BALL = 'NEED THE BALL';
 
 const STYLES = {
-  ROOKIE: { name: 'ROOKIE', rarity: 'Rare', hair: '#3b2a22', hairShape: 'short', aura: '#3fd6ff', blurb: 'Reads the whole pitch. The free starter, and it can still win games.', abilities: ['vision', 'quickShot', 'burst'] },
-  SPRINTER: { name: 'SPRINTER', rarity: 'Rare', hair: '#c8323e', hairShape: 'long', aura: '#ff5a3c', blurb: 'Raw pace. Burns past the back line, then bends it in.', abilities: ['turbo', 'cutInside', 'curler'] },
-  PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'snapPass'] },
-  TRICKSTER: { name: 'TRICKSTER', rarity: 'Epic', hair: '#ff5fb0', hairShape: 'messy', aura: '#ff5fb0', blurb: 'Flicks, nutmegs and snap feints. Makes defenders look silly.', abilities: ['rainbow', 'nutmeg', 'whiplash'] },
-  ENFORCER: { name: 'ENFORCER', rarity: 'Epic', hair: '#8a1f33', hairShape: 'swept', aura: '#ffb02e', blurb: 'Midfield general. Flattens attackers and threads perfect through balls.', abilities: ['armSwipe', 'pinpointPass', 'lockdown'] },
-  SHAMBLER: { name: 'SHAMBLER', rarity: 'Legendary', hair: '#a6c49c', hairShape: 'messy', aura: '#7dff6a', blurb: 'An undead dribble nobody can tackle, and long arms that steal anything.', abilities: ['undeadShuffle', 'graveGrab', 'lurch'] },
-  PROWLER: { name: 'PROWLER', rarity: 'Legendary', hair: '#2b2f3a', hairShape: 'swept', aura: '#ff9d2e', blurb: 'A predator in the box. Smells loose balls first and finishes them first time.', abilities: ['scent', 'pounce', 'oneTouch'] },
-  MAGNET: { name: 'MAGNET', rarity: 'Mythic', hair: '#eef2f7', hairShape: 'fluffy', aura: '#8fd4ff', blurb: 'Kills any high ball dead on the boot, then finishes it in the air.', abilities: ['skyTrap', 'volley', 'fakeVolley'] },
-  THUNDER: { name: 'THUNDER', rarity: 'Mythic', hair: '#f2f2f2', hairShape: 'flattop', aura: '#ffe14d', blurb: 'A long-range bomber. Shots from 30 blocks out that dip, wobble and burn keepers.', abilities: ['longBomb', 'loaded', 'knuckle'] },
-  RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'] },
+  ROOKIE: { name: 'ROOKIE', rarity: 'Rare', hair: '#3b2a22', hairShape: 'short', aura: '#3fd6ff', blurb: 'Reads the whole pitch. The free starter, and it can still win games.', abilities: ['vision', 'quickShot', 'burst'], awaken: { name: 'FIRST LIGHT', desc: '+12% speed and shot power.', mods: { speed: 1.12, shot: 1.12 } } },
+  SPRINTER: { name: 'SPRINTER', rarity: 'Rare', hair: '#c8323e', hairShape: 'long', aura: '#ff5a3c', blurb: 'Raw pace. Burns past the back line, then bends it in.', abilities: ['turbo', 'cutInside', 'curler'], awaken: { name: 'RED LINE', desc: '+25% speed, and sprinting costs no stamina.', mods: { speed: 1.25, stamDrain: 0 } } },
+  PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'snapPass'], awaken: { name: 'NIGHTFALL', desc: 'Your dodges refill at once, every time, and you are 10% faster.', perk: 'dodge', mods: { speed: 1.1 } } },
+  TRICKSTER: { name: 'TRICKSTER', rarity: 'Epic', hair: '#ff5fb0', hairShape: 'messy', aura: '#ff5fb0', blurb: 'Flicks, nutmegs and snap feints. Makes defenders look silly.', abilities: ['rainbow', 'nutmeg', 'whiplash'], awaken: { name: 'SHOWTIME', desc: 'Your dodges refill at once and tricks recharge even faster.', perk: 'dodge', mods: { cdRate: 1.5 } } },
+  ENFORCER: { name: 'ENFORCER', rarity: 'Epic', hair: '#8a1f33', hairShape: 'swept', aura: '#ffb02e', blurb: 'Midfield general. Flattens attackers and threads perfect through balls.', abilities: ['armSwipe', 'pinpointPass', 'lockdown'], awaken: { name: 'IRON WALL', desc: 'Tackles reach 60% further and come back twice as fast, and nobody can tackle you.', perk: 'tank', mods: { tackleRange: 1.6, tackleCd: 0.5 } } },
+  SHAMBLER: { name: 'SHAMBLER', rarity: 'Legendary', hair: '#a6c49c', hairShape: 'messy', aura: '#7dff6a', blurb: 'An undead dribble nobody can tackle, and long arms that steal anything.', abilities: ['undeadShuffle', 'graveGrab', 'lurch'], awaken: { name: 'RISEN', desc: 'Nobody can tackle you, and you are 12% faster.', perk: 'tank', mods: { speed: 1.12 } } },
+  PROWLER: { name: 'PROWLER', rarity: 'Legendary', hair: '#2b2f3a', hairShape: 'swept', aura: '#ff9d2e', blurb: 'A predator in the box. Smells loose balls first and finishes them first time.', abilities: ['scent', 'pounce', 'oneTouch'], awaken: { name: 'APEX', desc: '+22% speed when you do not have the ball, and +20% shot power.', mods: { huntSpeed: 1.22, shot: 1.2 } } },
+  MAGNET: { name: 'MAGNET', rarity: 'Mythic', hair: '#eef2f7', hairShape: 'fluffy', aura: '#8fd4ff', blurb: 'Kills any high ball dead on the boot, then finishes it in the air.', abilities: ['skyTrap', 'volley', 'fakeVolley'], awaken: { name: 'GRAVITY', desc: '+22% shot power and 10% faster.', mods: { shot: 1.22, speed: 1.1 } } },
+  THUNDER: { name: 'THUNDER', rarity: 'Mythic', hair: '#f2f2f2', hairShape: 'flattop', aura: '#ffe14d', blurb: 'A long-range bomber. Shots from 30 blocks out that dip, wobble and burn keepers.', abilities: ['longBomb', 'loaded', 'knuckle'], awaken: { name: 'STORM', desc: '+30% shot power.', mods: { shot: 1.3 } } },
+  RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'], awaken: { name: 'OVERDRIVE', desc: '+25% shot power and 10% faster.', mods: { shot: 1.25, speed: 1.1 } } },
 };
 const STYLE_IDS = Object.keys(STYLES);
 /** a bot's style: common styles most of the time, the rare ones now and then (like the spins) */
@@ -300,14 +300,18 @@ const ABILITIES = {
 };
 
 const FLOWS = {
-  SECOND_WIND: { name: 'SECOND WIND', rarity: 'Rare', color: '#7dffb0', desc: '+60% stamina regen.', mods: { stamRegen: 1.6 } },
-  OVERCLOCK: { name: 'OVERCLOCK', rarity: 'Epic', color: '#ff6a3c', desc: '+20% speed with and without the ball.', mods: { speed: 1.2 } },
-  VIPER: { name: 'VIPER', rarity: 'Epic', color: '#5dff7a', desc: 'Bigger tackle hitbox and tackle cooldown halved.', mods: { tackleRange: 1.6, tackleCd: 0.5 } },
-  GAMBLE: { name: 'GAMBLE', rarity: 'Legendary', color: '#ffcb3d', desc: 'A random boost to speed, shot power or stamina. 10% chance of all three.', gamble: true, mods: {} },
-  BLUE_FLAME: { name: 'BLUE FLAME', rarity: 'Mythic', color: '#3d8bff', desc: 'Ability cooldowns 25% shorter.', mods: { cdRate: 1 / 0.75 } },
-  MONARCH: { name: 'MONARCH', rarity: 'Generational', color: '#ffffff', desc: '+20% shot power, +12% speed and cooldowns 15% shorter.', mods: { shot: 1.2, speed: 1.12, cdRate: 1 / 0.85 } },
+  SECOND_WIND: { name: 'SECOND WIND', rarity: 'Rare', color: '#7dffb0', fx: 'wind', desc: 'Your stamina refills at once. Then stamina comes back twice as fast and sprinting costs half. Green wind swirls around you.', start: { stamina: true }, mods: { stamRegen: 2.2, stamDrain: 0.5 } },
+  OVERCLOCK: { name: 'OVERCLOCK', rarity: 'Epic', color: '#ff6a3c', fx: 'speed', desc: '+22% speed with and without the ball, and sprinting costs less. You leave an orange afterimage.', mods: { speed: 1.22, stamDrain: 0.75 } },
+  VIPER: { name: 'VIPER', rarity: 'Epic', color: '#5dff7a', fx: 'venom', desc: 'Tackles reach 60% further (a green ring shows how far) and come back twice as fast.', mods: { tackleRange: 1.6, tackleCd: 0.5 } },
+  GAMBLE: { name: 'GAMBLE', rarity: 'Legendary', color: '#ffcb3d', fx: 'coins', desc: 'A random boost: +25% speed, +25% shot power or huge stamina. 10% chance of all three. Gold coins spin over your head.', gamble: true, mods: {} },
+  BLUE_FLAME: { name: 'BLUE FLAME', rarity: 'Mythic', color: '#3d8bff', fx: 'flame', desc: 'All your ability cooldowns reset at once, then run 25% faster. Blue fire burns on your head.', start: { resetCd: true }, mods: { cdRate: 1 / 0.75 } },
+  MONARCH: { name: 'MONARCH', rarity: 'Generational', color: '#ffffff', fx: 'crown', desc: '+20% shot power, +12% speed and cooldowns 15% shorter. A crown of light floats over your head.', mods: { shot: 1.2, speed: 1.12, cdRate: 1 / 0.85 } },
 };
 const FLOW_IDS = Object.keys(FLOWS);
+/** Awakening: a style's own transformation. Big plays fill the bar; when it is full, Z (or the Flow button) starts it.
+    For AWAKEN_TIME seconds: cooldowns reset and recharge twice as fast, ability effects last 50% longer, plus the style's own power */
+const AWAKEN_TIME = 20;
+const AWAKEN_ALL = 'Cooldowns reset and recharge twice as fast, and ability effects last 50% longer.';
 const RAW_FLOW_DESC = 'No Flow equipped: +8% speed. Equip one from Flow Spins for a bigger buff.';
 
 const ITEMS = {
@@ -327,13 +331,13 @@ const ITEM_IDS = Object.keys(ITEMS);
 /* ---------- skins: looks only, they never change stats ----------
    Every slot has a free base skin that everyone owns. The rest come from Skin Spins (and later the game pass). */
 const SKIN_SLOTS = [
-  { id: 'hair', name: 'HAIR', base: 'STYLE_HAIR' }, { id: 'color', name: 'COLOUR', base: 'STYLE_COLOR' },
+  { id: 'hair', name: 'HAIR', base: 'STYLE_HAIR' }, { id: 'color', name: 'COLOUR', base: 'STYLE_COLOR' }, { id: 'kit', name: 'KIT', base: 'TEAM_KIT' },
   { id: 'boots', name: 'BOOTS', base: 'TEAM_BOOTS' }, { id: 'gloves', name: 'GLOVES', base: 'NO_GLOVES' },
   { id: 'acc', name: 'EXTRA', base: 'NO_ACC' }, { id: 'celeb', name: 'GOAL', base: 'JUMP' },
 ];
 const SKINS = {
   STYLE_HAIR: { slot: 'hair', name: 'STYLE CUT', rarity: 'Rare', base: true, desc: 'The haircut that comes with your style.' },
-  CROP: { slot: 'hair', name: 'CROP', rarity: 'Rare', shape: 'short' },
+  CROP: { slot: 'hair', name: 'CROP', rarity: 'Rare', shape: 'crop' },
   MANE: { slot: 'hair', name: 'MANE', rarity: 'Rare', shape: 'long' },
   BOB: { slot: 'hair', name: 'BOB', rarity: 'Rare', shape: 'bob' },
   TOP_BUN: { slot: 'hair', name: 'TOP BUN', rarity: 'Rare', shape: 'bun' },
@@ -376,6 +380,15 @@ const SKINS = {
   GOLD_CHAIN: { slot: 'acc', name: 'GOLD CHAIN', rarity: 'Legendary', acc: 'chain', hex: '#ffc93d' },
   CHROME_MASK: { slot: 'acc', name: 'CHROME MASK', rarity: 'Mythic', acc: 'mask', hex: '#b8c4d6', glow: 0.35 },
   ICE_CHAIN: { slot: 'acc', name: 'ICE CHAIN', rarity: 'Generational', acc: 'chain', hex: '#7ff6ff', glow: 0.8 },
+  // kits: a pattern (and trim) on your team's colours, so teammates can still tell the sides apart
+  TEAM_KIT: { slot: 'kit', name: 'CLUB KIT', rarity: 'Rare', base: true, desc: 'Your club kit, just as it is.' },
+  PINSTRIPE: { slot: 'kit', name: 'PINSTRIPE', rarity: 'Rare', pattern: 'pinstripe', desc: 'Thin stripes in your team colours.' },
+  CHEVRON: { slot: 'kit', name: 'CHEVRON', rarity: 'Rare', pattern: 'chevron', desc: 'Arrows pointing up the shirt.' },
+  CHECKER: { slot: 'kit', name: 'CHECKER', rarity: 'Epic', pattern: 'checker', desc: 'A checkerboard shirt.' },
+  LIGHTNING: { slot: 'kit', name: 'LIGHTNING', rarity: 'Epic', pattern: 'bolt', trim: '#ffe14d', desc: 'A bolt across the chest and yellow trim.' },
+  BLAZE: { slot: 'kit', name: 'BLAZE', rarity: 'Legendary', pattern: 'flames', trim: '#ffb02e', desc: 'Flames up from the hem and orange trim.' },
+  GOLD_TRIM: { slot: 'kit', name: 'GOLD TRIM', rarity: 'Legendary', pattern: 'plain', trim: '#ffd54a', desc: 'Your club kit with a gold collar, cuffs and number.' },
+  STARFIELD: { slot: 'kit', name: 'STARFIELD', rarity: 'Mythic', pattern: 'stars', trim: '#ffffff', desc: 'A shirt full of stars, with white trim.' },
   JUMP: { slot: 'celeb', name: 'BIG JUMP', rarity: 'Rare', base: true, celeb: 'jump', desc: 'Jump for joy with both arms up.' },
   AIRPLANE: { slot: 'celeb', name: 'AIRPLANE', rarity: 'Rare', celeb: 'plane', desc: 'Arms out wide, tilting side to side.' },
   SHUSH: { slot: 'celeb', name: 'SHUSH', rarity: 'Epic', celeb: 'shush', desc: 'A finger to the lips for the away fans.' },
@@ -397,13 +410,14 @@ function lookFor(styleId, look = {}) {
   return {
     hairShape: S('hair').shape || st.hairShape, hair: S('color').hex || st.hair, prism: !!S('color').prism,
     boots: S('boots').hex || null, sparkle: !!S('boots').sparkle, gloves: S('gloves').hex || null,
+    kitPattern: S('kit').pattern || null, kitTrim: S('kit').trim || null,
     acc: acc.acc ? { kind: acc.acc, hex: acc.hex, glow: acc.glow || 0 } : null, celeb: S('celeb').celeb || 'jump',
   };
 }
 /** bots wear a few skins too, so matches show them off */
 function botLook() {
   const any = (slot, p) => (chance(p) ? pick(SKIN_IDS.filter((k) => SKINS[k].slot === slot)) : null);
-  return { boots: any('boots', 0.4), color: any('color', 0.2), acc: any('acc', 0.22), gloves: any('gloves', 0.15), celeb: any('celeb', 0.6) };
+  return { boots: any('boots', 0.4), color: any('color', 0.2), kit: any('kit', 0.15), acc: any('acc', 0.22), gloves: any('gloves', 0.15), celeb: any('celeb', 0.6) };
 }
 
 /* ---------- clubs and kits ----------
@@ -518,6 +532,51 @@ const CHALLENGES = {
   comeback: { name: 'WIN AFTER FALLING BEHIND', goal: 1, xp: 600 },
 };
 const CHALLENGE_IDS = Object.keys(CHALLENGES);
+
+/* ---------- daily: a free gift and one challenge each day. No streaks: missing a day costs nothing ---------- */
+const DAILY_CHALLENGES = {
+  goals: { name: 'SCORE 2 GOALS', goal: 2 }, assists: { name: 'GET 2 ASSISTS', goal: 2 }, tackles: { name: 'MAKE 4 TACKLES', goal: 4 },
+  shots: { name: 'TAKE 6 SHOTS', goal: 6 }, win: { name: 'WIN A MATCH', goal: 1 }, volley: { name: 'SCORE A VOLLEY OR HEADER', goal: 1 },
+  ankles: { name: 'BREAK 2 ANKLES', goal: 2 }, curler: { name: 'SCORE WITH A CURLER', goal: 1 }, played: { name: 'PLAY 3 MATCHES', goal: 3 },
+  awakens: { name: 'AWAKEN 2 TIMES', goal: 2 },
+};
+const DAILY_IDS = Object.keys(DAILY_CHALLENGES);
+const DAILY_REWARD = { emeralds: 150, xp: 200 };
+const GIFTS = [[45, { emeralds: 100 }], [25, { emeralds: 150 }], [15, { emeralds: 250 }], [10, { xp: 300 }], [5, { emeralds: 500, jackpot: true }]];
+/** today on this device, so the day turns over at your own midnight */
+function dayKey(t = Date.now()) { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function dailyFor(key) { let h = 7; for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0; return DAILY_IDS[h % DAILY_IDS.length]; }
+const Daily = {
+  /** a new day: a new challenge */
+  sync(d) { const k = dayKey(); if (d.daily.day !== k) Object.assign(d.daily, { day: k, ch: dailyFor(k), prog: 0, done: false }); },
+  giftReady(d) { return d.daily.gift !== dayKey(); },
+  openGift(d) {
+    if (!this.giftReady(d)) return null;
+    d.daily.gift = dayKey();
+    let r = Math.random() * 100, g = GIFTS[0][1];
+    for (const [w, x] of GIFTS) { if (r < w) { g = x; break; } r -= w; }
+    if (g.emeralds) d.emeralds += g.emeralds;
+    if (g.xp) d.xp += g.xp;
+    return g;
+  },
+  /** after a match: count it towards today's challenge */
+  award(d, m, res, hs) {
+    this.sync(d);
+    const C = DAILY_CHALLENGES[d.daily.ch];
+    if (!C) return null;
+    const out = { name: C.name, goal: C.goal, prog: d.daily.prog, done: d.daily.done, now: false };
+    if (res === 'forfeit' || d.daily.done) return out;
+    const f = m.feats || {}, win = res === 'win';
+    const got = { goals: hs.goals || 0, assists: hs.assists || 0, tackles: hs.tackles || 0, shots: hs.shots || 0, win: win ? 1 : 0, volley: f.volley || 0,
+      ankles: f.ankles || 0, curler: f.curler || 0, played: 1, awakens: f.awakens || 0 }[d.daily.ch] || 0;
+    d.daily.prog = Math.min(C.goal, d.daily.prog + got);
+    if (d.daily.prog >= C.goal) { d.daily.done = true; d.emeralds += DAILY_REWARD.emeralds; d.xp += DAILY_REWARD.xp; out.now = true; }
+    out.prog = d.daily.prog; out.done = d.daily.done;
+    return out;
+  },
+  /** how long until the next day, as 5H 12M */
+  untilTomorrow() { const n = new Date(), t = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1) - n, h = Math.floor(t / 3.6e6), mm = Math.floor(t / 6e4) % 60; return h + 'H ' + mm + 'M'; },
+};
 /** four challenges a week: every fourth week the classic set, otherwise a fixed shuffle for that week */
 function weekChallenges(week) {
   if (((week % 4) + 4) % 4 === 0) return ['curler', 'tackles', 'cleanSheet', 'diamond'];

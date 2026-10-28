@@ -177,6 +177,53 @@ const FX = {
       this.glow.spawn(p.pos.x + Math.cos(a) * r, p.pos.y + rand(0.1, 1.8), p.pos.z + Math.sin(a) * r, -Math.sin(a) * 2.2, rand(1, 2.4), Math.cos(a) * 2.2, rand(0.08, 0.16), rand(0.35, 0.6), col(hex), 0, 0.5, 0);
     }
   },
+  /** awakened: a strong aura in your style's colour with white light streaking up */
+  awaken(p, dt) {
+    this.aura(p, p.aura, dt * 1.7);
+    if (Math.random() < dt * 30) this.glow.spawn(p.pos.x + rand(-0.5, 0.5), p.pos.y + 0.1, p.pos.z + rand(-0.5, 0.5), 0, rand(5, 8), 0, rand(0.06, 0.1), 0.45, col('#ffffff'), -0.3, 0.3, 0);
+  },
+  /** the moment you awaken: sparks, two rings and a pillar of light */
+  awakenBurst(p) {
+    const x = p.pos.x, z = p.pos.z;
+    this.sparks(x, 1.1, z, p.aura, 70, 11, 0.22, 0.8); this.sparks(x, 1.1, z, '#ffffff', 30, 7, 0.14, 0.6);
+    this.ring(x, 0.2, z, p.aura, 1.6, 30); this.ring(x, 0.25, z, '#ffffff', 2.6, 36);
+    for (let i = 0; i < 44; i++) this.glow.spawn(x + rand(-0.35, 0.35), rand(0, 0.5), z + rand(-0.35, 0.35), 0, rand(8, 16), 0, rand(0.12, 0.22), rand(0.5, 0.9), col(i % 3 ? p.aura : '#ffffff'), -0.2, 0.6, 0);
+  },
+  /** each Flow has its own look: wind, afterimage, venom, coins, blue fire, a crown. No Flow: your style's aura */
+  flow(p, id, dt) {
+    const f = id ? FLOWS[id] : null;
+    if (!f) { this.aura(p, p.aura, dt); return; }
+    const c = col(f.color), x = p.pos.x, y = p.pos.y, z = p.pos.z, t = (p._flowClock = (p._flowClock || 0) + dt);
+    const often = (perSec) => Math.random() < perSec * dt;
+    switch (f.fx) {
+      case 'wind': // green ribbons spiralling up around you
+        for (let i = 0; i < 3; i++) if (often(42)) { const a = t * 9 + i * TAU / 3, r = 0.8; this.glow.spawn(x + Math.cos(a) * r, y + 0.15, z + Math.sin(a) * r, -Math.sin(a) * 3.4, 3.6, Math.cos(a) * 3.4, 0.15, 0.6, c, 0, 0.2, 0); }
+        this.aura(p, f.color, dt * 0.35);
+        break;
+      case 'speed': { // an orange afterimage streaming behind you, sparks off your boots
+        const sp = len2D(p.vel.x, p.vel.z);
+        if (often(12)) this.glow.spawn(x + rand(-0.4, 0.4), y + rand(0.2, 1.9), z + rand(-0.4, 0.4), 0, 0.6, 0, 0.1, 0.4, c, 0, 0.5, 0);
+        if (sp > 3) for (let i = 0; i < 2; i++) if (often(45)) this.glow.spawn(x + rand(-0.3, 0.3), y + rand(0.3, 1.8), z + rand(-0.3, 0.3), -p.vel.x * 0.3, 0, -p.vel.z * 0.3, 0.15, 0.28, c, 0, 2, 0);
+        if (sp > 5 && p.onGround && often(14)) this.sparks(x, 0.1, z, '#ffd27a', 2, 3, 0.08, 0.3);
+        break;
+      }
+      case 'venom': // green drops falling off you (the tackle ring is drawn by the player)
+        if (often(26)) this.glow.spawn(x + rand(-0.45, 0.45), y + rand(0.7, 1.5), z + rand(-0.45, 0.45), 0, -0.4, 0, rand(0.08, 0.13), 0.7, c, 1.3, 0.2, 0);
+        break;
+      case 'coins': // gold blocks circling over your head
+        for (let i = 0; i < 3; i++) if (often(28)) { const b = t * 5 + i * TAU / 3, r = 0.65; this.glow.spawn(x + Math.cos(b) * r, y + 2.05 + Math.sin(t * 4 + i) * 0.12, z + Math.sin(b) * r, -Math.sin(b) * 1.4, 0.1, Math.cos(b) * 1.4, 0.15, 0.32, c, 0, 0.6, 0); }
+        if (often(4)) this.sparks(x, y + 2.1, z, '#fff3b0', 3, 2.5, 0.07, 0.4);
+        break;
+      case 'flame': // blue fire on your head and shoulders
+        for (let i = 0; i < 3; i++) if (often(40)) { const ox = rand(-0.38, 0.38), oz = rand(-0.22, 0.22); this.glow.spawn(x + ox, y + rand(1.45, 2.05), z + oz, ox * 0.6, rand(2.6, 4.2), oz * 0.6, rand(0.12, 0.21), rand(0.22, 0.42), Math.random() < 0.3 ? col('#c9e4ff') : c, -0.5, 0.8, 0); }
+        break;
+      case 'crown': // a slowly turning crown of light, with a soft gold glow
+        for (let i = 0; i < 2; i++) if (often(55)) { const k = Math.floor(Math.random() * 8), b = k * TAU / 8 + t * 0.9, r = 0.34; this.glow.spawn(x + Math.cos(b) * r, y + 2.28 + (k % 2) * 0.14, z + Math.sin(b) * r, 0, 0.04, 0, 0.12, 0.22, col(k % 2 ? '#ffffff' : '#ffd54a'), 0, 3, 0); }
+        this.aura(p, '#ffe9a8', dt * 0.45);
+        break;
+      default: this.aura(p, f.color, dt);
+    }
+  },
   /* glowing block paths (Vision) */
   pathBegin() { this.pathN = 0; },
   pathLine(a, b, hex, step = 1.1, t = 0) {

@@ -8,6 +8,7 @@
 const SHOW_FOV = 34, SHOW_H = 2.55, SHOW_MID = 1.08, SHOW_CAM_Y = 1.2, SHOW_YAW = Math.PI + 0.3, SHOW_G = 13;
 const SHOW_FACE = -0.55; // the player stands turned a little toward the menu, so the ball never hides the face
 const SHOW_FACE_LOCKER = -0.2;
+const SHOW_BALL = 0.65, SHOW_DROP = BALL_R * (1 - SHOW_BALL); // the ball on the start screen is smaller than the match ball
 // each touch: [body part, ball height, reach in front, side, how high it pops above the next touch]
 const JUGGLE = [
   ['R', 0.55, 0.5, -0.12, 0.7], ['L', 0.55, 0.5, 0.12, 0.65], ['R', 0.55, 0.5, -0.12, 0.75], ['K', 0.86, 0.62, -0.12, 0.45],
@@ -32,7 +33,7 @@ const Showcase = {
     beam.rotation.y = Math.PI / 4; beam.position.y = 7;
     if (!BALL_GEO) BALL_GEO = makeBallGeometry();
     this.ball = new THREE.Mesh(BALL_GEO, new THREE.MeshLambertMaterial({ vertexColors: true }));
-    this.ball.castShadow = true;
+    this.ball.castShadow = true; this.ball.scale.setScalar(SHOW_BALL);
     g.add(glow, this.ring, beam, this.ball);
     g.visible = false;
     World.scene.add(g);
@@ -105,6 +106,7 @@ const Showcase = {
     if (this.spec && this.spec.celebrate) this.celebrate(dt); else if (this.mode !== 'lobby') this.idle(dt); else this.animate(dt);
     this.p.P.root.visible = this.p.blob.visible = !this.hidePlayer; // the spin hides you until the block cracks
     this.ball.visible = this.mode !== 'reveal';
+    if (this.flow && !this.hidePlayer && FLOWS[this.flow]) FX.flow(this.p, this.flow, dt * 0.6);
     this.frame();
   },
   /** Locker pose: stand still with the ball at your feet, so the whole outfit is in view */
@@ -121,7 +123,7 @@ const Showcase = {
     P.eyes.visible = !!this.flow;
     p.blob.position.set(0, 0.025, 0); p.blob.scale.set(1, 1, 1);
     const sy = Math.sin(yaw), cy = Math.cos(yaw), fwd = 0.34, side = -0.44;
-    this.ball.position.set(sy * fwd + cy * side, BALL_R, cy * fwd - sy * side);
+    this.ball.position.set(sy * fwd + cy * side, BALL_R * SHOW_BALL, cy * fwd - sy * side);
   },
   /** loop the goal celebration in place, with the ball resting on the grass */
   celebrate(dt) {
@@ -134,7 +136,7 @@ const Showcase = {
     p.yaw = SHOW_YAW + this.turn;
     p.animate(dt);
     p.P.eyes.visible = !!this.flow;
-    this.ball.position.set(Math.sin(p.yaw + 1.2) * 0.9, BALL_R, Math.cos(p.yaw + 1.2) * 0.9);
+    this.ball.position.set(Math.sin(p.yaw + 1.2) * 0.9, BALL_R * SHOW_BALL, Math.cos(p.yaw + 1.2) * 0.9);
   },
   animate(dt) {
     const p = this.p, P = p.P, j = this.j, n = JUGGLE.length;
@@ -163,7 +165,7 @@ const Showcase = {
     p.blob.position.set(0, 0.025, 0); p.blob.scale.set(1, 1, 1);
     // ball in the player's frame: forward is (sin yaw, cos yaw), side is (cos yaw, -sin yaw)
     const sy = Math.sin(yaw), cy = Math.cos(yaw);
-    this.ball.position.set(sy * fwd + cy * side, by, cy * fwd - sy * side);
+    this.ball.position.set(sy * fwd + cy * side, by - SHOW_DROP, cy * fwd - sy * side); // touches land on the smaller ball's edge
     this.ball.rotation.x += dt * 7; this.ball.rotation.z += dt * 2;
     this.ring.rotation.y += dt * 0.6;
     this.glowMat.opacity = 0.72 + Math.sin(this.t * 2.4) * 0.08;

@@ -20,7 +20,7 @@ const Account = {
     if (this.token) headers.Authorization = 'Bearer ' + this.token;
     return fetch(this.base() + '/api/' + path, { method: body ? 'POST' : 'GET', headers, body: body ? JSON.stringify(body) : undefined, keepalive: !!(body && body.keep) })
       .then((r) => r.json().catch(() => ({ error: 'THE SERVER SENT SOMETHING ODD' })))
-      .catch(() => ({ error: 'CANNOT REACH THE SERVER' }));
+      .catch(() => ({ error: Net.noServerText() }));
   },
   /** what goes up to the server: the progress, not this device's settings or sign-in */
   payload() { const d = Object.assign({}, Save.data); delete d.account; delete d.settings; return d; },

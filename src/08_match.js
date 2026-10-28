@@ -32,7 +32,7 @@ class Match {
     this.aim = V3(0, 1, F.L); this.camYaw = 0; this.aimOnTarget = false;
     this.ctl = null; this.autopilot = !!opts.autopilot; this.thinkPass = opts.thinkPass !== false;
     this.online = !!opts.humans; this.humans = []; // online: every remote player, each with their own controls (p.ctl)
-    this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, trailed: false }; // your moments, for the weekly challenges this.lastGoal = null; this.pendingEnd = false;
+    this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, awakens: 0, trailed: false }; // your moments, for the weekly challenges this.lastGoal = null; this.pendingEnd = false;
     // your club at home against a random other club; the away side changes kit if the colours clash
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
     const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
@@ -93,7 +93,7 @@ class Match {
   oppGoalZ(team) { return this.dir(team) * F.L; }
   ownGoalZ(team) { return -this.dir(team) * F.L; }
   prog(team, pos) { return pos.z * this.dir(team); }
-  skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.size) * 0.07, 0.45, 1.2) : s; } // keepers get a boost in small teams, where they face more shots
+  skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.size) * 0.11 + Math.max(0, s - 0.6) * 0.5, 0.45, 1.4) : s; } // keepers get a boost in small teams (they face more shots) and against very good bots (who shoot from far)
   opponents(p) { return this.teams[1 - p.team]; }
   inOwnBox(p, pos = p.pos) {
     const gz = this.ownGoalZ(p.team);
@@ -228,7 +228,9 @@ class Match {
       this.tackle(p, tx, tz);
     }
     for (let i = 0; i < 3; i++) if (c.ab[i]) this.useAbility(p, i);
-    if (c.flow) { if (!this.activateFlow(p) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
+    if (c.awaken && !this.activateAwaken(p) && p.awakeT <= 0) { this.toast('AWAKENING NOT READY', 'bad', p); Sfx.deny(); }
+    // the Flow button also awakens you when the Awakening bar is full and Flow is not
+    if (c.flow) { if (!this.activateFlow(p) && !this.activateAwaken(p) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
     if (c.item) this.useItem(p);
   }
   pickPassTarget(p) {
@@ -670,10 +672,13 @@ class Match {
     const a = p.abil[i];
     if (!a || !this.canAct(p)) return false;
     if (a.cd > 0) { if (p.isHuman) Sfx.deny(); return false; }
+    const before = p.awakeT > 0 ? Object.assign({}, p.fx) : null;
     const res = a.def.use(p, this);
     if (res === true) {
+      // awakened: whatever the ability switched on lasts 50% longer
+      if (before) for (const k in p.fx) { const d = p.fx[k] - (before[k] || 0); if (d > 0) p.fx[k] = (before[k] || 0) + d * 1.5; }
       a.cd = a.def.cd;
-      this.label(p, a.def.name, p.aura);
+      this.label(p, a.def.name + (before ? '+' : ''), p.aura);
       Sfx.ability();
       if (a.def.big) this.cinematic(p, a.def.name);
       return true;
@@ -682,10 +687,31 @@ class Match {
     return false;
   }
   flowAdd(p, amt) {
+    if (p && amt >= 10) this.awakeAdd(p, amt); // big plays fill the Awakening bar too
     if (!p || p.flowT > 0) return;
     const before = p.flow;
     p.flow = Math.min(100, p.flow + amt);
     if (p.isHuman && before < 100 && p.flow >= 100) { this.toast(Touch.on ? 'FLOW READY. TAP FLOW' : 'FLOW READY. PRESS G', 'gold', p); Sfx.coin(); Hud.flowReady(); }
+  }
+  awakeAdd(p, amt) {
+    if (!p || p.isGK || p.awakeT > 0 || !p.style.awaken) return;
+    const before = p.awake;
+    p.awake = Math.min(100, p.awake + amt * 0.7);
+    if (p.isHuman && before < 100 && p.awake >= 100) { this.toast(Touch.on ? 'AWAKENING READY. TAP FLOW' : 'AWAKENING READY. PRESS Z', 'gold', p); Sfx.coin(); }
+  }
+  /** your style's Awakening: a burst of light, then AWAKEN_TIME seconds of its powers */
+  activateAwaken(p) {
+    const aw = p.style.awaken;
+    if (!aw || p.isGK || p.awake < 100 || p.awakeT > 0 || !this.canAct(p)) return false;
+    p.awake = 0; p.awakeT = AWAKEN_TIME;
+    for (const a of p.abil) a.cd = 0;
+    if (p.isHuman) this.featsOf(p).awakens++;
+    this.label(p, 'AWAKENED · ' + aw.name, p.aura, 2.4);
+    FX.awakenBurst(p);
+    Sfx.flow(); Sfx.cutin();
+    if (p.isHuman) { if (!this.cinematic(p, 'AWAKENING · ' + aw.name)) TimeCtl.slowMo(0.35, 0.8); Shake.add(0.4); }
+    else Shake.add(0.12);
+    return true;
   }
   activateFlow(p) {
     if (p.flow < 100 || p.flowT > 0 || !this.canAct(p)) return false;
@@ -697,9 +723,14 @@ class Match {
       const what = p.gamble.speed && p.gamble.shot ? 'JACKPOT' : p.gamble.speed ? 'SPEED' : p.gamble.shot ? 'POWER' : 'STAMINA';
       this.label(p, 'GAMBLE: ' + what, '#ffcb3d');
       if (p.isHuman) this.toast('GAMBLE ROLLED ' + what, 'gold', p);
-    } else this.label(p, f ? f.name : 'FLOW', p.aura);
+    } else this.label(p, f ? f.name : 'FLOW', f ? f.color : p.aura);
+    if (f && f.start) {
+      if (f.start.stamina) { p.stamina = 100; p.exhausted = false; }
+      if (f.start.resetCd) for (const a of p.abil) a.cd = 0;
+    }
     p.P.eyes.visible = true;
-    FX.sparks(p.pos.x, 1, p.pos.z, p.aura, 40, 8, 0.2); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.4, 24);
+    const fc = f ? f.color : p.aura;
+    FX.sparks(p.pos.x, 1, p.pos.z, fc, 40, 8, 0.2); FX.ring(p.pos.x, 0.2, p.pos.z, fc, 1.4, 24);
     Sfx.flow();
     if (p.isHuman) { if (!this.cinematic(p, 'FLOW · ' + (f ? f.name : 'RAW'))) TimeCtl.slowMo(0.3, 0.7); Shake.add(0.25); }
     return true;
@@ -713,7 +744,7 @@ class Match {
     return true;
   }
   /** a human's moments for the weekly challenges (online each player has their own) */
-  featsOf(p) { return this.online ? (p.feats || (p.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, trailed: false })) : this.feats; }
+  featsOf(p) { return this.online ? (p.feats || (p.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, awakens: 0, trailed: false })) : this.feats; }
   /* ---------- King of the Hill ---------- */
   buildHill() {
     const g = new THREE.Group();
@@ -858,7 +889,7 @@ class Match {
     const t = clamp(((b.pos.x - ax) * abx + (b.pos.y - ay) * aby + (b.pos.z - az) * abz) / l2, 0, 1);
     const cx = ax + abx * t, cy = ay + aby * t, cz = az + abz * t;
     const dist = Math.hypot(b.pos.x - cx, b.pos.y - cy, b.pos.z - cz);
-    const reach = (gk.state === 'dive' ? 0.62 : 0.58) + (5 - this.size) * 0.1; // longer reach in small teams, where keepers face more shots
+    const reach = (gk.state === 'dive' ? 0.62 : 0.58) + (5 - this.size) * 0.14; // longer reach in small teams, where keepers face more shots
     if (dist > BALL_R + reach) return;
     const k = b.kick;
     const shooter = k && k.by && k.by.team !== gk.team && k.type === 'shot' ? k.by : null;
@@ -1207,7 +1238,8 @@ class Match {
   /* ---------- per-frame visual effects ---------- */
   updateFx(dt) {
     for (const p of this.players) {
-      if (p.flowT > 0) FX.aura(p, p.aura, dt);
+      if (p.flowT > 0) FX.flow(p, p.flowId, dt);
+      if (p.awakeT > 0) FX.awaken(p, dt);
       if (p.fx.turbo > 0 && p.onGround && len2D(p.vel.x, p.vel.z) > 6 && Math.random() < 0.7) FX.dust(p.pos.x, p.pos.z, 1);
       if (p.fx.feathers > 0 && Math.random() < 0.8) FX.feathers(p.pos.x, p.pos.y + 0.4, p.pos.z, '#121018', 1);
       if (p.fx.shuffle > 0 && Math.random() < 0.4) FX.trail(p.pos.x + rand(-0.5, 0.5), rand(0.4, 1.6), p.pos.z + rand(-0.5, 0.5), p.aura, 0.12, 0.4);

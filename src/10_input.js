@@ -101,6 +101,7 @@ const Input = {
       tackle: e.has('KeyF') || e.has('PadX') || e.has('T_tackle'),
       ab: [e.has('KeyQ') || (e.has('PadLeft') && !chatPad) || e.has('T_ab0'), e.has('KeyE') || (e.has('PadUp') && !chatPad) || e.has('T_ab1'), e.has('KeyR') || (e.has('PadRight') && !chatPad) || e.has('T_ab2')],
       flow: e.has('KeyG') || e.has('PadY') || e.has('T_flow'),
+      awaken: e.has('KeyZ'), // the Flow button (G, Y, FLOW) awakens you too when only the Awakening bar is full
       item: e.has('KeyX') || (e.has('PadDown') && !chatPad) || e.has('T_item'),
       board: k.has('Tab') || this.padHeld(PAD.BACK) || T.board,
     };

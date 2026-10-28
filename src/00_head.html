@@ -320,6 +320,15 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 #ad-block { position: absolute; inset: 0; z-index: 90; background: rgba(9,11,22,.5); }
 .on-privacy { color: var(--muted); max-width: 60ch; }
 
+/* daily gift and challenge */
+.btn.ghost.daily { position: relative; color: var(--gold); padding-right: 16px; }
+.btn.ghost.daily .dot { display: none; position: absolute; top: 4px; right: 3px; width: 8px; height: 8px; background: var(--emerald); box-shadow: 0 0 8px var(--emerald); animation: blink .8s steps(2) infinite; }
+.btn.ghost.daily.ready .dot { display: block; }
+.daily-box { width: min(520px, 100%); }
+.dl-card { background: var(--slate-2); padding: 12px; display: grid; gap: 8px; }
+.dl-card > div { display: grid; gap: 6px; justify-items: start; }
+.dl-big { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; color: var(--gold); }
+
 /* online: are you there? */
 #hud .idle-warn { left: 50%; top: 30%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); box-sizing: border-box; display: grid; justify-items: center; gap: 6px; text-align: center; padding: 12px 20px; background: rgba(9,11,22,.88); border: var(--px) solid var(--gold); box-shadow: 4px 4px 0 rgba(0,0,0,.45); }
 #hud .idle-warn b { font-family: var(--font-display); font-weight: 400; font-size: clamp(34px, 7vw, 56px); line-height: .9; color: var(--gold); }
@@ -405,6 +414,13 @@ body.touch #chat-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0
 .flowbar .fill { height: 100%; width: 0%; background: var(--aura, var(--emerald)); }
 .flowbar .ticks { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), var(--ink) calc(10% - 2px) 10%); }
 .flowbar.ready .lbl b { color: var(--gold); animation: blink .6s steps(2) infinite; }
+.awakebar .track { height: 8px; }
+.awakebar .fill { background: linear-gradient(90deg, var(--aura, #fff), #ffffff); }
+.awakebar.active .fill { animation: blink .4s steps(2) infinite; }
+.slot.awaken.ready, .slot.awaken.active { box-shadow: 0 0 0 2px #fff, 0 0 14px var(--gold); }
+#touch .tb.flow.awaken { filter: drop-shadow(0 0 8px #fff); }
+body.touch #hud .awakebar .lbl { font-size: 9px; white-space: nowrap; }
+body.touch #hud .awakebar .track { height: 6px; }
 @keyframes blink { 50% { opacity: .2; } }
 .stamina { display: flex; gap: 2px; }
 .stamina img { width: 22px; height: 22px; }
@@ -558,6 +574,7 @@ body { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 #touch .tb.ready { background: var(--aura, var(--emerald)); }
 #touch .tb.flow.ready { background: var(--gold); animation: blink .6s steps(2) infinite; }
 #touch .tb.flow.active { background: var(--aura, var(--emerald)); --fill: rgba(255,255,255,.18); }
+#touch .tb.flow.awaken.ready { background: var(--aura, #ffffff); } /* AWAKEN! in your style's colour, FLOW! in gold */
 #touch .tb.item.ready { background: var(--gold); }
 #touch .tb.off .ic { opacity: .38; }
 #touch .tb.dt.dodge { --fill: rgba(245,239,224,.16); }

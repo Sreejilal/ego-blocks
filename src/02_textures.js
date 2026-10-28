@@ -271,15 +271,18 @@ function makePlayerSkin(o) {
     for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) { g.fillStyle = rgbStr(shadeRGB(base, lerp(a, b, R()))); g.fillRect(x + xx, y + yy, 1, 1); }
   };
   const px = (x, y, hex) => { g.fillStyle = hex; g.fillRect(x, y, 1, 1); };
-  const { kit: K, crest, boots, skin, hair, number, gloves, eye, sparkle } = o;
+  const { kit: K, crest, boots, skin, hair, number, gloves, eye, sparkle, hairShape } = o;
+  const crop = hairShape === 'crop'; // a buzz cut: shaved sides and back, a thin hairline, stubble on top
   // head
   fillN(8, 0, 8, 8, hair, 0.82, 1.08);                       // top
+  if (crop) for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) if (R() < 0.3) px(8 + x, y, rgbStr(shadeRGB(hexRGB(skin), 0.8)));
   fillN(16, 0, 8, 8, skin, 0.92, 1.0);                       // bottom (chin)
-  for (const sx of [0, 16]) { fillN(sx, 8, 8, 8, skin, 0.95, 1.02); fillN(sx, 8, 8, 3, hair, 0.8, 1.05); px(sx + (sx === 0 ? 3 : 4), 12, rgbStr(shadeRGB(hexRGB(skin), 0.85))); }
-  fillN(24, 8, 8, 8, hair, 0.8, 1.05); fillN(24, 14, 8, 2, skin, 0.9, 0.98); // back
+  for (const sx of [0, 16]) { fillN(sx, 8, 8, 8, skin, 0.95, 1.02); fillN(sx, 8, 8, crop ? 1 : 3, hair, 0.8, 1.05); px(sx + (sx === 0 ? 3 : 4), 12, rgbStr(shadeRGB(hexRGB(skin), 0.85))); }
+  if (crop) { fillN(24, 8, 8, 8, skin, 0.9, 0.98); fillN(24, 8, 8, 2, hair, 0.8, 1.0); } // back: shaved under a short line
+  else { fillN(24, 8, 8, 8, hair, 0.8, 1.05); fillN(24, 14, 8, 2, skin, 0.9, 0.98); } // back
   fillN(8, 8, 8, 8, skin, 0.96, 1.03);                       // face
   fillN(8, 8, 8, 1, hair, 0.8, 1.05);
-  for (let x = 0; x < 8; x++) if (R() < 0.55 || x === 0 || x === 7) px(8 + x, 9, rgbStr(shadeRGB(hexRGB(hair), lerp(0.8, 1, R()))));
+  if (!crop) for (let x = 0; x < 8; x++) if (R() < 0.55 || x === 0 || x === 7) px(8 + x, 9, rgbStr(shadeRGB(hexRGB(hair), lerp(0.8, 1, R()))));
   const brow = rgbStr(shadeRGB(hexRGB(hair), 0.65));
   px(9, 11, brow); px(10, 11, brow); px(13, 11, brow); px(14, 11, brow);
   px(9, 12, '#f7f7f2'); px(10, 12, eye); px(13, 12, eye); px(14, 12, '#f7f7f2');
@@ -296,6 +299,15 @@ function makePlayerSkin(o) {
         if (x >= 20 && x <= 27) return Math.abs(x - 20 - r * 0.75 - 0.4) < 1.3;
         if (x >= 32) return Math.abs(x - 32 - (7 - r * 0.75) + 0.4) < 1.3;
         return x >= 28 ? r >= 8 : r <= 1;
+      case 'pinstripe': return (x - 16) % 3 === 0;
+      case 'chevron': { const cx = x < 28 ? 23.5 : 35.5; return (Math.abs(x - cx) + r) % 5 < 1.6; }
+      case 'checker': return (((x - 16) >> 1) + (r >> 1)) % 2 === 1;
+      case 'bolt': { // a zigzag across the front and the back
+        const zig = [6, 5, 4, 3, 5, 4, 3, 2, 1, 0][r], u = x < 28 ? x - 20 : x - 32;
+        return (x >= 20 && x < 28) || x >= 32 ? u === zig || u === zig + 1 : false;
+      }
+      case 'flames': { const h = 2 + ((x * 7) % 3) + (x % 2); return r > 9 - h; } // flame tips 2 to 4 rows up from the hem
+      case 'stars': return (x * 73 + r * 151) % 17 === 0 || (x * 31 + r * 47) % 23 === 0;
       default: return x === 16 || x === 31; // plain: thin side panels
     }
   };
@@ -308,7 +320,7 @@ function makePlayerSkin(o) {
   const cr = crest || ['#ffffff', '#000000'];
   g.fillStyle = K.number; g.fillRect(21, 22, 3, 2); g.fillRect(22, 24, 1, 1);
   g.fillStyle = cr[0] === K.number ? cr[1] : cr[0]; g.fillRect(22, 22, 1, 2);
-  const num = String(number), panel = K.pattern === 'stripes' || K.pattern === 'hoops';
+  const num = String(number), panel = !['sash', 'halves', 'plain'].includes(K.pattern); // busy patterns get a plain patch behind the number
   const bx = 32 + Math.floor((8 - (num.length * 4 - 1)) / 2);
   if (panel) { fillN(bx - 1, 21, num.length * 4 + 1, 7, K.shirt, 0.95, 1.02); if (num.length === 1) fillN(24, 21, 4, 7, K.shirt, 0.95, 1.02); }
   digDraw(g, num, bx, 22, K.number);
@@ -507,6 +519,7 @@ function portraitCanvas(styleId, size = 96, look = null) {
   if (shape === 'swept') { g.fillRect(4, 2, 8, 1); g.fillRect(11, 1, 2, 1); }
   if (shape === 'bun') { g.fillRect(6, 1, 4, 2); }
   if (shape === 'flattop') { g.fillRect(4, 0, 8, 3); }
+  if (shape === 'crop') { g.fillStyle = skin; g.fillRect(4, 4, 8, 2); g.fillStyle = '#0a0c17'; g.fillRect(3, 4, 1, 4); g.fillRect(12, 4, 1, 4); g.fillStyle = hair; g.fillRect(5, 2, 3, 1); }
   if (shape === 'mohawk') { g.fillStyle = skin; g.fillRect(4, 3, 3, 2); g.fillRect(9, 3, 3, 2); g.fillStyle = hair; g.fillRect(7, 0, 2, 5); }
   g.fillStyle = '#f7f7f2'; g.fillRect(5, 8, 2, 1); g.fillRect(9, 8, 2, 1);
   g.fillStyle = st.aura; g.fillRect(6, 8, 1, 1); g.fillRect(9, 8, 1, 1);
@@ -540,7 +553,9 @@ function kitCanvas(k, size = 48) {
     if (ch === 'k') col = '#0a0c17'; else if (ch === 'C') col = k.collar; else if (ch === 'L') col = k.sleeve;
     else if (ch === 'X') {
       const u = x - 3, v = y - 2;
-      const a = k.pattern === 'stripes' ? u % 2 === 1 : k.pattern === 'hoops' ? (v >> 1) % 2 === 1 : k.pattern === 'halves' ? u >= 3 : k.pattern === 'sash' ? Math.abs(u - v * 0.7) < 1.1 : false;
+      const P = k.pattern, a = P === 'stripes' ? u % 2 === 1 : P === 'hoops' ? (v >> 1) % 2 === 1 : P === 'halves' ? u >= 3 : P === 'sash' ? Math.abs(u - v * 0.7) < 1.1
+        : P === 'pinstripe' ? u % 3 === 1 : P === 'chevron' ? (Math.abs(u - 2.5) + v) % 4 < 1.5 : P === 'checker' ? (u + v) % 2 === 1
+        : P === 'bolt' ? u === [4, 3, 2, 3, 2, 1, 0, 0][v] : P === 'flames' ? v > 6 - ((u * 5) % 3) : P === 'stars' ? (u * 7 + v * 3) % 5 === 0 : false;
       col = a ? k.alt : k.shirt;
     }
     if (col) { g.fillStyle = col; g.fillRect(x, y, 1, 1); }
@@ -555,6 +570,10 @@ function skinCanvas(id, size = 96) {
   const sk = SKINS[id];
   if (sk.slot === 'hair') return portraitCanvas('ROOKIE', size, { hairShape: sk.shape || 'short', hair: '#6b3e22' });
   if (sk.slot === 'color') return portraitCanvas('ROOKIE', size, { hair: sk.hex || '#3b2a22', prism: sk.prism });
+  if (sk.slot === 'kit') { // your club's shirt with this skin's pattern and trim
+    const base = (CLUBS[Save.data.club] || CLUBS.ROVERS).home;
+    return kitCanvas(Object.assign({}, base, sk.pattern ? { pattern: sk.pattern } : {}, sk.trim ? { collar: sk.trim, sleeve: base.sleeve } : {}), size);
+  }
   const name = sk.acc ? SKIN_ICON[sk.acc] : sk.slot === 'acc' ? 'lock' : SKIN_ICON[sk.slot];
   const src = iconCanvas(name, sk.hex || (sk.slot === 'celeb' ? RARITY_HEX[sk.rarity] : '#8a8fa8'), sk.prism || sk.sparkle || sk.rarity === 'Generational' ? 'prism' : '');
   const out = mkCanvas(size, size), og = out.getContext('2d');

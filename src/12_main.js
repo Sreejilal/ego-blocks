@@ -117,10 +117,11 @@ const Game = {
     B.goals = Math.max(B.goals, hs.goals || 0); B.assists = Math.max(B.assists, hs.assists || 0);
     B.run = res === 'win' ? B.run + 1 : 0; B.streak = Math.max(B.streak, B.run); B.peakRp = Math.max(B.peakRp, d.rp);
     const pass = Pass.award(d, m, earned, hs);
+    const daily = Daily.award(d, m, earned, hs);
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, daily });
     if (res === 'win') Sfx.fanfare(2);
     if (res === 'win' && !idle) Portal.happy();
     Portal.midgame();
@@ -203,7 +204,7 @@ const Game = {
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
-  CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx,
+  CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {
@@ -226,6 +227,7 @@ window.EGO = {
       const o = m.ball.owner;
       if (o && o.team !== lastOwnerTeam) { log.possessionSwaps++; lastOwnerTeam = o.team; }
       log.phases[m.phase] = (log.phases[m.phase] || 0) + 1 / 60;
+      for (const p of m.players) { if (p.awakeT > 0 && !p._awSeen) { p._awSeen = true; log.awakens = (log.awakens || 0) + 1; } else if (p.awakeT <= 0) p._awSeen = false; }
     }
     for (const p of m.players) { log.saves += p.stats.saves; log.tackles += p.stats.tackles; log.passes += p.stats.passes; log.shots += p.stats.shots; }
     log.score = m.score.slice(); log.goals = m.score[0] + m.score[1]; log.simSeconds = Math.round(t);

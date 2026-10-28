@@ -111,11 +111,11 @@ function toCtl(m, prev) {
   return {
     moveX: Math.max(-1, Math.min(1, +m.mx || 0)), moveY: Math.max(-1, Math.min(1, +m.my || 0)), sprint: b('sp'),
     jump: b('jump'), jumpHeld: b('jh'), shootDown: b('sd'), shootHeld: b('sh'), shootUp: b('su'), passDown: b('pd'), passUp: b('pu'),
-    dodge: b('dodge'), tackle: b('tackle'), ab: [b('a0'), b('a1'), b('a2')], flow: b('flow'), item: false, board: false,
+    dodge: b('dodge'), tackle: b('tackle'), ab: [b('a0'), b('a1'), b('a2')], flow: b('flow'), awaken: b('aw'), item: false, board: false,
     camYaw: Number.isFinite(+m.cy) ? +m.cy : 0, aim,
   };
 }
-const EDGES = ['jump', 'shootDown', 'shootUp', 'passDown', 'passUp', 'dodge', 'tackle', 'flow'];
+const EDGES = ['jump', 'shootDown', 'shootUp', 'passDown', 'passUp', 'dodge', 'tackle', 'flow', 'awaken'];
 function clearEdges(c) { for (const k of EDGES) c[k] = false; c.ab = [false, false, false]; }
 /** moving or pressing anything counts; only turning the camera does not */
 const active = (c) => Math.abs(c.moveX) > 0.2 || Math.abs(c.moveY) > 0.2 || c.sprint || c.jumpHeld || c.shootHeld || EDGES.some((k) => c[k]) || c.ab.some(Boolean);
@@ -186,7 +186,7 @@ function snapshot(room) {
   const pl = m.players.map((p) => {
     let flags = 0;
     if (p.charging) flags |= 1; if (p.onGround) flags |= 2; if (p.flowT > 0) flags |= 4; if (p.callT > 0 || p.fx.call > 0) flags |= 8;
-    if (p.fx.shuffle > 0) flags |= 16; if (p.fx.lockdown > 0) flags |= 32; if (p.fx.bubble > 0) flags |= 64;
+    if (p.fx.shuffle > 0) flags |= 16; if (p.fx.lockdown > 0) flags |= 32; if (p.fx.bubble > 0) flags |= 64; if (p.awakeT > 0) flags |= 128;
     return [r2(p.pos.x), r2(p.pos.y), r2(p.pos.z), r2(p.vel.x), r2(p.vel.z), r2(p.yaw), STATES.indexOf(p.state), r2(p.stateT), r2(p.stateDur), r2(p.kickT), KICKS.indexOf(p.kickStyle || null), flags, r2(p.charge),
       p.dive ? p.dive.side : 0, p.dive ? (p.dive.high ? 1 : 0) : 0, p.dive ? r2(p.dive.dur) : 0, r2(p.flipT)];
   });
@@ -195,7 +195,7 @@ function snapshot(room) {
   room.events = [];
   for (const rp of room.players) {
     const p = m.humans.find((h) => h.netId === rp.id);
-    const me = p ? { i: idx(p), cd: p.abil.map((a) => r2(a.cd)), fl: r2(p.flow), ft: r2(p.flowT), st: r2(p.stamina), dc: p.dodgeCharges, dr: r2(p.dodgeRe), tc: r2(p.tackleCd), tk: r2(p.mods.tackleCd), ph: r2(p.passHold || 0),
+    const me = p ? { i: idx(p), cd: p.abil.map((a) => r2(a.cd)), fl: r2(p.flow), ft: r2(p.flowT), aw: r2(p.awake), awt: r2(p.awakeT), st: r2(p.stamina), dc: p.dodgeCharges, dr: r2(p.dodgeRe), tc: r2(p.tackleCd), tk: r2(p.mods.tackleCd), ph: r2(p.passHold || 0),
       fx: FX_SENT.reduce((o, k) => (p.fx[k] > 0 ? (o[k] = r2(p.fx[k]), o) : o), {}) } : null;
     send(rp.ws, Object.assign({ me }, base));
   }

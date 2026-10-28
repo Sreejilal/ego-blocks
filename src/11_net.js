@@ -124,6 +124,8 @@ const Net = {
     if (location.protocol === 'file:' || !location.host) return 'ws://localhost:8787/ws';
     return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
   },
+  /** what to say when the server cannot be reached: opened as a file, nothing is running yet */
+  noServerText() { return location.protocol === 'file:' ? 'NO SERVER IS RUNNING. IN THE VS CODE TERMINAL TYPE NPM RUN SERVER, THEN OPEN LOCALHOST:8787' : 'CANNOT REACH THE SCORZ SERVER RIGHT NOW. TRY AGAIN IN A LITTLE WHILE.'; },
   cleanName(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12); },
   setStatus(t) { this.status = t; const el = $('on-status'); if (el) el.textContent = t; },
   open() { Touch.autoFs(); UI.show('online'); this.renderRoom(); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },
@@ -144,7 +146,7 @@ const Net = {
       this.ws = null; this.room = null; Portal.room(null);
       if (wasPlaying) { Game.toLobby(); UI.show('online'); }
       this.renderRoom();
-      this.setStatus(wasPlaying ? 'LOST THE CONNECTION TO THE SERVER' : 'CANNOT REACH THE SERVER. IS IT RUNNING? (SEE SERVER ADDRESS)');
+      this.setStatus(wasPlaying ? 'LOST THE CONNECTION TO THE SERVER' : this.noServerText());
     };
   },
   close() { if (this.ws) { this.ws.onclose = null; try { this.ws.close(); } catch (e) {} } this.ws = null; this.room = null; this.renderRoom(); },
@@ -306,7 +308,7 @@ const Net = {
     if (m.me && nm.human) {
       const p = nm.human, me = m.me;
       p.abil.forEach((a, i) => { a.cd = me.cd[i] || 0; });
-      p.flow = me.fl; p.flowT = me.ft; p.stamina = me.st; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
+      p.flow = me.fl; p.flowT = me.ft; p.awake = me.aw || 0; p.awakeT = me.awt || 0; p.stamina = me.st; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
       for (const k in p.fx) p.fx[k] = 0;
       Object.assign(p.fx, me.fx || {});
     }
@@ -365,6 +367,9 @@ const Net = {
       p.kickT = B[9] >= 0 ? Math.min(0.999, B[9] + since / 0.3) : -1; p.kickStyle = NET_KICKS[B[10]] || null;
       const f = B[11];
       p.charging = !!(f & 1); p.onGround = !!(f & 2); p.flowT = f & 4 ? Math.max(p.flowT, 1) : 0; p.callT = f & 8 ? 0.5 : 0;
+      const aw = !!(f & 128);
+      if (aw && !(p.awakeT > 0)) { FX.awakenBurst(p); if (p === nm.human) Shake.add(0.4); } // someone just awakened
+      p.awakeT = aw ? Math.max(p.awakeT, 1) : 0;
       p.fx.shuffle = f & 16 ? 1 : 0; p.fx.lockdown = f & 32 ? 1 : 0; p.fx.bubble = f & 64 ? 1 : 0;
       p.charge = B[12];
       p.dive = st === 'dive' ? { side: B[13], high: !!B[14], dur: B[15] } : null;
@@ -388,7 +393,7 @@ const Net = {
     if (!c) { this.held = null; return; }
     const P = this.pend;
     P.jump = P.jump || c.jump; P.sd = P.sd || c.shootDown; P.su = P.su || c.shootUp; P.pd = P.pd || c.passDown; P.pu = P.pu || c.passUp;
-    P.dodge = P.dodge || c.dodge; P.tackle = P.tackle || c.tackle; P.flow = P.flow || c.flow;
+    P.dodge = P.dodge || c.dodge; P.tackle = P.tackle || c.tackle; P.flow = P.flow || c.flow; P.aw = P.aw || c.awaken;
     P.a0 = P.a0 || c.ab[0]; P.a1 = P.a1 || c.ab[1]; P.a2 = P.a2 || c.ab[2];
     this.held = c;
   },
@@ -409,6 +414,7 @@ const Net = {
     if (this.sendT <= 0) { this.sendT = 1 / 30; this.sendInput(); }
     Input.consumeEdges();
     this.applySnapshots(rdt);
+    for (const p of nm.players) { if (p.flowT > 0) FX.flow(p, p.flowId, rdt); if (p.awakeT > 0) FX.awaken(p, rdt); }
     FX.update(rdt); Shake.update(rdt);
     Cam.follow(rdt, nm);
     UI.updateHud(nm, rdt);

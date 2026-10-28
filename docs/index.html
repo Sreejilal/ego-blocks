@@ -332,6 +332,15 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 #ad-block { position: absolute; inset: 0; z-index: 90; background: rgba(9,11,22,.5); }
 .on-privacy { color: var(--muted); max-width: 60ch; }
 
+/* daily gift and challenge */
+.btn.ghost.daily { position: relative; color: var(--gold); padding-right: 16px; }
+.btn.ghost.daily .dot { display: none; position: absolute; top: 4px; right: 3px; width: 8px; height: 8px; background: var(--emerald); box-shadow: 0 0 8px var(--emerald); animation: blink .8s steps(2) infinite; }
+.btn.ghost.daily.ready .dot { display: block; }
+.daily-box { width: min(520px, 100%); }
+.dl-card { background: var(--slate-2); padding: 12px; display: grid; gap: 8px; }
+.dl-card > div { display: grid; gap: 6px; justify-items: start; }
+.dl-big { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; color: var(--gold); }
+
 /* online: are you there? */
 #hud .idle-warn { left: 50%; top: 30%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); box-sizing: border-box; display: grid; justify-items: center; gap: 6px; text-align: center; padding: 12px 20px; background: rgba(9,11,22,.88); border: var(--px) solid var(--gold); box-shadow: 4px 4px 0 rgba(0,0,0,.45); }
 #hud .idle-warn b { font-family: var(--font-display); font-weight: 400; font-size: clamp(34px, 7vw, 56px); line-height: .9; color: var(--gold); }
@@ -417,6 +426,13 @@ body.touch #chat-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0
 .flowbar .fill { height: 100%; width: 0%; background: var(--aura, var(--emerald)); }
 .flowbar .ticks { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), var(--ink) calc(10% - 2px) 10%); }
 .flowbar.ready .lbl b { color: var(--gold); animation: blink .6s steps(2) infinite; }
+.awakebar .track { height: 8px; }
+.awakebar .fill { background: linear-gradient(90deg, var(--aura, #fff), #ffffff); }
+.awakebar.active .fill { animation: blink .4s steps(2) infinite; }
+.slot.awaken.ready, .slot.awaken.active { box-shadow: 0 0 0 2px #fff, 0 0 14px var(--gold); }
+#touch .tb.flow.awaken { filter: drop-shadow(0 0 8px #fff); }
+body.touch #hud .awakebar .lbl { font-size: 9px; white-space: nowrap; }
+body.touch #hud .awakebar .track { height: 6px; }
 @keyframes blink { 50% { opacity: .2; } }
 .stamina { display: flex; gap: 2px; }
 .stamina img { width: 22px; height: 22px; }
@@ -570,6 +586,7 @@ body { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 #touch .tb.ready { background: var(--aura, var(--emerald)); }
 #touch .tb.flow.ready { background: var(--gold); animation: blink .6s steps(2) infinite; }
 #touch .tb.flow.active { background: var(--aura, var(--emerald)); --fill: rgba(255,255,255,.18); }
+#touch .tb.flow.awaken.ready { background: var(--aura, #ffffff); } /* AWAKEN! in your style's colour, FLOW! in gold */
 #touch .tb.item.ready { background: var(--gold); }
 #touch .tb.off .ic { opacity: .38; }
 #touch .tb.dt.dodge { --fill: rgba(245,239,224,.16); }
@@ -763,17 +780,17 @@ function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) +
 /* ---------- pitch geometry (1 unit = 1 block) ----------
    Blue team defends -Z and attacks +Z. Orange is the mirror. */
 const F = {
-  W: 24.5,          // touchline outer edge (x)
-  L: 38.5,          // goal line outer edge (z)
-  GW: 4.5,          // half width of the goal mouth (inner)
-  GH: 3.0,          // goal mouth height (inner, crossbar underside)
+  W: 21.5,          // touchline outer edge (x). 24.5 x 38.5 felt too big; the first pitch was 20.5 x 32.5
+  L: 34.0,          // goal line outer edge (z)
+  GW: 4.0,          // half width of the goal mouth (inner). Smaller since the pitch shrank: 4.5 x 3.0 gave 10 to 15 goals a match
+  GH: 2.75,         // goal mouth height (inner, crossbar underside)
   GD: 2.5,          // net depth behind the goal line
   POST: 0.5,        // post / bar thickness
-  BOARD_X: 28.0,    // advertising boards (ball bounces off these)
-  BOARD_Z: 43.0,
-  BOX_W: 11,        // penalty box half width (outer edge)
-  BOX_D: 8.5,       // penalty box depth from goal line
-  CIRCLE: 7,        // centre circle radius
+  BOARD_X: 25.0,    // advertising boards (ball bounces off these)
+  BOARD_Z: 38.5,
+  BOX_W: 10,        // penalty box half width (outer edge)
+  BOX_D: 8,         // penalty box depth from goal line
+  CIRCLE: 6.5,      // centre circle radius
 };
 // bot positions were tuned on the first, smaller pitch (20.5 x 32.5); they are scaled by these to fit this one
 const PITCH_KX = F.W / 20.5, PITCH_KZ = F.L / 32.5;
@@ -794,8 +811,8 @@ const Save = {
   defaults() {
     return {
       v: 1, emeralds: 500, styles: ['ROOKIE'], flows: [], style: 'ROOKIE', flow: null,
-      xp: 0, history: [], pass: { season: 0, week: -1, xp: 0, got: 0, prog: {}, done: [] }, best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
-      club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
+      xp: 0, history: [], pass: { season: 0, week: -1, xp: 0, got: 0, prog: {}, done: [] }, daily: { gift: '', day: '', ch: '', prog: 0, done: false }, best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
+      club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', autoFs: true },
@@ -816,6 +833,9 @@ const Save = {
     out.look = Object.assign({}, def.look, out.look && typeof out.look === 'object' ? out.look : {});
     if (typeof out.club !== 'string') out.club = 'ROVERS';
     out.xp = Math.max(0, Math.floor(Number(out.xp) || 0));
+    const dl = out.daily = Object.assign({}, def.daily, out.daily && typeof out.daily === 'object' ? out.daily : {});
+    for (const k of ['gift', 'day', 'ch']) dl[k] = typeof dl[k] === 'string' ? dl[k].slice(0, 16) : '';
+    dl.prog = clamp(Math.floor(Number(dl.prog) || 0), 0, 99); dl.done = !!dl.done;
     const ps = out.pass = Object.assign({}, def.pass, out.pass && typeof out.pass === 'object' ? out.pass : {});
     for (const k of ['season', 'week', 'xp', 'got']) ps[k] = Math.floor(Number(ps[k]) || 0);
     ps.xp = Math.max(0, ps.xp); ps.got = clamp(ps.got, 0, 30);
@@ -1293,15 +1313,18 @@ function makePlayerSkin(o) {
     for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) { g.fillStyle = rgbStr(shadeRGB(base, lerp(a, b, R()))); g.fillRect(x + xx, y + yy, 1, 1); }
   };
   const px = (x, y, hex) => { g.fillStyle = hex; g.fillRect(x, y, 1, 1); };
-  const { kit: K, crest, boots, skin, hair, number, gloves, eye, sparkle } = o;
+  const { kit: K, crest, boots, skin, hair, number, gloves, eye, sparkle, hairShape } = o;
+  const crop = hairShape === 'crop'; // a buzz cut: shaved sides and back, a thin hairline, stubble on top
   // head
   fillN(8, 0, 8, 8, hair, 0.82, 1.08);                       // top
+  if (crop) for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) if (R() < 0.3) px(8 + x, y, rgbStr(shadeRGB(hexRGB(skin), 0.8)));
   fillN(16, 0, 8, 8, skin, 0.92, 1.0);                       // bottom (chin)
-  for (const sx of [0, 16]) { fillN(sx, 8, 8, 8, skin, 0.95, 1.02); fillN(sx, 8, 8, 3, hair, 0.8, 1.05); px(sx + (sx === 0 ? 3 : 4), 12, rgbStr(shadeRGB(hexRGB(skin), 0.85))); }
-  fillN(24, 8, 8, 8, hair, 0.8, 1.05); fillN(24, 14, 8, 2, skin, 0.9, 0.98); // back
+  for (const sx of [0, 16]) { fillN(sx, 8, 8, 8, skin, 0.95, 1.02); fillN(sx, 8, 8, crop ? 1 : 3, hair, 0.8, 1.05); px(sx + (sx === 0 ? 3 : 4), 12, rgbStr(shadeRGB(hexRGB(skin), 0.85))); }
+  if (crop) { fillN(24, 8, 8, 8, skin, 0.9, 0.98); fillN(24, 8, 8, 2, hair, 0.8, 1.0); } // back: shaved under a short line
+  else { fillN(24, 8, 8, 8, hair, 0.8, 1.05); fillN(24, 14, 8, 2, skin, 0.9, 0.98); } // back
   fillN(8, 8, 8, 8, skin, 0.96, 1.03);                       // face
   fillN(8, 8, 8, 1, hair, 0.8, 1.05);
-  for (let x = 0; x < 8; x++) if (R() < 0.55 || x === 0 || x === 7) px(8 + x, 9, rgbStr(shadeRGB(hexRGB(hair), lerp(0.8, 1, R()))));
+  if (!crop) for (let x = 0; x < 8; x++) if (R() < 0.55 || x === 0 || x === 7) px(8 + x, 9, rgbStr(shadeRGB(hexRGB(hair), lerp(0.8, 1, R()))));
   const brow = rgbStr(shadeRGB(hexRGB(hair), 0.65));
   px(9, 11, brow); px(10, 11, brow); px(13, 11, brow); px(14, 11, brow);
   px(9, 12, '#f7f7f2'); px(10, 12, eye); px(13, 12, eye); px(14, 12, '#f7f7f2');
@@ -1318,6 +1341,15 @@ function makePlayerSkin(o) {
         if (x >= 20 && x <= 27) return Math.abs(x - 20 - r * 0.75 - 0.4) < 1.3;
         if (x >= 32) return Math.abs(x - 32 - (7 - r * 0.75) + 0.4) < 1.3;
         return x >= 28 ? r >= 8 : r <= 1;
+      case 'pinstripe': return (x - 16) % 3 === 0;
+      case 'chevron': { const cx = x < 28 ? 23.5 : 35.5; return (Math.abs(x - cx) + r) % 5 < 1.6; }
+      case 'checker': return (((x - 16) >> 1) + (r >> 1)) % 2 === 1;
+      case 'bolt': { // a zigzag across the front and the back
+        const zig = [6, 5, 4, 3, 5, 4, 3, 2, 1, 0][r], u = x < 28 ? x - 20 : x - 32;
+        return (x >= 20 && x < 28) || x >= 32 ? u === zig || u === zig + 1 : false;
+      }
+      case 'flames': { const h = 2 + ((x * 7) % 3) + (x % 2); return r > 9 - h; } // flame tips 2 to 4 rows up from the hem
+      case 'stars': return (x * 73 + r * 151) % 17 === 0 || (x * 31 + r * 47) % 23 === 0;
       default: return x === 16 || x === 31; // plain: thin side panels
     }
   };
@@ -1330,7 +1362,7 @@ function makePlayerSkin(o) {
   const cr = crest || ['#ffffff', '#000000'];
   g.fillStyle = K.number; g.fillRect(21, 22, 3, 2); g.fillRect(22, 24, 1, 1);
   g.fillStyle = cr[0] === K.number ? cr[1] : cr[0]; g.fillRect(22, 22, 1, 2);
-  const num = String(number), panel = K.pattern === 'stripes' || K.pattern === 'hoops';
+  const num = String(number), panel = !['sash', 'halves', 'plain'].includes(K.pattern); // busy patterns get a plain patch behind the number
   const bx = 32 + Math.floor((8 - (num.length * 4 - 1)) / 2);
   if (panel) { fillN(bx - 1, 21, num.length * 4 + 1, 7, K.shirt, 0.95, 1.02); if (num.length === 1) fillN(24, 21, 4, 7, K.shirt, 0.95, 1.02); }
   digDraw(g, num, bx, 22, K.number);
@@ -1529,6 +1561,7 @@ function portraitCanvas(styleId, size = 96, look = null) {
   if (shape === 'swept') { g.fillRect(4, 2, 8, 1); g.fillRect(11, 1, 2, 1); }
   if (shape === 'bun') { g.fillRect(6, 1, 4, 2); }
   if (shape === 'flattop') { g.fillRect(4, 0, 8, 3); }
+  if (shape === 'crop') { g.fillStyle = skin; g.fillRect(4, 4, 8, 2); g.fillStyle = '#0a0c17'; g.fillRect(3, 4, 1, 4); g.fillRect(12, 4, 1, 4); g.fillStyle = hair; g.fillRect(5, 2, 3, 1); }
   if (shape === 'mohawk') { g.fillStyle = skin; g.fillRect(4, 3, 3, 2); g.fillRect(9, 3, 3, 2); g.fillStyle = hair; g.fillRect(7, 0, 2, 5); }
   g.fillStyle = '#f7f7f2'; g.fillRect(5, 8, 2, 1); g.fillRect(9, 8, 2, 1);
   g.fillStyle = st.aura; g.fillRect(6, 8, 1, 1); g.fillRect(9, 8, 1, 1);
@@ -1562,7 +1595,9 @@ function kitCanvas(k, size = 48) {
     if (ch === 'k') col = '#0a0c17'; else if (ch === 'C') col = k.collar; else if (ch === 'L') col = k.sleeve;
     else if (ch === 'X') {
       const u = x - 3, v = y - 2;
-      const a = k.pattern === 'stripes' ? u % 2 === 1 : k.pattern === 'hoops' ? (v >> 1) % 2 === 1 : k.pattern === 'halves' ? u >= 3 : k.pattern === 'sash' ? Math.abs(u - v * 0.7) < 1.1 : false;
+      const P = k.pattern, a = P === 'stripes' ? u % 2 === 1 : P === 'hoops' ? (v >> 1) % 2 === 1 : P === 'halves' ? u >= 3 : P === 'sash' ? Math.abs(u - v * 0.7) < 1.1
+        : P === 'pinstripe' ? u % 3 === 1 : P === 'chevron' ? (Math.abs(u - 2.5) + v) % 4 < 1.5 : P === 'checker' ? (u + v) % 2 === 1
+        : P === 'bolt' ? u === [4, 3, 2, 3, 2, 1, 0, 0][v] : P === 'flames' ? v > 6 - ((u * 5) % 3) : P === 'stars' ? (u * 7 + v * 3) % 5 === 0 : false;
       col = a ? k.alt : k.shirt;
     }
     if (col) { g.fillStyle = col; g.fillRect(x, y, 1, 1); }
@@ -1577,6 +1612,10 @@ function skinCanvas(id, size = 96) {
   const sk = SKINS[id];
   if (sk.slot === 'hair') return portraitCanvas('ROOKIE', size, { hairShape: sk.shape || 'short', hair: '#6b3e22' });
   if (sk.slot === 'color') return portraitCanvas('ROOKIE', size, { hair: sk.hex || '#3b2a22', prism: sk.prism });
+  if (sk.slot === 'kit') { // your club's shirt with this skin's pattern and trim
+    const base = (CLUBS[Save.data.club] || CLUBS.ROVERS).home;
+    return kitCanvas(Object.assign({}, base, sk.pattern ? { pattern: sk.pattern } : {}, sk.trim ? { collar: sk.trim, sleeve: base.sleeve } : {}), size);
+  }
   const name = sk.acc ? SKIN_ICON[sk.acc] : sk.slot === 'acc' ? 'lock' : SKIN_ICON[sk.slot];
   const src = iconCanvas(name, sk.hex || (sk.slot === 'celeb' ? RARITY_HEX[sk.rarity] : '#8a8fa8'), sk.prism || sk.sparkle || sk.rarity === 'Generational' ? 'prism' : '');
   const out = mkCanvas(size, size), og = out.getContext('2d');
@@ -2327,6 +2366,53 @@ const FX = {
       this.glow.spawn(p.pos.x + Math.cos(a) * r, p.pos.y + rand(0.1, 1.8), p.pos.z + Math.sin(a) * r, -Math.sin(a) * 2.2, rand(1, 2.4), Math.cos(a) * 2.2, rand(0.08, 0.16), rand(0.35, 0.6), col(hex), 0, 0.5, 0);
     }
   },
+  /** awakened: a strong aura in your style's colour with white light streaking up */
+  awaken(p, dt) {
+    this.aura(p, p.aura, dt * 1.7);
+    if (Math.random() < dt * 30) this.glow.spawn(p.pos.x + rand(-0.5, 0.5), p.pos.y + 0.1, p.pos.z + rand(-0.5, 0.5), 0, rand(5, 8), 0, rand(0.06, 0.1), 0.45, col('#ffffff'), -0.3, 0.3, 0);
+  },
+  /** the moment you awaken: sparks, two rings and a pillar of light */
+  awakenBurst(p) {
+    const x = p.pos.x, z = p.pos.z;
+    this.sparks(x, 1.1, z, p.aura, 70, 11, 0.22, 0.8); this.sparks(x, 1.1, z, '#ffffff', 30, 7, 0.14, 0.6);
+    this.ring(x, 0.2, z, p.aura, 1.6, 30); this.ring(x, 0.25, z, '#ffffff', 2.6, 36);
+    for (let i = 0; i < 44; i++) this.glow.spawn(x + rand(-0.35, 0.35), rand(0, 0.5), z + rand(-0.35, 0.35), 0, rand(8, 16), 0, rand(0.12, 0.22), rand(0.5, 0.9), col(i % 3 ? p.aura : '#ffffff'), -0.2, 0.6, 0);
+  },
+  /** each Flow has its own look: wind, afterimage, venom, coins, blue fire, a crown. No Flow: your style's aura */
+  flow(p, id, dt) {
+    const f = id ? FLOWS[id] : null;
+    if (!f) { this.aura(p, p.aura, dt); return; }
+    const c = col(f.color), x = p.pos.x, y = p.pos.y, z = p.pos.z, t = (p._flowClock = (p._flowClock || 0) + dt);
+    const often = (perSec) => Math.random() < perSec * dt;
+    switch (f.fx) {
+      case 'wind': // green ribbons spiralling up around you
+        for (let i = 0; i < 3; i++) if (often(42)) { const a = t * 9 + i * TAU / 3, r = 0.8; this.glow.spawn(x + Math.cos(a) * r, y + 0.15, z + Math.sin(a) * r, -Math.sin(a) * 3.4, 3.6, Math.cos(a) * 3.4, 0.15, 0.6, c, 0, 0.2, 0); }
+        this.aura(p, f.color, dt * 0.35);
+        break;
+      case 'speed': { // an orange afterimage streaming behind you, sparks off your boots
+        const sp = len2D(p.vel.x, p.vel.z);
+        if (often(12)) this.glow.spawn(x + rand(-0.4, 0.4), y + rand(0.2, 1.9), z + rand(-0.4, 0.4), 0, 0.6, 0, 0.1, 0.4, c, 0, 0.5, 0);
+        if (sp > 3) for (let i = 0; i < 2; i++) if (often(45)) this.glow.spawn(x + rand(-0.3, 0.3), y + rand(0.3, 1.8), z + rand(-0.3, 0.3), -p.vel.x * 0.3, 0, -p.vel.z * 0.3, 0.15, 0.28, c, 0, 2, 0);
+        if (sp > 5 && p.onGround && often(14)) this.sparks(x, 0.1, z, '#ffd27a', 2, 3, 0.08, 0.3);
+        break;
+      }
+      case 'venom': // green drops falling off you (the tackle ring is drawn by the player)
+        if (often(26)) this.glow.spawn(x + rand(-0.45, 0.45), y + rand(0.7, 1.5), z + rand(-0.45, 0.45), 0, -0.4, 0, rand(0.08, 0.13), 0.7, c, 1.3, 0.2, 0);
+        break;
+      case 'coins': // gold blocks circling over your head
+        for (let i = 0; i < 3; i++) if (often(28)) { const b = t * 5 + i * TAU / 3, r = 0.65; this.glow.spawn(x + Math.cos(b) * r, y + 2.05 + Math.sin(t * 4 + i) * 0.12, z + Math.sin(b) * r, -Math.sin(b) * 1.4, 0.1, Math.cos(b) * 1.4, 0.15, 0.32, c, 0, 0.6, 0); }
+        if (often(4)) this.sparks(x, y + 2.1, z, '#fff3b0', 3, 2.5, 0.07, 0.4);
+        break;
+      case 'flame': // blue fire on your head and shoulders
+        for (let i = 0; i < 3; i++) if (often(40)) { const ox = rand(-0.38, 0.38), oz = rand(-0.22, 0.22); this.glow.spawn(x + ox, y + rand(1.45, 2.05), z + oz, ox * 0.6, rand(2.6, 4.2), oz * 0.6, rand(0.12, 0.21), rand(0.22, 0.42), Math.random() < 0.3 ? col('#c9e4ff') : c, -0.5, 0.8, 0); }
+        break;
+      case 'crown': // a slowly turning crown of light, with a soft gold glow
+        for (let i = 0; i < 2; i++) if (often(55)) { const k = Math.floor(Math.random() * 8), b = k * TAU / 8 + t * 0.9, r = 0.34; this.glow.spawn(x + Math.cos(b) * r, y + 2.28 + (k % 2) * 0.14, z + Math.sin(b) * r, 0, 0.04, 0, 0.12, 0.22, col(k % 2 ? '#ffffff' : '#ffd54a'), 0, 3, 0); }
+        this.aura(p, '#ffe9a8', dt * 0.45);
+        break;
+      default: this.aura(p, f.color, dt);
+    }
+  },
   /* glowing block paths (Vision) */
   pathBegin() { this.pathN = 0; },
   pathLine(a, b, hex, step = 1.1, t = 0) {
@@ -2412,6 +2498,7 @@ const PlayerGeo = {
 };
 const HAIR_SHAPES = {
   short: [[-0.26, -0.05, -0.26, 0.26, 0.09, 0.26]],
+  crop: [[-0.255, -0.02, -0.255, 0.255, 0.035, 0.255], [-0.14, 0.035, 0.1, 0.14, 0.11, 0.27]], // buzz cut with a small quiff
   long: [[-0.27, -0.06, -0.27, 0.27, 0.1, 0.27], [-0.27, -0.66, -0.3, 0.27, 0.0, -0.17], [-0.28, -0.3, -0.27, -0.2, 0.0, 0.1], [0.2, -0.3, -0.27, 0.28, 0.0, 0.1]],
   bob: [[-0.27, -0.06, -0.27, 0.27, 0.1, 0.27], [-0.29, -0.34, -0.27, -0.2, 0.0, 0.2], [0.2, -0.34, -0.27, 0.29, 0.0, 0.2], [-0.27, -0.38, -0.3, 0.27, 0.0, -0.17], [-0.27, -0.12, 0.2, 0.27, 0.02, 0.3]],
   swept: [[-0.27, -0.06, -0.27, 0.27, 0.12, 0.27], [-0.27, -0.3, -0.3, 0.27, 0.0, -0.18], [-0.27, 0.02, 0.12, 0.27, 0.2, 0.32]],
@@ -2475,7 +2562,7 @@ class Player {
     this.kickT = -1; this.kickDur = 0.34; this.charge = 0; this.charging = false;
     this.dash = null; this.slide = null; this.dive = null; this.fallDir = 1; this.flipT = -1;
     this.abil = this.style.abilities.map((id) => ({ id, def: ABILITIES[id], cd: 0 }));
-    this.flow = 0; this.flowT = 0; this.gamble = null;
+    this.flow = 0; this.flowT = 0; this.gamble = null; this.awake = 0; this.awakeT = 0;
     this.fx = {}; this.item = null; this.callT = 0;
     this.speedMul = 1;
     this.mods = { speed: 1, shot: 1, stamRegen: 1, stamDrain: 1, cdRate: 1, tackleRange: 1, tackleCd: 1 };
@@ -2489,11 +2576,15 @@ class Player {
   get hasBall() { return this.m.ball.owner === this; }
   get aura() { return this.style.aura; }
   buildModel() {
-    const side = this.side, kit = this.isGK ? side.keeper : side.kit;
-    const L = this.look;
+    const side = this.side, L = this.look;
+    let kit = this.isGK ? side.keeper : side.kit;
+    if (!this.isGK && (L.kitPattern || L.kitTrim)) {
+      kit = Object.assign({}, kit, { pattern: L.kitPattern || kit.pattern });
+      if (L.kitTrim) Object.assign(kit, { collar: L.kitTrim, cuff: L.kitTrim, number: L.kitTrim, sockTrim: L.kitTrim, shortsTrim: L.kitTrim });
+    }
     this.skinTex = makePlayerSkin({
       kit, crest: side.crest, boots: L.boots || (this.team === 0 ? '#1a1a1f' : '#f4efe0'), sparkle: L.sparkle,
-      skin: this.skin, hair: L.hair, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: pick(EYE_COLS),
+      skin: this.skin, hair: L.hair, hairShape: L.hairShape, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: pick(EYE_COLS),
       seed: this.team * 97 + this.number * 13 + 7,
     });
     this.mat = new THREE.MeshLambertMaterial({ map: this.skinTex });
@@ -2510,7 +2601,7 @@ class Player {
       if (L.acc.kind === 'band') mk(bandGeo(L.hairShape), am, headP, 0, 0, 0);
       else if (L.acc.kind === 'mask') mk(accGeo().mask, am, headP, 0, 0, 0);
     }
-    const eyes = new THREE.Mesh(G.eyes, eyeMat(this.style.aura)); eyes.position.set(0, 0.21, 0.236); eyes.visible = false; headP.add(eyes);
+    const eyes = new THREE.Mesh(G.eyes, eyeMat(this.flowId && FLOWS[this.flowId] ? FLOWS[this.flowId].color : this.style.aura)); // in Flow your eyes glow in its colour eyes.position.set(0, 0.21, 0.236); eyes.visible = false; headP.add(eyes);
     const armL = new THREE.Group(); armL.position.set(0.35, 0.68, 0); body.add(armL); mk(G.arm, this.mat, armL, 0, -0.3, 0);
     const armR = new THREE.Group(); armR.position.set(-0.35, 0.68, 0); body.add(armR); mk(G.arm, this.mat, armR, 0, -0.3, 0);
     const legL = new THREE.Group(); legL.position.set(0.12, 0, 0); body.add(legL); mk(G.leg, this.mat, legL, 0, -0.36, 0);
@@ -2543,10 +2634,21 @@ class Player {
         if (fm.speed) m.speed *= fm.speed;
         if (fm.shot) m.shot *= fm.shot;
         if (fm.stamRegen) m.stamRegen *= fm.stamRegen;
+        if (fm.stamDrain) m.stamDrain *= fm.stamDrain;
         if (fm.cdRate) m.cdRate *= fm.cdRate;
         if (fm.tackleRange) m.tackleRange *= fm.tackleRange;
         if (fm.tackleCd) m.tackleCd *= fm.tackleCd;
       }
+    }
+    if (this.awakeT > 0 && this.style.awaken) {
+      const am = this.style.awaken.mods || {};
+      m.cdRate *= 2 * (am.cdRate || 1);
+      if (am.speed) m.speed *= am.speed;
+      if (am.huntSpeed && this.m.ball.owner !== this) m.speed *= am.huntSpeed;
+      if (am.shot) m.shot *= am.shot;
+      if (am.stamDrain != null) m.stamDrain *= am.stamDrain;
+      if (am.tackleRange) m.tackleRange *= am.tackleRange;
+      if (am.tackleCd) m.tackleCd *= am.tackleCd;
     }
     const fx = this.fx;
     if (fx.burst > 0) m.speed *= 1.45;
@@ -2572,6 +2674,12 @@ class Player {
     if (this.callT > 0) this.callT -= dt;
     if (this.dodgeCharges < 2) { this.dodgeRe += dt; if (this.dodgeRe >= 4) { this.dodgeRe = 0; this.dodgeCharges++; } }
     if (this.flowT > 0) { this.flowT -= dt; if (this.flowT <= 0) { this.flowT = 0; this.gamble = null; this.P.eyes.visible = false; } }
+    if (this.awakeT > 0) {
+      this.awakeT = Math.max(0, this.awakeT - dt);
+      const perk = this.style.awaken && this.style.awaken.perk;
+      if (perk === 'dodge') { this.dodgeCharges = 2; this.dodgeRe = 0; }
+      if (perk === 'tank') this.tackleProof = Math.max(this.tackleProof, 0.2);
+    }
     if (this.kickT >= 0) { this.kickT += dt / this.kickDur; if (this.kickT >= 1) this.kickT = -1; }
     if (this.flipT >= 0) { this.flipT += dt / 0.55; if (this.flipT >= 1) this.flipT = -1; }
   }
@@ -2741,10 +2849,16 @@ class Player {
     P.root.rotation.y = this.yaw;
     const bs = clamp(1 - this.pos.y / 5, 0.3, 1) * (st === 'down' ? 1.6 : st === 'dive' ? 1.5 : 1);
     this.blob.position.set(this.pos.x, 0.025, this.pos.z); this.blob.scale.set(bs, 1, bs);
-    P.eyes.visible = this.flowT > 0;
+    P.eyes.visible = this.flowT > 0 || this.awakeT > 0;
+    // awakened eyes glow in your style's colour, in Flow they glow in the Flow's
+    const eyeHex = this.awakeT > 0 ? this.style.aura : this.flowId && FLOWS[this.flowId] ? FLOWS[this.flowId].color : this.style.aura;
+    if (P.eyes.userData.hex !== eyeHex) { P.eyes.userData.hex = eyeHex; P.eyes.material = eyeMat(eyeHex); }
     // status meshes
-    if (this.fx.lockdown > 0) {
+    const viper = this.flowT > 0 && this.flowId === 'VIPER';
+    if (this.fx.lockdown > 0 || viper) {
       if (!this.ring) { this.ring = new THREE.Mesh(PlayerGeo.get().ring, new THREE.MeshBasicMaterial({ color: lin('#ff3d52'), transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false })); this.m.scene.add(this.ring); }
+      const rc = this.fx.lockdown > 0 ? '#ff3d52' : FLOWS.VIPER.color; // lockdown red, VIPER green
+      if (this.ring.userData.c !== rc) { this.ring.userData.c = rc; this.ring.material.color.copy(lin(rc)); }
       this.ring.visible = true; this.ring.position.set(this.pos.x, 0.03, this.pos.z); const rs = 1.4 * this.mods.tackleRange * 0.9; this.ring.scale.set(rs, 1, rs); this.ring.rotation.y += dt * 2;
     } else if (this.ring) this.ring.visible = false;
     if (this.fx.bubble > 0) {
@@ -2953,16 +3067,16 @@ const RARITY_HEX = { Rare: '#4aa8ff', Epic: '#b65cff', Legendary: '#ffc53a', Myt
 const NEED_BALL = 'NEED THE BALL';
 
 const STYLES = {
-  ROOKIE: { name: 'ROOKIE', rarity: 'Rare', hair: '#3b2a22', hairShape: 'short', aura: '#3fd6ff', blurb: 'Reads the whole pitch. The free starter, and it can still win games.', abilities: ['vision', 'quickShot', 'burst'] },
-  SPRINTER: { name: 'SPRINTER', rarity: 'Rare', hair: '#c8323e', hairShape: 'long', aura: '#ff5a3c', blurb: 'Raw pace. Burns past the back line, then bends it in.', abilities: ['turbo', 'cutInside', 'curler'] },
-  PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'snapPass'] },
-  TRICKSTER: { name: 'TRICKSTER', rarity: 'Epic', hair: '#ff5fb0', hairShape: 'messy', aura: '#ff5fb0', blurb: 'Flicks, nutmegs and snap feints. Makes defenders look silly.', abilities: ['rainbow', 'nutmeg', 'whiplash'] },
-  ENFORCER: { name: 'ENFORCER', rarity: 'Epic', hair: '#8a1f33', hairShape: 'swept', aura: '#ffb02e', blurb: 'Midfield general. Flattens attackers and threads perfect through balls.', abilities: ['armSwipe', 'pinpointPass', 'lockdown'] },
-  SHAMBLER: { name: 'SHAMBLER', rarity: 'Legendary', hair: '#a6c49c', hairShape: 'messy', aura: '#7dff6a', blurb: 'An undead dribble nobody can tackle, and long arms that steal anything.', abilities: ['undeadShuffle', 'graveGrab', 'lurch'] },
-  PROWLER: { name: 'PROWLER', rarity: 'Legendary', hair: '#2b2f3a', hairShape: 'swept', aura: '#ff9d2e', blurb: 'A predator in the box. Smells loose balls first and finishes them first time.', abilities: ['scent', 'pounce', 'oneTouch'] },
-  MAGNET: { name: 'MAGNET', rarity: 'Mythic', hair: '#eef2f7', hairShape: 'fluffy', aura: '#8fd4ff', blurb: 'Kills any high ball dead on the boot, then finishes it in the air.', abilities: ['skyTrap', 'volley', 'fakeVolley'] },
-  THUNDER: { name: 'THUNDER', rarity: 'Mythic', hair: '#f2f2f2', hairShape: 'flattop', aura: '#ffe14d', blurb: 'A long-range bomber. Shots from 30 blocks out that dip, wobble and burn keepers.', abilities: ['longBomb', 'loaded', 'knuckle'] },
-  RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'] },
+  ROOKIE: { name: 'ROOKIE', rarity: 'Rare', hair: '#3b2a22', hairShape: 'short', aura: '#3fd6ff', blurb: 'Reads the whole pitch. The free starter, and it can still win games.', abilities: ['vision', 'quickShot', 'burst'], awaken: { name: 'FIRST LIGHT', desc: '+12% speed and shot power.', mods: { speed: 1.12, shot: 1.12 } } },
+  SPRINTER: { name: 'SPRINTER', rarity: 'Rare', hair: '#c8323e', hairShape: 'long', aura: '#ff5a3c', blurb: 'Raw pace. Burns past the back line, then bends it in.', abilities: ['turbo', 'cutInside', 'curler'], awaken: { name: 'RED LINE', desc: '+25% speed, and sprinting costs no stamina.', mods: { speed: 1.25, stamDrain: 0 } } },
+  PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'snapPass'], awaken: { name: 'NIGHTFALL', desc: 'Your dodges refill at once, every time, and you are 10% faster.', perk: 'dodge', mods: { speed: 1.1 } } },
+  TRICKSTER: { name: 'TRICKSTER', rarity: 'Epic', hair: '#ff5fb0', hairShape: 'messy', aura: '#ff5fb0', blurb: 'Flicks, nutmegs and snap feints. Makes defenders look silly.', abilities: ['rainbow', 'nutmeg', 'whiplash'], awaken: { name: 'SHOWTIME', desc: 'Your dodges refill at once and tricks recharge even faster.', perk: 'dodge', mods: { cdRate: 1.5 } } },
+  ENFORCER: { name: 'ENFORCER', rarity: 'Epic', hair: '#8a1f33', hairShape: 'swept', aura: '#ffb02e', blurb: 'Midfield general. Flattens attackers and threads perfect through balls.', abilities: ['armSwipe', 'pinpointPass', 'lockdown'], awaken: { name: 'IRON WALL', desc: 'Tackles reach 60% further and come back twice as fast, and nobody can tackle you.', perk: 'tank', mods: { tackleRange: 1.6, tackleCd: 0.5 } } },
+  SHAMBLER: { name: 'SHAMBLER', rarity: 'Legendary', hair: '#a6c49c', hairShape: 'messy', aura: '#7dff6a', blurb: 'An undead dribble nobody can tackle, and long arms that steal anything.', abilities: ['undeadShuffle', 'graveGrab', 'lurch'], awaken: { name: 'RISEN', desc: 'Nobody can tackle you, and you are 12% faster.', perk: 'tank', mods: { speed: 1.12 } } },
+  PROWLER: { name: 'PROWLER', rarity: 'Legendary', hair: '#2b2f3a', hairShape: 'swept', aura: '#ff9d2e', blurb: 'A predator in the box. Smells loose balls first and finishes them first time.', abilities: ['scent', 'pounce', 'oneTouch'], awaken: { name: 'APEX', desc: '+22% speed when you do not have the ball, and +20% shot power.', mods: { huntSpeed: 1.22, shot: 1.2 } } },
+  MAGNET: { name: 'MAGNET', rarity: 'Mythic', hair: '#eef2f7', hairShape: 'fluffy', aura: '#8fd4ff', blurb: 'Kills any high ball dead on the boot, then finishes it in the air.', abilities: ['skyTrap', 'volley', 'fakeVolley'], awaken: { name: 'GRAVITY', desc: '+22% shot power and 10% faster.', mods: { shot: 1.22, speed: 1.1 } } },
+  THUNDER: { name: 'THUNDER', rarity: 'Mythic', hair: '#f2f2f2', hairShape: 'flattop', aura: '#ffe14d', blurb: 'A long-range bomber. Shots from 30 blocks out that dip, wobble and burn keepers.', abilities: ['longBomb', 'loaded', 'knuckle'], awaken: { name: 'STORM', desc: '+30% shot power.', mods: { shot: 1.3 } } },
+  RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'], awaken: { name: 'OVERDRIVE', desc: '+25% shot power and 10% faster.', mods: { shot: 1.25, speed: 1.1 } } },
 };
 const STYLE_IDS = Object.keys(STYLES);
 /** a bot's style: common styles most of the time, the rare ones now and then (like the spins) */
@@ -3246,14 +3360,18 @@ const ABILITIES = {
 };
 
 const FLOWS = {
-  SECOND_WIND: { name: 'SECOND WIND', rarity: 'Rare', color: '#7dffb0', desc: '+60% stamina regen.', mods: { stamRegen: 1.6 } },
-  OVERCLOCK: { name: 'OVERCLOCK', rarity: 'Epic', color: '#ff6a3c', desc: '+20% speed with and without the ball.', mods: { speed: 1.2 } },
-  VIPER: { name: 'VIPER', rarity: 'Epic', color: '#5dff7a', desc: 'Bigger tackle hitbox and tackle cooldown halved.', mods: { tackleRange: 1.6, tackleCd: 0.5 } },
-  GAMBLE: { name: 'GAMBLE', rarity: 'Legendary', color: '#ffcb3d', desc: 'A random boost to speed, shot power or stamina. 10% chance of all three.', gamble: true, mods: {} },
-  BLUE_FLAME: { name: 'BLUE FLAME', rarity: 'Mythic', color: '#3d8bff', desc: 'Ability cooldowns 25% shorter.', mods: { cdRate: 1 / 0.75 } },
-  MONARCH: { name: 'MONARCH', rarity: 'Generational', color: '#ffffff', desc: '+20% shot power, +12% speed and cooldowns 15% shorter.', mods: { shot: 1.2, speed: 1.12, cdRate: 1 / 0.85 } },
+  SECOND_WIND: { name: 'SECOND WIND', rarity: 'Rare', color: '#7dffb0', fx: 'wind', desc: 'Your stamina refills at once. Then stamina comes back twice as fast and sprinting costs half. Green wind swirls around you.', start: { stamina: true }, mods: { stamRegen: 2.2, stamDrain: 0.5 } },
+  OVERCLOCK: { name: 'OVERCLOCK', rarity: 'Epic', color: '#ff6a3c', fx: 'speed', desc: '+22% speed with and without the ball, and sprinting costs less. You leave an orange afterimage.', mods: { speed: 1.22, stamDrain: 0.75 } },
+  VIPER: { name: 'VIPER', rarity: 'Epic', color: '#5dff7a', fx: 'venom', desc: 'Tackles reach 60% further (a green ring shows how far) and come back twice as fast.', mods: { tackleRange: 1.6, tackleCd: 0.5 } },
+  GAMBLE: { name: 'GAMBLE', rarity: 'Legendary', color: '#ffcb3d', fx: 'coins', desc: 'A random boost: +25% speed, +25% shot power or huge stamina. 10% chance of all three. Gold coins spin over your head.', gamble: true, mods: {} },
+  BLUE_FLAME: { name: 'BLUE FLAME', rarity: 'Mythic', color: '#3d8bff', fx: 'flame', desc: 'All your ability cooldowns reset at once, then run 25% faster. Blue fire burns on your head.', start: { resetCd: true }, mods: { cdRate: 1 / 0.75 } },
+  MONARCH: { name: 'MONARCH', rarity: 'Generational', color: '#ffffff', fx: 'crown', desc: '+20% shot power, +12% speed and cooldowns 15% shorter. A crown of light floats over your head.', mods: { shot: 1.2, speed: 1.12, cdRate: 1 / 0.85 } },
 };
 const FLOW_IDS = Object.keys(FLOWS);
+/** Awakening: a style's own transformation. Big plays fill the bar; when it is full, Z (or the Flow button) starts it.
+    For AWAKEN_TIME seconds: cooldowns reset and recharge twice as fast, ability effects last 50% longer, plus the style's own power */
+const AWAKEN_TIME = 20;
+const AWAKEN_ALL = 'Cooldowns reset and recharge twice as fast, and ability effects last 50% longer.';
 const RAW_FLOW_DESC = 'No Flow equipped: +8% speed. Equip one from Flow Spins for a bigger buff.';
 
 const ITEMS = {
@@ -3273,13 +3391,13 @@ const ITEM_IDS = Object.keys(ITEMS);
 /* ---------- skins: looks only, they never change stats ----------
    Every slot has a free base skin that everyone owns. The rest come from Skin Spins (and later the game pass). */
 const SKIN_SLOTS = [
-  { id: 'hair', name: 'HAIR', base: 'STYLE_HAIR' }, { id: 'color', name: 'COLOUR', base: 'STYLE_COLOR' },
+  { id: 'hair', name: 'HAIR', base: 'STYLE_HAIR' }, { id: 'color', name: 'COLOUR', base: 'STYLE_COLOR' }, { id: 'kit', name: 'KIT', base: 'TEAM_KIT' },
   { id: 'boots', name: 'BOOTS', base: 'TEAM_BOOTS' }, { id: 'gloves', name: 'GLOVES', base: 'NO_GLOVES' },
   { id: 'acc', name: 'EXTRA', base: 'NO_ACC' }, { id: 'celeb', name: 'GOAL', base: 'JUMP' },
 ];
 const SKINS = {
   STYLE_HAIR: { slot: 'hair', name: 'STYLE CUT', rarity: 'Rare', base: true, desc: 'The haircut that comes with your style.' },
-  CROP: { slot: 'hair', name: 'CROP', rarity: 'Rare', shape: 'short' },
+  CROP: { slot: 'hair', name: 'CROP', rarity: 'Rare', shape: 'crop' },
   MANE: { slot: 'hair', name: 'MANE', rarity: 'Rare', shape: 'long' },
   BOB: { slot: 'hair', name: 'BOB', rarity: 'Rare', shape: 'bob' },
   TOP_BUN: { slot: 'hair', name: 'TOP BUN', rarity: 'Rare', shape: 'bun' },
@@ -3322,6 +3440,15 @@ const SKINS = {
   GOLD_CHAIN: { slot: 'acc', name: 'GOLD CHAIN', rarity: 'Legendary', acc: 'chain', hex: '#ffc93d' },
   CHROME_MASK: { slot: 'acc', name: 'CHROME MASK', rarity: 'Mythic', acc: 'mask', hex: '#b8c4d6', glow: 0.35 },
   ICE_CHAIN: { slot: 'acc', name: 'ICE CHAIN', rarity: 'Generational', acc: 'chain', hex: '#7ff6ff', glow: 0.8 },
+  // kits: a pattern (and trim) on your team's colours, so teammates can still tell the sides apart
+  TEAM_KIT: { slot: 'kit', name: 'CLUB KIT', rarity: 'Rare', base: true, desc: 'Your club kit, just as it is.' },
+  PINSTRIPE: { slot: 'kit', name: 'PINSTRIPE', rarity: 'Rare', pattern: 'pinstripe', desc: 'Thin stripes in your team colours.' },
+  CHEVRON: { slot: 'kit', name: 'CHEVRON', rarity: 'Rare', pattern: 'chevron', desc: 'Arrows pointing up the shirt.' },
+  CHECKER: { slot: 'kit', name: 'CHECKER', rarity: 'Epic', pattern: 'checker', desc: 'A checkerboard shirt.' },
+  LIGHTNING: { slot: 'kit', name: 'LIGHTNING', rarity: 'Epic', pattern: 'bolt', trim: '#ffe14d', desc: 'A bolt across the chest and yellow trim.' },
+  BLAZE: { slot: 'kit', name: 'BLAZE', rarity: 'Legendary', pattern: 'flames', trim: '#ffb02e', desc: 'Flames up from the hem and orange trim.' },
+  GOLD_TRIM: { slot: 'kit', name: 'GOLD TRIM', rarity: 'Legendary', pattern: 'plain', trim: '#ffd54a', desc: 'Your club kit with a gold collar, cuffs and number.' },
+  STARFIELD: { slot: 'kit', name: 'STARFIELD', rarity: 'Mythic', pattern: 'stars', trim: '#ffffff', desc: 'A shirt full of stars, with white trim.' },
   JUMP: { slot: 'celeb', name: 'BIG JUMP', rarity: 'Rare', base: true, celeb: 'jump', desc: 'Jump for joy with both arms up.' },
   AIRPLANE: { slot: 'celeb', name: 'AIRPLANE', rarity: 'Rare', celeb: 'plane', desc: 'Arms out wide, tilting side to side.' },
   SHUSH: { slot: 'celeb', name: 'SHUSH', rarity: 'Epic', celeb: 'shush', desc: 'A finger to the lips for the away fans.' },
@@ -3343,13 +3470,14 @@ function lookFor(styleId, look = {}) {
   return {
     hairShape: S('hair').shape || st.hairShape, hair: S('color').hex || st.hair, prism: !!S('color').prism,
     boots: S('boots').hex || null, sparkle: !!S('boots').sparkle, gloves: S('gloves').hex || null,
+    kitPattern: S('kit').pattern || null, kitTrim: S('kit').trim || null,
     acc: acc.acc ? { kind: acc.acc, hex: acc.hex, glow: acc.glow || 0 } : null, celeb: S('celeb').celeb || 'jump',
   };
 }
 /** bots wear a few skins too, so matches show them off */
 function botLook() {
   const any = (slot, p) => (chance(p) ? pick(SKIN_IDS.filter((k) => SKINS[k].slot === slot)) : null);
-  return { boots: any('boots', 0.4), color: any('color', 0.2), acc: any('acc', 0.22), gloves: any('gloves', 0.15), celeb: any('celeb', 0.6) };
+  return { boots: any('boots', 0.4), color: any('color', 0.2), kit: any('kit', 0.15), acc: any('acc', 0.22), gloves: any('gloves', 0.15), celeb: any('celeb', 0.6) };
 }
 
 /* ---------- clubs and kits ----------
@@ -3464,6 +3592,51 @@ const CHALLENGES = {
   comeback: { name: 'WIN AFTER FALLING BEHIND', goal: 1, xp: 600 },
 };
 const CHALLENGE_IDS = Object.keys(CHALLENGES);
+
+/* ---------- daily: a free gift and one challenge each day. No streaks: missing a day costs nothing ---------- */
+const DAILY_CHALLENGES = {
+  goals: { name: 'SCORE 2 GOALS', goal: 2 }, assists: { name: 'GET 2 ASSISTS', goal: 2 }, tackles: { name: 'MAKE 4 TACKLES', goal: 4 },
+  shots: { name: 'TAKE 6 SHOTS', goal: 6 }, win: { name: 'WIN A MATCH', goal: 1 }, volley: { name: 'SCORE A VOLLEY OR HEADER', goal: 1 },
+  ankles: { name: 'BREAK 2 ANKLES', goal: 2 }, curler: { name: 'SCORE WITH A CURLER', goal: 1 }, played: { name: 'PLAY 3 MATCHES', goal: 3 },
+  awakens: { name: 'AWAKEN 2 TIMES', goal: 2 },
+};
+const DAILY_IDS = Object.keys(DAILY_CHALLENGES);
+const DAILY_REWARD = { emeralds: 150, xp: 200 };
+const GIFTS = [[45, { emeralds: 100 }], [25, { emeralds: 150 }], [15, { emeralds: 250 }], [10, { xp: 300 }], [5, { emeralds: 500, jackpot: true }]];
+/** today on this device, so the day turns over at your own midnight */
+function dayKey(t = Date.now()) { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function dailyFor(key) { let h = 7; for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0; return DAILY_IDS[h % DAILY_IDS.length]; }
+const Daily = {
+  /** a new day: a new challenge */
+  sync(d) { const k = dayKey(); if (d.daily.day !== k) Object.assign(d.daily, { day: k, ch: dailyFor(k), prog: 0, done: false }); },
+  giftReady(d) { return d.daily.gift !== dayKey(); },
+  openGift(d) {
+    if (!this.giftReady(d)) return null;
+    d.daily.gift = dayKey();
+    let r = Math.random() * 100, g = GIFTS[0][1];
+    for (const [w, x] of GIFTS) { if (r < w) { g = x; break; } r -= w; }
+    if (g.emeralds) d.emeralds += g.emeralds;
+    if (g.xp) d.xp += g.xp;
+    return g;
+  },
+  /** after a match: count it towards today's challenge */
+  award(d, m, res, hs) {
+    this.sync(d);
+    const C = DAILY_CHALLENGES[d.daily.ch];
+    if (!C) return null;
+    const out = { name: C.name, goal: C.goal, prog: d.daily.prog, done: d.daily.done, now: false };
+    if (res === 'forfeit' || d.daily.done) return out;
+    const f = m.feats || {}, win = res === 'win';
+    const got = { goals: hs.goals || 0, assists: hs.assists || 0, tackles: hs.tackles || 0, shots: hs.shots || 0, win: win ? 1 : 0, volley: f.volley || 0,
+      ankles: f.ankles || 0, curler: f.curler || 0, played: 1, awakens: f.awakens || 0 }[d.daily.ch] || 0;
+    d.daily.prog = Math.min(C.goal, d.daily.prog + got);
+    if (d.daily.prog >= C.goal) { d.daily.done = true; d.emeralds += DAILY_REWARD.emeralds; d.xp += DAILY_REWARD.xp; out.now = true; }
+    out.prog = d.daily.prog; out.done = d.daily.done;
+    return out;
+  },
+  /** how long until the next day, as 5H 12M */
+  untilTomorrow() { const n = new Date(), t = new Date(n.getFullYear(), n.getMonth(), n.getDate() + 1) - n, h = Math.floor(t / 3.6e6), mm = Math.floor(t / 6e4) % 60; return h + 'H ' + mm + 'M'; },
+};
 /** four challenges a week: every fourth week the classic set, otherwise a fixed shuffle for that week */
 function weekChallenges(week) {
   if (((week % 4) + 4) % 4 === 0) return ['curler', 'tackles', 'cleanSheet', 'diamond'];
@@ -3584,7 +3757,7 @@ class Match {
     this.aim = V3(0, 1, F.L); this.camYaw = 0; this.aimOnTarget = false;
     this.ctl = null; this.autopilot = !!opts.autopilot; this.thinkPass = opts.thinkPass !== false;
     this.online = !!opts.humans; this.humans = []; // online: every remote player, each with their own controls (p.ctl)
-    this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, trailed: false }; // your moments, for the weekly challenges this.lastGoal = null; this.pendingEnd = false;
+    this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, awakens: 0, trailed: false }; // your moments, for the weekly challenges this.lastGoal = null; this.pendingEnd = false;
     // your club at home against a random other club; the away side changes kit if the colours clash
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
     const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
@@ -3645,7 +3818,7 @@ class Match {
   oppGoalZ(team) { return this.dir(team) * F.L; }
   ownGoalZ(team) { return -this.dir(team) * F.L; }
   prog(team, pos) { return pos.z * this.dir(team); }
-  skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.size) * 0.07, 0.45, 1.2) : s; } // keepers get a boost in small teams, where they face more shots
+  skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.size) * 0.11 + Math.max(0, s - 0.6) * 0.5, 0.45, 1.4) : s; } // keepers get a boost in small teams (they face more shots) and against very good bots (who shoot from far)
   opponents(p) { return this.teams[1 - p.team]; }
   inOwnBox(p, pos = p.pos) {
     const gz = this.ownGoalZ(p.team);
@@ -3780,7 +3953,9 @@ class Match {
       this.tackle(p, tx, tz);
     }
     for (let i = 0; i < 3; i++) if (c.ab[i]) this.useAbility(p, i);
-    if (c.flow) { if (!this.activateFlow(p) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
+    if (c.awaken && !this.activateAwaken(p) && p.awakeT <= 0) { this.toast('AWAKENING NOT READY', 'bad', p); Sfx.deny(); }
+    // the Flow button also awakens you when the Awakening bar is full and Flow is not
+    if (c.flow) { if (!this.activateFlow(p) && !this.activateAwaken(p) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
     if (c.item) this.useItem(p);
   }
   pickPassTarget(p) {
@@ -4222,10 +4397,13 @@ class Match {
     const a = p.abil[i];
     if (!a || !this.canAct(p)) return false;
     if (a.cd > 0) { if (p.isHuman) Sfx.deny(); return false; }
+    const before = p.awakeT > 0 ? Object.assign({}, p.fx) : null;
     const res = a.def.use(p, this);
     if (res === true) {
+      // awakened: whatever the ability switched on lasts 50% longer
+      if (before) for (const k in p.fx) { const d = p.fx[k] - (before[k] || 0); if (d > 0) p.fx[k] = (before[k] || 0) + d * 1.5; }
       a.cd = a.def.cd;
-      this.label(p, a.def.name, p.aura);
+      this.label(p, a.def.name + (before ? '+' : ''), p.aura);
       Sfx.ability();
       if (a.def.big) this.cinematic(p, a.def.name);
       return true;
@@ -4234,10 +4412,31 @@ class Match {
     return false;
   }
   flowAdd(p, amt) {
+    if (p && amt >= 10) this.awakeAdd(p, amt); // big plays fill the Awakening bar too
     if (!p || p.flowT > 0) return;
     const before = p.flow;
     p.flow = Math.min(100, p.flow + amt);
     if (p.isHuman && before < 100 && p.flow >= 100) { this.toast(Touch.on ? 'FLOW READY. TAP FLOW' : 'FLOW READY. PRESS G', 'gold', p); Sfx.coin(); Hud.flowReady(); }
+  }
+  awakeAdd(p, amt) {
+    if (!p || p.isGK || p.awakeT > 0 || !p.style.awaken) return;
+    const before = p.awake;
+    p.awake = Math.min(100, p.awake + amt * 0.7);
+    if (p.isHuman && before < 100 && p.awake >= 100) { this.toast(Touch.on ? 'AWAKENING READY. TAP FLOW' : 'AWAKENING READY. PRESS Z', 'gold', p); Sfx.coin(); }
+  }
+  /** your style's Awakening: a burst of light, then AWAKEN_TIME seconds of its powers */
+  activateAwaken(p) {
+    const aw = p.style.awaken;
+    if (!aw || p.isGK || p.awake < 100 || p.awakeT > 0 || !this.canAct(p)) return false;
+    p.awake = 0; p.awakeT = AWAKEN_TIME;
+    for (const a of p.abil) a.cd = 0;
+    if (p.isHuman) this.featsOf(p).awakens++;
+    this.label(p, 'AWAKENED · ' + aw.name, p.aura, 2.4);
+    FX.awakenBurst(p);
+    Sfx.flow(); Sfx.cutin();
+    if (p.isHuman) { if (!this.cinematic(p, 'AWAKENING · ' + aw.name)) TimeCtl.slowMo(0.35, 0.8); Shake.add(0.4); }
+    else Shake.add(0.12);
+    return true;
   }
   activateFlow(p) {
     if (p.flow < 100 || p.flowT > 0 || !this.canAct(p)) return false;
@@ -4249,9 +4448,14 @@ class Match {
       const what = p.gamble.speed && p.gamble.shot ? 'JACKPOT' : p.gamble.speed ? 'SPEED' : p.gamble.shot ? 'POWER' : 'STAMINA';
       this.label(p, 'GAMBLE: ' + what, '#ffcb3d');
       if (p.isHuman) this.toast('GAMBLE ROLLED ' + what, 'gold', p);
-    } else this.label(p, f ? f.name : 'FLOW', p.aura);
+    } else this.label(p, f ? f.name : 'FLOW', f ? f.color : p.aura);
+    if (f && f.start) {
+      if (f.start.stamina) { p.stamina = 100; p.exhausted = false; }
+      if (f.start.resetCd) for (const a of p.abil) a.cd = 0;
+    }
     p.P.eyes.visible = true;
-    FX.sparks(p.pos.x, 1, p.pos.z, p.aura, 40, 8, 0.2); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.4, 24);
+    const fc = f ? f.color : p.aura;
+    FX.sparks(p.pos.x, 1, p.pos.z, fc, 40, 8, 0.2); FX.ring(p.pos.x, 0.2, p.pos.z, fc, 1.4, 24);
     Sfx.flow();
     if (p.isHuman) { if (!this.cinematic(p, 'FLOW · ' + (f ? f.name : 'RAW'))) TimeCtl.slowMo(0.3, 0.7); Shake.add(0.25); }
     return true;
@@ -4265,7 +4469,7 @@ class Match {
     return true;
   }
   /** a human's moments for the weekly challenges (online each player has their own) */
-  featsOf(p) { return this.online ? (p.feats || (p.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, trailed: false })) : this.feats; }
+  featsOf(p) { return this.online ? (p.feats || (p.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, awakens: 0, trailed: false })) : this.feats; }
   /* ---------- King of the Hill ---------- */
   buildHill() {
     const g = new THREE.Group();
@@ -4410,7 +4614,7 @@ class Match {
     const t = clamp(((b.pos.x - ax) * abx + (b.pos.y - ay) * aby + (b.pos.z - az) * abz) / l2, 0, 1);
     const cx = ax + abx * t, cy = ay + aby * t, cz = az + abz * t;
     const dist = Math.hypot(b.pos.x - cx, b.pos.y - cy, b.pos.z - cz);
-    const reach = (gk.state === 'dive' ? 0.62 : 0.58) + (5 - this.size) * 0.1; // longer reach in small teams, where keepers face more shots
+    const reach = (gk.state === 'dive' ? 0.62 : 0.58) + (5 - this.size) * 0.14; // longer reach in small teams, where keepers face more shots
     if (dist > BALL_R + reach) return;
     const k = b.kick;
     const shooter = k && k.by && k.by.team !== gk.team && k.type === 'shot' ? k.by : null;
@@ -4759,7 +4963,8 @@ class Match {
   /* ---------- per-frame visual effects ---------- */
   updateFx(dt) {
     for (const p of this.players) {
-      if (p.flowT > 0) FX.aura(p, p.aura, dt);
+      if (p.flowT > 0) FX.flow(p, p.flowId, dt);
+      if (p.awakeT > 0) FX.awaken(p, dt);
       if (p.fx.turbo > 0 && p.onGround && len2D(p.vel.x, p.vel.z) > 6 && Math.random() < 0.7) FX.dust(p.pos.x, p.pos.z, 1);
       if (p.fx.feathers > 0 && Math.random() < 0.8) FX.feathers(p.pos.x, p.pos.y + 0.4, p.pos.z, '#121018', 1);
       if (p.fx.shuffle > 0 && Math.random() < 0.4) FX.trail(p.pos.x + rand(-0.5, 0.5), rand(0.4, 1.6), p.pos.z + rand(-0.5, 0.5), p.aura, 0.12, 0.4);
@@ -4986,6 +5191,7 @@ const AI = {
       }
     }
     if (p.flow >= 100 && p.flowT <= 0 && ((c.hasBall && c.dGoal < 32) || (c.defending && c.carrierDist < 10)) && chance(0.5)) m.activateFlow(p);
+    if (p.awake >= 100 && p.awakeT <= 0 && ((c.hasBall && c.dGoal < 30) || (c.defending && c.carrierDist < 8)) && chance(0.4)) m.activateAwaken(p);
     if (p.item && ITEMS[p.item].ai(p, m, c) && chance(0.55)) m.useItem(p);
     if (p.state !== 'free') return;
     if (m.ball.owner === p) this.decideCarrier(m, p, c, sk);
@@ -5469,6 +5675,7 @@ const Input = {
       tackle: e.has('KeyF') || e.has('PadX') || e.has('T_tackle'),
       ab: [e.has('KeyQ') || (e.has('PadLeft') && !chatPad) || e.has('T_ab0'), e.has('KeyE') || (e.has('PadUp') && !chatPad) || e.has('T_ab1'), e.has('KeyR') || (e.has('PadRight') && !chatPad) || e.has('T_ab2')],
       flow: e.has('KeyG') || e.has('PadY') || e.has('T_flow'),
+      awaken: e.has('KeyZ'), // the Flow button (G, Y, FLOW) awakens you too when only the Awakening bar is full
       item: e.has('KeyX') || (e.has('PadDown') && !chatPad) || e.has('T_item'),
       board: k.has('Tab') || this.padHeld(PAD.BACK) || T.board,
     };
@@ -5887,9 +6094,9 @@ const Touch = {
       this.setCd(k, a.cd > 0 ? clamp(a.cd / a.def.cd, 0, 1) : 0, a.cd > 0 ? String(Math.ceil(a.cd)) : '');
       this.tog(b[k], 'ready', a.cd <= 0);
     }
-    const fr = p.flow >= 100 && p.flowT <= 0;
-    this.tog(b.flow, 'ready', fr); this.tog(b.flow, 'active', p.flowT > 0); this.tog(b.flow, 'off', !fr && p.flowT <= 0);
-    this.setLabel('flow', p.flowT > 0 ? Math.ceil(p.flowT) + 'S' : fr ? 'FLOW!' : Math.floor(p.flow) + '%');
+    const fr = p.flow >= 100 && p.flowT <= 0, ar = !fr && p.awake >= 100 && p.awakeT <= 0 && !!p.style.awaken; // one button: FLOW, or AWAKEN when only that bar is full
+    this.tog(b.flow, 'ready', fr || ar); this.tog(b.flow, 'active', p.flowT > 0 || p.awakeT > 0); this.tog(b.flow, 'off', !fr && !ar && p.flowT <= 0 && p.awakeT <= 0); this.tog(b.flow, 'awaken', ar || (p.awakeT > 0 && p.flowT <= 0));
+    this.setLabel('flow', p.flowT > 0 ? Math.ceil(p.flowT) + 'S' : fr ? 'FLOW!' : ar ? 'AWAKEN!' : p.awakeT > 0 ? Math.ceil(p.awakeT) + 'S' : Math.floor(p.flow) + '%');
     if (m.cfg.items) {
       const key = p.item || '';
       if (c.item !== key) {
@@ -5953,7 +6160,7 @@ const Account = {
     if (this.token) headers.Authorization = 'Bearer ' + this.token;
     return fetch(this.base() + '/api/' + path, { method: body ? 'POST' : 'GET', headers, body: body ? JSON.stringify(body) : undefined, keepalive: !!(body && body.keep) })
       .then((r) => r.json().catch(() => ({ error: 'THE SERVER SENT SOMETHING ODD' })))
-      .catch(() => ({ error: 'CANNOT REACH THE SERVER' }));
+      .catch(() => ({ error: Net.noServerText() }));
   },
   /** what goes up to the server: the progress, not this device's settings or sign-in */
   payload() { const d = Object.assign({}, Save.data); delete d.account; delete d.settings; return d; },
@@ -6306,6 +6513,8 @@ const Net = {
     if (location.protocol === 'file:' || !location.host) return 'ws://localhost:8787/ws';
     return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
   },
+  /** what to say when the server cannot be reached: opened as a file, nothing is running yet */
+  noServerText() { return location.protocol === 'file:' ? 'NO SERVER IS RUNNING. IN THE VS CODE TERMINAL TYPE NPM RUN SERVER, THEN OPEN LOCALHOST:8787' : 'CANNOT REACH THE SCORZ SERVER RIGHT NOW. TRY AGAIN IN A LITTLE WHILE.'; },
   cleanName(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12); },
   setStatus(t) { this.status = t; const el = $('on-status'); if (el) el.textContent = t; },
   open() { Touch.autoFs(); UI.show('online'); this.renderRoom(); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },
@@ -6326,7 +6535,7 @@ const Net = {
       this.ws = null; this.room = null; Portal.room(null);
       if (wasPlaying) { Game.toLobby(); UI.show('online'); }
       this.renderRoom();
-      this.setStatus(wasPlaying ? 'LOST THE CONNECTION TO THE SERVER' : 'CANNOT REACH THE SERVER. IS IT RUNNING? (SEE SERVER ADDRESS)');
+      this.setStatus(wasPlaying ? 'LOST THE CONNECTION TO THE SERVER' : this.noServerText());
     };
   },
   close() { if (this.ws) { this.ws.onclose = null; try { this.ws.close(); } catch (e) {} } this.ws = null; this.room = null; this.renderRoom(); },
@@ -6488,7 +6697,7 @@ const Net = {
     if (m.me && nm.human) {
       const p = nm.human, me = m.me;
       p.abil.forEach((a, i) => { a.cd = me.cd[i] || 0; });
-      p.flow = me.fl; p.flowT = me.ft; p.stamina = me.st; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
+      p.flow = me.fl; p.flowT = me.ft; p.awake = me.aw || 0; p.awakeT = me.awt || 0; p.stamina = me.st; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
       for (const k in p.fx) p.fx[k] = 0;
       Object.assign(p.fx, me.fx || {});
     }
@@ -6547,6 +6756,9 @@ const Net = {
       p.kickT = B[9] >= 0 ? Math.min(0.999, B[9] + since / 0.3) : -1; p.kickStyle = NET_KICKS[B[10]] || null;
       const f = B[11];
       p.charging = !!(f & 1); p.onGround = !!(f & 2); p.flowT = f & 4 ? Math.max(p.flowT, 1) : 0; p.callT = f & 8 ? 0.5 : 0;
+      const aw = !!(f & 128);
+      if (aw && !(p.awakeT > 0)) { FX.awakenBurst(p); if (p === nm.human) Shake.add(0.4); } // someone just awakened
+      p.awakeT = aw ? Math.max(p.awakeT, 1) : 0;
       p.fx.shuffle = f & 16 ? 1 : 0; p.fx.lockdown = f & 32 ? 1 : 0; p.fx.bubble = f & 64 ? 1 : 0;
       p.charge = B[12];
       p.dive = st === 'dive' ? { side: B[13], high: !!B[14], dur: B[15] } : null;
@@ -6570,7 +6782,7 @@ const Net = {
     if (!c) { this.held = null; return; }
     const P = this.pend;
     P.jump = P.jump || c.jump; P.sd = P.sd || c.shootDown; P.su = P.su || c.shootUp; P.pd = P.pd || c.passDown; P.pu = P.pu || c.passUp;
-    P.dodge = P.dodge || c.dodge; P.tackle = P.tackle || c.tackle; P.flow = P.flow || c.flow;
+    P.dodge = P.dodge || c.dodge; P.tackle = P.tackle || c.tackle; P.flow = P.flow || c.flow; P.aw = P.aw || c.awaken;
     P.a0 = P.a0 || c.ab[0]; P.a1 = P.a1 || c.ab[1]; P.a2 = P.a2 || c.ab[2];
     this.held = c;
   },
@@ -6591,6 +6803,7 @@ const Net = {
     if (this.sendT <= 0) { this.sendT = 1 / 30; this.sendInput(); }
     Input.consumeEdges();
     this.applySnapshots(rdt);
+    for (const p of nm.players) { if (p.flowT > 0) FX.flow(p, p.flowId, rdt); if (p.awakeT > 0) FX.awaken(p, rdt); }
     FX.update(rdt); Shake.update(rdt);
     Cam.follow(rdt, nm);
     UI.updateHud(nm, rdt);
@@ -6918,6 +7131,7 @@ const Reveal = {
 const SHOW_FOV = 34, SHOW_H = 2.55, SHOW_MID = 1.08, SHOW_CAM_Y = 1.2, SHOW_YAW = Math.PI + 0.3, SHOW_G = 13;
 const SHOW_FACE = -0.55; // the player stands turned a little toward the menu, so the ball never hides the face
 const SHOW_FACE_LOCKER = -0.2;
+const SHOW_BALL = 0.65, SHOW_DROP = BALL_R * (1 - SHOW_BALL); // the ball on the start screen is smaller than the match ball
 // each touch: [body part, ball height, reach in front, side, how high it pops above the next touch]
 const JUGGLE = [
   ['R', 0.55, 0.5, -0.12, 0.7], ['L', 0.55, 0.5, 0.12, 0.65], ['R', 0.55, 0.5, -0.12, 0.75], ['K', 0.86, 0.62, -0.12, 0.45],
@@ -6942,7 +7156,7 @@ const Showcase = {
     beam.rotation.y = Math.PI / 4; beam.position.y = 7;
     if (!BALL_GEO) BALL_GEO = makeBallGeometry();
     this.ball = new THREE.Mesh(BALL_GEO, new THREE.MeshLambertMaterial({ vertexColors: true }));
-    this.ball.castShadow = true;
+    this.ball.castShadow = true; this.ball.scale.setScalar(SHOW_BALL);
     g.add(glow, this.ring, beam, this.ball);
     g.visible = false;
     World.scene.add(g);
@@ -7015,6 +7229,7 @@ const Showcase = {
     if (this.spec && this.spec.celebrate) this.celebrate(dt); else if (this.mode !== 'lobby') this.idle(dt); else this.animate(dt);
     this.p.P.root.visible = this.p.blob.visible = !this.hidePlayer; // the spin hides you until the block cracks
     this.ball.visible = this.mode !== 'reveal';
+    if (this.flow && !this.hidePlayer && FLOWS[this.flow]) FX.flow(this.p, this.flow, dt * 0.6);
     this.frame();
   },
   /** Locker pose: stand still with the ball at your feet, so the whole outfit is in view */
@@ -7031,7 +7246,7 @@ const Showcase = {
     P.eyes.visible = !!this.flow;
     p.blob.position.set(0, 0.025, 0); p.blob.scale.set(1, 1, 1);
     const sy = Math.sin(yaw), cy = Math.cos(yaw), fwd = 0.34, side = -0.44;
-    this.ball.position.set(sy * fwd + cy * side, BALL_R, cy * fwd - sy * side);
+    this.ball.position.set(sy * fwd + cy * side, BALL_R * SHOW_BALL, cy * fwd - sy * side);
   },
   /** loop the goal celebration in place, with the ball resting on the grass */
   celebrate(dt) {
@@ -7044,7 +7259,7 @@ const Showcase = {
     p.yaw = SHOW_YAW + this.turn;
     p.animate(dt);
     p.P.eyes.visible = !!this.flow;
-    this.ball.position.set(Math.sin(p.yaw + 1.2) * 0.9, BALL_R, Math.cos(p.yaw + 1.2) * 0.9);
+    this.ball.position.set(Math.sin(p.yaw + 1.2) * 0.9, BALL_R * SHOW_BALL, Math.cos(p.yaw + 1.2) * 0.9);
   },
   animate(dt) {
     const p = this.p, P = p.P, j = this.j, n = JUGGLE.length;
@@ -7073,7 +7288,7 @@ const Showcase = {
     p.blob.position.set(0, 0.025, 0); p.blob.scale.set(1, 1, 1);
     // ball in the player's frame: forward is (sin yaw, cos yaw), side is (cos yaw, -sin yaw)
     const sy = Math.sin(yaw), cy = Math.cos(yaw);
-    this.ball.position.set(sy * fwd + cy * side, by, cy * fwd - sy * side);
+    this.ball.position.set(sy * fwd + cy * side, by - SHOW_DROP, cy * fwd - sy * side); // touches land on the smaller ball's edge
     this.ball.rotation.x += dt * 7; this.ball.rotation.z += dt * 2;
     this.ring.rotation.y += dt * 0.6;
     this.glowMat.opacity = 0.72 + Math.sin(this.t * 2.4) * 0.08;
@@ -7124,7 +7339,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + this.tplDaily() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -7161,7 +7376,7 @@ const UI = {
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
           <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
-          <div class="ghosts"><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button></div>
+          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button></div>
         </nav>
       </div>
       <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
@@ -7238,6 +7453,7 @@ const UI = {
             ${row(key('F'), 'Slide tackle')}
             ${row(key('Q') + key('E') + key('R'), 'Style abilities. Big moves get a quick cut-in; turn them off in the pause menu')}
             ${row(key('G'), 'Activate Flow when the bar is full')}
+            ${row(key('Z'), 'Awaken when the Awakening bar is full: 20s of your style\'s own power. G works too when only that bar is full')}
             ${row(key('X'), 'Use item (Lawless)')}
             ${row(key('TAB'), 'Scoreboard')}
             ${row(key('1') + key('2') + key('3') + key('4'), 'Online: quick chat. PASS!, NICE!, GG, ON ME')}
@@ -7260,6 +7476,7 @@ const UI = {
             <li><b>The keeper</b> reacts to where the ball is going. Corners, curlers and fakes beat him.</li>
           </ul></section>
           <section class="panel"><h3>FLOW, SPINS, RANK</h3><ul>
+            <li><b>Awakening</b> is your style's own power-up. Goals, assists, shots on target, tackles and tricks fill its bar. When it is full, press Z (or the Flow button) for 20 seconds of it: your cooldowns reset and recharge twice as fast, your abilities last longer, and you get your style's own boost.</li>
             <li><b>Flow</b> fills from completed passes, dodges, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
             <li><b>Emeralds:</b> win 150, draw 80, loss 50, plus 20 a goal and 10 an assist.</li>
             <li><b>Spins</b> cost 200. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
@@ -7373,12 +7590,42 @@ const UI = {
       <canvas id="minimap" width="132" height="200"></canvas>
       <div class="dock">
         <div class="flowbar" id="flowbar"><div class="lbl"><span id="flow-name">FLOW</span><b id="flow-txt">0%</b></div><div class="track"><div class="fill" id="flow-fill"></div><div class="ticks"></div></div></div>
+        <div class="flowbar awakebar" id="awakebar"><div class="lbl"><span id="awake-name">AWAKENING</span><b id="awake-txt">0%</b></div><div class="track"><div class="fill" id="awake-fill"></div></div></div>
         <div class="stamina" id="stamina"></div>
         <div class="hotbar" id="hotbar"></div>
       </div>
       <div class="itemslot" id="itemslot" hidden><div class="slot"><img class="px" id="item-img" alt=""><span class="key k">X</span><span class="nm" id="item-nm"></span></div></div>
       <div class="hint" id="hint" hidden></div>
     </section>`;
+  },
+  tplDaily() {
+    return `<section id="scr-daily" class="overlay" hidden>
+      <div class="dialog panel daily-box">
+        <h2>DAILY</h2>
+        <div class="dl-card"><span class="label">TODAY'S GIFT</span><div id="dl-gift"></div></div>
+        <div class="dl-card"><span class="label">TODAY'S CHALLENGE</span><div id="dl-ch"></div></div>
+        <p class="label">A new gift and a new challenge every day. No streaks: missing a day costs nothing.</p>
+        <button class="btn" id="dl-close" type="button">CLOSE</button>
+      </div>
+    </section>`;
+  },
+  renderDaily() {
+    const d = Save.data; Daily.sync(d);
+    const C = DAILY_CHALLENGES[d.daily.ch];
+    $('dl-gift').innerHTML = Daily.giftReady(d) ? '<button class="btn emerald" id="dl-open" type="button">OPEN TODAY\'S GIFT</button>'
+      : `<b class="dl-big">${esc(this.giftText || 'OPENED')}</b><span class="label">NEXT GIFT IN ${Daily.untilTomorrow()}</span>`;
+    const pct = C ? d.daily.prog / C.goal * 100 : 0;
+    $('dl-ch').innerHTML = C ? `<b class="dl-big">${esc(C.name)}</b><div class="xpbar"><i style="width:${pct.toFixed(0)}%"></i></div>`
+      + `<span class="label">${d.daily.done ? 'DONE! NEW CHALLENGE IN ' + Daily.untilTomorrow() : d.daily.prog + ' / ' + C.goal + ' · REWARD +' + DAILY_REWARD.emeralds + ' EMERALDS, +' + DAILY_REWARD.xp + ' XP'}</span>` : '';
+    const o = $('dl-open');
+    if (o) o.addEventListener('click', () => {
+      Sfx.init();
+      const g = Daily.openGift(Save.data); if (!g) return;
+      Save.save();
+      this.giftText = g.emeralds ? (g.jackpot ? 'JACKPOT! ' : '') + '+' + g.emeralds + ' EMERALDS' : '+' + g.xp + ' XP';
+      if (g.jackpot) Sfx.fanfare(2); else Sfx.coin();
+      this.renderDaily(); this.renderLobby();
+    });
   },
   tplCutin() {
     return `<div id="cutin" hidden aria-hidden="true"><div class="ci-lines"></div><div class="ci-panel"><span class="ci-face" id="ci-face"></span><div class="ci-text"><b id="ci-name"></b><span id="ci-style"></span></div></div></div>`;
@@ -7424,6 +7671,7 @@ const UI = {
         <div class="rankline" id="r-rank"></div>
         <div class="xpline" id="r-xp"></div>
         <div class="passline" id="r-pass"></div>
+        <div class="passline" id="r-daily"></div>
         <div class="row"><button class="btn blue" id="r-again" type="button">PLAY AGAIN</button><button class="btn" id="r-lobby" type="button">LOBBY</button></div>
       </div>
     </section>`;
@@ -7438,6 +7686,8 @@ const UI = {
     click('go-spins', () => this.openSpins());
     click('go-locker', () => this.openLocker());
     click('go-howto', () => this.show('howto'));
+    click('go-daily', () => { this.renderDaily(); $('scr-daily').hidden = false; });
+    click('dl-close', () => { $('scr-daily').hidden = true; });
     click('go-profile', () => this.show('profile'));
     click('go-pass', () => this.show('pass'));
     click('go-online', () => Net.open());
@@ -7484,6 +7734,7 @@ const UI = {
     window.addEventListener('keydown', (e) => {
       if (Game.playing() || Game.state === 'paused') return;
       if (e.code === 'Escape' && !$('friend-card').hidden) { $('friend-card').hidden = true; return; }
+      if (e.code === 'Escape' && !$('scr-daily').hidden) { $('scr-daily').hidden = true; return; }
       if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass' || this.cur === 'online') && !this.spinning && !(e.target && e.target.tagName === 'INPUT')) this.show('lobby');
     });
   },
@@ -7509,6 +7760,7 @@ const UI = {
     const sz = teamSizeFor('ranked', d.rp);
     $('rank-sub').textContent = TIER_NAMES[tier] + ' · ' + sz + 'V' + sz;
     $('locker-sub').textContent = STYLES[d.style].name + (d.flow ? ' · ' + FLOWS[d.flow].name : '');
+    Daily.sync(d); $('go-daily').classList.toggle('ready', Daily.giftReady(d));
     $('pro-badge').src = badgeURL(tier);
     Pass.sync(d); $('pass-sub').textContent = 'TIER ' + Pass.tier(d) + ' / ' + PASS_TIERS;
     $('pro-tier').textContent = TIER_NAMES[tier];
@@ -7558,11 +7810,12 @@ const UI = {
     html += `<div class="slot small" id="slot-c"><img class="px" src="${iconURL('dash', '#ffffff')}" alt=""><span class="key k">C</span><div class="cd"></div><div class="pips"><i></i><i></i></div><span class="nm">DODGE</span></div>`;
     html += `<div class="slot small" id="slot-f"><img class="px" src="${iconURL('tackle', '#e8e1cf')}" alt=""><span class="key k">F</span><div class="cd"></div><div class="num"></div><span class="nm">TACKLE</span></div>`;
     html += `<div class="slot small" id="slot-g"><img class="px" src="${iconURL('flame', p.aura)}" alt=""><span class="key k">G</span><div class="cd"></div><span class="nm">FLOW</span></div>`;
+    if (p.style.awaken) html += `<div class="slot small awaken" id="slot-z"><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><span class="key k">Z</span><div class="cd"></div><span class="nm">AWAKEN</span></div>`;
     hb.innerHTML = html;
     this.slots = [0, 1, 2].map((i) => ({ el: $('slot' + i), cd: $('slot' + i).querySelector('.cd'), num: $('slot' + i).querySelector('.num'), last: -1 }));
     this.slotC = { el: $('slot-c'), cd: $('slot-c').querySelector('.cd'), pips: $('slot-c').querySelectorAll('.pips i') };
     this.slotF = { el: $('slot-f'), cd: $('slot-f').querySelector('.cd'), num: $('slot-f').querySelector('.num') };
-    this.slotG = { el: $('slot-g') };
+    this.slotG = { el: $('slot-g') }; this.slotZ = $('slot-z');
     const st = $('stamina');
     st.innerHTML = '';
     this.drums = [];
@@ -7570,6 +7823,9 @@ const UI = {
     this.drumURL = { full: iconURL('drum'), half: iconURL('drum', '#fff', 'half'), empty: iconURL('drum', '#fff', 'empty') };
     $('flowbar').style.setProperty('--aura', p.aura);
     $('flow-name').textContent = p.flowId ? 'FLOW · ' + FLOWS[p.flowId].name : 'FLOW';
+    if (p.flowId && FLOWS[p.flowId]) $('flowbar').style.setProperty('--aura', FLOWS[p.flowId].color);
+    $('awakebar').style.setProperty('--aura', p.aura); $('awakebar').hidden = !p.style.awaken;
+    $('awake-name').textContent = p.style.awaken ? (Touch.on ? '' : 'AWAKENING · ') + p.style.awaken.name : 'AWAKENING'; // phones: just the name, the bar is narrow
     $('itemslot').hidden = !m.cfg.items;
     this.mm = $('minimap').getContext('2d');
     this.hudCache = {};
@@ -7605,6 +7861,13 @@ const UI = {
     $('flow-fill').style.width = fpct.toFixed(1) + '%';
     this.setText('flow-txt', p.flowT > 0 ? 'IN FLOW ' + Math.ceil(p.flowT) + 's' : p.flow >= 100 ? (Touch.on ? 'READY' : 'READY [G]') : Math.floor(p.flow) + '%');
     $('flowbar').classList.toggle('ready', p.flow >= 100 && p.flowT <= 0);
+    if (p.style.awaken) {
+      const ar = p.awake >= 100 && p.awakeT <= 0;
+      $('awake-fill').style.width = (p.awakeT > 0 ? p.awakeT / AWAKEN_TIME * 100 : p.awake).toFixed(1) + '%';
+      this.setText('awake-txt', p.awakeT > 0 ? (Touch.on ? '' : 'AWAKENED ') + Math.ceil(p.awakeT) + 's' : ar ? (Touch.on ? 'READY' : 'READY [Z]') : Math.floor(p.awake) + '%');
+      $('awakebar').classList.toggle('ready', ar); $('awakebar').classList.toggle('active', p.awakeT > 0);
+      if (this.slotZ) { this.slotZ.classList.toggle('ready', ar); this.slotZ.classList.toggle('active', p.awakeT > 0); }
+    }
     for (let i = 0; i < 10; i++) {
       const v = p.stamina - i * 10, want = v >= 7.5 ? 'full' : v >= 2.5 ? 'half' : 'empty';
       if (this.drums[i].v !== want) { this.drums[i].v = want; this.drums[i].el.src = this.drumURL[want]; }
@@ -7775,6 +8038,9 @@ const UI = {
     const P = r.pass || { xp: 0, challenges: [], tiers: [] }, pd = Save.data.pass;
     $('r-pass').innerHTML = `<span class="label">GAME PASS · TIER ${Pass.tier(Save.data)} / ${PASS_TIERS} · +${P.xp} XP${P.xp ? '' : (r.res === 'forfeit' || r.idle ? '' : ' (DO SOMETHING ON THE BALL TO EARN PASS XP)')}</span><div class="xpbar pass"><i style="width:${(pd.xp % PASS_TIER_XP) / PASS_TIER_XP * 100}%"></i></div>`
       + P.challenges.map((c) => `<span class="label pl-ch">CHALLENGE DONE: ${esc(c)}</span>`).join('') + P.tiers.map((t) => `<span class="label pl-tier">${esc(t)}</span>`).join('');
+    const D = r.daily;
+    $('r-daily').innerHTML = !D ? '' : D.now ? `<span class="label pl-ch">DAILY CHALLENGE DONE: ${esc(D.name)} +${DAILY_REWARD.emeralds} EMERALDS +${DAILY_REWARD.xp} XP</span>`
+      : `<span class="label">DAILY CHALLENGE · ${esc(D.name)} · ${D.done ? 'DONE' : D.prog + ' / ' + D.goal}</span>`;
     $('hint').hidden = true;
     $('scr-results').hidden = false;
   },
@@ -7878,7 +8144,8 @@ const UI = {
     const head = (sub, blurb) => `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px">${it.chip ? `<span class="chip" style="justify-self:start">${it.chip}</span>` : it.base ? '<span class="chip" style="justify-self:start">FREE</span>' : `<span class="rar" data-r="${it.rarity}" style="justify-self:start">${it.rarity.toUpperCase()}</span>`}<h3>${esc(it.name)}</h3>${sub ? `<span class="label">${sub}</span>` : ''}${blurb ? `<p style="margin:0;color:var(--muted);max-width:46ch">${esc(blurb)}</p>` : ''}</div></div>`;
     if (tab === 'style') {
       const st = STYLES[id];
-      det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}</div>`;
+      det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
+        + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)} Big plays fill the bar.</p></div></div>` : '') + '</div>';
     } else if (tab === 'club') {
       const c = CLUBS[id];
       det.innerHTML = head('', 'The club you play for. Your team wears its kit, and its fans fill your stands.') + `<div class="kits">${[['HOME', c.home], ['AWAY', c.away], ['KEEPER', c.keeper]].map(([n]) => `<div class="kitbox"><span class="kv"></span><span class="label">${n}</span></div>`).join('')}</div>
@@ -8026,10 +8293,11 @@ const Game = {
     B.goals = Math.max(B.goals, hs.goals || 0); B.assists = Math.max(B.assists, hs.assists || 0);
     B.run = res === 'win' ? B.run + 1 : 0; B.streak = Math.max(B.streak, B.run); B.peakRp = Math.max(B.peakRp, d.rp);
     const pass = Pass.award(d, m, earned, hs);
+    const daily = Daily.award(d, m, earned, hs);
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, daily });
     if (res === 'win') Sfx.fanfare(2);
     if (res === 'win' && !idle) Portal.happy();
     Portal.midgame();
@@ -8112,7 +8380,7 @@ const Game = {
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
-  CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx,
+  CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {
@@ -8135,6 +8403,7 @@ window.EGO = {
       const o = m.ball.owner;
       if (o && o.team !== lastOwnerTeam) { log.possessionSwaps++; lastOwnerTeam = o.team; }
       log.phases[m.phase] = (log.phases[m.phase] || 0) + 1 / 60;
+      for (const p of m.players) { if (p.awakeT > 0 && !p._awSeen) { p._awSeen = true; log.awakens = (log.awakens || 0) + 1; } else if (p.awakeT <= 0) p._awSeen = false; }
     }
     for (const p of m.players) { log.saves += p.stats.saves; log.tackles += p.stats.tackles; log.passes += p.stats.passes; log.shots += p.stats.shots; }
     log.score = m.score.slice(); log.goals = m.score[0] + m.score[1]; log.simSeconds = Math.round(t);

@@ -30,6 +30,7 @@ const PlayerGeo = {
 };
 const HAIR_SHAPES = {
   short: [[-0.26, -0.05, -0.26, 0.26, 0.09, 0.26]],
+  crop: [[-0.255, -0.02, -0.255, 0.255, 0.035, 0.255], [-0.14, 0.035, 0.1, 0.14, 0.11, 0.27]], // buzz cut with a small quiff
   long: [[-0.27, -0.06, -0.27, 0.27, 0.1, 0.27], [-0.27, -0.66, -0.3, 0.27, 0.0, -0.17], [-0.28, -0.3, -0.27, -0.2, 0.0, 0.1], [0.2, -0.3, -0.27, 0.28, 0.0, 0.1]],
   bob: [[-0.27, -0.06, -0.27, 0.27, 0.1, 0.27], [-0.29, -0.34, -0.27, -0.2, 0.0, 0.2], [0.2, -0.34, -0.27, 0.29, 0.0, 0.2], [-0.27, -0.38, -0.3, 0.27, 0.0, -0.17], [-0.27, -0.12, 0.2, 0.27, 0.02, 0.3]],
   swept: [[-0.27, -0.06, -0.27, 0.27, 0.12, 0.27], [-0.27, -0.3, -0.3, 0.27, 0.0, -0.18], [-0.27, 0.02, 0.12, 0.27, 0.2, 0.32]],
@@ -93,7 +94,7 @@ class Player {
     this.kickT = -1; this.kickDur = 0.34; this.charge = 0; this.charging = false;
     this.dash = null; this.slide = null; this.dive = null; this.fallDir = 1; this.flipT = -1;
     this.abil = this.style.abilities.map((id) => ({ id, def: ABILITIES[id], cd: 0 }));
-    this.flow = 0; this.flowT = 0; this.gamble = null;
+    this.flow = 0; this.flowT = 0; this.gamble = null; this.awake = 0; this.awakeT = 0;
     this.fx = {}; this.item = null; this.callT = 0;
     this.speedMul = 1;
     this.mods = { speed: 1, shot: 1, stamRegen: 1, stamDrain: 1, cdRate: 1, tackleRange: 1, tackleCd: 1 };
@@ -107,11 +108,15 @@ class Player {
   get hasBall() { return this.m.ball.owner === this; }
   get aura() { return this.style.aura; }
   buildModel() {
-    const side = this.side, kit = this.isGK ? side.keeper : side.kit;
-    const L = this.look;
+    const side = this.side, L = this.look;
+    let kit = this.isGK ? side.keeper : side.kit;
+    if (!this.isGK && (L.kitPattern || L.kitTrim)) {
+      kit = Object.assign({}, kit, { pattern: L.kitPattern || kit.pattern });
+      if (L.kitTrim) Object.assign(kit, { collar: L.kitTrim, cuff: L.kitTrim, number: L.kitTrim, sockTrim: L.kitTrim, shortsTrim: L.kitTrim });
+    }
     this.skinTex = makePlayerSkin({
       kit, crest: side.crest, boots: L.boots || (this.team === 0 ? '#1a1a1f' : '#f4efe0'), sparkle: L.sparkle,
-      skin: this.skin, hair: L.hair, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: pick(EYE_COLS),
+      skin: this.skin, hair: L.hair, hairShape: L.hairShape, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: pick(EYE_COLS),
       seed: this.team * 97 + this.number * 13 + 7,
     });
     this.mat = new THREE.MeshLambertMaterial({ map: this.skinTex });
@@ -128,7 +133,7 @@ class Player {
       if (L.acc.kind === 'band') mk(bandGeo(L.hairShape), am, headP, 0, 0, 0);
       else if (L.acc.kind === 'mask') mk(accGeo().mask, am, headP, 0, 0, 0);
     }
-    const eyes = new THREE.Mesh(G.eyes, eyeMat(this.style.aura)); eyes.position.set(0, 0.21, 0.236); eyes.visible = false; headP.add(eyes);
+    const eyes = new THREE.Mesh(G.eyes, eyeMat(this.flowId && FLOWS[this.flowId] ? FLOWS[this.flowId].color : this.style.aura)); // in Flow your eyes glow in its colour eyes.position.set(0, 0.21, 0.236); eyes.visible = false; headP.add(eyes);
     const armL = new THREE.Group(); armL.position.set(0.35, 0.68, 0); body.add(armL); mk(G.arm, this.mat, armL, 0, -0.3, 0);
     const armR = new THREE.Group(); armR.position.set(-0.35, 0.68, 0); body.add(armR); mk(G.arm, this.mat, armR, 0, -0.3, 0);
     const legL = new THREE.Group(); legL.position.set(0.12, 0, 0); body.add(legL); mk(G.leg, this.mat, legL, 0, -0.36, 0);
@@ -161,10 +166,21 @@ class Player {
         if (fm.speed) m.speed *= fm.speed;
         if (fm.shot) m.shot *= fm.shot;
         if (fm.stamRegen) m.stamRegen *= fm.stamRegen;
+        if (fm.stamDrain) m.stamDrain *= fm.stamDrain;
         if (fm.cdRate) m.cdRate *= fm.cdRate;
         if (fm.tackleRange) m.tackleRange *= fm.tackleRange;
         if (fm.tackleCd) m.tackleCd *= fm.tackleCd;
       }
+    }
+    if (this.awakeT > 0 && this.style.awaken) {
+      const am = this.style.awaken.mods || {};
+      m.cdRate *= 2 * (am.cdRate || 1);
+      if (am.speed) m.speed *= am.speed;
+      if (am.huntSpeed && this.m.ball.owner !== this) m.speed *= am.huntSpeed;
+      if (am.shot) m.shot *= am.shot;
+      if (am.stamDrain != null) m.stamDrain *= am.stamDrain;
+      if (am.tackleRange) m.tackleRange *= am.tackleRange;
+      if (am.tackleCd) m.tackleCd *= am.tackleCd;
     }
     const fx = this.fx;
     if (fx.burst > 0) m.speed *= 1.45;
@@ -190,6 +206,12 @@ class Player {
     if (this.callT > 0) this.callT -= dt;
     if (this.dodgeCharges < 2) { this.dodgeRe += dt; if (this.dodgeRe >= 4) { this.dodgeRe = 0; this.dodgeCharges++; } }
     if (this.flowT > 0) { this.flowT -= dt; if (this.flowT <= 0) { this.flowT = 0; this.gamble = null; this.P.eyes.visible = false; } }
+    if (this.awakeT > 0) {
+      this.awakeT = Math.max(0, this.awakeT - dt);
+      const perk = this.style.awaken && this.style.awaken.perk;
+      if (perk === 'dodge') { this.dodgeCharges = 2; this.dodgeRe = 0; }
+      if (perk === 'tank') this.tackleProof = Math.max(this.tackleProof, 0.2);
+    }
     if (this.kickT >= 0) { this.kickT += dt / this.kickDur; if (this.kickT >= 1) this.kickT = -1; }
     if (this.flipT >= 0) { this.flipT += dt / 0.55; if (this.flipT >= 1) this.flipT = -1; }
   }
@@ -359,10 +381,16 @@ class Player {
     P.root.rotation.y = this.yaw;
     const bs = clamp(1 - this.pos.y / 5, 0.3, 1) * (st === 'down' ? 1.6 : st === 'dive' ? 1.5 : 1);
     this.blob.position.set(this.pos.x, 0.025, this.pos.z); this.blob.scale.set(bs, 1, bs);
-    P.eyes.visible = this.flowT > 0;
+    P.eyes.visible = this.flowT > 0 || this.awakeT > 0;
+    // awakened eyes glow in your style's colour, in Flow they glow in the Flow's
+    const eyeHex = this.awakeT > 0 ? this.style.aura : this.flowId && FLOWS[this.flowId] ? FLOWS[this.flowId].color : this.style.aura;
+    if (P.eyes.userData.hex !== eyeHex) { P.eyes.userData.hex = eyeHex; P.eyes.material = eyeMat(eyeHex); }
     // status meshes
-    if (this.fx.lockdown > 0) {
+    const viper = this.flowT > 0 && this.flowId === 'VIPER';
+    if (this.fx.lockdown > 0 || viper) {
       if (!this.ring) { this.ring = new THREE.Mesh(PlayerGeo.get().ring, new THREE.MeshBasicMaterial({ color: lin('#ff3d52'), transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false })); this.m.scene.add(this.ring); }
+      const rc = this.fx.lockdown > 0 ? '#ff3d52' : FLOWS.VIPER.color; // lockdown red, VIPER green
+      if (this.ring.userData.c !== rc) { this.ring.userData.c = rc; this.ring.material.color.copy(lin(rc)); }
       this.ring.visible = true; this.ring.position.set(this.pos.x, 0.03, this.pos.z); const rs = 1.4 * this.mods.tackleRange * 0.9; this.ring.scale.set(rs, 1, rs); this.ring.rotation.y += dt * 2;
     } else if (this.ring) this.ring.visible = false;
     if (this.fx.bubble > 0) {

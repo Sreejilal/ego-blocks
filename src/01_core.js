@@ -48,17 +48,17 @@ function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) +
 /* ---------- pitch geometry (1 unit = 1 block) ----------
    Blue team defends -Z and attacks +Z. Orange is the mirror. */
 const F = {
-  W: 24.5,          // touchline outer edge (x)
-  L: 38.5,          // goal line outer edge (z)
-  GW: 4.5,          // half width of the goal mouth (inner)
-  GH: 3.0,          // goal mouth height (inner, crossbar underside)
+  W: 21.5,          // touchline outer edge (x). 24.5 x 38.5 felt too big; the first pitch was 20.5 x 32.5
+  L: 34.0,          // goal line outer edge (z)
+  GW: 4.0,          // half width of the goal mouth (inner). Smaller since the pitch shrank: 4.5 x 3.0 gave 10 to 15 goals a match
+  GH: 2.75,         // goal mouth height (inner, crossbar underside)
   GD: 2.5,          // net depth behind the goal line
   POST: 0.5,        // post / bar thickness
-  BOARD_X: 28.0,    // advertising boards (ball bounces off these)
-  BOARD_Z: 43.0,
-  BOX_W: 11,        // penalty box half width (outer edge)
-  BOX_D: 8.5,       // penalty box depth from goal line
-  CIRCLE: 7,        // centre circle radius
+  BOARD_X: 25.0,    // advertising boards (ball bounces off these)
+  BOARD_Z: 38.5,
+  BOX_W: 10,        // penalty box half width (outer edge)
+  BOX_D: 8,         // penalty box depth from goal line
+  CIRCLE: 6.5,      // centre circle radius
 };
 // bot positions were tuned on the first, smaller pitch (20.5 x 32.5); they are scaled by these to fit this one
 const PITCH_KX = F.W / 20.5, PITCH_KZ = F.L / 32.5;
@@ -79,8 +79,8 @@ const Save = {
   defaults() {
     return {
       v: 1, emeralds: 500, styles: ['ROOKIE'], flows: [], style: 'ROOKIE', flow: null,
-      xp: 0, history: [], pass: { season: 0, week: -1, xp: 0, got: 0, prog: {}, done: [] }, best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
-      club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
+      xp: 0, history: [], pass: { season: 0, week: -1, xp: 0, got: 0, prog: {}, done: [] }, daily: { gift: '', day: '', ch: '', prog: 0, done: false }, best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
+      club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', autoFs: true },
@@ -101,6 +101,9 @@ const Save = {
     out.look = Object.assign({}, def.look, out.look && typeof out.look === 'object' ? out.look : {});
     if (typeof out.club !== 'string') out.club = 'ROVERS';
     out.xp = Math.max(0, Math.floor(Number(out.xp) || 0));
+    const dl = out.daily = Object.assign({}, def.daily, out.daily && typeof out.daily === 'object' ? out.daily : {});
+    for (const k of ['gift', 'day', 'ch']) dl[k] = typeof dl[k] === 'string' ? dl[k].slice(0, 16) : '';
+    dl.prog = clamp(Math.floor(Number(dl.prog) || 0), 0, 99); dl.done = !!dl.done;
     const ps = out.pass = Object.assign({}, def.pass, out.pass && typeof out.pass === 'object' ? out.pass : {});
     for (const k of ['season', 'week', 'xp', 'got']) ps[k] = Math.floor(Number(ps[k]) || 0);
     ps.xp = Math.max(0, ps.xp); ps.got = clamp(ps.got, 0, 30);

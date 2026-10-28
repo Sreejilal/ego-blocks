@@ -10,7 +10,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + this.tplDaily() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -47,7 +47,7 @@ const UI = {
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
           <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
-          <div class="ghosts"><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button></div>
+          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button></div>
         </nav>
       </div>
       <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
@@ -124,6 +124,7 @@ const UI = {
             ${row(key('F'), 'Slide tackle')}
             ${row(key('Q') + key('E') + key('R'), 'Style abilities. Big moves get a quick cut-in; turn them off in the pause menu')}
             ${row(key('G'), 'Activate Flow when the bar is full')}
+            ${row(key('Z'), 'Awaken when the Awakening bar is full: 20s of your style\'s own power. G works too when only that bar is full')}
             ${row(key('X'), 'Use item (Lawless)')}
             ${row(key('TAB'), 'Scoreboard')}
             ${row(key('1') + key('2') + key('3') + key('4'), 'Online: quick chat. PASS!, NICE!, GG, ON ME')}
@@ -146,6 +147,7 @@ const UI = {
             <li><b>The keeper</b> reacts to where the ball is going. Corners, curlers and fakes beat him.</li>
           </ul></section>
           <section class="panel"><h3>FLOW, SPINS, RANK</h3><ul>
+            <li><b>Awakening</b> is your style's own power-up. Goals, assists, shots on target, tackles and tricks fill its bar. When it is full, press Z (or the Flow button) for 20 seconds of it: your cooldowns reset and recharge twice as fast, your abilities last longer, and you get your style's own boost.</li>
             <li><b>Flow</b> fills from completed passes, dodges, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
             <li><b>Emeralds:</b> win 150, draw 80, loss 50, plus 20 a goal and 10 an assist.</li>
             <li><b>Spins</b> cost 200. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
@@ -259,12 +261,42 @@ const UI = {
       <canvas id="minimap" width="132" height="200"></canvas>
       <div class="dock">
         <div class="flowbar" id="flowbar"><div class="lbl"><span id="flow-name">FLOW</span><b id="flow-txt">0%</b></div><div class="track"><div class="fill" id="flow-fill"></div><div class="ticks"></div></div></div>
+        <div class="flowbar awakebar" id="awakebar"><div class="lbl"><span id="awake-name">AWAKENING</span><b id="awake-txt">0%</b></div><div class="track"><div class="fill" id="awake-fill"></div></div></div>
         <div class="stamina" id="stamina"></div>
         <div class="hotbar" id="hotbar"></div>
       </div>
       <div class="itemslot" id="itemslot" hidden><div class="slot"><img class="px" id="item-img" alt=""><span class="key k">X</span><span class="nm" id="item-nm"></span></div></div>
       <div class="hint" id="hint" hidden></div>
     </section>`;
+  },
+  tplDaily() {
+    return `<section id="scr-daily" class="overlay" hidden>
+      <div class="dialog panel daily-box">
+        <h2>DAILY</h2>
+        <div class="dl-card"><span class="label">TODAY'S GIFT</span><div id="dl-gift"></div></div>
+        <div class="dl-card"><span class="label">TODAY'S CHALLENGE</span><div id="dl-ch"></div></div>
+        <p class="label">A new gift and a new challenge every day. No streaks: missing a day costs nothing.</p>
+        <button class="btn" id="dl-close" type="button">CLOSE</button>
+      </div>
+    </section>`;
+  },
+  renderDaily() {
+    const d = Save.data; Daily.sync(d);
+    const C = DAILY_CHALLENGES[d.daily.ch];
+    $('dl-gift').innerHTML = Daily.giftReady(d) ? '<button class="btn emerald" id="dl-open" type="button">OPEN TODAY\'S GIFT</button>'
+      : `<b class="dl-big">${esc(this.giftText || 'OPENED')}</b><span class="label">NEXT GIFT IN ${Daily.untilTomorrow()}</span>`;
+    const pct = C ? d.daily.prog / C.goal * 100 : 0;
+    $('dl-ch').innerHTML = C ? `<b class="dl-big">${esc(C.name)}</b><div class="xpbar"><i style="width:${pct.toFixed(0)}%"></i></div>`
+      + `<span class="label">${d.daily.done ? 'DONE! NEW CHALLENGE IN ' + Daily.untilTomorrow() : d.daily.prog + ' / ' + C.goal + ' · REWARD +' + DAILY_REWARD.emeralds + ' EMERALDS, +' + DAILY_REWARD.xp + ' XP'}</span>` : '';
+    const o = $('dl-open');
+    if (o) o.addEventListener('click', () => {
+      Sfx.init();
+      const g = Daily.openGift(Save.data); if (!g) return;
+      Save.save();
+      this.giftText = g.emeralds ? (g.jackpot ? 'JACKPOT! ' : '') + '+' + g.emeralds + ' EMERALDS' : '+' + g.xp + ' XP';
+      if (g.jackpot) Sfx.fanfare(2); else Sfx.coin();
+      this.renderDaily(); this.renderLobby();
+    });
   },
   tplCutin() {
     return `<div id="cutin" hidden aria-hidden="true"><div class="ci-lines"></div><div class="ci-panel"><span class="ci-face" id="ci-face"></span><div class="ci-text"><b id="ci-name"></b><span id="ci-style"></span></div></div></div>`;
@@ -310,6 +342,7 @@ const UI = {
         <div class="rankline" id="r-rank"></div>
         <div class="xpline" id="r-xp"></div>
         <div class="passline" id="r-pass"></div>
+        <div class="passline" id="r-daily"></div>
         <div class="row"><button class="btn blue" id="r-again" type="button">PLAY AGAIN</button><button class="btn" id="r-lobby" type="button">LOBBY</button></div>
       </div>
     </section>`;
@@ -324,6 +357,8 @@ const UI = {
     click('go-spins', () => this.openSpins());
     click('go-locker', () => this.openLocker());
     click('go-howto', () => this.show('howto'));
+    click('go-daily', () => { this.renderDaily(); $('scr-daily').hidden = false; });
+    click('dl-close', () => { $('scr-daily').hidden = true; });
     click('go-profile', () => this.show('profile'));
     click('go-pass', () => this.show('pass'));
     click('go-online', () => Net.open());
@@ -370,6 +405,7 @@ const UI = {
     window.addEventListener('keydown', (e) => {
       if (Game.playing() || Game.state === 'paused') return;
       if (e.code === 'Escape' && !$('friend-card').hidden) { $('friend-card').hidden = true; return; }
+      if (e.code === 'Escape' && !$('scr-daily').hidden) { $('scr-daily').hidden = true; return; }
       if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass' || this.cur === 'online') && !this.spinning && !(e.target && e.target.tagName === 'INPUT')) this.show('lobby');
     });
   },
@@ -395,6 +431,7 @@ const UI = {
     const sz = teamSizeFor('ranked', d.rp);
     $('rank-sub').textContent = TIER_NAMES[tier] + ' · ' + sz + 'V' + sz;
     $('locker-sub').textContent = STYLES[d.style].name + (d.flow ? ' · ' + FLOWS[d.flow].name : '');
+    Daily.sync(d); $('go-daily').classList.toggle('ready', Daily.giftReady(d));
     $('pro-badge').src = badgeURL(tier);
     Pass.sync(d); $('pass-sub').textContent = 'TIER ' + Pass.tier(d) + ' / ' + PASS_TIERS;
     $('pro-tier').textContent = TIER_NAMES[tier];
@@ -444,11 +481,12 @@ const UI = {
     html += `<div class="slot small" id="slot-c"><img class="px" src="${iconURL('dash', '#ffffff')}" alt=""><span class="key k">C</span><div class="cd"></div><div class="pips"><i></i><i></i></div><span class="nm">DODGE</span></div>`;
     html += `<div class="slot small" id="slot-f"><img class="px" src="${iconURL('tackle', '#e8e1cf')}" alt=""><span class="key k">F</span><div class="cd"></div><div class="num"></div><span class="nm">TACKLE</span></div>`;
     html += `<div class="slot small" id="slot-g"><img class="px" src="${iconURL('flame', p.aura)}" alt=""><span class="key k">G</span><div class="cd"></div><span class="nm">FLOW</span></div>`;
+    if (p.style.awaken) html += `<div class="slot small awaken" id="slot-z"><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><span class="key k">Z</span><div class="cd"></div><span class="nm">AWAKEN</span></div>`;
     hb.innerHTML = html;
     this.slots = [0, 1, 2].map((i) => ({ el: $('slot' + i), cd: $('slot' + i).querySelector('.cd'), num: $('slot' + i).querySelector('.num'), last: -1 }));
     this.slotC = { el: $('slot-c'), cd: $('slot-c').querySelector('.cd'), pips: $('slot-c').querySelectorAll('.pips i') };
     this.slotF = { el: $('slot-f'), cd: $('slot-f').querySelector('.cd'), num: $('slot-f').querySelector('.num') };
-    this.slotG = { el: $('slot-g') };
+    this.slotG = { el: $('slot-g') }; this.slotZ = $('slot-z');
     const st = $('stamina');
     st.innerHTML = '';
     this.drums = [];
@@ -456,6 +494,9 @@ const UI = {
     this.drumURL = { full: iconURL('drum'), half: iconURL('drum', '#fff', 'half'), empty: iconURL('drum', '#fff', 'empty') };
     $('flowbar').style.setProperty('--aura', p.aura);
     $('flow-name').textContent = p.flowId ? 'FLOW · ' + FLOWS[p.flowId].name : 'FLOW';
+    if (p.flowId && FLOWS[p.flowId]) $('flowbar').style.setProperty('--aura', FLOWS[p.flowId].color);
+    $('awakebar').style.setProperty('--aura', p.aura); $('awakebar').hidden = !p.style.awaken;
+    $('awake-name').textContent = p.style.awaken ? (Touch.on ? '' : 'AWAKENING · ') + p.style.awaken.name : 'AWAKENING'; // phones: just the name, the bar is narrow
     $('itemslot').hidden = !m.cfg.items;
     this.mm = $('minimap').getContext('2d');
     this.hudCache = {};
@@ -491,6 +532,13 @@ const UI = {
     $('flow-fill').style.width = fpct.toFixed(1) + '%';
     this.setText('flow-txt', p.flowT > 0 ? 'IN FLOW ' + Math.ceil(p.flowT) + 's' : p.flow >= 100 ? (Touch.on ? 'READY' : 'READY [G]') : Math.floor(p.flow) + '%');
     $('flowbar').classList.toggle('ready', p.flow >= 100 && p.flowT <= 0);
+    if (p.style.awaken) {
+      const ar = p.awake >= 100 && p.awakeT <= 0;
+      $('awake-fill').style.width = (p.awakeT > 0 ? p.awakeT / AWAKEN_TIME * 100 : p.awake).toFixed(1) + '%';
+      this.setText('awake-txt', p.awakeT > 0 ? (Touch.on ? '' : 'AWAKENED ') + Math.ceil(p.awakeT) + 's' : ar ? (Touch.on ? 'READY' : 'READY [Z]') : Math.floor(p.awake) + '%');
+      $('awakebar').classList.toggle('ready', ar); $('awakebar').classList.toggle('active', p.awakeT > 0);
+      if (this.slotZ) { this.slotZ.classList.toggle('ready', ar); this.slotZ.classList.toggle('active', p.awakeT > 0); }
+    }
     for (let i = 0; i < 10; i++) {
       const v = p.stamina - i * 10, want = v >= 7.5 ? 'full' : v >= 2.5 ? 'half' : 'empty';
       if (this.drums[i].v !== want) { this.drums[i].v = want; this.drums[i].el.src = this.drumURL[want]; }
@@ -661,6 +709,9 @@ const UI = {
     const P = r.pass || { xp: 0, challenges: [], tiers: [] }, pd = Save.data.pass;
     $('r-pass').innerHTML = `<span class="label">GAME PASS · TIER ${Pass.tier(Save.data)} / ${PASS_TIERS} · +${P.xp} XP${P.xp ? '' : (r.res === 'forfeit' || r.idle ? '' : ' (DO SOMETHING ON THE BALL TO EARN PASS XP)')}</span><div class="xpbar pass"><i style="width:${(pd.xp % PASS_TIER_XP) / PASS_TIER_XP * 100}%"></i></div>`
       + P.challenges.map((c) => `<span class="label pl-ch">CHALLENGE DONE: ${esc(c)}</span>`).join('') + P.tiers.map((t) => `<span class="label pl-tier">${esc(t)}</span>`).join('');
+    const D = r.daily;
+    $('r-daily').innerHTML = !D ? '' : D.now ? `<span class="label pl-ch">DAILY CHALLENGE DONE: ${esc(D.name)} +${DAILY_REWARD.emeralds} EMERALDS +${DAILY_REWARD.xp} XP</span>`
+      : `<span class="label">DAILY CHALLENGE · ${esc(D.name)} · ${D.done ? 'DONE' : D.prog + ' / ' + D.goal}</span>`;
     $('hint').hidden = true;
     $('scr-results').hidden = false;
   },
@@ -764,7 +815,8 @@ const UI = {
     const head = (sub, blurb) => `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px">${it.chip ? `<span class="chip" style="justify-self:start">${it.chip}</span>` : it.base ? '<span class="chip" style="justify-self:start">FREE</span>' : `<span class="rar" data-r="${it.rarity}" style="justify-self:start">${it.rarity.toUpperCase()}</span>`}<h3>${esc(it.name)}</h3>${sub ? `<span class="label">${sub}</span>` : ''}${blurb ? `<p style="margin:0;color:var(--muted);max-width:46ch">${esc(blurb)}</p>` : ''}</div></div>`;
     if (tab === 'style') {
       const st = STYLES[id];
-      det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}</div>`;
+      det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
+        + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)} Big plays fill the bar.</p></div></div>` : '') + '</div>';
     } else if (tab === 'club') {
       const c = CLUBS[id];
       det.innerHTML = head('', 'The club you play for. Your team wears its kit, and its fans fill your stands.') + `<div class="kits">${[['HOME', c.home], ['AWAY', c.away], ['KEEPER', c.keeper]].map(([n]) => `<div class="kitbox"><span class="kv"></span><span class="label">${n}</span></div>`).join('')}</div>
