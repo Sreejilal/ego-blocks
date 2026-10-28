@@ -9,8 +9,8 @@ const NEED_BALL = 'NEED THE BALL';
 const STYLES = {
   ROOKIE: { name: 'ROOKIE', rarity: 'Rare', hair: '#3b2a22', hairShape: 'short', aura: '#3fd6ff', blurb: 'Reads the whole pitch. The free starter, and it can still win games.', abilities: ['vision', 'quickShot', 'burst'], awaken: { name: 'FIRST LIGHT', desc: '+12% speed and shot power.', mods: { speed: 1.12, shot: 1.12 } } },
   SPRINTER: { name: 'SPRINTER', rarity: 'Rare', hair: '#c8323e', hairShape: 'long', aura: '#ff5a3c', blurb: 'Raw pace. Burns past the back line, then bends it in.', abilities: ['turbo', 'cutInside', 'curler'], awaken: { name: 'RED LINE', desc: '+25% speed, and sprinting costs no stamina.', mods: { speed: 1.25, stamDrain: 0 } } },
-  PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'snapPass'], awaken: { name: 'NIGHTFALL', desc: 'Your dodges refill at once, every time, and you are 10% faster.', perk: 'dodge', mods: { speed: 1.1 } } },
-  TRICKSTER: { name: 'TRICKSTER', rarity: 'Epic', hair: '#ff5fb0', hairShape: 'messy', aura: '#ff5fb0', blurb: 'Flicks, nutmegs and snap feints. Makes defenders look silly.', abilities: ['rainbow', 'nutmeg', 'whiplash'], awaken: { name: 'SHOWTIME', desc: 'Your dodges refill at once and tricks recharge even faster.', perk: 'dodge', mods: { cdRate: 1.5 } } },
+  PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'snapPass'], awaken: { name: 'NIGHTFALL', desc: 'Your feint recharges three times as fast, and you are 10% faster.', perk: 'dodge', mods: { speed: 1.1 } } },
+  TRICKSTER: { name: 'TRICKSTER', rarity: 'Epic', hair: '#ff5fb0', hairShape: 'messy', aura: '#ff5fb0', blurb: 'Flicks, nutmegs and snap feints. Makes defenders look silly.', abilities: ['rainbow', 'nutmeg', 'whiplash'], awaken: { name: 'SHOWTIME', desc: 'Your feint recharges three times as fast and tricks recharge even faster.', perk: 'dodge', mods: { cdRate: 1.5 } } },
   ENFORCER: { name: 'ENFORCER', rarity: 'Epic', hair: '#8a1f33', hairShape: 'swept', aura: '#ffb02e', blurb: 'Midfield general. Flattens attackers and threads perfect through balls.', abilities: ['armSwipe', 'pinpointPass', 'lockdown'], awaken: { name: 'IRON WALL', desc: 'Tackles reach 60% further and come back twice as fast, and nobody can tackle you.', perk: 'tank', mods: { tackleRange: 1.6, tackleCd: 0.5 } } },
   SHAMBLER: { name: 'SHAMBLER', rarity: 'Legendary', hair: '#a6c49c', hairShape: 'messy', aura: '#7dff6a', blurb: 'An undead dribble nobody can tackle, and long arms that steal anything.', abilities: ['undeadShuffle', 'graveGrab', 'lurch'], awaken: { name: 'RISEN', desc: 'Nobody can tackle you, and you are 12% faster.', perk: 'tank', mods: { speed: 1.12 } } },
   PROWLER: { name: 'PROWLER', rarity: 'Legendary', hair: '#2b2f3a', hairShape: 'swept', aura: '#ff9d2e', blurb: 'A predator in the box. Smells loose balls first and finishes them first time.', abilities: ['scent', 'pounce', 'oneTouch'], awaken: { name: 'APEX', desc: '+22% speed when you do not have the ball, and +20% shot power.', mods: { huntSpeed: 1.22, shot: 1.2 } } },
@@ -94,7 +94,7 @@ const ABILITIES = {
     ai(p, m, c) { return c.hasBall && c.nearOpp < 4.2 && c.oppInFront; },
   },
   feint: {
-    name: 'FEINT', cd: 8, icon: 'fake',
+    name: 'FAKE SHOT', cd: 8, icon: 'fake',
     desc: 'Fake a shot. Defenders near you freeze for 0.6s and the keeper may dive the wrong way.',
     use(p, m) { if (!nearBall(p, m)) return NEED_BALL; p.kickT = 0; p.kickDur = 0.3; m.feint(p, 6.5, 0.6); return true; },
     ai(p, m, c) { return c.hasBall && (c.nearOpp < 4.5 || (c.dGoal < 16 && c.angleOK)); },
@@ -311,6 +311,8 @@ const FLOW_IDS = Object.keys(FLOWS);
 /** Awakening: a style's own transformation. Big plays fill the bar; when it is full, Z (or the Flow button) starts it.
     For AWAKEN_TIME seconds: cooldowns reset and recharge twice as fast, ability effects last 50% longer, plus the style's own power */
 const AWAKEN_TIME = 20;
+/** the feint (C): a step-over cut nobody can tackle you through, once every FEINT_CD seconds */
+const FEINT_CD = 5;
 const AWAKEN_ALL = 'Cooldowns reset and recharge twice as fast, and ability effects last 50% longer.';
 const RAW_FLOW_DESC = 'No Flow equipped: +8% speed. Equip one from Flow Spins for a bigger buff.';
 

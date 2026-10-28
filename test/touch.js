@@ -129,7 +129,7 @@ const check = (name, ok, info) => { results.push((ok ? 'PASS ' : 'FAIL ') + name
   const dtLabel1 = await page.evaluate(() => document.querySelector('#touch [data-act="dt"] .lb').textContent);
   const dt = await center('#touch [data-act="dt"]');
   await tStart(6, dt.x, dt.y); await step(2); s = await state(); await tEnd(6);
-  check('context button dodges with ball', s.ps === 'dash' && dtLabel1 === 'DODGE', { ps: s.ps, dtLabel1 });
+  check('context button feints with the ball', s.ps === 'dash' && dtLabel1 === 'FEINT', { ps: s.ps, dtLabel1 });
   await step(30);
   await page.evaluate(() => { const m = EGO.Game.match, h = m.human; const o = m.teams[1].find((p) => p.role === 'ST'); m.ball.owner = null; h.setState('free'); h.tackleCd = 0; h.pos.set(0, 0, 0); o.pos.set(0, 0, 2.5); o.setState('free'); m.possess(o); EGO.Cam.yaw = 0; });
   await step(2, true);

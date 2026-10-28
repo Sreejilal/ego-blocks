@@ -320,6 +320,10 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 #ad-block { position: absolute; inset: 0; z-index: 90; background: rgba(9,11,22,.5); }
 .on-privacy { color: var(--muted); max-width: 60ch; }
 
+/* you have the ball: a frame round the crosshair and BALL under it */
+.crosshair.ball { outline: 3px solid #ffe9a8; outline-offset: 7px; }
+#hud .balltag { left: 50%; top: calc(50% + 26px); transform: translateX(-50%); font-family: var(--font-label); font-size: 11px; letter-spacing: .14em; color: #ffe9a8; text-shadow: 2px 2px 0 var(--ink); }
+
 /* daily gift and challenge */
 .btn.ghost.daily { position: relative; color: var(--gold); padding-right: 16px; }
 .btn.ghost.daily .dot { display: none; position: absolute; top: 4px; right: 3px; width: 8px; height: 8px; background: var(--emerald); box-shadow: 0 0 8px var(--emerald); animation: blink .8s steps(2) infinite; }

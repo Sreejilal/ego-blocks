@@ -88,7 +88,7 @@ class Player {
     this.pos = V3(); this.vel = V3(); this.yaw = 0; this.onGround = true; this.airT = 0;
     this.mx = 0; this.mz = 0; this.sprint = false; this.faceYaw = null; this.exhausted = false;
     this.stamina = 100; this.stamDelay = 0;
-    this.dodgeCharges = 2; this.dodgeRe = 0; this.iframes = 0; this.tackleProof = 0;
+    this.dodgeCharges = 1; this.dodgeRe = 0; this.feint = 0; this.iframes = 0; this.tackleProof = 0;
     this.tackleCd = 0; this.pickBlock = 0; this.protect = 0;
     this.state = 'free'; this.stateT = 0; this.stateDur = 0;
     this.kickT = -1; this.kickDur = 0.34; this.charge = 0; this.charging = false;
@@ -145,7 +145,7 @@ class Player {
   }
   dispose() {
     this.m.scene.remove(this.P.root, this.blob);
-    for (const k of ['ring', 'bubble', 'ice']) if (this[k]) { this.m.scene.remove(this[k]); this[k].material.dispose(); }
+    for (const k of ['ring', 'bubble', 'ice', 'ownRing']) if (this[k]) { this.m.scene.remove(this[k]); this[k].material.dispose(); }
     this.skinTex.dispose(); this.mat.dispose();
     if (this.accMat) this.accMat.dispose();
   }
@@ -204,12 +204,14 @@ class Player {
     if (this.pickBlock > 0) this.pickBlock -= dt;
     if (this.protect > 0) this.protect -= dt;
     if (this.callT > 0) this.callT -= dt;
-    if (this.dodgeCharges < 2) { this.dodgeRe += dt; if (this.dodgeRe >= 4) { this.dodgeRe = 0; this.dodgeCharges++; } }
+    if (this.dodgeCharges < 1) {
+      const quick = this.awakeT > 0 && this.style.awaken && this.style.awaken.perk === 'dodge' ? 3 : 1; // NIGHTFALL and SHOWTIME
+      this.dodgeRe += dt * quick; if (this.dodgeRe >= FEINT_CD) { this.dodgeRe = 0; this.dodgeCharges = 1; }
+    }
     if (this.flowT > 0) { this.flowT -= dt; if (this.flowT <= 0) { this.flowT = 0; this.gamble = null; this.P.eyes.visible = false; } }
     if (this.awakeT > 0) {
       this.awakeT = Math.max(0, this.awakeT - dt);
       const perk = this.style.awaken && this.style.awaken.perk;
-      if (perk === 'dodge') { this.dodgeCharges = 2; this.dodgeRe = 0; }
       if (perk === 'tank') this.tackleProof = Math.max(this.tackleProof, 0.2);
     }
     if (this.kickT >= 0) { this.kickT += dt / this.kickDur; if (this.kickT >= 1) this.kickT = -1; }
@@ -339,7 +341,12 @@ class Player {
         bz = -d.side * 1.3 * k; by = 0.72 + (d.high ? 0.7 : 0.35) * k * (this.stateT < d.dur ? 1 : Math.max(0, 1 - (this.stateT - d.dur) / 0.25));
         aL = aR = 0; aLz = 2.9; aRz = -2.9; lL = 0.2; lR = -0.2; break;
       }
-      case 'dash': bx = 0.32; aL = 0.7; aR = 0.7; lL = s * 1.1; lR = -s * 1.1; break;
+      case 'dash':
+        if (this.feint) { // a step-over: the leg sweeps round over the ball, the body drops to the side, arms out
+          const u = this.dash ? clamp(this.dash.t / this.dash.dur, 0, 1) : 1, w = Math.sin(Math.PI * u), sd = this.feint;
+          bx = 0.1; bz = 0.3 * sd * w; by = 0.72 - 0.06 * w; lRz = 1.0 * sd * w; lR = 0.4 * w; lL = -0.2; aL = aR = 0.15; aLz = 0.8; aRz = -0.8;
+        } else { bx = 0.32; aL = 0.7; aR = 0.7; lL = s * 1.1; lR = -s * 1.1; }
+        break;
       case 'windup': bx = 0.5; by = 0.6; aL = 0.9; aR = 0.9; aLz = 0.4; aRz = -0.4; lL = -0.5; lR = 0.4; break;
       case 'celebrate': {
         const t = this.stateT, c = this.look.celeb;
@@ -386,6 +393,12 @@ class Player {
     const eyeHex = this.awakeT > 0 ? this.style.aura : this.flowId && FLOWS[this.flowId] ? FLOWS[this.flowId].color : this.style.aura;
     if (P.eyes.userData.hex !== eyeHex) { P.eyes.userData.hex = eyeHex; P.eyes.material = eyeMat(eyeHex); }
     // status meshes
+    // you have the ball: a bright ring round your feet, so you always know
+    if (this.isHuman) {
+      const has = this.m.ball.owner === this;
+      if (has && !this.ownRing) { this.ownRing = new THREE.Mesh(PlayerGeo.get().ring, new THREE.MeshBasicMaterial({ color: lin('#ffe9a8'), transparent: true, opacity: 0.9, toneMapped: false, depthWrite: false })); this.m.scene.add(this.ownRing); }
+      if (this.ownRing) { this.ownRing.visible = has; if (has) { const k = 0.95 + Math.sin(this.animPhase * 0.5) * 0.06; this.ownRing.position.set(this.pos.x, 0.035, this.pos.z); this.ownRing.scale.set(k, 1, k); } }
+    }
     const viper = this.flowT > 0 && this.flowId === 'VIPER';
     if (this.fx.lockdown > 0 || viper) {
       if (!this.ring) { this.ring = new THREE.Mesh(PlayerGeo.get().ring, new THREE.MeshBasicMaterial({ color: lin('#ff3d52'), transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false })); this.m.scene.add(this.ring); }

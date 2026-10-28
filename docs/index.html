@@ -332,6 +332,10 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 #ad-block { position: absolute; inset: 0; z-index: 90; background: rgba(9,11,22,.5); }
 .on-privacy { color: var(--muted); max-width: 60ch; }
 
+/* you have the ball: a frame round the crosshair and BALL under it */
+.crosshair.ball { outline: 3px solid #ffe9a8; outline-offset: 7px; }
+#hud .balltag { left: 50%; top: calc(50% + 26px); transform: translateX(-50%); font-family: var(--font-label); font-size: 11px; letter-spacing: .14em; color: #ffe9a8; text-shadow: 2px 2px 0 var(--ink); }
+
 /* daily gift and challenge */
 .btn.ghost.daily { position: relative; color: var(--gold); padding-right: 16px; }
 .btn.ghost.daily .dot { display: none; position: absolute; top: 4px; right: 3px; width: 8px; height: 8px; background: var(--emerald); box-shadow: 0 0 8px var(--emerald); animation: blink .8s steps(2) infinite; }
@@ -815,7 +819,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
-      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', autoFs: true },
+      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true },
       howto: false,
     };
   },
@@ -859,7 +863,7 @@ const Save = {
     st.btn = [0.85, 1, 1.15].includes(Number(st.btn)) ? Number(st.btn) : 1;
     st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false; st.server = typeof st.server === 'string' ? st.server.slice(0, 200) : '';
     st.chat = ['all', 'quick', 'off'].includes(st.chat) ? st.chat : 'all';
-    st.cam = st.cam === 'first' ? 'first' : 'third'; st.autoFs = st.autoFs !== false;
+    st.camPicked = !!st.camPicked; st.cam = !st.camPicked ? 'first' : st.cam === 'third' ? 'third' : 'first'; st.autoFs = st.autoFs !== false; // first person until you pick
     out.account = out.account && typeof out.account === 'object' && typeof out.account.token === 'string' && typeof out.account.user === 'string' ? { user: out.account.user.slice(0, 12), token: out.account.token.slice(0, 128) } : null;
     out.name = String(out.name || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12);
     if (!Array.isArray(out.styles)) out.styles = ['ROOKIE'];
@@ -2556,7 +2560,7 @@ class Player {
     this.pos = V3(); this.vel = V3(); this.yaw = 0; this.onGround = true; this.airT = 0;
     this.mx = 0; this.mz = 0; this.sprint = false; this.faceYaw = null; this.exhausted = false;
     this.stamina = 100; this.stamDelay = 0;
-    this.dodgeCharges = 2; this.dodgeRe = 0; this.iframes = 0; this.tackleProof = 0;
+    this.dodgeCharges = 1; this.dodgeRe = 0; this.feint = 0; this.iframes = 0; this.tackleProof = 0;
     this.tackleCd = 0; this.pickBlock = 0; this.protect = 0;
     this.state = 'free'; this.stateT = 0; this.stateDur = 0;
     this.kickT = -1; this.kickDur = 0.34; this.charge = 0; this.charging = false;
@@ -2613,7 +2617,7 @@ class Player {
   }
   dispose() {
     this.m.scene.remove(this.P.root, this.blob);
-    for (const k of ['ring', 'bubble', 'ice']) if (this[k]) { this.m.scene.remove(this[k]); this[k].material.dispose(); }
+    for (const k of ['ring', 'bubble', 'ice', 'ownRing']) if (this[k]) { this.m.scene.remove(this[k]); this[k].material.dispose(); }
     this.skinTex.dispose(); this.mat.dispose();
     if (this.accMat) this.accMat.dispose();
   }
@@ -2672,12 +2676,14 @@ class Player {
     if (this.pickBlock > 0) this.pickBlock -= dt;
     if (this.protect > 0) this.protect -= dt;
     if (this.callT > 0) this.callT -= dt;
-    if (this.dodgeCharges < 2) { this.dodgeRe += dt; if (this.dodgeRe >= 4) { this.dodgeRe = 0; this.dodgeCharges++; } }
+    if (this.dodgeCharges < 1) {
+      const quick = this.awakeT > 0 && this.style.awaken && this.style.awaken.perk === 'dodge' ? 3 : 1; // NIGHTFALL and SHOWTIME
+      this.dodgeRe += dt * quick; if (this.dodgeRe >= FEINT_CD) { this.dodgeRe = 0; this.dodgeCharges = 1; }
+    }
     if (this.flowT > 0) { this.flowT -= dt; if (this.flowT <= 0) { this.flowT = 0; this.gamble = null; this.P.eyes.visible = false; } }
     if (this.awakeT > 0) {
       this.awakeT = Math.max(0, this.awakeT - dt);
       const perk = this.style.awaken && this.style.awaken.perk;
-      if (perk === 'dodge') { this.dodgeCharges = 2; this.dodgeRe = 0; }
       if (perk === 'tank') this.tackleProof = Math.max(this.tackleProof, 0.2);
     }
     if (this.kickT >= 0) { this.kickT += dt / this.kickDur; if (this.kickT >= 1) this.kickT = -1; }
@@ -2807,7 +2813,12 @@ class Player {
         bz = -d.side * 1.3 * k; by = 0.72 + (d.high ? 0.7 : 0.35) * k * (this.stateT < d.dur ? 1 : Math.max(0, 1 - (this.stateT - d.dur) / 0.25));
         aL = aR = 0; aLz = 2.9; aRz = -2.9; lL = 0.2; lR = -0.2; break;
       }
-      case 'dash': bx = 0.32; aL = 0.7; aR = 0.7; lL = s * 1.1; lR = -s * 1.1; break;
+      case 'dash':
+        if (this.feint) { // a step-over: the leg sweeps round over the ball, the body drops to the side, arms out
+          const u = this.dash ? clamp(this.dash.t / this.dash.dur, 0, 1) : 1, w = Math.sin(Math.PI * u), sd = this.feint;
+          bx = 0.1; bz = 0.3 * sd * w; by = 0.72 - 0.06 * w; lRz = 1.0 * sd * w; lR = 0.4 * w; lL = -0.2; aL = aR = 0.15; aLz = 0.8; aRz = -0.8;
+        } else { bx = 0.32; aL = 0.7; aR = 0.7; lL = s * 1.1; lR = -s * 1.1; }
+        break;
       case 'windup': bx = 0.5; by = 0.6; aL = 0.9; aR = 0.9; aLz = 0.4; aRz = -0.4; lL = -0.5; lR = 0.4; break;
       case 'celebrate': {
         const t = this.stateT, c = this.look.celeb;
@@ -2854,6 +2865,12 @@ class Player {
     const eyeHex = this.awakeT > 0 ? this.style.aura : this.flowId && FLOWS[this.flowId] ? FLOWS[this.flowId].color : this.style.aura;
     if (P.eyes.userData.hex !== eyeHex) { P.eyes.userData.hex = eyeHex; P.eyes.material = eyeMat(eyeHex); }
     // status meshes
+    // you have the ball: a bright ring round your feet, so you always know
+    if (this.isHuman) {
+      const has = this.m.ball.owner === this;
+      if (has && !this.ownRing) { this.ownRing = new THREE.Mesh(PlayerGeo.get().ring, new THREE.MeshBasicMaterial({ color: lin('#ffe9a8'), transparent: true, opacity: 0.9, toneMapped: false, depthWrite: false })); this.m.scene.add(this.ownRing); }
+      if (this.ownRing) { this.ownRing.visible = has; if (has) { const k = 0.95 + Math.sin(this.animPhase * 0.5) * 0.06; this.ownRing.position.set(this.pos.x, 0.035, this.pos.z); this.ownRing.scale.set(k, 1, k); } }
+    }
     const viper = this.flowT > 0 && this.flowId === 'VIPER';
     if (this.fx.lockdown > 0 || viper) {
       if (!this.ring) { this.ring = new THREE.Mesh(PlayerGeo.get().ring, new THREE.MeshBasicMaterial({ color: lin('#ff3d52'), transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false })); this.m.scene.add(this.ring); }
@@ -3069,8 +3086,8 @@ const NEED_BALL = 'NEED THE BALL';
 const STYLES = {
   ROOKIE: { name: 'ROOKIE', rarity: 'Rare', hair: '#3b2a22', hairShape: 'short', aura: '#3fd6ff', blurb: 'Reads the whole pitch. The free starter, and it can still win games.', abilities: ['vision', 'quickShot', 'burst'], awaken: { name: 'FIRST LIGHT', desc: '+12% speed and shot power.', mods: { speed: 1.12, shot: 1.12 } } },
   SPRINTER: { name: 'SPRINTER', rarity: 'Rare', hair: '#c8323e', hairShape: 'long', aura: '#ff5a3c', blurb: 'Raw pace. Burns past the back line, then bends it in.', abilities: ['turbo', 'cutInside', 'curler'], awaken: { name: 'RED LINE', desc: '+25% speed, and sprinting costs no stamina.', mods: { speed: 1.25, stamDrain: 0 } } },
-  PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'snapPass'], awaken: { name: 'NIGHTFALL', desc: 'Your dodges refill at once, every time, and you are 10% faster.', perk: 'dodge', mods: { speed: 1.1 } } },
-  TRICKSTER: { name: 'TRICKSTER', rarity: 'Epic', hair: '#ff5fb0', hairShape: 'messy', aura: '#ff5fb0', blurb: 'Flicks, nutmegs and snap feints. Makes defenders look silly.', abilities: ['rainbow', 'nutmeg', 'whiplash'], awaken: { name: 'SHOWTIME', desc: 'Your dodges refill at once and tricks recharge even faster.', perk: 'dodge', mods: { cdRate: 1.5 } } },
+  PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'snapPass'], awaken: { name: 'NIGHTFALL', desc: 'Your feint recharges three times as fast, and you are 10% faster.', perk: 'dodge', mods: { speed: 1.1 } } },
+  TRICKSTER: { name: 'TRICKSTER', rarity: 'Epic', hair: '#ff5fb0', hairShape: 'messy', aura: '#ff5fb0', blurb: 'Flicks, nutmegs and snap feints. Makes defenders look silly.', abilities: ['rainbow', 'nutmeg', 'whiplash'], awaken: { name: 'SHOWTIME', desc: 'Your feint recharges three times as fast and tricks recharge even faster.', perk: 'dodge', mods: { cdRate: 1.5 } } },
   ENFORCER: { name: 'ENFORCER', rarity: 'Epic', hair: '#8a1f33', hairShape: 'swept', aura: '#ffb02e', blurb: 'Midfield general. Flattens attackers and threads perfect through balls.', abilities: ['armSwipe', 'pinpointPass', 'lockdown'], awaken: { name: 'IRON WALL', desc: 'Tackles reach 60% further and come back twice as fast, and nobody can tackle you.', perk: 'tank', mods: { tackleRange: 1.6, tackleCd: 0.5 } } },
   SHAMBLER: { name: 'SHAMBLER', rarity: 'Legendary', hair: '#a6c49c', hairShape: 'messy', aura: '#7dff6a', blurb: 'An undead dribble nobody can tackle, and long arms that steal anything.', abilities: ['undeadShuffle', 'graveGrab', 'lurch'], awaken: { name: 'RISEN', desc: 'Nobody can tackle you, and you are 12% faster.', perk: 'tank', mods: { speed: 1.12 } } },
   PROWLER: { name: 'PROWLER', rarity: 'Legendary', hair: '#2b2f3a', hairShape: 'swept', aura: '#ff9d2e', blurb: 'A predator in the box. Smells loose balls first and finishes them first time.', abilities: ['scent', 'pounce', 'oneTouch'], awaken: { name: 'APEX', desc: '+22% speed when you do not have the ball, and +20% shot power.', mods: { huntSpeed: 1.22, shot: 1.2 } } },
@@ -3154,7 +3171,7 @@ const ABILITIES = {
     ai(p, m, c) { return c.hasBall && c.nearOpp < 4.2 && c.oppInFront; },
   },
   feint: {
-    name: 'FEINT', cd: 8, icon: 'fake',
+    name: 'FAKE SHOT', cd: 8, icon: 'fake',
     desc: 'Fake a shot. Defenders near you freeze for 0.6s and the keeper may dive the wrong way.',
     use(p, m) { if (!nearBall(p, m)) return NEED_BALL; p.kickT = 0; p.kickDur = 0.3; m.feint(p, 6.5, 0.6); return true; },
     ai(p, m, c) { return c.hasBall && (c.nearOpp < 4.5 || (c.dGoal < 16 && c.angleOK)); },
@@ -3371,6 +3388,8 @@ const FLOW_IDS = Object.keys(FLOWS);
 /** Awakening: a style's own transformation. Big plays fill the bar; when it is full, Z (or the Flow button) starts it.
     For AWAKEN_TIME seconds: cooldowns reset and recharge twice as fast, ability effects last 50% longer, plus the style's own power */
 const AWAKEN_TIME = 20;
+/** the feint (C): a step-over cut nobody can tackle you through, once every FEINT_CD seconds */
+const FEINT_CD = 5;
 const AWAKEN_ALL = 'Cooldowns reset and recharge twice as fast, and ability effects last 50% longer.';
 const RAW_FLOW_DESC = 'No Flow equipped: +8% speed. Equip one from Flow Spins for a bigger buff.';
 
@@ -3931,12 +3950,18 @@ class Match {
     if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; }
     if (p.charging) {
       if (!c.shootHeld && !c.shootUp) { p.charging = false; p.charge = 0; }
-      else p.charge = p.fx.loaded > 0 ? 1 : Math.min(1, p.charge + dt / 0.95);
+      else p.charge = p.fx.loaded > 0 ? 1 : Math.min(1, p.charge + dt / 0.8);
     }
     if (c.shootUp && p.charging) {
-      const power = Math.max(0.28, p.charge);
+      const power = Math.max(0.5, p.charge); // a quick tap is still a proper shot
       p.charging = false; p.charge = 0;
-      this.tryShoot(p, power, p.aimV || this.aim, { curveIn: c.moveX });
+      if (!this.tryShoot(p, power, p.aimV || this.aim, { curveIn: c.moveX }) && this.ball.owner !== p) p.shotBuffer = { power, curveIn: c.moveX, t: 0.35 };
+    }
+    // pressed a moment before the ball reached you: it goes as soon as you have it
+    if (p.shotBuffer) {
+      p.shotBuffer.t -= dt;
+      if (this.ball.owner === p) { const sb = p.shotBuffer; p.shotBuffer = null; this.shootAt(p, p.aimV || this.aim, sb.power, { curveIn: sb.curveIn }); }
+      else if (p.shotBuffer.t <= 0) p.shotBuffer = null;
     }
     if (c.passDown) p.passHold = 0.0001;
     if (p.passHold > 0) p.passHold += dt;
@@ -4157,15 +4182,26 @@ class Match {
     }
     return true;
   }
+  /** FEINT (C, B, the FEINT button): a step-over cut to the side, keeping the ball. Nobody can tackle you through it
+      (a tackle that tries is an ankle breaker). One use, then FEINT_CD seconds to recharge, so it cannot be spammed */
   dodge(p, dx, dz) {
-    if (p.dodgeCharges < 1 || p.stamina < 8 || p.state !== 'free') { if (p.isHuman && p.state === 'free') { Sfx.deny(); } return false; }
-    if (len2D(dx, dz) < 0.2) { dx = -Math.cos(p.yaw); dz = Math.sin(p.yaw); }
-    const l = len2D(dx, dz); dx /= l; dz /= l;
-    p.dodgeCharges--; p.stamina -= 12; p.stamDelay = 0.6; p.iframes = 0.5;
+    if (p.dodgeCharges < 1 || p.state !== 'free') {
+      if (p.isHuman && p.state === 'free') { this.toast('FEINT IN ' + Math.max(1, Math.ceil(FEINT_CD - p.dodgeRe)) + 'S', 'bad', p); Sfx.deny(); }
+      return false;
+    }
+    // cut to the side you push towards; with no push, the other side from last time
+    const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), rx = Math.cos(p.yaw), rz = -Math.sin(p.yaw);
+    const push = dx * rx + dz * rz;
+    const side = Math.abs(push) > 0.3 ? Math.sign(push) : (p.feintSide = -(p.feintSide || -1));
+    let cx = rx * side * 0.85 + fx * 0.45, cz = rz * side * 0.85 + fz * 0.45;
+    const l = len2D(cx, cz); cx /= l; cz /= l;
+    p.dodgeCharges = 0; p.dodgeRe = 0; p.stamina = Math.max(0, p.stamina - 6); p.stamDelay = 0.4;
+    p.iframes = 0.55; p.tackleProof = Math.max(p.tackleProof, 0.55); p.feint = side;
     for (const o of this.opponents(p)) if ((o.state === 'windup' || o.state === 'slide') && dist2D(o.pos, p.pos) < 7) o.slideBeaten = p;
     const yawKeep = p.yaw;
-    this.dashP(p, dx, dz, 15.5, 0.2, { onEnd: () => { if (this.ball.owner === p) p.yaw = yawKeep; } });
+    this.dashP(p, cx, cz, 12.5, 0.3, { onEnd: () => { p.feint = 0; if (this.ball.owner === p) p.yaw = yawKeep; } });
     FX.feathers(p.pos.x, p.pos.y + 0.3, p.pos.z, '#ffffff', 6); Sfx.dodge();
+    if (p.isHuman) this.label(p, 'FEINT', '#ffffff', 0.6);
     return true;
   }
   dashP(p, dx, dz, speed, dur, o = {}) {
@@ -5694,7 +5730,7 @@ const Cam = {
   /** V, R3 or the camera button: third person <-> first person */
   toggle() {
     const s = Save.data.settings;
-    s.cam = s.cam === 'first' ? 'third' : 'first'; Save.save();
+    s.cam = s.cam === 'first' ? 'third' : 'first'; s.camPicked = true; Save.save();
     if (s.cam === 'third') { this.pitch = clamp(this.pitch, -0.66, 0.42); this.unhide(); }
     Sfx.click(); UI.toast(s.cam === 'first' ? 'FIRST PERSON' : 'THIRD PERSON');
     if (Game.state === 'paused') UI.renderPause();
@@ -5780,19 +5816,19 @@ const Cam = {
       if (t > 0 && t < 70) { this.aim.set(o.x + d.x * t, 0.3, o.z + d.z * t); set = true; }
     }
     if (!set) this.aim.set(o.x + d.x * 45, clamp(o.y + d.y * 45, 0.25, 9), o.z + d.z * 45);
-    if (Touch.on && !Input.usingPad && Save.data.settings.assist !== false) this.assist(p, gz);
+    if (Save.data.settings.assist !== false) this.assist(p, gz, Touch.on && !Input.usingPad ? 1 : 0.6); // phones get the strongest help
     this.onTarget = Math.abs(this.aim.z - gz) < 0.6 && Math.abs(this.aim.x) < F.GW && this.aim.y < F.GH;
     m.aim.copy(this.aim); m.camYaw = this.yaw; m.aimOnTarget = this.onTarget;
   },
   /** touch aim assist: a shot aimed just wide, just high or down at the grass is pulled inside the frame.
       Anything clearly wide (more than ~2 blocks past a post) is left alone so crosses still work. */
-  assist(p, gz) {
+  assist(p, gz, k = 1) {
     const o = World.camera.position, d = this.fwd;
     if ((gz - p.pos.z) * d.z <= 0 || Math.abs(d.z) < 0.25) return;
     const t = (gz - o.z) / d.z;
     if (!(t > 0)) return;
     let x = o.x + d.x * t, y = o.y + d.y * t;
-    if (Math.abs(x) > F.GW + 1.9 || y > F.GH + 1.4) return;
+    if (Math.abs(x) > F.GW + 1.9 * k || y > F.GH + 1.4 * k) return;
     const M = F.GW - 0.6;
     if (Math.abs(x) > M) x = Math.sign(x) * M;
     y = y < 0.35 ? 0.8 : Math.min(y, F.GH - 0.5);
@@ -5824,7 +5860,7 @@ const Touch = {
   tpl() {
     const btn = (act, cls, lb, extra = '') => `<div class="tb ${cls}" data-act="${act}"><i class="ic"></i><b class="lb">${lb}</b><span class="cd"></span><span class="num"></span>${extra}</div>`;
     return `<div class="stick idle" id="t-stick"><div class="ring"></div><div class="base"></div><div class="knob"></div><b class="lb">MOVE</b></div>`
-      + btn('shoot', 'big', 'SHOOT', '<span class="chg"></span>') + btn('pass', 'pass', 'PASS') + btn('dt', 'dt', 'TACKLE', '<span class="pips"><i></i><i></i></span>') + btn('jump', '', 'JUMP')
+      + btn('shoot', 'big', 'SHOOT', '<span class="chg"></span>') + btn('pass', 'pass', 'PASS') + btn('dt', 'dt', 'TACKLE', '<span class="pips"><i></i></span>') + btn('jump', '', 'JUMP')
       + btn('ab0', 'ab', '') + btn('ab1', 'ab', '') + btn('ab2', 'ab', '') + btn('flow', 'flow off', 'FLOW') + btn('item', 'item off', 'ITEM')
       + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tb sm" data-act="cam" aria-label="Switch camera"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
   },
@@ -6073,9 +6109,9 @@ const Touch = {
       this.parts.dt.ic.style.backgroundImage = 'url(' + (own ? iconURL('dash', '#ffffff') : iconURL('tackle', '#e8e1cf')) + ')';
       this.tog(b.dt, 'dodge', own);
     }
-    this.setLabel('dt', own ? 'DODGE' : 'TACKLE');
+    this.setLabel('dt', own ? 'FEINT' : 'TACKLE');
     if (own) {
-      this.setCd('dt', p.dodgeCharges >= 1 ? 0 : clamp(1 - p.dodgeRe / 4, 0, 1), '');
+      this.setCd('dt', p.dodgeCharges >= 1 ? 0 : clamp(1 - p.dodgeRe / FEINT_CD, 0, 1), p.dodgeCharges >= 1 ? '' : String(Math.ceil(FEINT_CD - p.dodgeRe)));
       this.parts.dt.pips.forEach((pip, i) => this.tog(pip, 'on', i < p.dodgeCharges));
     } else {
       const tf = p.tackleCd > 0 ? clamp(p.tackleCd / (2.2 * p.mods.tackleCd), 0, 1) : 0;
@@ -7433,7 +7469,7 @@ const UI = {
             ${row(key('RIGHT THUMB'), 'Drag anywhere on the right to turn the camera. The crosshair is where shots go')}
             ${row(key('SHOOT'), 'Hold to charge, let go to shoot. Drag on it while holding to aim')}
             ${row(key('PASS'), 'Tap to pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for it: your teammate looks up, then picks the pass')}
-            ${row(key('DODGE') + key('TACKLE'), 'One button. With the ball it dodges a tackle, without it you slide')}
+            ${row(key('FEINT') + key('TACKLE'), 'One button. With the ball it feints (a step-over nobody can tackle you through, every 5s), without it you slide')}
             ${row(key('JUMP'), 'Jump. With the ball it flicks it over a defender')}
             ${row(key('ARC'), 'Your three style abilities, then FLOW when the bar is full')}
             ${row(key('DOUBLE TAP'), 'Double tap the right side to face the goal')}
@@ -7449,7 +7485,7 @@ const UI = {
             ${row(key('HOLD LMB'), 'Charge a shot, release to shoot where you aim')}
             ${row(key('RMB'), 'Pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for a pass: your teammate looks up, then picks one. Sprint into space for a through ball')}
             ${row(key('SPACE'), 'Jump. With the ball it flicks it over defenders')}
-            ${row(key('C'), 'Dribble dodge. Beats one tackle. 2 charges')}
+            ${row(key('C'), 'Feint: a step-over cut to the side. Nobody can tackle you through it. Once every 5 seconds')}
             ${row(key('F'), 'Slide tackle')}
             ${row(key('Q') + key('E') + key('R'), 'Style abilities. Big moves get a quick cut-in; turn them off in the pause menu')}
             ${row(key('G'), 'Activate Flow when the bar is full')}
@@ -7465,19 +7501,20 @@ const UI = {
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}
-            ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Dodge')}${row(key('X'), 'Slide tackle')}
+            ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Feint')}${row(key('X'), 'Slide tackle')}
             ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
           </div></section>
           <section class="panel"><h3>WINNING THE BALL</h3><ul>
             <li><b>Run into a loose ball</b> to dribble it. You cannot run through a carrier, you have to tackle.</li>
             <li><b>Slide tackles</b> pop the ball loose and floor the carrier. Miss, and you are stuck on the grass.</li>
-            <li><b>Dodge right as the slide comes in.</b> A dodged tackle is an ankle breaker and fills your Flow.</li>
+            <li><b>Feint right as the tackle comes in.</b> A tackle that hits your feint is an ankle breaker and fills your Flow.</li>
+            <li><b>You have the ball</b> when a bright ring glows round your feet and the crosshair turns gold.</li>
             <li><b>Hold A or D (or the stick left or right) as you release a shot</b> to bend it.</li>
             <li><b>The keeper</b> reacts to where the ball is going. Corners, curlers and fakes beat him.</li>
           </ul></section>
           <section class="panel"><h3>FLOW, SPINS, RANK</h3><ul>
             <li><b>Awakening</b> is your style's own power-up. Goals, assists, shots on target, tackles and tricks fill its bar. When it is full, press Z (or the Flow button) for 20 seconds of it: your cooldowns reset and recharge twice as fast, your abilities last longer, and you get your style's own boost.</li>
-            <li><b>Flow</b> fills from completed passes, dodges, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
+            <li><b>Flow</b> fills from completed passes, feints, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
             <li><b>Emeralds:</b> win 150, draw 80, loss 50, plus 20 a goal and 10 an assist.</li>
             <li><b>Spins</b> cost 200. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
@@ -7582,6 +7619,7 @@ const UI = {
       <div class="scorebar"><div class="team blue"><span class="nm" id="sc0-nm">HOME</span><span id="sc0">0</span></div><div class="clock"><span id="clock">4:00</span><small id="clock-sub"></small></div><div class="team orange"><span id="sc1">0</span><span class="nm" id="sc1-nm">AWAY</span></div></div>
       <div class="hud-em emer"><img class="px" id="hud-em-ico" alt=""><span id="hud-em">0</span></div>
       <div class="crosshair" id="xhair"></div>
+      <div class="balltag" id="balltag" hidden>BALL</div>
       <div class="charge" id="charge" hidden><i id="charge-fill"></i><span id="charge-txt">POWER</span></div>
       <div class="toasts" id="toasts"></div>
       <div class="chatfeed" id="chatfeed" aria-live="polite"></div>
@@ -7649,7 +7687,7 @@ const UI = {
           <span>Camera</span><div class="seg" id="set-cam"><button type="button" data-v="third">3RD PERSON</button><button type="button" data-v="first">1ST PERSON</button></div>
           <span>Invert camera Y</span><div class="seg" id="set-inv"><button type="button" data-v="0">OFF</button><button type="button" data-v="1">ON</button></div>
           <span class="t-only">Button size</span><div class="seg t-only" id="set-btn"><button type="button" data-v="0.85">S</button><button type="button" data-v="1">M</button><button type="button" data-v="1.15">L</button></div>
-          <span class="t-only">Aim assist</span><div class="seg t-only" id="set-assist"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
+          <span>Aim assist</span><div class="seg" id="set-assist"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Chat</span><div class="seg" id="set-chat">${CHAT_SHOW.map(([v, n]) => `<button type="button" data-v="${v}">${n}</button>`).join('')}</div>
           <span>Cut-ins</span><div class="seg" id="set-cut"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Sound</span><div class="seg" id="set-snd"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
@@ -7807,7 +7845,7 @@ const UI = {
       html += `<div class="slot" id="slot${i}"><img class="px" src="${iconURL(a.def.icon, p.aura)}" alt=""><span class="key k">${KEYS3[i]}</span><div class="cd"></div><div class="num"></div><span class="nm">${esc(a.def.name)}</span></div>`;
     });
     html += '<div class="sep"></div>';
-    html += `<div class="slot small" id="slot-c"><img class="px" src="${iconURL('dash', '#ffffff')}" alt=""><span class="key k">C</span><div class="cd"></div><div class="pips"><i></i><i></i></div><span class="nm">DODGE</span></div>`;
+    html += `<div class="slot small" id="slot-c"><img class="px" src="${iconURL('dash', '#ffffff')}" alt=""><span class="key k">C</span><div class="cd"></div><div class="pips"><i></i></div><span class="nm">FEINT</span></div>`;
     html += `<div class="slot small" id="slot-f"><img class="px" src="${iconURL('tackle', '#e8e1cf')}" alt=""><span class="key k">F</span><div class="cd"></div><div class="num"></div><span class="nm">TACKLE</span></div>`;
     html += `<div class="slot small" id="slot-g"><img class="px" src="${iconURL('flame', p.aura)}" alt=""><span class="key k">G</span><div class="cd"></div><span class="nm">FLOW</span></div>`;
     if (p.style.awaken) html += `<div class="slot small awaken" id="slot-z"><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><span class="key k">Z</span><div class="cd"></div><span class="nm">AWAKEN</span></div>`;
@@ -7851,7 +7889,8 @@ const UI = {
     this.slots.forEach((s, i) => { const k = FXOF[p.abil[i].id]; s.el.classList.toggle('active', !!k && p.fx[k] > 0); });
     const C = this.slotC;
     C.pips.forEach((pip, i) => pip.classList.toggle('on', i < p.dodgeCharges));
-    C.cd.style.setProperty('--p', (p.dodgeCharges >= 2 ? 0 : (1 - p.dodgeRe / 4) * 360).toFixed(1) + 'deg');
+    C.cd.style.setProperty('--p', (p.dodgeCharges >= 1 ? 0 : (1 - p.dodgeRe / FEINT_CD) * 360).toFixed(1) + 'deg');
+    const has = m.ball.owner === p; $('xhair').classList.toggle('ball', has); $('balltag').hidden = !has; // a frame and BALL while you have the ball
     const tf = p.tackleCd > 0 ? p.tackleCd / (2.2 * p.mods.tackleCd) : 0;
     this.slotF.cd.style.setProperty('--p', (clamp(tf, 0, 1) * 360).toFixed(1) + 'deg');
     this.slotF.num.textContent = p.tackleCd > 0 ? Math.ceil(p.tackleCd) : '';
@@ -7908,7 +7947,7 @@ const UI = {
       }
     } else if (Input.lockFailed && !Input.usingPad) txt = 'MOUSE LOCK IS BLOCKED HERE. TURN THE CAMERA WITH THE ARROW KEYS.';
     else if (!Input.locked && !Input.usingPad) txt = 'CLICK THE PITCH TO LOCK THE MOUSE';
-    else if (this.hintT > 0) txt = 'HOLD LMB TO SHOOT · RMB TO PASS · C DODGES A TACKLE · F TO SLIDE';
+    else if (this.hintT > 0) txt = 'HOLD LMB TO SHOOT · RMB TO PASS · C TO FEINT · F TO SLIDE';
     h.textContent = txt; h.hidden = !txt;
   },
   drawMinimap(m) {
@@ -8154,7 +8193,7 @@ const UI = {
     } else if (tab === 'flow') {
       const fl = id === 'NONE' ? null : FLOWS[id];
       det.innerHTML = head('', '') + `<p style="margin:0;font-size:22px">${esc(fl ? fl.desc : RAW_FLOW_DESC)}</p>
-        <p style="margin:0;color:var(--muted)">Fill the Flow bar with completed passes, dodges, tackles and shots on target. Press G for 15 seconds of Flow: glowing eyes, a swirling aura and this buff.</p>`;
+        <p style="margin:0;color:var(--muted)">Fill the Flow bar with completed passes, feints, tackles and shots on target. Press G for 15 seconds of Flow: glowing eyes, a swirling aura and this buff.</p>`;
     } else {
       const sk = SKINS[id], slot = SKIN_SLOTS.find((sl) => sl.id === sk.slot);
       det.innerHTML = head(slot.name + ' SKIN' + (sk.pass ? ' · GAME PASS ONLY' : ''), sk.desc || '') + `<p style="margin:0;color:var(--muted)">Skins only change how you look. They never change your stats.${sk.slot === 'celeb' ? ' You play it when you score.' : ''}</p>`;

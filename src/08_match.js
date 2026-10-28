@@ -206,12 +206,18 @@ class Match {
     if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; }
     if (p.charging) {
       if (!c.shootHeld && !c.shootUp) { p.charging = false; p.charge = 0; }
-      else p.charge = p.fx.loaded > 0 ? 1 : Math.min(1, p.charge + dt / 0.95);
+      else p.charge = p.fx.loaded > 0 ? 1 : Math.min(1, p.charge + dt / 0.8);
     }
     if (c.shootUp && p.charging) {
-      const power = Math.max(0.28, p.charge);
+      const power = Math.max(0.5, p.charge); // a quick tap is still a proper shot
       p.charging = false; p.charge = 0;
-      this.tryShoot(p, power, p.aimV || this.aim, { curveIn: c.moveX });
+      if (!this.tryShoot(p, power, p.aimV || this.aim, { curveIn: c.moveX }) && this.ball.owner !== p) p.shotBuffer = { power, curveIn: c.moveX, t: 0.35 };
+    }
+    // pressed a moment before the ball reached you: it goes as soon as you have it
+    if (p.shotBuffer) {
+      p.shotBuffer.t -= dt;
+      if (this.ball.owner === p) { const sb = p.shotBuffer; p.shotBuffer = null; this.shootAt(p, p.aimV || this.aim, sb.power, { curveIn: sb.curveIn }); }
+      else if (p.shotBuffer.t <= 0) p.shotBuffer = null;
     }
     if (c.passDown) p.passHold = 0.0001;
     if (p.passHold > 0) p.passHold += dt;
@@ -432,15 +438,26 @@ class Match {
     }
     return true;
   }
+  /** FEINT (C, B, the FEINT button): a step-over cut to the side, keeping the ball. Nobody can tackle you through it
+      (a tackle that tries is an ankle breaker). One use, then FEINT_CD seconds to recharge, so it cannot be spammed */
   dodge(p, dx, dz) {
-    if (p.dodgeCharges < 1 || p.stamina < 8 || p.state !== 'free') { if (p.isHuman && p.state === 'free') { Sfx.deny(); } return false; }
-    if (len2D(dx, dz) < 0.2) { dx = -Math.cos(p.yaw); dz = Math.sin(p.yaw); }
-    const l = len2D(dx, dz); dx /= l; dz /= l;
-    p.dodgeCharges--; p.stamina -= 12; p.stamDelay = 0.6; p.iframes = 0.5;
+    if (p.dodgeCharges < 1 || p.state !== 'free') {
+      if (p.isHuman && p.state === 'free') { this.toast('FEINT IN ' + Math.max(1, Math.ceil(FEINT_CD - p.dodgeRe)) + 'S', 'bad', p); Sfx.deny(); }
+      return false;
+    }
+    // cut to the side you push towards; with no push, the other side from last time
+    const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), rx = Math.cos(p.yaw), rz = -Math.sin(p.yaw);
+    const push = dx * rx + dz * rz;
+    const side = Math.abs(push) > 0.3 ? Math.sign(push) : (p.feintSide = -(p.feintSide || -1));
+    let cx = rx * side * 0.85 + fx * 0.45, cz = rz * side * 0.85 + fz * 0.45;
+    const l = len2D(cx, cz); cx /= l; cz /= l;
+    p.dodgeCharges = 0; p.dodgeRe = 0; p.stamina = Math.max(0, p.stamina - 6); p.stamDelay = 0.4;
+    p.iframes = 0.55; p.tackleProof = Math.max(p.tackleProof, 0.55); p.feint = side;
     for (const o of this.opponents(p)) if ((o.state === 'windup' || o.state === 'slide') && dist2D(o.pos, p.pos) < 7) o.slideBeaten = p;
     const yawKeep = p.yaw;
-    this.dashP(p, dx, dz, 15.5, 0.2, { onEnd: () => { if (this.ball.owner === p) p.yaw = yawKeep; } });
+    this.dashP(p, cx, cz, 12.5, 0.3, { onEnd: () => { p.feint = 0; if (this.ball.owner === p) p.yaw = yawKeep; } });
     FX.feathers(p.pos.x, p.pos.y + 0.3, p.pos.z, '#ffffff', 6); Sfx.dodge();
+    if (p.isHuman) this.label(p, 'FEINT', '#ffffff', 0.6);
     return true;
   }
   dashP(p, dx, dz, speed, dur, o = {}) {

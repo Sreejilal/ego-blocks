@@ -120,7 +120,7 @@ const Cam = {
   /** V, R3 or the camera button: third person <-> first person */
   toggle() {
     const s = Save.data.settings;
-    s.cam = s.cam === 'first' ? 'third' : 'first'; Save.save();
+    s.cam = s.cam === 'first' ? 'third' : 'first'; s.camPicked = true; Save.save();
     if (s.cam === 'third') { this.pitch = clamp(this.pitch, -0.66, 0.42); this.unhide(); }
     Sfx.click(); UI.toast(s.cam === 'first' ? 'FIRST PERSON' : 'THIRD PERSON');
     if (Game.state === 'paused') UI.renderPause();
@@ -206,19 +206,19 @@ const Cam = {
       if (t > 0 && t < 70) { this.aim.set(o.x + d.x * t, 0.3, o.z + d.z * t); set = true; }
     }
     if (!set) this.aim.set(o.x + d.x * 45, clamp(o.y + d.y * 45, 0.25, 9), o.z + d.z * 45);
-    if (Touch.on && !Input.usingPad && Save.data.settings.assist !== false) this.assist(p, gz);
+    if (Save.data.settings.assist !== false) this.assist(p, gz, Touch.on && !Input.usingPad ? 1 : 0.6); // phones get the strongest help
     this.onTarget = Math.abs(this.aim.z - gz) < 0.6 && Math.abs(this.aim.x) < F.GW && this.aim.y < F.GH;
     m.aim.copy(this.aim); m.camYaw = this.yaw; m.aimOnTarget = this.onTarget;
   },
   /** touch aim assist: a shot aimed just wide, just high or down at the grass is pulled inside the frame.
       Anything clearly wide (more than ~2 blocks past a post) is left alone so crosses still work. */
-  assist(p, gz) {
+  assist(p, gz, k = 1) {
     const o = World.camera.position, d = this.fwd;
     if ((gz - p.pos.z) * d.z <= 0 || Math.abs(d.z) < 0.25) return;
     const t = (gz - o.z) / d.z;
     if (!(t > 0)) return;
     let x = o.x + d.x * t, y = o.y + d.y * t;
-    if (Math.abs(x) > F.GW + 1.9 || y > F.GH + 1.4) return;
+    if (Math.abs(x) > F.GW + 1.9 * k || y > F.GH + 1.4 * k) return;
     const M = F.GW - 0.6;
     if (Math.abs(x) > M) x = Math.sign(x) * M;
     y = y < 0.35 ? 0.8 : Math.min(y, F.GH - 0.5);

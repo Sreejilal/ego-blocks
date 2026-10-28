@@ -21,7 +21,7 @@ const Touch = {
   tpl() {
     const btn = (act, cls, lb, extra = '') => `<div class="tb ${cls}" data-act="${act}"><i class="ic"></i><b class="lb">${lb}</b><span class="cd"></span><span class="num"></span>${extra}</div>`;
     return `<div class="stick idle" id="t-stick"><div class="ring"></div><div class="base"></div><div class="knob"></div><b class="lb">MOVE</b></div>`
-      + btn('shoot', 'big', 'SHOOT', '<span class="chg"></span>') + btn('pass', 'pass', 'PASS') + btn('dt', 'dt', 'TACKLE', '<span class="pips"><i></i><i></i></span>') + btn('jump', '', 'JUMP')
+      + btn('shoot', 'big', 'SHOOT', '<span class="chg"></span>') + btn('pass', 'pass', 'PASS') + btn('dt', 'dt', 'TACKLE', '<span class="pips"><i></i></span>') + btn('jump', '', 'JUMP')
       + btn('ab0', 'ab', '') + btn('ab1', 'ab', '') + btn('ab2', 'ab', '') + btn('flow', 'flow off', 'FLOW') + btn('item', 'item off', 'ITEM')
       + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tb sm" data-act="cam" aria-label="Switch camera"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
   },
@@ -270,9 +270,9 @@ const Touch = {
       this.parts.dt.ic.style.backgroundImage = 'url(' + (own ? iconURL('dash', '#ffffff') : iconURL('tackle', '#e8e1cf')) + ')';
       this.tog(b.dt, 'dodge', own);
     }
-    this.setLabel('dt', own ? 'DODGE' : 'TACKLE');
+    this.setLabel('dt', own ? 'FEINT' : 'TACKLE');
     if (own) {
-      this.setCd('dt', p.dodgeCharges >= 1 ? 0 : clamp(1 - p.dodgeRe / 4, 0, 1), '');
+      this.setCd('dt', p.dodgeCharges >= 1 ? 0 : clamp(1 - p.dodgeRe / FEINT_CD, 0, 1), p.dodgeCharges >= 1 ? '' : String(Math.ceil(FEINT_CD - p.dodgeRe)));
       this.parts.dt.pips.forEach((pip, i) => this.tog(pip, 'on', i < p.dodgeCharges));
     } else {
       const tf = p.tackleCd > 0 ? clamp(p.tackleCd / (2.2 * p.mods.tackleCd), 0, 1) : 0;
