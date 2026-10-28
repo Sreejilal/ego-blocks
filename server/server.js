@@ -22,7 +22,7 @@ const PORT = Number(process.env.PORT) || 8787;
 const STEP = 1 / 60, SNAP_EVERY = 3;
 const MODES_OK = ['quick', 'koth', 'volleys', 'duel'];
 const STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup'];
-const KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook'];
+const KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw'];
 const FX_SENT = ['burst', 'turbo', 'shuffle', 'lockdown', 'skyTrap', 'vision', 'scent', 'loaded', 'call', 'bubble', 'feathers'];
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 // doing nothing while the ball is in play: a warning after IDLE_SECONDS, a bot after IDLE_GRACE more
@@ -186,7 +186,7 @@ function snapshot(room) {
   const pl = m.players.map((p) => {
     let flags = 0;
     if (p.charging) flags |= 1; if (p.onGround) flags |= 2; if (p.flowT > 0) flags |= 4; if (p.callT > 0 || p.fx.call > 0) flags |= 8;
-    if (p.fx.shuffle > 0) flags |= 16; if (p.fx.lockdown > 0) flags |= 32; if (p.fx.bubble > 0) flags |= 64; if (p.awakeT > 0) flags |= 128;
+    if (p.fx.shuffle > 0) flags |= 16; if (p.fx.lockdown > 0) flags |= 32; if (p.fx.bubble > 0) flags |= 64; if (p.awakeT > 0) flags |= 128; if (p.setPiece && p.setPiece.type === 'throw') flags |= 256;
     return [r2(p.pos.x), r2(p.pos.y), r2(p.pos.z), r2(p.vel.x), r2(p.vel.z), r2(p.yaw), STATES.indexOf(p.state), r2(p.stateT), r2(p.stateDur), r2(p.kickT), KICKS.indexOf(p.kickStyle || null), flags, r2(p.charge),
       p.dive ? p.dive.side : 0, p.dive ? (p.dive.high ? 1 : 0) : 0, p.dive ? r2(p.dive.dur) : 0, r2(p.flipT)];
   });

@@ -41,6 +41,10 @@ file in file-name order into ONE function scope. There are no imports or exports
 | `11_ui.js` | `UI`: all menus and the HUD (lobby, pause, results, spins, locker, how to play) |
 | `12_main.js` | `Game`: state machine, main loop, rewards, auto graphics, `window.EGO` test hooks |
 
+## Restarts
+
+- `onOut` sets a THROW-IN, CORNER or GOAL KICK; `doRestart` places the taker and sets `p.setPiece` (`throw`, `corner`, `goalkick`) and `m.setPieceBy`. The taker stands still (`maxSpeed` 0), opponents keep back (`updateSetPiece`), pass/shoot play it (`takeSetPiece`, `throwBall`), bots wait `sp.wait`, a human gets 6s. A ball held for a set piece never counts as out. Test: `node test/setpieces.js`.
+
 ## Flows, Awakenings, kits, daily
 
 - Each Flow in `FLOWS` has a `color`, an `fx` look (drawn by `FX.flow`, also on the start screen) and `mods`; `start` effects run when it switches on (`stamina`, `resetCd`).

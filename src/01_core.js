@@ -48,17 +48,17 @@ function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) +
 /* ---------- pitch geometry (1 unit = 1 block) ----------
    Blue team defends -Z and attacks +Z. Orange is the mirror. */
 const F = {
-  W: 21.5,          // touchline outer edge (x). 24.5 x 38.5 felt too big; the first pitch was 20.5 x 32.5
-  L: 34.0,          // goal line outer edge (z)
-  GW: 4.0,          // half width of the goal mouth (inner). Smaller since the pitch shrank: 4.5 x 3.0 gave 10 to 15 goals a match
-  GH: 2.75,         // goal mouth height (inner, crossbar underside)
+  W: 27,            // touchline outer edge (x). A long field you can sprint end to end (was 21.5 x 34)
+  L: 42,            // goal line outer edge (z)
+  GW: 4.5,          // half width of the goal mouth (inner): 9 wide, so a keeper at one post has to dive across
+  GH: 3.0,          // goal mouth height (inner, crossbar underside)
   GD: 2.5,          // net depth behind the goal line
   POST: 0.5,        // post / bar thickness
-  BOARD_X: 25.0,    // advertising boards (ball bounces off these)
-  BOARD_Z: 38.5,
-  BOX_W: 10,        // penalty box half width (outer edge)
-  BOX_D: 8,         // penalty box depth from goal line
-  CIRCLE: 6.5,      // centre circle radius
+  BOARD_X: 30.5,    // advertising boards (ball bounces off these)
+  BOARD_Z: 47,
+  BOX_W: 12.5,      // penalty box half width (outer edge)
+  BOX_D: 10,        // penalty box depth from goal line
+  CIRCLE: 8,        // centre circle radius
 };
 // bot positions were tuned on the first, smaller pitch (20.5 x 32.5); they are scaled by these to fit this one
 const PITCH_KX = F.W / 20.5, PITCH_KZ = F.L / 32.5;

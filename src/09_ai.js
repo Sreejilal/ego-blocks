@@ -7,6 +7,7 @@ const AI = {
     if (m.aiTeamT <= 0) { m.aiTeamT = 0.18; this.predict(m); this.assign(m, 0); this.assign(m, 1); }
     for (const p of m.players) {
       if (p.isHuman && !m.autopilot) continue;
+      if (p.setPiece) { p.mx = p.mz = 0; continue; } // taking a throw-in, corner or goal kick: the match plays it
       if (p.isGK) this.keeper(m, p, dt);
       else this.outfield(m, p, dt);
     }
@@ -540,7 +541,7 @@ const AI = {
     p.faceYaw = yawTo(p.pos, b.pos);
   },
   dive(m, p, dx, ky, tk, sk) {
-    const side = sgn(dx), dur = 0.36, rs = 10 + 6 * sk;
+    const side = sgn(dx), dur = 0.4, rs = 12 + 7.5 * sk; // a 9-wide goal: keepers dive further and faster
     const vx = clamp(dx / Math.max(0.16, Math.min(tk, dur)), -rs, rs);
     const s = m.dir(p.team);
     p.yaw = s > 0 ? 0 : Math.PI;

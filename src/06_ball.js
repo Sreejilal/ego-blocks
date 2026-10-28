@@ -64,6 +64,7 @@ class Ball {
     const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
     let tx, ty, tz, kf = 26;
     if (this.held) { tx = p.pos.x + fx * 0.42; ty = p.pos.y + 1.0; tz = p.pos.z + fz * 0.42; kf = 30; }
+    else if (p.setPiece && p.setPiece.type === 'throw') { tx = p.pos.x + fx * 0.12; ty = p.pos.y + 2.25; tz = p.pos.z + fz * 0.12; kf = 30; } // a throw-in: over the head
     else {
       const sp = len2D(p.vel.x, p.vel.z);
       const ph0 = p.dribblePhase;

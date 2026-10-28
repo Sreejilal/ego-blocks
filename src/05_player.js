@@ -232,9 +232,9 @@ class Player {
       if (ownsBall) base *= 0.94;
       if (this.charging) base *= 0.62;
       if (st === 'hold') base *= 0.6;
-      maxSpeed = base * m.speed;
+      maxSpeed = this.setPiece ? 0 : base * m.speed; // a throw-in or corner taker stands still
       if (sprinting && m.stamDrain > 0) {
-        this.stamina -= 19 * dt * m.stamDrain; this.stamDelay = 0.7;
+        this.stamina -= 13 * dt * m.stamDrain; this.stamDelay = 0.7; // about 7.5s of sprint: the whole pitch
         if (this.stamina <= 0) { this.stamina = 0; this.exhausted = true; }
       }
     } else if (st === 'dash') {
@@ -315,7 +315,7 @@ class Player {
     let hx = 0, hy = 0, lRz = 0, snapX = false;
     if (!this.onGround && st === 'free') { lL = -0.55; lR = 0.35; aL = -0.5; aR = -0.3; aLz = 0.5; aRz = -0.5; }
     if (this.charging) { lR = 0.4 + this.charge * 0.8; aLz = 0.7; aRz = -0.35; bx = -0.05 - this.charge * 0.08; }
-    if (this.kickT >= 0) {
+    if (this.kickT >= 0 && this.kickStyle !== 'throw') {
       const t = this.kickT, ks = this.kickStyle, env = Math.sin(Math.PI * clamp(t, 0, 1));
       lR = t < 0.35 ? lerp(0.2, 1.1, t / 0.35) : t < 0.7 ? lerp(1.1, -1.45, (t - 0.35) / 0.35) : lerp(-1.45, 0, (t - 0.7) / 0.3);
       lL = 0.1; aLz = 0.75; aRz = -0.5; aL = -0.3; bx = -0.1;
@@ -324,6 +324,8 @@ class Player {
       else if (ks === 'outside') { lRz = -0.45 * env; lR *= 0.7; } // flick with the outside of the boot
       else if (ks === 'nolook') hy = 0.95 * (this.noLookSide || 1) * env; // eyes the other way
     }
+    if (this.setPiece && this.setPiece.type === 'throw') { aL = aR = -2.85; aLz = 0.12; aRz = -0.12; lL = lR = 0; } // ball held over the head
+    if (this.kickT >= 0 && this.kickStyle === 'throw') { const t = clamp(this.kickT, 0, 1); aL = aR = lerp(-2.85, -0.5, t); aLz = 0.12; aRz = -0.12; lR = 0.1; lL = -0.1; lRz = 0; bx = 0.12 * Math.sin(Math.PI * t); }
     if (this.fx.shuffle > 0) { aL = aR = -1.45; aLz = 0.05; aRz = -0.05; bz = Math.sin(this.animPhase * 0.6) * 0.24; }
     if (st === 'hold') { aL = aR = -1.15; aLz = 0.15; aRz = -0.15; }
     if (this.fx.call > 0 || this.callT > 0) { aR = -2.9; aRz = -0.2; }

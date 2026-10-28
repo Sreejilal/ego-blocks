@@ -784,17 +784,17 @@ function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) +
 /* ---------- pitch geometry (1 unit = 1 block) ----------
    Blue team defends -Z and attacks +Z. Orange is the mirror. */
 const F = {
-  W: 21.5,          // touchline outer edge (x). 24.5 x 38.5 felt too big; the first pitch was 20.5 x 32.5
-  L: 34.0,          // goal line outer edge (z)
-  GW: 4.0,          // half width of the goal mouth (inner). Smaller since the pitch shrank: 4.5 x 3.0 gave 10 to 15 goals a match
-  GH: 2.75,         // goal mouth height (inner, crossbar underside)
+  W: 27,            // touchline outer edge (x). A long field you can sprint end to end (was 21.5 x 34)
+  L: 42,            // goal line outer edge (z)
+  GW: 4.5,          // half width of the goal mouth (inner): 9 wide, so a keeper at one post has to dive across
+  GH: 3.0,          // goal mouth height (inner, crossbar underside)
   GD: 2.5,          // net depth behind the goal line
   POST: 0.5,        // post / bar thickness
-  BOARD_X: 25.0,    // advertising boards (ball bounces off these)
-  BOARD_Z: 38.5,
-  BOX_W: 10,        // penalty box half width (outer edge)
-  BOX_D: 8,         // penalty box depth from goal line
-  CIRCLE: 6.5,      // centre circle radius
+  BOARD_X: 30.5,    // advertising boards (ball bounces off these)
+  BOARD_Z: 47,
+  BOX_W: 12.5,      // penalty box half width (outer edge)
+  BOX_D: 10,        // penalty box depth from goal line
+  CIRCLE: 8,        // centre circle radius
 };
 // bot positions were tuned on the first, smaller pitch (20.5 x 32.5); they are scaled by these to fit this one
 const PITCH_KX = F.W / 20.5, PITCH_KZ = F.L / 32.5;
@@ -2704,9 +2704,9 @@ class Player {
       if (ownsBall) base *= 0.94;
       if (this.charging) base *= 0.62;
       if (st === 'hold') base *= 0.6;
-      maxSpeed = base * m.speed;
+      maxSpeed = this.setPiece ? 0 : base * m.speed; // a throw-in or corner taker stands still
       if (sprinting && m.stamDrain > 0) {
-        this.stamina -= 19 * dt * m.stamDrain; this.stamDelay = 0.7;
+        this.stamina -= 13 * dt * m.stamDrain; this.stamDelay = 0.7; // about 7.5s of sprint: the whole pitch
         if (this.stamina <= 0) { this.stamina = 0; this.exhausted = true; }
       }
     } else if (st === 'dash') {
@@ -2787,7 +2787,7 @@ class Player {
     let hx = 0, hy = 0, lRz = 0, snapX = false;
     if (!this.onGround && st === 'free') { lL = -0.55; lR = 0.35; aL = -0.5; aR = -0.3; aLz = 0.5; aRz = -0.5; }
     if (this.charging) { lR = 0.4 + this.charge * 0.8; aLz = 0.7; aRz = -0.35; bx = -0.05 - this.charge * 0.08; }
-    if (this.kickT >= 0) {
+    if (this.kickT >= 0 && this.kickStyle !== 'throw') {
       const t = this.kickT, ks = this.kickStyle, env = Math.sin(Math.PI * clamp(t, 0, 1));
       lR = t < 0.35 ? lerp(0.2, 1.1, t / 0.35) : t < 0.7 ? lerp(1.1, -1.45, (t - 0.35) / 0.35) : lerp(-1.45, 0, (t - 0.7) / 0.3);
       lL = 0.1; aLz = 0.75; aRz = -0.5; aL = -0.3; bx = -0.1;
@@ -2796,6 +2796,8 @@ class Player {
       else if (ks === 'outside') { lRz = -0.45 * env; lR *= 0.7; } // flick with the outside of the boot
       else if (ks === 'nolook') hy = 0.95 * (this.noLookSide || 1) * env; // eyes the other way
     }
+    if (this.setPiece && this.setPiece.type === 'throw') { aL = aR = -2.85; aLz = 0.12; aRz = -0.12; lL = lR = 0; } // ball held over the head
+    if (this.kickT >= 0 && this.kickStyle === 'throw') { const t = clamp(this.kickT, 0, 1); aL = aR = lerp(-2.85, -0.5, t); aLz = 0.12; aRz = -0.12; lR = 0.1; lL = -0.1; lRz = 0; bx = 0.12 * Math.sin(Math.PI * t); }
     if (this.fx.shuffle > 0) { aL = aR = -1.45; aLz = 0.05; aRz = -0.05; bz = Math.sin(this.animPhase * 0.6) * 0.24; }
     if (st === 'hold') { aL = aR = -1.15; aLz = 0.15; aRz = -0.15; }
     if (this.fx.call > 0 || this.callT > 0) { aR = -2.9; aRz = -0.2; }
@@ -2956,6 +2958,7 @@ class Ball {
     const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
     let tx, ty, tz, kf = 26;
     if (this.held) { tx = p.pos.x + fx * 0.42; ty = p.pos.y + 1.0; tz = p.pos.z + fz * 0.42; kf = 30; }
+    else if (p.setPiece && p.setPiece.type === 'throw') { tx = p.pos.x + fx * 0.12; ty = p.pos.y + 2.25; tz = p.pos.z + fz * 0.12; kf = 30; } // a throw-in: over the head
     else {
       const sp = len2D(p.vel.x, p.vel.z);
       const ph0 = p.dribblePhase;
@@ -3892,6 +3895,7 @@ class Match {
     if (ph === 'play' || ph === 'out' || ph === 'goal') AI.update(this, dt);
     if (this.human && !this.autopilot) this.updateHuman(dt, this.ctl);
     for (const h of this.humans) if (h.ctl) this.updateHuman(dt, h.ctl, h);
+    this.updateSetPiece(dt);
     this.updatePending(dt);
     for (const p of this.players) p.physics(dt);
     this.separate();
@@ -3946,6 +3950,12 @@ class Match {
     p.faceYaw = p.charging ? cy : null;
     p.jetThrust = c.jumpHeld && p.fx.jetpack > 0;
     if (this.phase !== 'play') { p.charging = false; p.charge = 0; return; }
+    if (p.setPiece) { // throw-in, corner: pass plays it to a teammate, shoot plays it where you aim
+      p.faceYaw = cy; p.yaw = cy; p.charging = false; p.charge = 0;
+      if (c.passUp || c.passDown) this.takeSetPiece(p, 'pass');
+      else if (c.shootUp || c.shootDown) this.takeSetPiece(p, 'shoot');
+      return;
+    }
     if (!this.canAct(p)) { if (p.state !== 'dash') { p.charging = false; p.charge = 0; } return; }
     if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; }
     if (p.charging) {
@@ -4650,7 +4660,7 @@ class Match {
     const t = clamp(((b.pos.x - ax) * abx + (b.pos.y - ay) * aby + (b.pos.z - az) * abz) / l2, 0, 1);
     const cx = ax + abx * t, cy = ay + aby * t, cz = az + abz * t;
     const dist = Math.hypot(b.pos.x - cx, b.pos.y - cy, b.pos.z - cz);
-    const reach = (gk.state === 'dive' ? 0.62 : 0.58) + (5 - this.size) * 0.14; // longer reach in small teams, where keepers face more shots
+    const reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.size) * 0.14; // longer reach in small teams, where keepers face more shots
     if (dist > BALL_R + reach) return;
     const k = b.kick;
     const shooter = k && k.by && k.by.team !== gk.team && k.type === 'shot' ? k.by : null;
@@ -4681,6 +4691,7 @@ class Match {
     const b = this.ball, r = BALL_R;
     if (b.inGoal && Math.abs(b.pos.z) > F.L + r) { this.onGoal(b.inGoal); return; }
     if (b.inGoal) return;
+    if (b.owner && b.owner.setPiece) return; // held for a throw-in or corner, behind the line on purpose
     const ax = Math.abs(b.pos.x), az = Math.abs(b.pos.z);
     if (ax > F.W + r || az > F.L + r) this.onOut();
   }
@@ -4737,7 +4748,7 @@ class Match {
       const defending = sz > 0 ? 1 : 0;
       if (award === defending) rs = { type: 'GOAL KICK', team: award, x: 0, z: sz * (F.L - 3.2) };
       else rs = { type: 'CORNER', team: award, x: sx * (F.W - 0.7), z: sz * (F.L - 0.7) };
-    } else rs = { type: 'KICK-IN', team: award, x: sx * (F.W - 0.7), z: clamp(b.pos.z, -F.L + 1.5, F.L - 1.5) };
+    } else rs = { type: 'THROW-IN', team: award, x: sx * (F.W + 0.35), z: clamp(b.pos.z, -F.L + 1.5, F.L - 1.5) };
     this.restart = rs;
     this.phase = 'out'; this.phaseT = 0;
     if (b.owner) { const o = b.owner; b.release(); o.pickBlock = 0.4; }
@@ -4757,6 +4768,7 @@ class Match {
       gk.pos.set(0, 0, rs.z - sgn(rs.z) * 0.3); gk.vel.set(0, 0, 0); gk.setState('free'); gk.dive = null;
       gk.yaw = sgn(rs.z) > 0 ? Math.PI : 0;
       this.possess(gk, true);
+      gk.setPiece = { type: 'goalkick', t: 0, wait: rand(0.9, 1.5) }; this.setPieceBy = gk;
     } else {
       let taker = null, bd = 1e9;
       for (const p of this.teams[rs.team]) { if (p.isGK) continue; const d = Math.hypot(p.pos.x - rs.x, p.pos.z - rs.z); if (d < bd) { bd = d; taker = p; } }
@@ -4767,12 +4779,64 @@ class Match {
       taker.yaw = Math.atan2(-rs.x * 0.6, -rs.z * 0.25 + (rs.type === 'CORNER' ? -sgn(rs.z) * 4 : this.dir(taker.team) * 2));
       this.possess(taker, true);
       taker.protect = 1.0;
+      taker.setPiece = { type: rs.type === 'CORNER' ? 'corner' : 'throw', t: 0, wait: rand(0.7, 1.4) }; this.setPieceBy = taker;
+      if (taker.isHuman) this.toast(rs.type === 'CORNER' ? (Touch.on ? 'CORNER: PASS TO CROSS IT, SHOOT TO AIM' : 'CORNER: RIGHT CLICK TO CROSS, LEFT CLICK TO AIM')
+        : (Touch.on ? 'THROW-IN: PASS TO A TEAMMATE, SHOOT TO AIM' : 'THROW-IN: RIGHT CLICK TO A TEAMMATE, LEFT CLICK TO AIM'), 'gold', taker);
       for (const o of this.teams[1 - rs.team]) {
         const dx = o.pos.x - rs.x, dz = o.pos.z - rs.z, d = Math.hypot(dx, dz);
         if (d < 5) { const k = 5 / (d || 1); o.pos.x = rs.x + (d ? dx : 1) * k; o.pos.z = rs.z + (d ? dz : 0) * k; }
       }
     }
     Sfx.whistle(1);
+  }
+  /** a throw-in: from over your head, to a point. A throw cannot go far */
+  throwBall(p, tx, tz, mate = null) {
+    const b = this.ball; if (b.owner !== p) return false;
+    const from = V3(clamp(p.pos.x + Math.sin(p.yaw) * 0.3, -F.W + 0.1, F.W - 0.1), p.pos.y + 2.2, clamp(p.pos.z + Math.cos(p.yaw) * 0.3, -F.L + 0.1, F.L - 0.1)); // released over the line, so it starts in play
+    let dx = tx - from.x, dz = tz - from.z, D = Math.hypot(dx, dz) || 1;
+    if (D > 18) { dx *= 18 / D; dz *= 18 / D; D = 18; }
+    const T = clamp(0.45 + D * 0.035, 0.5, 1.1);
+    b.pos.copy(from);
+    p.setPiece = null;
+    const ok = this.kick(p, dx / T, (0.9 - from.y + 0.5 * BALL_G * T * T) / T, dz / T, { type: 'pass', to: mate, keepPos: true, kickStyle: 'throw', kickDur: 0.35, selfBlock: 0.5 });
+    if (ok && mate && !mate.isHuman) mate.ai.receive = { t: this.time }; // the teammate comes to meet it
+    return ok;
+  }
+  /** set pieces: the taker stands still, opponents keep back, and the ball is played by hand (throw) or by foot */
+  updateSetPiece(dt) {
+    const p = this.setPieceBy; if (!p) return;
+    const sp = p.setPiece;
+    if (!sp || this.ball.owner !== p || this.phase !== 'play') { if (sp) p.setPiece = null; this.setPieceBy = null; return; }
+    sp.t += dt; p.protect = Math.max(p.protect, 0.2); p.vel.x = p.vel.z = 0;
+    const keep = sp.type === 'goalkick' ? 12 : 5; // opponents keep back until it is played
+    for (const o of this.opponents(p)) {
+      const dx = o.pos.x - p.pos.x, dz = o.pos.z - p.pos.z, d = Math.hypot(dx, dz);
+      if (d < keep) { const k = keep / (d || 1); o.pos.x = p.pos.x + (d ? dx : 1) * k; o.pos.z = p.pos.z + (d ? dz : 0) * k; }
+    }
+    // bots take it after a moment; you get 6 seconds, then it goes to a teammate by itself
+    if (p.isHuman ? sp.t > 6 : sp.t > sp.wait) this.takeSetPiece(p, null);
+  }
+  /** play a set piece: how = 'pass' (to a teammate), 'shoot' (where you aim), or null (bots, or time is up) */
+  takeSetPiece(p, how, power = 0.8) {
+    const sp = p.setPiece; if (!sp) return false;
+    const mates = this.teams[p.team].filter((q) => q !== p && !q.isGK && q.state === 'free');
+    if (sp.type === 'goalkick') { p.setPiece = null; AI.distribute(this, p); return true; }
+    if (how === 'shoot') {
+      const aim = p.aimV || this.aim;
+      if (sp.type === 'throw') return this.throwBall(p, aim.x, aim.z);
+      p.setPiece = null; return this.shootAt(p, aim, power, { curveIn: 0 });
+    }
+    let mate = how === 'pass' ? this.pickPassTarget(p) : null;
+    if (!mate || mate.isGK) {
+      // the best target: for a corner the teammate nearest the penalty spot, for a throw the nearest teammate
+      const gz = this.oppGoalZ(p.team), spot = { x: 0, z: gz - sgn(gz) * 7 };
+      let best = 1e9;
+      for (const q of mates) { const d = sp.type === 'corner' ? Math.hypot(q.pos.x - spot.x, q.pos.z - spot.z) : dist2D(q.pos, p.pos); if (d < best) { best = d; mate = q; } }
+    }
+    if (!mate) { p.setPiece = null; return false; }
+    if (sp.type === 'throw') return this.throwBall(p, mate.pos.x + mate.vel.x * 0.5, mate.pos.z + mate.vel.z * 0.5, mate);
+    p.setPiece = null;
+    return this.passTo(p, mate, { lob: true });
   }
   /* ---------- Lawless: items, projectiles, hazards ---------- */
   updateItems(dt) {
@@ -5041,6 +5105,7 @@ const AI = {
     if (m.aiTeamT <= 0) { m.aiTeamT = 0.18; this.predict(m); this.assign(m, 0); this.assign(m, 1); }
     for (const p of m.players) {
       if (p.isHuman && !m.autopilot) continue;
+      if (p.setPiece) { p.mx = p.mz = 0; continue; } // taking a throw-in, corner or goal kick: the match plays it
       if (p.isGK) this.keeper(m, p, dt);
       else this.outfield(m, p, dt);
     }
@@ -5574,7 +5639,7 @@ const AI = {
     p.faceYaw = yawTo(p.pos, b.pos);
   },
   dive(m, p, dx, ky, tk, sk) {
-    const side = sgn(dx), dur = 0.36, rs = 10 + 6 * sk;
+    const side = sgn(dx), dur = 0.4, rs = 12 + 7.5 * sk; // a 9-wide goal: keepers dive further and faster
     const vx = clamp(dx / Math.max(0.16, Math.min(tk, dur)), -rs, rs);
     const s = m.dir(p.team);
     p.yaw = s > 0 ? 0 : Math.PI;
@@ -6431,7 +6496,7 @@ const Portal = {
    an invite link. The offline game never needs any of this.
    ===================================================================== */
 const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup'];
-const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook'];
+const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw'];
 const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
 const NET_DELAY = 0.12; // seconds the picture runs behind the server
 const CHAT_SHOW = [['all', 'ALL'], ['quick', 'QUICK'], ['off', 'OFF']];
@@ -6792,6 +6857,7 @@ const Net = {
       p.kickT = B[9] >= 0 ? Math.min(0.999, B[9] + since / 0.3) : -1; p.kickStyle = NET_KICKS[B[10]] || null;
       const f = B[11];
       p.charging = !!(f & 1); p.onGround = !!(f & 2); p.flowT = f & 4 ? Math.max(p.flowT, 1) : 0; p.callT = f & 8 ? 0.5 : 0;
+      p.setPiece = f & 256 ? { type: 'throw' } : null;
       const aw = !!(f & 128);
       if (aw && !(p.awakeT > 0)) { FX.awakenBurst(p); if (p === nm.human) Shake.add(0.4); } // someone just awakened
       p.awakeT = aw ? Math.max(p.awakeT, 1) : 0;
@@ -8419,7 +8485,7 @@ const Game = {
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
-  CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES,
+  CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {

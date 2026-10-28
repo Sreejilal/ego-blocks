@@ -6,7 +6,7 @@
    an invite link. The offline game never needs any of this.
    ===================================================================== */
 const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup'];
-const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook'];
+const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw'];
 const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
 const NET_DELAY = 0.12; // seconds the picture runs behind the server
 const CHAT_SHOW = [['all', 'ALL'], ['quick', 'QUICK'], ['off', 'OFF']];
@@ -367,6 +367,7 @@ const Net = {
       p.kickT = B[9] >= 0 ? Math.min(0.999, B[9] + since / 0.3) : -1; p.kickStyle = NET_KICKS[B[10]] || null;
       const f = B[11];
       p.charging = !!(f & 1); p.onGround = !!(f & 2); p.flowT = f & 4 ? Math.max(p.flowT, 1) : 0; p.callT = f & 8 ? 0.5 : 0;
+      p.setPiece = f & 256 ? { type: 'throw' } : null;
       const aw = !!(f & 128);
       if (aw && !(p.awakeT > 0)) { FX.awakenBurst(p); if (p === nm.human) Shake.add(0.4); } // someone just awakened
       p.awakeT = aw ? Math.max(p.awakeT, 1) : 0;

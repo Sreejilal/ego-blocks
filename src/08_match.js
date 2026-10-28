@@ -148,6 +148,7 @@ class Match {
     if (ph === 'play' || ph === 'out' || ph === 'goal') AI.update(this, dt);
     if (this.human && !this.autopilot) this.updateHuman(dt, this.ctl);
     for (const h of this.humans) if (h.ctl) this.updateHuman(dt, h.ctl, h);
+    this.updateSetPiece(dt);
     this.updatePending(dt);
     for (const p of this.players) p.physics(dt);
     this.separate();
@@ -202,6 +203,12 @@ class Match {
     p.faceYaw = p.charging ? cy : null;
     p.jetThrust = c.jumpHeld && p.fx.jetpack > 0;
     if (this.phase !== 'play') { p.charging = false; p.charge = 0; return; }
+    if (p.setPiece) { // throw-in, corner: pass plays it to a teammate, shoot plays it where you aim
+      p.faceYaw = cy; p.yaw = cy; p.charging = false; p.charge = 0;
+      if (c.passUp || c.passDown) this.takeSetPiece(p, 'pass');
+      else if (c.shootUp || c.shootDown) this.takeSetPiece(p, 'shoot');
+      return;
+    }
     if (!this.canAct(p)) { if (p.state !== 'dash') { p.charging = false; p.charge = 0; } return; }
     if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; }
     if (p.charging) {
@@ -906,7 +913,7 @@ class Match {
     const t = clamp(((b.pos.x - ax) * abx + (b.pos.y - ay) * aby + (b.pos.z - az) * abz) / l2, 0, 1);
     const cx = ax + abx * t, cy = ay + aby * t, cz = az + abz * t;
     const dist = Math.hypot(b.pos.x - cx, b.pos.y - cy, b.pos.z - cz);
-    const reach = (gk.state === 'dive' ? 0.62 : 0.58) + (5 - this.size) * 0.14; // longer reach in small teams, where keepers face more shots
+    const reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.size) * 0.14; // longer reach in small teams, where keepers face more shots
     if (dist > BALL_R + reach) return;
     const k = b.kick;
     const shooter = k && k.by && k.by.team !== gk.team && k.type === 'shot' ? k.by : null;
@@ -937,6 +944,7 @@ class Match {
     const b = this.ball, r = BALL_R;
     if (b.inGoal && Math.abs(b.pos.z) > F.L + r) { this.onGoal(b.inGoal); return; }
     if (b.inGoal) return;
+    if (b.owner && b.owner.setPiece) return; // held for a throw-in or corner, behind the line on purpose
     const ax = Math.abs(b.pos.x), az = Math.abs(b.pos.z);
     if (ax > F.W + r || az > F.L + r) this.onOut();
   }
@@ -993,7 +1001,7 @@ class Match {
       const defending = sz > 0 ? 1 : 0;
       if (award === defending) rs = { type: 'GOAL KICK', team: award, x: 0, z: sz * (F.L - 3.2) };
       else rs = { type: 'CORNER', team: award, x: sx * (F.W - 0.7), z: sz * (F.L - 0.7) };
-    } else rs = { type: 'KICK-IN', team: award, x: sx * (F.W - 0.7), z: clamp(b.pos.z, -F.L + 1.5, F.L - 1.5) };
+    } else rs = { type: 'THROW-IN', team: award, x: sx * (F.W + 0.35), z: clamp(b.pos.z, -F.L + 1.5, F.L - 1.5) };
     this.restart = rs;
     this.phase = 'out'; this.phaseT = 0;
     if (b.owner) { const o = b.owner; b.release(); o.pickBlock = 0.4; }
@@ -1013,6 +1021,7 @@ class Match {
       gk.pos.set(0, 0, rs.z - sgn(rs.z) * 0.3); gk.vel.set(0, 0, 0); gk.setState('free'); gk.dive = null;
       gk.yaw = sgn(rs.z) > 0 ? Math.PI : 0;
       this.possess(gk, true);
+      gk.setPiece = { type: 'goalkick', t: 0, wait: rand(0.9, 1.5) }; this.setPieceBy = gk;
     } else {
       let taker = null, bd = 1e9;
       for (const p of this.teams[rs.team]) { if (p.isGK) continue; const d = Math.hypot(p.pos.x - rs.x, p.pos.z - rs.z); if (d < bd) { bd = d; taker = p; } }
@@ -1023,12 +1032,64 @@ class Match {
       taker.yaw = Math.atan2(-rs.x * 0.6, -rs.z * 0.25 + (rs.type === 'CORNER' ? -sgn(rs.z) * 4 : this.dir(taker.team) * 2));
       this.possess(taker, true);
       taker.protect = 1.0;
+      taker.setPiece = { type: rs.type === 'CORNER' ? 'corner' : 'throw', t: 0, wait: rand(0.7, 1.4) }; this.setPieceBy = taker;
+      if (taker.isHuman) this.toast(rs.type === 'CORNER' ? (Touch.on ? 'CORNER: PASS TO CROSS IT, SHOOT TO AIM' : 'CORNER: RIGHT CLICK TO CROSS, LEFT CLICK TO AIM')
+        : (Touch.on ? 'THROW-IN: PASS TO A TEAMMATE, SHOOT TO AIM' : 'THROW-IN: RIGHT CLICK TO A TEAMMATE, LEFT CLICK TO AIM'), 'gold', taker);
       for (const o of this.teams[1 - rs.team]) {
         const dx = o.pos.x - rs.x, dz = o.pos.z - rs.z, d = Math.hypot(dx, dz);
         if (d < 5) { const k = 5 / (d || 1); o.pos.x = rs.x + (d ? dx : 1) * k; o.pos.z = rs.z + (d ? dz : 0) * k; }
       }
     }
     Sfx.whistle(1);
+  }
+  /** a throw-in: from over your head, to a point. A throw cannot go far */
+  throwBall(p, tx, tz, mate = null) {
+    const b = this.ball; if (b.owner !== p) return false;
+    const from = V3(clamp(p.pos.x + Math.sin(p.yaw) * 0.3, -F.W + 0.1, F.W - 0.1), p.pos.y + 2.2, clamp(p.pos.z + Math.cos(p.yaw) * 0.3, -F.L + 0.1, F.L - 0.1)); // released over the line, so it starts in play
+    let dx = tx - from.x, dz = tz - from.z, D = Math.hypot(dx, dz) || 1;
+    if (D > 18) { dx *= 18 / D; dz *= 18 / D; D = 18; }
+    const T = clamp(0.45 + D * 0.035, 0.5, 1.1);
+    b.pos.copy(from);
+    p.setPiece = null;
+    const ok = this.kick(p, dx / T, (0.9 - from.y + 0.5 * BALL_G * T * T) / T, dz / T, { type: 'pass', to: mate, keepPos: true, kickStyle: 'throw', kickDur: 0.35, selfBlock: 0.5 });
+    if (ok && mate && !mate.isHuman) mate.ai.receive = { t: this.time }; // the teammate comes to meet it
+    return ok;
+  }
+  /** set pieces: the taker stands still, opponents keep back, and the ball is played by hand (throw) or by foot */
+  updateSetPiece(dt) {
+    const p = this.setPieceBy; if (!p) return;
+    const sp = p.setPiece;
+    if (!sp || this.ball.owner !== p || this.phase !== 'play') { if (sp) p.setPiece = null; this.setPieceBy = null; return; }
+    sp.t += dt; p.protect = Math.max(p.protect, 0.2); p.vel.x = p.vel.z = 0;
+    const keep = sp.type === 'goalkick' ? 12 : 5; // opponents keep back until it is played
+    for (const o of this.opponents(p)) {
+      const dx = o.pos.x - p.pos.x, dz = o.pos.z - p.pos.z, d = Math.hypot(dx, dz);
+      if (d < keep) { const k = keep / (d || 1); o.pos.x = p.pos.x + (d ? dx : 1) * k; o.pos.z = p.pos.z + (d ? dz : 0) * k; }
+    }
+    // bots take it after a moment; you get 6 seconds, then it goes to a teammate by itself
+    if (p.isHuman ? sp.t > 6 : sp.t > sp.wait) this.takeSetPiece(p, null);
+  }
+  /** play a set piece: how = 'pass' (to a teammate), 'shoot' (where you aim), or null (bots, or time is up) */
+  takeSetPiece(p, how, power = 0.8) {
+    const sp = p.setPiece; if (!sp) return false;
+    const mates = this.teams[p.team].filter((q) => q !== p && !q.isGK && q.state === 'free');
+    if (sp.type === 'goalkick') { p.setPiece = null; AI.distribute(this, p); return true; }
+    if (how === 'shoot') {
+      const aim = p.aimV || this.aim;
+      if (sp.type === 'throw') return this.throwBall(p, aim.x, aim.z);
+      p.setPiece = null; return this.shootAt(p, aim, power, { curveIn: 0 });
+    }
+    let mate = how === 'pass' ? this.pickPassTarget(p) : null;
+    if (!mate || mate.isGK) {
+      // the best target: for a corner the teammate nearest the penalty spot, for a throw the nearest teammate
+      const gz = this.oppGoalZ(p.team), spot = { x: 0, z: gz - sgn(gz) * 7 };
+      let best = 1e9;
+      for (const q of mates) { const d = sp.type === 'corner' ? Math.hypot(q.pos.x - spot.x, q.pos.z - spot.z) : dist2D(q.pos, p.pos); if (d < best) { best = d; mate = q; } }
+    }
+    if (!mate) { p.setPiece = null; return false; }
+    if (sp.type === 'throw') return this.throwBall(p, mate.pos.x + mate.vel.x * 0.5, mate.pos.z + mate.vel.z * 0.5, mate);
+    p.setPiece = null;
+    return this.passTo(p, mate, { lob: true });
   }
   /* ---------- Lawless: items, projectiles, hazards ---------- */
   updateItems(dt) {
