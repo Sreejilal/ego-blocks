@@ -325,6 +325,13 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .passline .pl-ch { color: var(--emerald); } .passline .pl-tier { color: var(--gold); }
 @media (max-width: 560px) { .gp-top { grid-template-columns: minmax(0, 1fr); } }
 
+/* online: are you there? */
+#hud .idle-warn { left: 50%; top: 30%; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); box-sizing: border-box; display: grid; justify-items: center; gap: 6px; text-align: center; padding: 12px 20px; background: rgba(9,11,22,.88); border: var(--px) solid var(--gold); box-shadow: 4px 4px 0 rgba(0,0,0,.45); }
+#hud .idle-warn b { font-family: var(--font-display); font-weight: 400; font-size: clamp(34px, 7vw, 56px); line-height: .9; color: var(--gold); }
+#hud .idle-warn span { font-family: var(--font-label); font-size: 12px; letter-spacing: .08em; }
+.earn .idle-note { color: var(--gold); }
+.earn .idle-note span { white-space: normal; }
+
 /* chat: the room panel, the box in a match, the lines in the corner */
 .on-split { display: grid; grid-template-columns: minmax(0, 640px) minmax(0, 440px); gap: 16px; align-items: start; }
 @media (max-width: 1100px) { .on-split { grid-template-columns: minmax(0, 640px); } }
@@ -6291,7 +6298,7 @@ const Net = {
     const me = nm.human;
     Cam.reset(me && me.team === 1 ? Math.PI : 0);
     Game.state = 'online';
-    UI.show('hud'); UI.buildHud(nm); $('chatfeed').replaceChildren();
+    UI.show('hud'); UI.buildHud(nm); $('chatfeed').replaceChildren(); this.idleWarn(null);
     Sfx.init(); Sfx.setCrowd(0.55);
     Input.consumeEdges(); Input.requestLock();
   },
@@ -6329,7 +6336,17 @@ const Net = {
     else if (e.e === 'label') { const p = P(e.i); if (p) UI.flabel(p, e.text, e.color, e.dur); }
     else if (e.e === 'goal') { UI.goalBanner(e.team, P(e.s), P(e.a), e.own); Sfx.roar(1); Sfx.whistle(1); World.excite[e.team] = 1; if (P(e.s) === nm.human) Shake.add(0.5); }
     else if (e.e === 'toast') UI.toast(e.text, e.cls);
+    else if (e.e === 'idle') this.idleWarn('ARE YOU THERE?', 'MOVE OR PRESS ANY BUTTON. A BOT TAKES OVER IN ' + e.s, true);
+    else if (e.e === 'idleok') this.idleWarn(null);
+    else if (e.e === 'bot') this.idleWarn('A BOT IS PLAYING FOR YOU', 'PRESS ANY BUTTON TO PLAY AGAIN. NO REWARDS THIS MATCH.', true);
+    else if (e.e === 'back') { this.idleWarn(null); UI.toast('YOU ARE BACK IN', 'good'); }
     else if (e.e === 'cutin') { const p = P(e.i); if (p && Save.data.settings.cutins) { UI.cutin(p, e.name); Cam.punch(0.75); Sfx.cutin(); } }
+  },
+  /** the idle warning in the middle of the screen (null hides it) */
+  idleWarn(big, small, beep) {
+    const el = $('idle-warn'); el.hidden = !big; if (!big) return;
+    $('idle-big').textContent = big; $('idle-small').textContent = small;
+    if (beep) Sfx.deny();
   },
   /** move every model to where it was NET_DELAY seconds ago on the server, blending two snapshots */
   applySnapshots(rdt) {
@@ -6406,7 +6423,8 @@ const Net = {
     const mine = m.players.find((p) => p.id === this.id);
     const my = nm.human ? nm.human.team : 0, a = m.score[my], b = m.score[1 - my];
     nm.score = m.score;
-    nm.result = { res: a > b ? 'win' : a < b ? 'loss' : 'draw', human: mine ? mine.stats : { goals: 0, assists: 0, shots: 0, tackles: 0 } };
+    nm.result = { res: a > b ? 'win' : a < b ? 'loss' : 'draw', human: mine ? mine.stats : { goals: 0, assists: 0, shots: 0, tackles: 0 }, idle: !!(mine && mine.idle) };
+    this.idleWarn(null);
     if (mine && mine.feats) nm.feats = mine.feats;
     this.closeChat(false);
     Game.finishMatch(false);
@@ -7170,6 +7188,7 @@ const UI = {
       <div class="charge" id="charge" hidden><i id="charge-fill"></i><span id="charge-txt">POWER</span></div>
       <div class="toasts" id="toasts"></div>
       <div class="chatfeed" id="chatfeed" aria-live="polite"></div>
+      <div class="idle-warn" id="idle-warn" hidden role="alert"><b id="idle-big"></b><span id="idle-small"></span></div>
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
       <canvas id="minimap" width="132" height="200"></canvas>
       <div class="dock">
@@ -7561,7 +7580,7 @@ const UI = {
     $('r-score').innerHTML = `<span style="color:${TEAM[0].hex}">${TEAM[0].short} ${r.score[0]}</span><span>:</span><span style="color:${TEAM[1].hex}">${r.score[1]} ${TEAM[1].short}</span><span class="chip">${esc(r.modeName)}</span>`;
     const s = r.human || { goals: 0, assists: 0, shots: 0, tackles: 0 };
     $('r-stats').innerHTML = [['GOALS', s.goals], ['ASSISTS', s.assists], ['SHOTS', s.shots], ['TACKLES', s.tackles]].map(([k, v]) => `<div><span class="label">${k}</span><b>${v}</b></div>`).join('');
-    $('r-earn').innerHTML = r.earn.map(([k, v]) => `<div><span>${esc(k)}</span><span>+${v}</span></div>`).join('') + `<div class="tot"><span>EMERALDS EARNED</span><span>+${r.emeralds}</span></div>`;
+    $('r-earn').innerHTML = (r.idle ? '<div class="idle-note"><span>A BOT PLAYED FOR YOU, SO THIS MATCH GIVES NO REWARDS</span></div>' : '') + r.earn.map(([k, v]) => `<div><span>${esc(k)}</span><span>+${v}</span></div>`).join('') + `<div class="tot"><span>EMERALDS EARNED</span><span>+${r.emeralds}</span></div>`;
     if (r.ranked) {
       const tier = tierOf(r.rpAfter), moved = tierOf(r.rpBefore) !== tier;
       const delta = r.rpAfter - r.rpBefore;
@@ -7571,7 +7590,7 @@ const UI = {
     const lv = levelOf(Save.data.xp);
     $('r-xp').innerHTML = `<span class="label">${r.levelUp ? '<b class="lvup">LEVEL UP!</b> ' : ''}LEVEL ${lv.level} · +${r.xp || 0} XP</span><div class="xpbar"><i style="width:${(lv.into / lv.need * 100).toFixed(1)}%"></i></div>`;
     const P = r.pass || { xp: 0, challenges: [], tiers: [] }, pd = Save.data.pass;
-    $('r-pass').innerHTML = `<span class="label">GAME PASS · TIER ${Pass.tier(Save.data)} / ${PASS_TIERS} · +${P.xp} XP${P.xp ? '' : (r.res === 'forfeit' ? '' : ' (DO SOMETHING ON THE BALL TO EARN PASS XP)')}</span><div class="xpbar pass"><i style="width:${(pd.xp % PASS_TIER_XP) / PASS_TIER_XP * 100}%"></i></div>`
+    $('r-pass').innerHTML = `<span class="label">GAME PASS · TIER ${Pass.tier(Save.data)} / ${PASS_TIERS} · +${P.xp} XP${P.xp ? '' : (r.res === 'forfeit' || r.idle ? '' : ' (DO SOMETHING ON THE BALL TO EARN PASS XP)')}</span><div class="xpbar pass"><i style="width:${(pd.xp % PASS_TIER_XP) / PASS_TIER_XP * 100}%"></i></div>`
       + P.challenges.map((c) => `<span class="label pl-ch">CHALLENGE DONE: ${esc(c)}</span>`).join('') + P.tiers.map((t) => `<span class="label pl-tier">${esc(t)}</span>`).join('');
     $('hint').hidden = true;
     $('scr-results').hidden = false;
@@ -7799,8 +7818,10 @@ const Game = {
     Replay.offer = null; Replay.hideOffer();
     const res = forfeit ? 'forfeit' : m.result.res;
     const hs = forfeit ? (m.human ? Object.assign({}, m.human.stats) : { goals: 0, assists: 0, shots: 0, tackles: 0 }) : (m.result.human || { goals: 0, assists: 0, shots: 0, tackles: 0 });
+    const idle = !forfeit && !!m.result.idle; // online: a bot played for you, so this match gives nothing
+    const earned = idle ? 'forfeit' : res; // what rewards are worked out from
     const earn = [];
-    if (!forfeit) {
+    if (!forfeit && !idle) {
       earn.push([res === 'win' ? 'WIN' : res === 'draw' ? 'DRAW' : 'LOSS', res === 'win' ? 150 : res === 'draw' ? 80 : 50]);
       if (hs.goals) earn.push([hs.goals + (hs.goals === 1 ? ' GOAL' : ' GOALS'), 20 * hs.goals]);
       if (hs.assists) earn.push([hs.assists + (hs.assists === 1 ? ' ASSIST' : ' ASSISTS'), 10 * hs.assists]);
@@ -7808,23 +7829,23 @@ const Game = {
     const emeralds = earn.reduce((a, e) => a + e[1], 0);
     d.emeralds += emeralds;
     const rpBefore = d.rp;
-    if (m.cfg.ranked) d.rp = Math.max(0, d.rp + (res === 'win' ? 25 : res === 'draw' ? 5 : -15));
+    if (m.cfg.ranked) d.rp = Math.max(0, d.rp + Math.min(idle ? 0 : 99, res === 'win' ? 25 : res === 'draw' ? 5 : -15));
     d.stats.played++;
     if (res === 'win') d.stats.wins++; else if (res === 'draw') d.stats.draws++; else d.stats.losses++;
     d.stats.goals += hs.goals || 0; d.stats.assists += hs.assists || 0;
     // XP, the match history (last 20) and best stats
-    const xp = matchXp(res, hs), lvBefore = levelOf(d.xp).level;
+    const xp = matchXp(earned, hs), lvBefore = levelOf(d.xp).level;
     d.xp += xp;
     d.history.push({ t: Date.now(), mode: m.mode, size: m.size, score: m.score.slice(), res, g: hs.goals || 0, a: hs.assists || 0, style: d.style, club: TEAM[0].club, opp: TEAM[1].club, rp: m.cfg.ranked ? d.rp - rpBefore : null });
     if (d.history.length > 20) d.history.splice(0, d.history.length - 20);
     const B = d.best;
     B.goals = Math.max(B.goals, hs.goals || 0); B.assists = Math.max(B.assists, hs.assists || 0);
     B.run = res === 'win' ? B.run + 1 : 0; B.streak = Math.max(B.streak, B.run); B.peakRp = Math.max(B.peakRp, d.rp);
-    const pass = Pass.award(d, m, res, hs);
+    const pass = Pass.award(d, m, earned, hs);
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle });
     if (res === 'win') Sfx.fanfare(2);
     Sfx.setCrowd(0.3);
   },

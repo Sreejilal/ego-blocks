@@ -25,6 +25,8 @@ const STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'cele
 const KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook'];
 const FX_SENT = ['burst', 'turbo', 'shuffle', 'lockdown', 'skyTrap', 'vision', 'scent', 'loaded', 'call', 'bubble', 'feathers'];
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+// doing nothing while the ball is in play: a warning after IDLE_SECONDS, a bot after IDLE_GRACE more
+const IDLE_WARN = Number(process.env.IDLE_SECONDS) || 30, IDLE_GRACE = Number(process.env.IDLE_GRACE) || 10;
 const rooms = new Map();
 const online = new Map(); // account name -> connection, so friends can see who is on and in which room
 let nextId = 1;
@@ -115,6 +117,21 @@ function toCtl(m, prev) {
 }
 const EDGES = ['jump', 'shootDown', 'shootUp', 'passDown', 'passUp', 'dodge', 'tackle', 'flow'];
 function clearEdges(c) { for (const k of EDGES) c[k] = false; c.ab = [false, false, false]; }
+/** moving or pressing anything counts; only turning the camera does not */
+const active = (c) => Math.abs(c.moveX) > 0.2 || Math.abs(c.moveY) > 0.2 || c.sprint || c.jumpHeld || c.shootHeld || EDGES.some((k) => c[k]) || c.ab.some(Boolean);
+/** one step of the idle clock for a human player */
+function idleStep(room, h) {
+  h.idleT = (h.idleT || 0) + STEP;
+  if (h.idleT < IDLE_WARN) return;
+  const left = IDLE_WARN + IDLE_GRACE - h.idleT, s = Math.max(0, Math.ceil(left));
+  if (s !== h.idleWarned && s > 0) { h.idleWarned = s; room.events.push({ e: 'idle', s, to: h.netId }); }
+  if (left > 0) return;
+  // a bot plays for them; they keep watching and get the player back with any button
+  const m = room.match;
+  h.isHuman = false; h.ctl = null; h.botFor = true; h.wasIdle = true; h.idleT = 0; h.idleWarned = null;
+  m.humans = m.humans.filter((x) => x !== h);
+  room.events.push({ e: 'bot', to: h.netId });
+}
 
 /* ---------- chat ---------- */
 const CHAT_MAX = 5, CHAT_WINDOW = 8000; // at most 5 messages in 8 seconds
@@ -187,7 +204,7 @@ function snapshot(room) {
 }
 function endMatch(room) {
   const m = room.match;
-  broadcast(room, { t: 'end', score: m.score, players: m.players.map((p) => ({ id: p.netId || null, team: p.team, stats: p.stats, feats: p.feats || null })) });
+  broadcast(room, { t: 'end', score: m.score, players: m.players.map((p) => ({ id: p.netId || null, team: p.team, stats: p.stats, feats: p.feats || null, idle: !!p.wasIdle })) });
   m.dispose();
   room.match = null;
   sync(room);
@@ -201,6 +218,7 @@ function tick(room) {
     G.Hud.room = room;
     m.update(STEP);
     for (const h of m.humans) if (h.ctl) clearEdges(h.ctl);
+    if (m.phase === 'play') for (const h of m.humans.slice()) idleStep(room, h);
     room.steps++;
     if (room.steps % SNAP_EVERY === 0) snapshot(room);
     if (m.phase === 'end' && m.phaseT > 3.2) { endMatch(room); return; }
@@ -275,8 +293,17 @@ wss.on('connection', (ws) => {
         break;
       case 'input':
         if (room && room.match) {
-          const p = room.match.humans.find((h) => h.netId === me.id);
-          if (p) { const c = toCtl(m, p.ctl); for (const k of EDGES) c[k] = c[k] || (p.ctl && p.ctl[k]); c.ab = c.ab.map((v, i) => v || (p.ctl && p.ctl.ab[i])); p.ctl = c; }
+          const M = room.match;
+          let p = M.humans.find((h) => h.netId === me.id);
+          const c = toCtl(m, p && p.ctl);
+          if (!p) { // a bot is playing for you: any button takes your player back
+            p = M.players.find((x) => x.netId === me.id && x.botFor);
+            if (!p || !active(c)) break;
+            p.isHuman = true; p.botFor = false; M.humans.push(p); p.ctl = null;
+            room.events.push({ e: 'back', to: me.id });
+          }
+          if (active(c)) { p.idleT = 0; if (p.idleWarned != null) { p.idleWarned = null; room.events.push({ e: 'idleok', to: me.id }); } }
+          for (const k of EDGES) c[k] = c[k] || (p.ctl && p.ctl[k]); c.ab = c.ab.map((v, i) => v || (p.ctl && p.ctl.ab[i])); p.ctl = c;
         }
         break;
       case 'chat': if (room) chat(me, room, m); break;
@@ -298,7 +325,7 @@ function leave(me) {
   const room = me.room; if (!room) return;
   me.room = null;
   room.players = room.players.filter((p) => p !== me);
-  if (room.match) { const p = room.match.humans.find((h) => h.netId === me.id); if (p) { p.isHuman = false; p.netId = null; p.ctl = null; room.match.humans = room.match.humans.filter((h) => h !== p); } } // a bot takes over
+  if (room.match) { const p = room.match.players.find((h) => h.netId === me.id); if (p) { p.isHuman = false; p.netId = null; p.ctl = null; p.botFor = false; room.match.humans = room.match.humans.filter((h) => h !== p); } } // a bot takes over
   if (!room.players.length) { if (room.match) room.match.dispose(); rooms.delete(room.code); return; }
   if (room.host === me.id) { room.host = room.players[0].id; room.hostClub = room.players[0].club; }
   sync(room);

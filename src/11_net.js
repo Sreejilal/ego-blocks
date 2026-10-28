@@ -290,7 +290,7 @@ const Net = {
     const me = nm.human;
     Cam.reset(me && me.team === 1 ? Math.PI : 0);
     Game.state = 'online';
-    UI.show('hud'); UI.buildHud(nm); $('chatfeed').replaceChildren();
+    UI.show('hud'); UI.buildHud(nm); $('chatfeed').replaceChildren(); this.idleWarn(null);
     Sfx.init(); Sfx.setCrowd(0.55);
     Input.consumeEdges(); Input.requestLock();
   },
@@ -328,7 +328,17 @@ const Net = {
     else if (e.e === 'label') { const p = P(e.i); if (p) UI.flabel(p, e.text, e.color, e.dur); }
     else if (e.e === 'goal') { UI.goalBanner(e.team, P(e.s), P(e.a), e.own); Sfx.roar(1); Sfx.whistle(1); World.excite[e.team] = 1; if (P(e.s) === nm.human) Shake.add(0.5); }
     else if (e.e === 'toast') UI.toast(e.text, e.cls);
+    else if (e.e === 'idle') this.idleWarn('ARE YOU THERE?', 'MOVE OR PRESS ANY BUTTON. A BOT TAKES OVER IN ' + e.s, true);
+    else if (e.e === 'idleok') this.idleWarn(null);
+    else if (e.e === 'bot') this.idleWarn('A BOT IS PLAYING FOR YOU', 'PRESS ANY BUTTON TO PLAY AGAIN. NO REWARDS THIS MATCH.', true);
+    else if (e.e === 'back') { this.idleWarn(null); UI.toast('YOU ARE BACK IN', 'good'); }
     else if (e.e === 'cutin') { const p = P(e.i); if (p && Save.data.settings.cutins) { UI.cutin(p, e.name); Cam.punch(0.75); Sfx.cutin(); } }
+  },
+  /** the idle warning in the middle of the screen (null hides it) */
+  idleWarn(big, small, beep) {
+    const el = $('idle-warn'); el.hidden = !big; if (!big) return;
+    $('idle-big').textContent = big; $('idle-small').textContent = small;
+    if (beep) Sfx.deny();
   },
   /** move every model to where it was NET_DELAY seconds ago on the server, blending two snapshots */
   applySnapshots(rdt) {
@@ -405,7 +415,8 @@ const Net = {
     const mine = m.players.find((p) => p.id === this.id);
     const my = nm.human ? nm.human.team : 0, a = m.score[my], b = m.score[1 - my];
     nm.score = m.score;
-    nm.result = { res: a > b ? 'win' : a < b ? 'loss' : 'draw', human: mine ? mine.stats : { goals: 0, assists: 0, shots: 0, tackles: 0 } };
+    nm.result = { res: a > b ? 'win' : a < b ? 'loss' : 'draw', human: mine ? mine.stats : { goals: 0, assists: 0, shots: 0, tackles: 0 }, idle: !!(mine && mine.idle) };
+    this.idleWarn(null);
     if (mine && mine.feats) nm.feats = mine.feats;
     this.closeChat(false);
     Game.finishMatch(false);

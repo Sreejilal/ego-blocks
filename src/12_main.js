@@ -92,8 +92,10 @@ const Game = {
     Replay.offer = null; Replay.hideOffer();
     const res = forfeit ? 'forfeit' : m.result.res;
     const hs = forfeit ? (m.human ? Object.assign({}, m.human.stats) : { goals: 0, assists: 0, shots: 0, tackles: 0 }) : (m.result.human || { goals: 0, assists: 0, shots: 0, tackles: 0 });
+    const idle = !forfeit && !!m.result.idle; // online: a bot played for you, so this match gives nothing
+    const earned = idle ? 'forfeit' : res; // what rewards are worked out from
     const earn = [];
-    if (!forfeit) {
+    if (!forfeit && !idle) {
       earn.push([res === 'win' ? 'WIN' : res === 'draw' ? 'DRAW' : 'LOSS', res === 'win' ? 150 : res === 'draw' ? 80 : 50]);
       if (hs.goals) earn.push([hs.goals + (hs.goals === 1 ? ' GOAL' : ' GOALS'), 20 * hs.goals]);
       if (hs.assists) earn.push([hs.assists + (hs.assists === 1 ? ' ASSIST' : ' ASSISTS'), 10 * hs.assists]);
@@ -101,23 +103,23 @@ const Game = {
     const emeralds = earn.reduce((a, e) => a + e[1], 0);
     d.emeralds += emeralds;
     const rpBefore = d.rp;
-    if (m.cfg.ranked) d.rp = Math.max(0, d.rp + (res === 'win' ? 25 : res === 'draw' ? 5 : -15));
+    if (m.cfg.ranked) d.rp = Math.max(0, d.rp + Math.min(idle ? 0 : 99, res === 'win' ? 25 : res === 'draw' ? 5 : -15));
     d.stats.played++;
     if (res === 'win') d.stats.wins++; else if (res === 'draw') d.stats.draws++; else d.stats.losses++;
     d.stats.goals += hs.goals || 0; d.stats.assists += hs.assists || 0;
     // XP, the match history (last 20) and best stats
-    const xp = matchXp(res, hs), lvBefore = levelOf(d.xp).level;
+    const xp = matchXp(earned, hs), lvBefore = levelOf(d.xp).level;
     d.xp += xp;
     d.history.push({ t: Date.now(), mode: m.mode, size: m.size, score: m.score.slice(), res, g: hs.goals || 0, a: hs.assists || 0, style: d.style, club: TEAM[0].club, opp: TEAM[1].club, rp: m.cfg.ranked ? d.rp - rpBefore : null });
     if (d.history.length > 20) d.history.splice(0, d.history.length - 20);
     const B = d.best;
     B.goals = Math.max(B.goals, hs.goals || 0); B.assists = Math.max(B.assists, hs.assists || 0);
     B.run = res === 'win' ? B.run + 1 : 0; B.streak = Math.max(B.streak, B.run); B.peakRp = Math.max(B.peakRp, d.rp);
-    const pass = Pass.award(d, m, res, hs);
+    const pass = Pass.award(d, m, earned, hs);
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle });
     if (res === 'win') Sfx.fanfare(2);
     Sfx.setCrowd(0.3);
   },

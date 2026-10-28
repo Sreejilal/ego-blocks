@@ -143,6 +143,11 @@ other players' names (in the room, and in the menu during a match). Reports are 
 players in a room report someone (or the only other player does), that person's typed chat stops in
 that room. Players can also set chat to ALL, QUICK or OFF. There is no voice chat on purpose.
 
+**Idle players.** If someone online does nothing for 30 seconds while the ball is in play, they see
+ARE YOU THERE? with a 10 second countdown, then a bot plays for them. Any button gives them their player
+back, but that match gives them no emeralds, XP or pass XP. Change the times with the `IDLE_SECONDS` and
+`IDLE_GRACE` settings.
+
 Things to know: one server runs every room; 20 or so players at once is fine on a small plan. There
 is no player prediction yet, so the further players are from the server, the more lag they feel.
 Pick a server region close to you and your friends.

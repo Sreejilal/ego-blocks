@@ -8,7 +8,7 @@
     "server": "node server/server.js",
     "test": "node test/check.js",
     "test:touch": "node test/touch.js",
-    "test:all": "node test/check.js && node test/touch.js && node test/ui.js && node test/endings.js && node test/abilities.js && node test/items.js && node test/lobby3d.js && node test/skins.js && node test/kits.js && node test/passing.js && node test/reveal.js && node test/tiers.js && node test/styles.js && node test/replay.js && node test/featured.js && node test/profile.js && node test/pass.js && node test/server_proto.js && node test/online.js && node test/accounts.js && node test/chat.js"
+    "test:all": "node test/check.js && node test/touch.js && node test/ui.js && node test/endings.js && node test/abilities.js && node test/items.js && node test/lobby3d.js && node test/skins.js && node test/kits.js && node test/passing.js && node test/reveal.js && node test/tiers.js && node test/styles.js && node test/replay.js && node test/featured.js && node test/profile.js && node test/pass.js && node test/server_proto.js && node test/online.js && node test/accounts.js && node test/chat.js && node test/idle.js"
   },
   "devDependencies": {
     "@fontsource/jersey-10": "^5.3.0",
