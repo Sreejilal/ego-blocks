@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#090b16">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="description" content="SCORZ: voxel football in your browser, 3v3 up to 5v5. Pick a style, find your Flow, climb from Wood to Obsidian.">
 <title>SCORZ</title>
 <style>
@@ -795,7 +798,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
-      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all' },
+      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', autoFs: true },
       howto: false,
     };
   },
@@ -836,6 +839,7 @@ const Save = {
     st.btn = [0.85, 1, 1.15].includes(Number(st.btn)) ? Number(st.btn) : 1;
     st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false; st.server = typeof st.server === 'string' ? st.server.slice(0, 200) : '';
     st.chat = ['all', 'quick', 'off'].includes(st.chat) ? st.chat : 'all';
+    st.cam = st.cam === 'first' ? 'first' : 'third'; st.autoFs = st.autoFs !== false;
     out.account = out.account && typeof out.account === 'object' && typeof out.account.token === 'string' && typeof out.account.user === 'string' ? { user: out.account.user.slice(0, 12), token: out.account.token.slice(0, 128) } : null;
     out.name = String(out.name || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12);
     if (!Array.isArray(out.styles)) out.styles = ['ROOKIE'];
@@ -1408,6 +1412,7 @@ const ICON_MAPS = {
   beam: ['............', '............', '........kkk.', '.......kwwwk', 'AAAAAAAkwkwk', 'wwwwwwwkwwwk', 'AAAAAAAkwkwk', '.......kwwwk', '........kkk.', '............', '............', '............'],
   flip: ['............', '...AAAAA....', '..A.....A...', '.A.......A..', '.A.......A..', '.A......AAA.', '.A.......A..', '............', '....kkk.....', '...kwwwk....', '...kwwwk....', '....kkk.....'],
   shield: ['............', '..AAAAAAAA..', '..AwwwwwwA..', '..AwwwwwwA..', '..AwwwwwwA..', '..AwwwwwwA..', '...AwwwwA...', '...AwwwwA...', '....AwwA....', '.....AA.....', '............', '............'],
+  cam: ['............', '...kkkk.....', '.kkkwwkkkkk.', '.kwwwwwwwwk.', '.kwwwkkwwwk.', '.kwwkwwkwwk.', '.kwwkwwkwwk.', '.kwwwkkwwwk.', '.kwwwwwwwwk.', '.kkkkkkkkkk.', '............', '............'],
   chat: ['............', '.kkkkkkkkkk.', 'kwwwwwwwwwwk', 'kwwwwwwwwwwk', 'kwkkwkkwkkwk', 'kwkkwkkwkkwk', 'kwwwwwwwwwwk', 'kwwwwwwwwwwk', '.kkkwwkkkkk.', '...kwk......', '...kk.......', '............'],
   call: ['............', '..AAAAAAAA..', '.AAAAwwAAAA.', '.AAAAwwAAAA.', '.AAAAwwAAAA.', '.AAAAwwAAAA.', '.AAAAAAAAAA.', '.AAAAwwAAAA.', '..AAAAAAAA..', '....AA......', '...AA.......', '............'],
   tackle: ['............', '............', '............', '............', '.....kkk....', '....kAAAk...', 'kkkkAAAAk...', 'kAAAAAAAk...', 'kAAAAAAAAkk.', '.kkkkkkkkkk.', 'd.d.d.d.....', '............'],
@@ -5472,13 +5477,27 @@ const Input = {
   endFrame() { this.mdx = 0; this.mdy = 0; },
 };
 
+const CAM_EYE = 1.55; // first person: eye height above the feet
 const Cam = {
-  yaw: 0, pitch: -0.13, dist: 6.4, pos: V3(0, 5, -10), pivotY: 1.7, aim: V3(), onTarget: false, fwd: V3(0, 0, 1), snapYaw: null, punchT: 0, punchDur: 1, punchK: 0,
+  yaw: 0, pitch: -0.13, dist: 7.0, hidden: null, pos: V3(0, 5, -10), pivotY: 1.7, aim: V3(), onTarget: false, fwd: V3(0, 0, 1), snapYaw: null, punchT: 0, punchDur: 1, punchK: 0,
   /** a quick zoom in and back out for the cut-ins */
   punch(dur) { this.punchT = this.punchDur = dur; },
-  reset(yaw = 0) { this.yaw = yaw; this.pitch = -0.13; this.pos.set(0, 5, -10); this.pivotY = 1.7; this.snapYaw = null; },
+  reset(yaw = 0) { this.yaw = yaw; this.pitch = -0.13; this.pos.set(0, 5, -10); this.pivotY = 1.7; this.snapYaw = null; this.unhide(); },
+  first() { return Save.data.settings.cam === 'first'; },
+  /** V, R3 or the camera button: third person <-> first person */
+  toggle() {
+    const s = Save.data.settings;
+    s.cam = s.cam === 'first' ? 'third' : 'first'; Save.save();
+    if (s.cam === 'third') { this.pitch = clamp(this.pitch, -0.66, 0.42); this.unhide(); }
+    Sfx.click(); UI.toast(s.cam === 'first' ? 'FIRST PERSON' : 'THIRD PERSON');
+    if (Game.state === 'paused') UI.renderPause();
+  },
+  /** your own model is hidden in first person; show it again for replays, menus and the other view */
+  unhide() { if (this.hidden && this.hidden.P) this.hidden.P.root.visible = true; this.hidden = null; },
   look(realDt) {
     const s = Save.data.settings, sens = s.sens || 1, inv = s.invertY ? -1 : 1;
+    const E = Input.edges;
+    if (E.has('KeyV') || E.has('T_cam') || (E.has('PadRS') && !Replay.offer)) { this.toggle(); E.delete('KeyV'); E.delete('T_cam'); E.delete('PadRS'); } // one press, one switch
     if (Input.mdx || Input.mdy) this.snapYaw = null;
     this.yaw -= Input.mdx * 0.0024 * sens;
     this.pitch -= Input.mdy * 0.0021 * sens * inv;
@@ -5498,7 +5517,8 @@ const Cam = {
     this.pitch += ((k.has('ArrowUp') ? 1 : 0) - (k.has('ArrowDown') ? 1 : 0)) * 1.5 * realDt * sens * inv;
     this.yaw -= Input.axis(2) * 2.8 * realDt * sens;
     this.pitch -= Input.axis(3) * 1.9 * realDt * sens * inv;
-    this.pitch = clamp(this.pitch, -0.66, 0.42);
+    if (this.first()) this.pitch = clamp(this.pitch, -1.25, 0.9); // first person: look down at the ball at your feet
+    else this.pitch = clamp(this.pitch, -0.66, 0.42);
     this.yaw = wrapA(this.yaw);
     const cp = Math.cos(this.pitch);
     this.fwd.set(Math.sin(this.yaw) * cp, Math.sin(this.pitch), Math.cos(this.yaw) * cp);
@@ -5513,11 +5533,23 @@ const Cam = {
     if (this.punchT > 0) { this.punchT -= realDt; const u = 1 - Math.max(0, this.punchT) / this.punchDur; pk = u < 0.12 ? u / 0.12 : Math.max(0, 1 - (u - 0.12) / 0.88); }
     if (pk > 0 || this.punchK > 0) { cam.fov = World.baseFov - pk * 10; cam.updateProjectionMatrix(); }
     this.punchK = pk;
-    const dist = this.dist + (wide ? 2.6 : 0) + (tall ? 1.7 : 0) - pk * 2;
-    let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.55 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
-    tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
-    const k = 1 - Math.exp(-20 * realDt);
-    this.pos.x += (tx - this.pos.x) * k; this.pos.y += (ty - this.pos.y) * k; this.pos.z += (tz - this.pos.z) * k;
+    // first person, except for goals and the final whistle (wide shots) and when you are on the grass
+    const fp = this.first() && !wide && p.state !== 'down' && p.state !== 'celebrate' && p.state !== 'dive';
+    if (fp) {
+      // at your eyes, a little in front of the face so the head never fills the screen
+      const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
+      this.pos.set(p.pos.x + fx * 0.3, p.pos.y + CAM_EYE, p.pos.z + fz * 0.3);
+      if (this.hidden !== p) { this.unhide(); this.hidden = p; }
+      p.P.root.visible = false;
+    } else {
+      if (this.hidden) this.unhide();
+      const dist = this.dist + (wide ? 2.6 : 0) + (tall ? 1.7 : 0) - pk * 2;
+      // behind and above you, a little higher than eye level so the pitch ahead shows over your head
+      let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.85 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
+      tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
+      const k = 1 - Math.exp(-16 * realDt);
+      this.pos.x += (tx - this.pos.x) * k; this.pos.y += (ty - this.pos.y) * k; this.pos.z += (tz - this.pos.z) * k;
+    }
     const rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
     cam.position.set(this.pos.x + rx * Shake.x, this.pos.y + Shake.y, this.pos.z + rz * Shake.x);
     _v1.copy(cam.position).add(this.fwd);
@@ -5587,7 +5619,7 @@ const Touch = {
     return `<div class="stick idle" id="t-stick"><div class="ring"></div><div class="base"></div><div class="knob"></div><b class="lb">MOVE</b></div>`
       + btn('shoot', 'big', 'SHOOT', '<span class="chg"></span>') + btn('pass', 'pass', 'PASS') + btn('dt', 'dt', 'TACKLE', '<span class="pips"><i></i><i></i></span>') + btn('jump', '', 'JUMP')
       + btn('ab0', 'ab', '') + btn('ab1', 'ab', '') + btn('ab2', 'ab', '') + btn('flow', 'flow off', 'FLOW') + btn('item', 'item off', 'ITEM')
-      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
+      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tb sm" data-act="cam" aria-label="Switch camera"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
   },
   init() {
     const el = document.createElement('div');
@@ -5604,6 +5636,7 @@ const Touch = {
     const icon = (a, url) => { if (this.parts[a].ic) this.parts[a].ic.style.backgroundImage = 'url(' + url + ')'; };
     icon('pause', iconURL('pause'));
     icon('chat', iconURL('chat'));
+    icon('cam', iconURL('cam'));
     icon('shoot', iconURL('shot', '#ffffff'));
     icon('pass', iconURL('pass', '#a9c7ff'));
     icon('jump', iconURL('jump'));
@@ -5685,8 +5718,10 @@ const Touch = {
     for (const [a, deg] of arc) put(a, ...pol(deg, R2), 58 * s);
     this.b.item.hidden = !lawless;
     put('pause', W - Math.max(raw.r, 8) - 30, raw.t + 30, 46);
-    put('chat', W - Math.max(raw.r, 8) - 86, raw.t + 30, 46);
+    // chat (online) and camera sit next to pause; an upright phone has no room beside the score, so they stack under it
     this.b.chat.hidden = Game.state !== 'online' || !Portal.chatAllowed();
+    const tops = this.b.chat.hidden ? ['cam'] : ['chat', 'cam'], px = W - Math.max(raw.r, 8) - 30;
+    tops.forEach((a, i) => (portrait ? put(a, px, raw.t + 86 + i * 56, 46) : put(a, px - 56 * (i + 1), raw.t + 30, 46)));
     this.R = 58 * s;
     this.ghost.x = sa.l + (portrait ? 80 : 104) * s;
     this.ghost.y = H - sa.b - (portrait ? 150 : 100) * s;
@@ -5713,7 +5748,7 @@ const Touch = {
     const rec = { kind: 'btn', act, el: btn, x0: x, y0: y, lx: x, ly: y, looking: false };
     this.ptrs.set(id, rec);
     btn.classList.add('down');
-    if (act === 'pause' || act === 'board' || act === 'chat') return; // these act on release
+    if (act === 'pause' || act === 'board' || act === 'chat' || act === 'cam') return; // these act on release
     if (act === 'dt') { const m = Game.match, p = m && m.human; act = p && m.ball.owner === p ? 'dodge' : 'tackle'; rec.act = act; }
     this.held.add(act);
     Input.edges.add('T_' + act);
@@ -5750,6 +5785,7 @@ const Touch = {
       r.el.classList.remove('down');
       if (r.act === 'pause') { if (e) Game.pause(); return; }
       if (r.act === 'chat') { if (e) Net.openChat(); return; }
+      if (r.act === 'cam') { if (e) Input.edges.add('T_cam'); return; }
       if (r.act === 'board') { if (e) { this.board = !this.board; this.boardT = 8; } return; }
       this.held.delete(r.act);
       Input.up.add('T_' + r.act);
@@ -5871,6 +5907,11 @@ const Touch = {
   /* ---------- fullscreen (only where the page is allowed to) ---------- */
   fsAvailable() { return !BUILD.portal && !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); }, // portals have their own fullscreen button
   isFs() { return !!(document.fullscreenElement || document.webkitFullscreenElement); },
+  /** phones go fullscreen when a match starts or you open online play (a tap is needed, so it happens then) */
+  autoFs() {
+    if (!this.on || !Save.data.settings.autoFs || !this.fsAvailable() || this.isFs()) return;
+    this.toggleFs();
+  },
   toggleFs() {
     const d = document, el = d.documentElement;
     try {
@@ -6267,7 +6308,7 @@ const Net = {
   },
   cleanName(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12); },
   setStatus(t) { this.status = t; const el = $('on-status'); if (el) el.textContent = t; },
-  open() { UI.show('online'); this.renderRoom(); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },
+  open() { Touch.autoFs(); UI.show('online'); this.renderRoom(); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },
   join(code) { code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); if (code.length !== 4) { this.setStatus('A ROOM CODE IS 4 LETTERS OR NUMBERS'); return; } this.connect(() => this.send({ t: 'join', code })); },
   /* ---------- the connection ---------- */
   connect(then) {
@@ -6639,7 +6680,7 @@ const Replay = {
   start() {
     const m = Game.match, o = this.offer;
     if (!m || !o || Game.state !== 'match' || this.count < 10) return false;
-    this.hideOffer();
+    this.hideOffer(); Cam.unhide();
     const t1 = o.t + REPLAY_AFTER, t0 = Math.max(this.times[this.slot(0)], o.t - REPLAY_BEFORE);
     this.play = { kind: o.kind, focus: o.focus, ev: o.t, t0, t1: Math.min(t1, this.times[this.slot(this.count - 1)]), t: t0, cam: null, a: null };
     this.offer = null;
@@ -7182,6 +7223,7 @@ const UI = {
             ${row(key('ARC'), 'Your three style abilities, then FLOW when the bar is full')}
             ${row(key('DOUBLE TAP'), 'Double tap the right side to face the goal')}
             ${row(key('SCORE'), 'Tap the score for the scoreboard. The top right button pauses')}
+            ${row(key('CAMERA'), 'The camera button at the top switches between third person and first person')}
             ${row(key('CHAT'), 'Online: the bubble next to pause opens quick chat. Typing needs an account')}
             ${row(key('REPLAY'), 'After a goal, a nutmeg or an ankle breaker, tap REPLAY to watch it again')}
           </div></section>
@@ -7203,11 +7245,12 @@ const UI = {
             ${row(key('ESC') + key('P'), 'Pause')}
             ${row(key('ENTER'), 'Watch the replay after a goal, a nutmeg or an ankle breaker. SAVE CLIP downloads it as a video')}
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
+            ${row(key('V'), 'Switch camera: third person (behind you) or first person (your eyes)')}
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}
             ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Dodge')}${row(key('X'), 'Slide tackle')}
-            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('R3'), 'Watch the replay when it is offered')}
+            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
           </div></section>
           <section class="panel"><h3>WINNING THE BALL</h3><ul>
             <li><b>Run into a loose ball</b> to dribble it. You cannot run through a carrier, you have to tackle.</li>
@@ -7356,6 +7399,7 @@ const UI = {
         <div class="set">
           <span>Graphics</span><div class="seg" id="set-q"><button type="button" data-q="auto">AUTO</button><button type="button" data-q="low">LOW</button><button type="button" data-q="med">MED</button><button type="button" data-q="high">HIGH</button></div>
           <label for="set-sens">Look sensitivity</label><input type="range" id="set-sens" min="0.3" max="2.5" step="0.05">
+          <span>Camera</span><div class="seg" id="set-cam"><button type="button" data-v="third">3RD PERSON</button><button type="button" data-v="first">1ST PERSON</button></div>
           <span>Invert camera Y</span><div class="seg" id="set-inv"><button type="button" data-v="0">OFF</button><button type="button" data-v="1">ON</button></div>
           <span class="t-only">Button size</span><div class="seg t-only" id="set-btn"><button type="button" data-v="0.85">S</button><button type="button" data-v="1">M</button><button type="button" data-v="1.15">L</button></div>
           <span class="t-only">Aim assist</span><div class="seg t-only" id="set-assist"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
@@ -7434,8 +7478,9 @@ const UI = {
     $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Portal.applyMute(); Save.save(); this.renderPause(); });
     $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
     $('set-assist').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.assist = v === '1'; Save.save(); this.renderPause(); });
-    $('set-fs').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; if ((v === '1') !== Touch.isFs()) Touch.toggleFs(); });
-    click('btn-fs', () => Touch.toggleFs());
+    $('set-cam').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v || v === Save.data.settings.cam) return; Cam.toggle(); this.renderPause(); });
+    $('set-fs').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.autoFs = v === '1'; Save.save(); if ((v === '1') !== Touch.isFs()) Touch.toggleFs(); });
+    click('btn-fs', () => { Save.data.settings.autoFs = !Touch.isFs(); Save.save(); Touch.toggleFs(); });
     window.addEventListener('keydown', (e) => {
       if (Game.playing() || Game.state === 'paused') return;
       if (e.code === 'Escape' && !$('friend-card').hidden) { $('friend-card').hidden = true; return; }
@@ -7692,6 +7737,7 @@ const UI = {
     $('set-snd').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !s.mute));
     $('set-cut').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.cutins !== false)));
     $('set-chat').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.chat));
+    $('set-cam').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.cam));
     Net.renderPeople();
     $('set-sens').value = s.sens;
     $('set-btn').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', Math.abs(parseFloat(b.dataset.v) - (s.btn || 1)) < 0.01));
@@ -7907,6 +7953,7 @@ const Game = {
     Sfx.setCrowd(0.2);
   },
   startMatch(mode) {
+    Touch.autoFs();
     if (this.match) { this.match.dispose(); this.match = null; }
     Reveal.stop(); Showcase.hide();
     UI.hideOverlays();

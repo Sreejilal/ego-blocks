@@ -109,13 +109,27 @@ const Input = {
   endFrame() { this.mdx = 0; this.mdy = 0; },
 };
 
+const CAM_EYE = 1.55; // first person: eye height above the feet
 const Cam = {
-  yaw: 0, pitch: -0.13, dist: 6.4, pos: V3(0, 5, -10), pivotY: 1.7, aim: V3(), onTarget: false, fwd: V3(0, 0, 1), snapYaw: null, punchT: 0, punchDur: 1, punchK: 0,
+  yaw: 0, pitch: -0.13, dist: 7.0, hidden: null, pos: V3(0, 5, -10), pivotY: 1.7, aim: V3(), onTarget: false, fwd: V3(0, 0, 1), snapYaw: null, punchT: 0, punchDur: 1, punchK: 0,
   /** a quick zoom in and back out for the cut-ins */
   punch(dur) { this.punchT = this.punchDur = dur; },
-  reset(yaw = 0) { this.yaw = yaw; this.pitch = -0.13; this.pos.set(0, 5, -10); this.pivotY = 1.7; this.snapYaw = null; },
+  reset(yaw = 0) { this.yaw = yaw; this.pitch = -0.13; this.pos.set(0, 5, -10); this.pivotY = 1.7; this.snapYaw = null; this.unhide(); },
+  first() { return Save.data.settings.cam === 'first'; },
+  /** V, R3 or the camera button: third person <-> first person */
+  toggle() {
+    const s = Save.data.settings;
+    s.cam = s.cam === 'first' ? 'third' : 'first'; Save.save();
+    if (s.cam === 'third') { this.pitch = clamp(this.pitch, -0.66, 0.42); this.unhide(); }
+    Sfx.click(); UI.toast(s.cam === 'first' ? 'FIRST PERSON' : 'THIRD PERSON');
+    if (Game.state === 'paused') UI.renderPause();
+  },
+  /** your own model is hidden in first person; show it again for replays, menus and the other view */
+  unhide() { if (this.hidden && this.hidden.P) this.hidden.P.root.visible = true; this.hidden = null; },
   look(realDt) {
     const s = Save.data.settings, sens = s.sens || 1, inv = s.invertY ? -1 : 1;
+    const E = Input.edges;
+    if (E.has('KeyV') || E.has('T_cam') || (E.has('PadRS') && !Replay.offer)) { this.toggle(); E.delete('KeyV'); E.delete('T_cam'); E.delete('PadRS'); } // one press, one switch
     if (Input.mdx || Input.mdy) this.snapYaw = null;
     this.yaw -= Input.mdx * 0.0024 * sens;
     this.pitch -= Input.mdy * 0.0021 * sens * inv;
@@ -135,7 +149,8 @@ const Cam = {
     this.pitch += ((k.has('ArrowUp') ? 1 : 0) - (k.has('ArrowDown') ? 1 : 0)) * 1.5 * realDt * sens * inv;
     this.yaw -= Input.axis(2) * 2.8 * realDt * sens;
     this.pitch -= Input.axis(3) * 1.9 * realDt * sens * inv;
-    this.pitch = clamp(this.pitch, -0.66, 0.42);
+    if (this.first()) this.pitch = clamp(this.pitch, -1.25, 0.9); // first person: look down at the ball at your feet
+    else this.pitch = clamp(this.pitch, -0.66, 0.42);
     this.yaw = wrapA(this.yaw);
     const cp = Math.cos(this.pitch);
     this.fwd.set(Math.sin(this.yaw) * cp, Math.sin(this.pitch), Math.cos(this.yaw) * cp);
@@ -150,11 +165,23 @@ const Cam = {
     if (this.punchT > 0) { this.punchT -= realDt; const u = 1 - Math.max(0, this.punchT) / this.punchDur; pk = u < 0.12 ? u / 0.12 : Math.max(0, 1 - (u - 0.12) / 0.88); }
     if (pk > 0 || this.punchK > 0) { cam.fov = World.baseFov - pk * 10; cam.updateProjectionMatrix(); }
     this.punchK = pk;
-    const dist = this.dist + (wide ? 2.6 : 0) + (tall ? 1.7 : 0) - pk * 2;
-    let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.55 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
-    tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
-    const k = 1 - Math.exp(-20 * realDt);
-    this.pos.x += (tx - this.pos.x) * k; this.pos.y += (ty - this.pos.y) * k; this.pos.z += (tz - this.pos.z) * k;
+    // first person, except for goals and the final whistle (wide shots) and when you are on the grass
+    const fp = this.first() && !wide && p.state !== 'down' && p.state !== 'celebrate' && p.state !== 'dive';
+    if (fp) {
+      // at your eyes, a little in front of the face so the head never fills the screen
+      const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
+      this.pos.set(p.pos.x + fx * 0.3, p.pos.y + CAM_EYE, p.pos.z + fz * 0.3);
+      if (this.hidden !== p) { this.unhide(); this.hidden = p; }
+      p.P.root.visible = false;
+    } else {
+      if (this.hidden) this.unhide();
+      const dist = this.dist + (wide ? 2.6 : 0) + (tall ? 1.7 : 0) - pk * 2;
+      // behind and above you, a little higher than eye level so the pitch ahead shows over your head
+      let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.85 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
+      tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
+      const k = 1 - Math.exp(-16 * realDt);
+      this.pos.x += (tx - this.pos.x) * k; this.pos.y += (ty - this.pos.y) * k; this.pos.z += (tz - this.pos.z) * k;
+    }
     const rx = -Math.cos(this.yaw), rz = Math.sin(this.yaw);
     cam.position.set(this.pos.x + rx * Shake.x, this.pos.y + Shake.y, this.pos.z + rz * Shake.x);
     _v1.copy(cam.position).add(this.fwd);

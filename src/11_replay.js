@@ -65,7 +65,7 @@ const Replay = {
   start() {
     const m = Game.match, o = this.offer;
     if (!m || !o || Game.state !== 'match' || this.count < 10) return false;
-    this.hideOffer();
+    this.hideOffer(); Cam.unhide();
     const t1 = o.t + REPLAY_AFTER, t0 = Math.max(this.times[this.slot(0)], o.t - REPLAY_BEFORE);
     this.play = { kind: o.kind, focus: o.focus, ev: o.t, t0, t1: Math.min(t1, this.times[this.slot(this.count - 1)]), t: t0, cam: null, a: null };
     this.offer = null;

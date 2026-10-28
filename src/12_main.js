@@ -44,6 +44,7 @@ const Game = {
     Sfx.setCrowd(0.2);
   },
   startMatch(mode) {
+    Touch.autoFs();
     if (this.match) { this.match.dispose(); this.match = null; }
     Reveal.stop(); Showcase.hide();
     UI.hideOverlays();

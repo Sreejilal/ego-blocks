@@ -30,8 +30,8 @@ file in file-name order into ONE function scope. There are no imports or exports
 | `07_data.js` | `STYLES`, `ABILITIES`, `FLOWS`, `ITEMS`, ranks, spin odds. Most balance numbers live here |
 | `08_match.js` | `Match`: rules, kicks, passes, tackles, abilities, goals, restarts, Flow, Lawless items |
 | `09_ai.js` | `AI`: bot roles, passing and shooting decisions, keepers |
-| `10_input.js` | keyboard, mouse, pointer lock, gamepad, and the camera (`Cam`) |
-| `10_touch.js` | `Touch`: phone controls (floating stick, drag to look, thumb arc of buttons) |
+| `10_input.js` | keyboard, mouse, pointer lock, gamepad, and the camera (`Cam`: third person by default, first person with V / R3 / the touch camera button, saved as `settings.cam`; your own model hides in first person and `Cam.unhide()` shows it again) |
+| `10_touch.js` | `Touch`: phone controls (floating stick, drag to look, thumb arc of buttons). `Touch.autoFs()` goes fullscreen when a match starts or online opens (needs a tap, so call it from click handlers), unless `settings.autoFs` is off |
 | `11_account.js` | `Account`: optional sign-in, progress sync to the server, friends and their profile cards |
 | `11_crazy.js` | `Portal`: the CrazyGames SDK, only active in the CrazyGames build (gameplay start/stop, Data module saves, their account, mute and chat settings, midgame ad at the final whistle, rooms and invites) |
 | `11_net.js` | `Net`: online rooms (code, invite link, teams) and `NetMatch`, which draws an online match from server snapshots and sends your controls |
