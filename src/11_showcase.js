@@ -143,7 +143,7 @@ const Showcase = {
     if (p.state !== 'free') { p.setState('free'); P.body.position.y = 0.72; }
     j.t += dt;
     let a = JUGGLE[j.i], b = JUGGLE[(j.i + 1) % n], s = this.segment(a, b);
-    while (j.t >= s.dur) { j.t -= s.dur; j.i = (j.i + 1) % n; a = b; b = JUGGLE[(j.i + 1) % n]; s = this.segment(a, b); }
+    while (j.t >= s.dur) { j.t -= s.dur; j.i = (j.i + 1) % n; a = b; b = JUGGLE[(j.i + 1) % n]; s = this.segment(a, b); if (this.on && !this.hidePlayer) Sfx.juggle(a[0]); } // each touch: a thump
     const t = j.t, k = smooth(t / s.dur);
     const by = a[1] + s.v0 * t - SHOW_G * t * t / 2, fwd = lerp(a[2], b[2], k), side = lerp(a[3], b[3], k);
     // how far into a touch each body part is (just hit it, or about to)

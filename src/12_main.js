@@ -145,6 +145,7 @@ const Game = {
     rdt = Math.min(rdt, 0.05);
     this.time += rdt;
     Portal.tick();
+    Sfx.crowdTick(rdt);
     Input.pollPad();
     Touch.sync();
     const m = this.match;

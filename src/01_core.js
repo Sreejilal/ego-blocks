@@ -181,14 +181,21 @@ const Sfx = (() => {
     noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-    // crowd bed: looping filtered noise with a slow wobble
+    // crowd bed: thousands of voices. Noise through the bands a voice makes for "ah" and "oh" (formants),
+    // a low rumble under it, and slow swells, so it murmurs like people instead of hissing like wind
     const src = ctx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
-    crowdFilter = ctx.createBiquadFilter(); crowdFilter.type = 'bandpass'; crowdFilter.frequency.value = 650; crowdFilter.Q.value = 0.5;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800;
     crowdGain = ctx.createGain(); crowdGain.gain.value = 0;
-    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.23; const lfoG = ctx.createGain(); lfoG.gain.value = 140;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600;
+    for (const [f, q, v] of [[620, 2.2, 1.0], [1150, 2.6, 0.65], [2400, 3, 0.25], [260, 0.9, 0.5]]) {
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
+      const g = ctx.createGain(); g.gain.value = v; src.connect(bp); bp.connect(g); g.connect(lp);
+      if (f === 620) crowdFilter = bp;
+    }
+    const swell = ctx.createGain(); swell.gain.value = 1;
+    for (const [hz, depth] of [[0.13, 0.22], [0.31, 0.12]]) { const l = ctx.createOscillator(); l.frequency.value = hz; const lg = ctx.createGain(); lg.gain.value = depth; l.connect(lg); lg.connect(swell.gain); l.start(); }
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.21; const lfoG = ctx.createGain(); lfoG.gain.value = 90;
     lfo.connect(lfoG); lfoG.connect(crowdFilter.frequency); lfo.start();
-    src.connect(crowdFilter); crowdFilter.connect(lp); lp.connect(crowdGain); crowdGain.connect(bus); src.start();
+    lp.connect(swell); swell.connect(crowdGain); crowdGain.connect(bus); src.start();
   }
   function env(g, t0, attack, peak, dur) {
     g.gain.setValueAtTime(0.0001, t0);
@@ -216,6 +223,22 @@ const Sfx = (() => {
     s.connect(f); f.connect(g); g.connect(bus);
     s.start(t0, Math.random() * 1.5); s.stop(t0 + a + dur + 0.05);
   }
+  /** one voice in the crowd: noise through two vowel bands, gliding up (a "woo!") or flat (an "oh") */
+  function voice(delay, dur, f1, f2, glide, vol) {
+    const t0 = now() + delay, s = ctx.createBufferSource(); s.buffer = noiseBuf;
+    const g = ctx.createGain(); env(g, t0, Math.min(0.12, dur * 0.3), vol, dur);
+    for (const [f, q] of [[f1, 9], [f2, 11]]) {
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = q;
+      bp.frequency.setValueAtTime(f, t0); bp.frequency.exponentialRampToValueAtTime(f * glide, t0 + dur);
+      s.connect(bp); bp.connect(g);
+    }
+    g.connect(bus); s.start(t0, Math.random() * 1.5); s.stop(t0 + dur + 0.2);
+  }
+  /** a clap from a few hundred people: many tiny bursts a few milliseconds apart */
+  function claps(delay, vol) {
+    for (let i = 0; i < 9; i++) noise(0.018, { vol: vol * (0.5 + Math.random() * 0.5), type: 'bandpass', freq: 1400 + Math.random() * 1600, q: 1.2, delay: delay + Math.random() * 0.035, attack: 0.001 });
+  }
+  let crowdT = 0, chantT = 8;
   function whistleBlast(t0, len) {
     const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = 2700;
     const lfo = ctx.createOscillator(); lfo.frequency.value = 31;
@@ -247,6 +270,29 @@ const Sfx = (() => {
       else whistleBlast(t, 0.38);
     },
     setLoud(k) { loud = k; },
+    /** every frame: the crowd's own life. Cheers and whoops pop up now and then, and every so often a chant:
+        clap, clap, clap-clap-clap, then a big OH. Louder crowds cheer more often */
+    crowdTick(dt) {
+      if (!ctx || muted || crowdBase <= 0) return;
+      const lv = Math.min(1.5, crowdBase / 0.035);
+      crowdT -= dt * (0.6 + lv);
+      if (crowdT <= 0) {
+        crowdT = 0.35 + Math.random() * 1.4;
+        const r = Math.random();
+        if (r < 0.55) voice(0, 0.32 + Math.random() * 0.3, 480 + Math.random() * 160, 1050 + Math.random() * 300, 1.55, 0.03 * lv); // woo!
+        else if (r < 0.8) voice(0, 0.5, 420, 780, 1.05, 0.022 * lv); // a shout
+        else claps(0, 0.035 * lv);
+      }
+      chantT -= dt;
+      if (chantT <= 0) {
+        chantT = 15 + Math.random() * 15;
+        const beat = 0.42;
+        [0, 1, 2, 2.5, 3].forEach((b) => claps(b * beat, 0.07 * lv));
+        voice(4 * beat, 0.9, 430, 820, 1.04, 0.07 * lv); voice(4 * beat + 0.05, 0.85, 470, 860, 1.03, 0.05 * lv); // OH!
+      }
+    },
+    /** the start-screen player touches the ball: a soft thump */
+    juggle(part) { tone(part === 'H' ? 170 : 125, 0.05, { type: 'sine', vol: 0.09, slide: 75 }); noise(0.03, { vol: 0.05, type: 'lowpass', freq: 900 }); },
     setCrowd(level) {
       crowdBase = level * 0.07 * loud;
       if (ctx && crowdGain) crowdGain.gain.setTargetAtTime(muted ? 0 : crowdBase, now(), 0.6);
