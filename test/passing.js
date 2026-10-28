@@ -10,7 +10,7 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     const G = EGO.Game; G.startMatch('quick'); G.manual = true; G.stepManual(170, false); // past kickoff
     // put the play somewhere calm: you at midfield, your teammate with the ball, the other team far away
     window.setup = (opts = {}) => {
-      const m = G.match, h = m.human, mate = m.teams[0].find((p) => p.role === 'MID');
+      const m = G.match, h = m.human, mate = m.teams[0].find((p) => !p.isGK && !p.isHuman);
       for (const o of m.teams[1]) { if (!o.isGK) { o.pos.set(-20, 0, 25); o.vel.set(0, 0, 0); o.setState('free'); } }
       m.ball.owner = null; m.ball.kick = null;
       h.pos.set(opts.hx || 0, 0, opts.hz || 4); h.vel.set(opts.hvx || 0, 0, opts.hvz || 0); h.setState('free'); h.pickBlock = 0;
@@ -27,7 +27,7 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
       for (let i = 0; i < frames; i++) {
         if (hold) hold(m);
         m.update(1 / 60);
-        const mate = m.teams[0].find((p) => p.role === 'MID');
+        const mate = m.teams[0].find((p) => !p.isGK && !p.isHuman);
         if (out.lookAt < 0 && mate.ai.look) out.lookAt = i;
         const k = m.ball.kick;
         if (out.firstKickAt < 0 && k && k.by === mate) { out.firstKickAt = i; out.kick = { type: k.type, toHuman: k.to === m.human, vy: +m.ball.vel.y.toFixed(1), style: mate.kickStyle, curve: +Math.hypot(m.ball.curve.x, m.ball.curve.z).toFixed(1) }; }
@@ -43,13 +43,13 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   check('then passes to you', calm.kick && calm.kick.type === 'pass' && calm.kick.toHuman, calm.kick);
 
   const marked = await page.evaluate(() => {
-    const { m } = setup(); const o = m.teams[1].find((p) => p.role === 'ST'); o.pos.set(0.9, 0, 4.4);
+    const { m } = setup(); const o = m.teams[1].find((p) => !p.isGK && p.role !== 'DEF'); o.pos.set(0.9, 0, 4.4);
     return watch(70, (m) => { o.pos.set(m.human.pos.x + 0.9, 0, m.human.pos.z + 0.4); o.vel.set(0, 0, 0); o.mx = o.mz = 0; });
   });
   check('tightly marked: WAIT instead of forcing it', marked.labels.includes('WAIT') && !(marked.kick && marked.kick.toHuman), marked);
 
   const lob = await page.evaluate(() => {
-    const { m } = setup(); const o = m.teams[1].find((p) => p.role === 'ST');
+    const { m } = setup(); const o = m.teams[1].find((p) => !p.isGK && p.role !== 'DEF');
     return watch(80, (m) => { o.pos.set(3, 0, -1); o.vel.set(0, 0, 0); o.mx = o.mz = 0; o.setState('stun', 5); m.human.mx = m.human.mz = 0; });
   });
   check('defender in the lane: a lofted ball over him', lob.kick && lob.kick.toHuman && lob.kick.vy > 3, lob.kick);

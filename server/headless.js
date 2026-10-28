@@ -34,7 +34,7 @@ TimeCtl.slowMo = TimeCtl.hitStop = () => {};
 Shake.add = () => {};
 Save.data = Save.defaults();
 Save.data.settings.cutins = false;
-return { Match, World, Save, Hud, TEAM, MODES, ROSTERS, CLUBS, CLUB_IDS, STYLES, FLOWS, SKINS, SKIN_SLOTS, matchSides, teamSizeFor, lookFor, QUICK_CHAT };
+return { Match, World, Save, Hud, TEAM, MODES, ROSTERS, CLUBS, CLUB_IDS, STYLES, FLOWS, SKINS, SKIN_SLOTS, matchSides, teamSizeFor, lookFor, QUICK_CHAT, TIER_SKILL };
 `;
 
 function load() {

@@ -366,6 +366,8 @@ const AI = {
     }
     return best;
   },
+  /** two defenders split the back: DEF takes one side when DEF2 is there */
+  pair(m, p) { return m.teams[p.team].some((q) => q.role === 'DEF2'); },
   /** where a bot stands for its role. Worked out on the first pitch's scale, then stretched to this one */
   formation(m, p, st) {
     if (m.cfg.hill) return this.hillSpot(m, p, st);
@@ -373,13 +375,17 @@ const AI = {
     let u, v;
     const r = p.role;
     if (st === 'att') {
-      if (r === 'DEF') { u = bu * 0.3; v = clamp(bv - 13, -24, 6); }
+      if (r === 'DEF') { u = bu * 0.3 + (this.pair(m, p) ? 5 : 0); v = clamp(bv - 13, -24, 6); }
+      else if (r === 'DEF2') { u = bu * 0.3 - 5; v = clamp(bv - 13, -24, 4); }
+      else if (r === 'FW') { u = clamp(-bu * 0.35, -7, 7) + (bu > 0 ? -6 : 6); v = clamp(bv + 7, 0, 24); } // the second striker runs the other channel
       else if (r === 'MID') { u = bu > 0 ? -8 : 8; v = clamp(bv - 1, -12, 20); } // the spare runner offers width on the far side
       else if (r === 'LW') { u = 12.5; v = clamp(bv + 5, -6, 25); }
       else if (r === 'RW') { u = -12.5; v = clamp(bv + 5, -6, 25); }
       else { u = clamp(-bu * 0.35, -7, 7); v = clamp(bv + 9, 2, 26); }
     } else {
-      if (r === 'DEF') { u = bu * 0.5; v = clamp(bv - 7, -29, -6); }
+      if (r === 'DEF') { u = bu * 0.5 + (this.pair(m, p) ? 4 : 0); v = clamp(bv - 7, -29, -6); }
+      else if (r === 'DEF2') { u = bu * 0.5 - 4; v = clamp(bv - 7, -29, -6); }
+      else if (r === 'FW') { u = bu * 0.3 + 5; v = clamp(bv + 1, -6, 10); }
       else if (r === 'MID') { u = bu * 0.45; v = clamp(bv - 6, -26, 4); }
       else if (r === 'LW') { u = clamp(bu * 0.4 + 7, -14, 15); v = clamp(bv - 4, -24, 8); }
       else if (r === 'RW') { u = clamp(bu * 0.4 - 7, -15, 14); v = clamp(bv - 4, -24, 8); }
@@ -429,7 +435,7 @@ const AI = {
         const st = m.teamState[p.team];
         const f = this.formation(m, p, st);
         tgt = V3(f.x, 0, f.z); sprint = dist2D(tgt, p.pos) > 9;
-        if (st === 'att' && p.role !== 'DEF' && a.runT <= 0 && chance(0.06 + 0.1 * sk)) {
+        if (st === 'att' && p.role !== 'DEF' && p.role !== 'DEF2' && a.runT <= 0 && chance(0.06 + 0.1 * sk)) {
           const bv = m.prog(p.team, b.pos);
           const v = clamp(bv + rand(10, 16) * PITCH_KZ, -5, F.L - 5);
           const u = clamp(p.pos.x * s * 0.7 + rand(-5, 5), -F.W + 3, F.W - 3);
@@ -530,11 +536,11 @@ const AI = {
     if (o && o.team !== p.team) {
       const dg = Math.hypot(o.pos.x, gz - o.pos.z);
       if (dg < 16) {
-        const k = clamp((16 - dg) / 16, 0, 1) * (1.4 + 2.6 * sk);
+        const k = clamp((16 - dg) / 16, 0, 1) * (1.4 + 2.6 * Math.min(1, sk)); // extra keeper skill makes saves, not wilder rushes off the line
         const dx = o.pos.x, dz = o.pos.z - gz, l = Math.hypot(dx, dz) || 1;
         tx = dx / l * k; tz = gz + dz / l * k;
       }
-      if (dist2D(o.pos, p.pos) < 2.1 && p.tackleCd <= 0 && Math.random() < (0.6 + 2.2 * sk) * dt) m.tackle(p, o.pos.x - p.pos.x, o.pos.z - p.pos.z);
+      if (dist2D(o.pos, p.pos) < 2.1 && p.tackleCd <= 0 && Math.random() < (0.6 + 2.2 * Math.min(1, sk)) * dt) m.tackle(p, o.pos.x - p.pos.x, o.pos.z - p.pos.z);
     }
     a.target.set(tx, 0, tz); a.sprint = dist2D(a.target, p.pos) > 3;
     this.steer(m, p, dt);

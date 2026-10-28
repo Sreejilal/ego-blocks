@@ -13,7 +13,7 @@ const MODES = {
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
 };
 // kickoff spots on the first pitch's scale (see PITCH_KX / PITCH_KZ)
-const FORM = { GK: [0, -31.0], DEF: [0, -18], MID: [7, -9], LW: [11, -7], RW: [-11, -7], ST: [0, -2.2] };
+const FORM = { GK: [0, -31.0], DEF: [0, -18], DEF2: [-8, -17], MID: [7, -9], LW: [11, -7], RW: [-11, -7], ST: [0, -2.2], FW: [-7, -4] };
 const MATCH_LEN = 240, GOLDEN_LEN = 120;
 
 class Match {
@@ -40,31 +40,34 @@ class Match {
     if (this.cfg.hill) this.buildHill();
     this.buildTeams(opts);
     // whose PASS calls make teammates look up (the human; in a test match, a bot striker that calls like a human)
-    this.caller = opts.caller ? this.teams[0].find((p) => p.role === 'ST') : this.autopilot ? null : this.human;
+    this.caller = opts.caller ? this.teams[0].find((p) => p.role === leadRole(this.rolesFor(0))) : this.autopilot ? null : this.human;
     this.setupKickoff(0, true);
   }
   /* ---------- setup ---------- */
+  /** 5v5: each team plays ultra defensive or ultra attacking, picked at random (opts.setups to choose) */
+  rolesFor(team) { return this.size === 5 ? SETUPS_5[this.setups[team]].roles : ROSTERS[this.size]; }
   buildTeams(opts) {
     const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
     const used = new Set([1, 10]);
-    const roles = ROSTERS[this.size];
+    this.setups = opts.setups || [pick(['defensive', 'attacking']), pick(['defensive', 'attacking'])];
     // online: each player takes an outfield role on their team, striker first
     const seat = {};
     if (opts.humans) for (const t of [0, 1]) {
-      const order = roles.filter((r) => r !== 'GK').sort((a, b) => ['ST', 'MID', 'LW', 'RW', 'DEF'].indexOf(a) - ['ST', 'MID', 'LW', 'RW', 'DEF'].indexOf(b));
+      const order = this.rolesFor(t).filter((r) => r !== 'GK').sort((a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b));
       opts.humans.filter((h) => h.team === t).slice(0, order.length).forEach((h, i) => { seat[t + order[i]] = h; });
     }
     for (let team = 0; team < 2; team++) {
+      const roles = this.rolesFor(team), lead = leadRole(roles);
       for (const role of roles) {
         const net = opts.humans ? seat[team + role] : null;
-        const human = opts.humans ? !!net : team === 0 && role === 'ST' && !opts.noHuman;
+        const human = opts.humans ? !!net : team === 0 && role === lead && !opts.noHuman; // you play the most attacking spot
         let num = role === 'GK' ? 1 : human && !net ? 10 : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
         const style = net ? net.style : human ? (opts.style || Save.data.style) : botStyle();
         const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
         const look = net ? net.look : human ? (opts.look || Save.data.look) : botLook();
         const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[1] : null, number: num, name: net ? net.name : human ? 'YOU' : names.pop() });
-        if (!human && team === 1) p.speedMul = 1 + 0.045 * (opts.teamD ? opts.teamD[1] : this.d);
+        if (!human && (team === 1 || opts.teamD)) p.speedMul = 1 + 0.045 * (opts.teamD ? opts.teamD[team] : this.d); // bots are a little quicker with skill (both teams when each has its own skill)
         this.players.push(p); this.teams[team].push(p);
         if (net) { p.netId = net.id; this.humans.push(p); } else if (human) this.human = p;
       }
@@ -93,7 +96,7 @@ class Match {
   oppGoalZ(team) { return this.dir(team) * F.L; }
   ownGoalZ(team) { return -this.dir(team) * F.L; }
   prog(team, pos) { return pos.z * this.dir(team); }
-  skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.size) * 0.11 + Math.max(0, s - 0.6) * 0.5, 0.45, 1.4) : s; } // keepers get a boost in small teams (they face more shots) and against very good bots (who shoot from far)
+  skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.size) * 0.11 + Math.max(0, s - 0.6) * 0.8, 0.45, 1.5) : s; } // keepers get a boost in small teams (they face more shots) and against very good bots (who shoot from far)
   opponents(p) { return this.teams[1 - p.team]; }
   inOwnBox(p, pos = p.pos) {
     const gz = this.ownGoalZ(p.team);
@@ -110,8 +113,9 @@ class Match {
     for (const p of this.players) {
       const f = FORM[p.role]; let u = f[0] * PITCH_KX, v = f[1] * PITCH_KZ;
       if (p.isGK) v = -(F.L - 1.5);
-      if (p.role === 'ST') v = p.team === team ? -0.95 : -(F.CIRCLE + 1.2);
-      if ((p.role === 'LW' || p.role === 'RW' || p.role === 'MID') && p.team === team) v = -3.5;
+      const lead = p.role === leadRole(this.rolesFor(p.team));
+      if (lead) { v = p.team === team ? -0.95 : -(F.CIRCLE + 1.2); u = 0; } // the kickoff taker stands on the ball
+      else if ((p.role === 'LW' || p.role === 'RW' || p.role === 'MID' || p.role === 'FW') && p.team === team) v = -3.5;
       const s = this.dir(p.team);
       p.pos.set(u * s, 0, v * s); p.vel.set(0, 0, 0); p.yaw = s > 0 ? 0 : Math.PI;
       p.dash = p.slide = p.dive = null; p.charging = false; p.charge = 0; p.kickT = -1; p.flipT = -1; p.pending = null;
@@ -124,11 +128,12 @@ class Match {
     else if (first) Hud.banner(this.cfg.name, this.mode === 'ranked' ? 'WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15' : this.mode === 'lawless' ? (Touch.on ? 'GRAB THE ? BLOCKS \u00b7 TAP ITEM TO USE' : 'GRAB THE ? BLOCKS \u00b7 X USES YOUR ITEM') : 'NO RANK ON THE LINE', TEAM[0].hex);
     else Hud.banner('KICKOFF', TEAM[team].name + ' BALL', TEAM[team].hex);
     if (!first && this.human && Touch.on) Touch.faceGoal(this);
+    if (first && this.size === 5 && this.human) this.toast('THEY PLAY ' + SETUPS_5[this.setups[1 - this.human.team]].name + ' · YOU PLAY ' + SETUPS_5[this.setups[this.human.team]].name, 'gold', this.human);
   }
   startPlay() {
     this.phase = 'play'; this.phaseT = 0;
     for (const p of this.players) p.setState('free');
-    const st = this.teams[this.kickTeam].find((p) => p.role === 'ST');
+    const st = this.teams[this.kickTeam].find((p) => p.role === leadRole(this.rolesFor(this.kickTeam)));
     this.possess(st, true);
     st.protect = 0.5;
     Sfx.whistle(1);
