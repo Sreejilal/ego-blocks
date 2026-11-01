@@ -46,10 +46,10 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
   check('big plays fill the Awakening bar, small ones do not', fill > 20 && fill < 30, fill);
   const aw = await A.evaluate(() => {
     const m = EGO.Game.match, h = m.human; for (const a of h.abil) a.cd = 8; h.awake = 100; h.flow = 0;
-    EGO.Input.edges.add('KeyZ'); EGO.Game.stepManual(3, false);
+    m.activateAwaken(h); EGO.Game.stepManual(3, false); // Awakening comes by itself; here it is started on purpose
     return { t: +h.awakeT.toFixed(1), cds: h.abil.map((a) => a.cd), cdRate: h.mods.cdRate, speed: +h.mods.speed.toFixed(2), drain: h.mods.stamDrain, bar: document.getElementById('awake-txt').textContent, slot: document.getElementById('awakeside').classList.contains('active') && !document.getElementById('awakeside').hidden };
   });
-  check('Z awakens you: 20s, cooldowns reset and recharge twice as fast', aw.t > 19 && aw.cds.every((c) => c < 0.1) && aw.cdRate === 2, aw);
+  check('awakened: 20s, cooldowns reset and recharge twice as fast', aw.t > 19 && aw.cds.every((c) => c < 0.1) && aw.cdRate === 2, aw);
   check("the style's own power: RED LINE is faster and sprinting is free", aw.speed >= 1.25 && aw.drain === 0, aw);
   check('the HUD shows the Awakening gauge on the side, lit up', /AWAKENED/.test(aw.bar) && aw.slot, aw);
   const longer = await A.evaluate(() => { EGO.Game.stepManual(150, false); const m = EGO.Game.match, h = m.human; h.setState('free'); h.fx.turbo = 0; const i = h.abil.findIndex((a) => a.def.name === 'TURBO'); h.abil[i].cd = 0; m.useAbility(h, i); return +h.fx.turbo.toFixed(2); });
@@ -61,8 +61,15 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
     return { used: h.awakeMoveUsed, moved: +Math.abs(h.pos.z - z0).toFixed(1), name: EGO.STYLES.SPRINTER.awaken.move.name };
   });
   check('awakened, Z is the signature move of the style (RED LINE: LIGHT SPEED dash), once', move.used && move.moved > 4 && move.name === 'LIGHT SPEED', move);
-  const viaG = await A.evaluate(() => { const m = EGO.Game.match, h = m.human; EGO.Game.stepManual(60, false); h.setState('free'); h.awakeT = 0; h.awake = 100; h.flow = 10; EGO.Input.edges.add('KeyG'); EGO.Game.stepManual(2, false); return h.awakeT > 0; });
-  check('the Flow button (G) awakens you when only the Awakening bar is full', viaG);
+  const rnd = await A.evaluate(() => {
+    const m = EGO.Game.match, h = m.human; EGO.Game.stepManual(60, false); h.setState('free'); h.awakeT = 0; h.awakeRest = 0;
+    h.awake = 0; const cold = m.awakenChance(h); h.awake = 100; const hot = m.awakenChance(h);
+    const r = Math.random; Math.random = () => 0; m.awT = 1; m.updateAwakening(0.01); Math.random = r; // the dice say yes
+    const came = h.awakeT > 0;
+    h.awakeT = 0; h.awake = 0; EGO.Input.edges.add('KeyZ'); EGO.Game.stepManual(2, false);
+    return { cold: +cold.toFixed(4), hot: +hot.toFixed(4), came, zStarts: h.awakeT > 0 };
+  });
+  check('Awakening comes by itself, much sooner after big plays (Z does not start it)', rnd.came && rnd.hot > rnd.cold * 10 && !rnd.zStarts, rnd);
   const bots = await A.evaluate(() => { const r = EGO.simulate('quick', 0.6, 120, 3); return r; });
   check('bots awaken too (about 1 to 2 times each in a match)', bots && bots.awakens >= 1, { awakens: bots && bots.awakens, goals: bots && bots.goals });
 
@@ -116,9 +123,9 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
     const box = await P.evaluate(() => { const r = document.querySelector('#scr-daily .dialog').getBoundingClientRect(); return { l: r.left, r: r.right, w: innerWidth, sw: document.documentElement.scrollWidth }; });
     check('phone ' + nm + ': the daily box fits', box.l >= 0 && box.r <= box.w && box.sw <= box.w, box);
     await P.screenshot({ path: __dirname + '/shots/ex3_daily_' + nm + '.png', timeout: 120000 });
-    await P.evaluate(() => { document.getElementById('dl-close').click(); EGO.Save.data.style = 'THUNDER'; EGO.Game.startMatch('quick'); for (let i = 0; i < 80 && EGO.Game.match.phase !== 'play'; i++) EGO.Game.stepManual(10, false); EGO.Game.match.human.awake = 100; EGO.Game.match.human.flow = 0; EGO.Game.stepManual(2, true); });
+    await P.evaluate(() => { document.getElementById('dl-close').click(); EGO.Save.data.style = 'THUNDER'; EGO.Game.startMatch('quick'); for (let i = 0; i < 80 && EGO.Game.match.phase !== 'play'; i++) EGO.Game.stepManual(10, false); const m = EGO.Game.match; m.human.flow = 0; m.activateAwaken(m.human); EGO.Game.stepManual(80, true); });
     const tb = await P.evaluate(() => ({ lb: document.querySelector('#touch [data-act="flow"] .lb').textContent, h: document.getElementById('awakebar').getBoundingClientRect().height }));
-    check('phone ' + nm + ': the FLOW button becomes AWAKEN! and the bar stays on one line', tb.lb === 'AWAKEN!' && tb.h < 30, tb);
+    check('phone ' + nm + ': awakened, the FLOW button becomes MOVE! and the Awakening bar stays on one line', tb.lb === 'MOVE!' && tb.h > 0 && tb.h < 30, tb);
     await P.screenshot({ path: __dirname + '/shots/ex4_awaken_' + nm + '.png', timeout: 120000 });
   }
   check('no page errors', logs.length === 0, logs.slice(0, 4));

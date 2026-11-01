@@ -155,6 +155,7 @@ class Match {
     if (this.human && !this.autopilot) this.updateHuman(dt, this.ctl);
     for (const h of this.humans) if (h.ctl) this.updateHuman(dt, h.ctl, h);
     this.updateSetPiece(dt);
+    this.updateAwakening(dt);
     this.updatePending(dt);
     for (const p of this.players) p.physics(dt);
     this.separate();
@@ -247,12 +248,12 @@ class Match {
       this.tackle(p, tx, tz);
     }
     for (let i = 0; i < 3; i++) if (c.ab[i]) this.useAbility(p, i);
-    if (c.awaken) { // Z: awaken; awakened, Z is your style's signature move (once)
+    if (c.awaken) { // Z: awakened, your style's signature move (once). Awakening itself comes by itself
       if (p.awakeT > 0) this.tryAwakenMove(p);
-      else if (!this.activateAwaken(p)) { this.toast('AWAKENING NOT READY', 'bad', p); Sfx.deny(); }
+      else { this.toast('AWAKENING COMES BY ITSELF. BIG PLAYS BRING IT SOONER', 'bad', p); Sfx.deny(); }
     }
     // the Flow button also awakens you when the Awakening bar is full and Flow is not
-    if (c.flow) { if (!this.activateFlow(p) && !this.activateAwaken(p) && !(p.awakeT > 0 && !p.awakeMoveUsed && this.tryAwakenMove(p)) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
+    if (c.flow) { if (!this.activateFlow(p) && !(p.awakeT > 0 && !p.awakeMoveUsed && this.tryAwakenMove(p)) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
     if (c.item) this.useItem(p);
   }
   pickPassTarget(p) {
@@ -732,13 +733,26 @@ class Match {
   awakeAdd(p, amt) {
     if (!p || p.isGK || p.awakeT > 0 || !p.style.awaken) return;
     const before = p.awake;
-    p.awake = Math.min(100, p.awake + amt * 0.7);
-    if (p.isHuman && before < 100 && p.awake >= 100) { this.toast(Touch.on ? 'AWAKENING READY. TAP FLOW' : 'AWAKENING READY. PRESS Z', 'gold', p); Sfx.coin(); }
+    p.awake = Math.min(100, p.awake + amt * 0.7); // a hidden meter: the fuller it is, the likelier you awaken any second
   }
+  /** Awakening comes by itself: once a second each player may awaken. Big plays (p.awake) make it much likelier,
+      and after one ends there is a rest before the next */
+  updateAwakening(dt) {
+    if (this.phase !== 'play') return;
+    this.awT = (this.awT || 0) + dt;
+    if (this.awT < 1) return;
+    this.awT -= 1;
+    for (const p of this.players) {
+      if (p.isGK || p.awakeT > 0 || !p.style.awaken || (p.awakeRest || 0) > this.time) continue;
+      if (Math.random() < this.awakenChance(p)) this.activateAwaken(p);
+    }
+  }
+  awakenChance(p) { const k = clamp(p.awake / 100, 0, 1); return 0.001 + Math.pow(k, 2) * 0.03; } // cold: about one in 15 minutes; after lots of big plays: one in about 30 seconds
   /** your style's Awakening: a burst of light, then AWAKEN_TIME seconds of its powers */
   activateAwaken(p) {
     const aw = p.style.awaken;
-    if (!aw || p.isGK || p.awake < 100 || p.awakeT > 0 || !this.canAct(p)) return false;
+    if (!aw || p.isGK || p.awakeT > 0 || !this.canAct(p)) return false;
+    p.awakeRest = this.time + AWAKEN_TIME + 25;
     p.awake = 0; p.awakeT = AWAKEN_TIME; p.awakeMoveUsed = false;
     for (const a of p.abil) a.cd = 0;
     // the transformation: a moment in the air that nobody can tackle (you keep the ball)

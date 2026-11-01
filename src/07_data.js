@@ -309,12 +309,12 @@ const FLOWS = {
   MONARCH: { name: 'MONARCH', rarity: 'Generational', color: '#ffffff', fx: 'crown', desc: '+20% shot power, +12% speed and cooldowns 15% shorter. A crown of light floats over your head.', mods: { shot: 1.2, speed: 1.12, cdRate: 1 / 0.85 } },
 };
 const FLOW_IDS = Object.keys(FLOWS);
-/** Awakening: a style's own transformation. Big plays fill the bar; when it is full, Z (or the Flow button) starts it.
+/** Awakening: a style's own transformation. It comes by itself at random moments; big plays make it come much sooner.
     For AWAKEN_TIME seconds: cooldowns reset and recharge twice as fast, ability effects last 50% longer, plus the style's own power */
 const AWAKEN_TIME = 20;
 /** the feint (C): a step-over cut nobody can tackle you through, once every FEINT_CD seconds */
 const FEINT_CD = 5;
-const AWAKEN_ALL = 'Cooldowns reset and recharge twice as fast, and ability effects last 50% longer. Press Z again for its signature move, once.';
+const AWAKEN_ALL = 'It comes by itself at random moments, sooner after big plays. Cooldowns reset and recharge twice as fast, and ability effects last 50% longer. Press Z for its signature move, once.';
 const RAW_FLOW_DESC = 'No Flow equipped: +8% speed. Equip one from Flow Spins for a bigger buff.';
 
 const ITEMS = {
@@ -617,7 +617,7 @@ const DAILY_CHALLENGES = {
   goals: { name: 'SCORE 2 GOALS', goal: 2 }, assists: { name: 'GET 2 ASSISTS', goal: 2 }, tackles: { name: 'MAKE 4 TACKLES', goal: 4 },
   shots: { name: 'TAKE 6 SHOTS', goal: 6 }, win: { name: 'WIN A MATCH', goal: 1 }, volley: { name: 'SCORE A VOLLEY OR HEADER', goal: 1 },
   ankles: { name: 'BREAK 2 ANKLES', goal: 2 }, curler: { name: 'SCORE WITH A CURLER', goal: 1 }, played: { name: 'PLAY 3 MATCHES', goal: 3 },
-  awakens: { name: 'AWAKEN 2 TIMES', goal: 2 },
+  awakens: { name: 'AWAKEN ONCE', goal: 1 },
 };
 const DAILY_IDS = Object.keys(DAILY_CHALLENGES);
 const DAILY_REWARD = { emeralds: 150, xp: 200 };

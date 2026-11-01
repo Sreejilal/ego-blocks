@@ -291,7 +291,7 @@ const Touch = {
       this.setCd(k, a.cd > 0 ? clamp(a.cd / a.def.cd, 0, 1) : 0, a.cd > 0 ? String(Math.ceil(a.cd)) : '');
       this.tog(b[k], 'ready', a.cd <= 0);
     }
-    const fr = p.flow >= 100 && p.flowT <= 0, ar = !fr && p.awake >= 100 && p.awakeT <= 0 && !!p.style.awaken; // one button: FLOW, or AWAKEN when only that bar is full
+    const fr = p.flow >= 100 && p.flowT <= 0, ar = false; // one button: FLOW, or your MOVE! while awakened (Awakening comes by itself)
     this.tog(b.flow, 'ready', fr || ar); this.tog(b.flow, 'active', p.flowT > 0 || p.awakeT > 0); this.tog(b.flow, 'off', !fr && !ar && p.flowT <= 0 && p.awakeT <= 0); this.tog(b.flow, 'awaken', ar || (p.awakeT > 0 && p.flowT <= 0));
     const mv = p.awakeT > 0 && !p.awakeMoveUsed && p.style.awaken && p.style.awaken.move;
     if (mv && !fr) this.tog(b.flow, 'ready', true);

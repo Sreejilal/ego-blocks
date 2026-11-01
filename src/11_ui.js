@@ -124,7 +124,7 @@ const UI = {
             ${row(key('F'), 'Slide tackle')}
             ${row(key('Q') + key('E') + key('R'), 'Style abilities. Big moves get a quick cut-in; turn them off in the pause menu')}
             ${row(key('G'), 'Activate Flow when the bar is full')}
-            ${row(key('Z'), 'Awaken when the Awakening bar is full: 20s of your style\'s own power. Awakened, press Z again for its signature move (once). G works too')}
+            ${row(key('Z'), 'Awakened, your style\'s signature move (once). Awakening comes by itself at random moments, sooner after big plays')}
             ${row(key('X'), 'Use item (Lawless)')}
             ${row(key('TAB'), 'Scoreboard')}
             ${row(key('1') + key('2') + key('3') + key('4'), 'Online: quick chat. PASS!, NICE!, GG, ON ME')}
@@ -149,7 +149,7 @@ const UI = {
             <li><b>The keeper</b> reacts to where the ball is going. Corners, curlers and fakes beat him.</li>
           </ul></section>
           <section class="panel"><h3>FLOW, SPINS, RANK</h3><ul>
-            <li><b>Awakening</b> is your style's own power-up. Goals, assists, shots on target, tackles and tricks fill its bar. When it is full, press Z (or the Flow button) for 20 seconds of it: your cooldowns reset and recharge twice as fast, your abilities last longer, and you get your style's own boost.</li>
+            <li><b>Awakening</b> is your style's own power-up. It comes by itself at random moments, and goals, assists, shots on target, tackles and tricks make it come sooner. For 20 seconds your cooldowns reset and recharge twice as fast, your abilities last longer, you get your style's own boost, and Z does its signature move once.</li>
             <li><b>Flow</b> fills from completed passes, feints, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
             <li><b>Emeralds:</b> win 150, draw 80, loss 50, plus 20 a goal and 10 an assist.</li>
             <li><b>Style spins</b> give you a style to play with until your next style spin replaces it. <b>Blueprints</b> keep a style for good: earn them from GOALS (on the start screen) and spend them in the Locker.</li>
@@ -522,8 +522,8 @@ const UI = {
     $('flowbar').style.setProperty('--aura', p.aura);
     $('flow-name').textContent = p.flowId ? 'FLOW · ' + FLOWS[p.flowId].name : 'FLOW';
     if (p.flowId && FLOWS[p.flowId]) $('flowbar').style.setProperty('--aura', FLOWS[p.flowId].color);
-    $('awakebar').style.setProperty('--aura', p.aura); $('awakebar').hidden = !p.style.awaken;
-    $('awakeside').style.setProperty('--aura', p.aura); $('awakeside').hidden = !p.style.awaken;
+    $('awakebar').style.setProperty('--aura', p.aura); $('awakebar').hidden = true;
+    $('awakeside').style.setProperty('--aura', p.aura); $('awakeside').hidden = true;
     $('aws-name').textContent = p.style.awaken ? p.style.awaken.name : '';
     $('awake-name').textContent = p.style.awaken ? (Touch.on ? '' : 'AWAKENING · ') + p.style.awaken.name : 'AWAKENING'; // phones: just the name, the bar is narrow
     $('itemslot').hidden = !m.cfg.items;
@@ -560,7 +560,8 @@ const UI = {
     this.setText('flow-txt', p.flowT > 0 ? 'IN FLOW ' + Math.ceil(p.flowT) + 's' : p.flow >= 100 ? (Touch.on ? 'READY' : 'READY [G]') : Math.floor(p.flow) + '%');
     $('flowbar').classList.toggle('ready', p.flow >= 100 && p.flowT <= 0);
     if (p.style.awaken) {
-      const ar = p.awake >= 100 && p.awakeT <= 0;
+      const ar = false; // no bar to fill: it comes by itself
+      $('awakeside').hidden = $('awakebar').hidden = !(p.awakeT > 0); // only while you are awakened
       const apct = (p.awakeT > 0 ? p.awakeT / AWAKEN_TIME * 100 : p.awake).toFixed(1) + '%';
       $('awake-fill').style.width = apct; $('aws-fill').style.height = apct;
       this.setText('aws-txt', p.awakeT > 0 ? Math.ceil(p.awakeT) + 's' + (!p.awakeMoveUsed && p.style.awaken.move ? ' · Z: ' + p.style.awaken.move.name : '') : ar ? 'READY' : Math.floor(p.awake) + '%');
@@ -862,7 +863,7 @@ const UI = {
     if (tab === 'style') {
       const st = STYLES[id];
       det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
-        + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)} Big plays fill the bar.</p></div></div>` : '')
+        + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)}</p></div></div>` : '')
         + (st.awaken && st.awaken.move ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><div><div class="t"><span class="key">Z</span><b>${esc(st.awaken.move.name)}</b><span class="label">AWAKENED · ONCE</span></div><p>${esc(st.awaken.move.desc)}</p></div></div>` : '') + '</div>';
     } else if (tab === 'club') {
       const c = CLUBS[id];
