@@ -16,6 +16,14 @@ const STYLES = {
   PROWLER: { name: 'PROWLER', rarity: 'Legendary', hair: '#2b2f3a', hairShape: 'swept', aura: '#ff9d2e', blurb: 'A predator in the box. Smells loose balls first and finishes them first time.', abilities: ['scent', 'pounce', 'oneTouch'], awaken: { move: { name: 'APEX POUNCE', kind: 'pounce', desc: 'Leap onto the ball from up to 16 blocks away.' }, name: 'APEX', desc: '+22% speed when you do not have the ball, and +20% shot power.', mods: { huntSpeed: 1.22, shot: 1.2 } } },
   MAGNET: { name: 'MAGNET', rarity: 'Mythic', hair: '#eef2f7', hairShape: 'fluffy', aura: '#8fd4ff', blurb: 'Kills any high ball dead on the boot, then finishes it in the air.', abilities: ['skyTrap', 'volley', 'fakeVolley'], awaken: { move: { name: 'SKY CANNON', kind: 'skycannon', desc: 'Pop the ball up and volley it at full power.' }, name: 'GRAVITY', desc: '+22% shot power and 10% faster.', mods: { shot: 1.22, speed: 1.1 } } },
   THUNDER: { name: 'THUNDER', rarity: 'Mythic', hair: '#f2f2f2', hairShape: 'flattop', aura: '#ffe14d', blurb: 'A long-range bomber. Shots from 30 blocks out that dip, wobble and burn keepers.', abilities: ['longBomb', 'loaded', 'knuckle'], awaken: { move: { name: 'THUNDERBOLT', kind: 'bolt', desc: 'A straight shot so hard the keeper cannot catch it.' }, name: 'STORM', desc: '+30% shot power.', mods: { shot: 1.3 } } },
+  WARDEN: { name: 'WARDEN', rarity: 'Epic', hair: '#3a3f4a', hairShape: 'crop', aura: '#5fb0ff', blurb: 'A wall at the back. Blocks shots, clears danger and shuts the best striker out of the game.', abilities: ['bodyBlock', 'clearance', 'lockdown'],
+    awaken: { move: { name: 'FORTRESS', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'BULWARK', desc: 'Tackles reach further and come back faster, and nobody can tackle you.', perk: 'tank', mods: { tackleRange: 1.5, tackleCd: 0.6 } } },
+  MAESTRO: { name: 'MAESTRO', rarity: 'Legendary', hair: '#5a3a22', hairShape: 'ponytail', aura: '#e6c35c', blurb: 'Runs the game. One-twos, perfect through balls and a whole team that plays faster.', abilities: ['oneTwo', 'pinpointPass', 'tempo'],
+    awaken: { move: { name: 'SYMPHONY', kind: 'symphony', desc: 'Your whole team bursts away, and you see every passing lane.' }, name: 'CONDUCTOR', desc: 'Abilities recharge even faster and you are 10% quicker.', mods: { cdRate: 1.3, speed: 1.1 } } },
+  BLITZ: { name: 'BLITZ', rarity: 'Legendary', hair: '#ff3b2f', hairShape: 'undercut', aura: '#ff3b5c', blurb: 'Never stops running. Hunts the ball down and pokes it away without leaving the ground.', abilities: ['hunt', 'poke', 'burst'],
+    awaken: { move: { name: 'RED ALERT', kind: 'steal', desc: 'Lunge at a carrier up to 10 blocks away and take the ball.' }, name: 'FRENZY', desc: '+15% speed, and tackles come back twice as fast.', mods: { speed: 1.15, tackleCd: 0.5 } } },
+  COMET: { name: 'COMET', rarity: 'Mythic', hair: '#bde8ff', hairShape: 'afro', aura: '#7cf2ff', blurb: 'Lives in the air. Rocket jumps, overheads and volleys from anywhere.', abilities: ['rocketJump', 'overhead', 'volley'],
+    awaken: { move: { name: 'STARFALL', kind: 'starfall', desc: 'Leap sky high and crash down, knocking over everyone near you.' }, name: 'ORBIT', desc: '+20% shot power and 10% faster.', mods: { shot: 1.2, speed: 1.1 } } },
   RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'], awaken: { move: { name: 'RAILSHOT', kind: 'bolt', desc: 'Dead straight, top power, from anywhere.' }, name: 'OVERDRIVE', desc: '+25% shot power and 10% faster.', mods: { shot: 1.25, speed: 1.1 } } },
 };
 const STYLE_IDS = Object.keys(STYLES);
@@ -211,6 +219,66 @@ const ABILITIES = {
     desc: 'A bicycle kick off any high ball. On the ground it pops the ball up and flips into it.',
     use(p, m) { return m.overhead(p); },
     ai(p, m, c) { return (c.hasBall && c.dGoal < 17 && c.angleOK) || (c.highBallNear && c.dGoal < 20); },
+  },
+  /* WARDEN */
+  bodyBlock: {
+    name: 'BODY BLOCK', cd: 12, icon: 'wall',
+    desc: 'For 2.5s, any shot or pass that comes close to you stops dead at your feet.',
+    use(p) { p.fx.block = 2.5; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.7, 20); return true; },
+    ai(p, m, c) { return c.defending && c.carrierDist < 12; },
+  },
+  clearance: {
+    name: 'CLEARANCE', cd: 9, icon: 'boot',
+    desc: 'Boot the ball high and long up the pitch, out of danger.',
+    use(p, m) { if (!nearBall(p, m)) return NEED_BALL; m.clearance(p); return true; },
+    ai(p, m, c) { return c.hasBall && c.pressure < 3 && m.prog(p.team, p.pos) < -8; },
+  },
+  /* MAESTRO */
+  oneTwo: {
+    name: 'ONE-TWO', cd: 9, icon: 'pass', big: true,
+    desc: 'Pass to the nearest teammate, who plays it straight back into your run.',
+    use(p, m) {
+      if (m.ball.owner !== p) return NEED_BALL;
+      let mate = null, best = 24;
+      for (const q of m.teams[p.team]) { if (q === p || q.isGK || q.state !== 'free') continue; const d = dist2D(q.pos, p.pos); if (d < best) { best = d; mate = q; } }
+      if (!mate) return 'NO TEAMMATE NEAR';
+      m.oneTwo(p, mate); return true;
+    },
+    ai(p, m, c) { return c.hasBall && c.pressure < 3.5 && c.dGoal < 38; },
+  },
+  tempo: {
+    name: 'TEMPO', cd: 16, icon: 'buff',
+    desc: 'Your whole team gets 5s of +20% speed.',
+    use(p, m) { for (const q of m.teams[p.team]) if (!q.isGK) q.fx.tempo = 5; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 3, 30); return true; },
+    ai(p, m, c) { return (c.hasBall && c.spaceAhead) || (c.defending && c.carrierDist > 8 && c.carrierDist < 22); },
+  },
+  /* BLITZ */
+  hunt: {
+    name: 'HUNT', cd: 12, icon: 'dash',
+    desc: '3s of +50% speed while you do not have the ball, and sprinting costs nothing.',
+    use(p) { p.fx.hunt = 3; return true; },
+    ai(p, m, c) { return c.defending && c.carrierDist > 4 && c.carrierDist < 18; },
+  },
+  poke: {
+    name: 'POKE', cd: 7, icon: 'grab',
+    desc: 'Flick the ball off a carrier up to 2.2 blocks away without sliding. You stay on your feet.',
+    use(p, m) {
+      const b = m.ball, o = b.owner;
+      if (!o || o.team === p.team) return 'NO CARRIER NEAR';
+      if (o.isGK) return 'THE KEEPER HAS IT';
+      if (dist2D(o.pos, p.pos) > 2.2) return 'TOO FAR';
+      if (o.tackleProof > 0 || o.iframes > 0 || o.protect > 0 || o.fx.bubble > 0) return 'THEY KEPT IT';
+      b.release(); o.pickBlock = 0.5; m.possess(p); m.label(p, 'POKED', p.aura); Sfx.touch();
+      return true;
+    },
+    ai(p, m, c) { return c.defending && c.carrierDist < 2.2; },
+  },
+  /* COMET */
+  rocketJump: {
+    name: 'ROCKET JUMP', cd: 10, icon: 'jump',
+    desc: 'A huge leap, almost twice as high as a jump, to win any high ball.',
+    use(p) { if (!p.onGround || p.state !== 'free') return 'ON THE GROUND ONLY'; p.vel.y = 13; p.onGround = false; FX.dust(p.pos.x, p.pos.z, 8); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.2, 16); return true; },
+    ai(p, m, c) { return c.highBallNear; },
   },
   /* PROWLER */
   scent: {

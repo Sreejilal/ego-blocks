@@ -155,6 +155,12 @@ class Match {
     if (this.human && !this.autopilot) this.updateHuman(dt, this.ctl);
     for (const h of this.humans) if (h.ctl) this.updateHuman(dt, h.ctl, h);
     this.updateSetPiece(dt);
+    // the return half of a one-two: as soon as the teammate has it, it goes straight back into your run
+    const ot = this.oneTwoBack;
+    if (ot) {
+      if (this.time - ot.t > 3 || this.ball.owner && this.ball.owner.team !== ot.to.team) this.oneTwoBack = null;
+      else if (this.ball.owner === ot.from && this.canAct(ot.from)) { this.oneTwoBack = null; this.throughBall(ot.from, ot.to); this.label(ot.from, 'ONE-TWO', ot.to.aura); }
+    }
     this.updateAwakening(dt);
     this.updatePending(dt);
     for (const p of this.players) p.physics(dt);
@@ -162,6 +168,7 @@ class Match {
     if (ph === 'play') { this.updateSlides(); this.updateMagnets(dt); }
     this.updateBallSpecials(dt);
     this.ball.update(dt);
+    this.updateBlocks();
     if (this.phase === 'play') { this.ballContacts(); this.checkGoalAndOut(); }
     if (this.cfg.items) this.updateItems(dt);
     this.updateFx(dt);
@@ -776,6 +783,34 @@ class Match {
     this.label(p, em.name, '#ffffff', 1.3);
     return true;
   }
+  /** WARDEN's BODY BLOCK: a shot or pass from the other team that comes close stops dead at your feet */
+  updateBlocks() {
+    const b = this.ball;
+    for (const p of this.players) {
+      if (p.starfall && p.onGround && p.vel.y <= 0) { // COMET's STARFALL lands
+        p.starfall = false;
+        for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 4.5) this.knockDown(o, 1.3, o.pos.x - p.pos.x, o.pos.z - p.pos.z, 4, p);
+        FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 4.5, 40); FX.sparks(p.pos.x, 0.4, p.pos.z, p.aura, 30, 8); Shake.add(this.involvesHuman(p) ? 0.4 : 0.1); Sfx.boom();
+      }
+      if (!(p.fx.block > 0) || p.state !== 'free' || b.owner || b.vel.lengthSq() < 36) continue;
+      const k = b.kick; if (k && k.by && k.by.team === p.team) continue;
+      if (dist2D(b.pos, p.pos) < 1.7 && b.pos.y < 2.3) {
+        b.vel.set(0, 0, 0); this.possess(p); p.fx.block = 0;
+        this.label(p, 'BLOCKED', p.aura); FX.ring(p.pos.x, 0.3, p.pos.z, p.aura, 1.8, 24); Sfx.save();
+      }
+    }
+  }
+  /** WARDEN's CLEARANCE: high and long up the pitch */
+  clearance(p) {
+    const s = this.dir(p.team), side = rand(-0.35, 0.35), l = Math.hypot(side, 1);
+    return this.kick(p, side / l * 24, 12, s / l * 24, { type: 'clear', kickStyle: 'strike', kickDur: 0.4 });
+  }
+  /** MAESTRO's ONE-TWO: pass to a teammate, who plays it straight back into your run */
+  oneTwo(p, mate) {
+    if (!this.passTo(p, mate)) return false;
+    this.oneTwoBack = { from: mate, to: p, t: this.time };
+    return true;
+  }
   /** a human asks for the move: say why when it cannot happen */
   tryAwakenMove(p) {
     if (p.awakeMoveUsed) { this.toast('MOVE ALREADY USED THIS AWAKENING', 'bad', p); Sfx.deny(); return false; }
@@ -826,6 +861,25 @@ class Match {
       case 'bolt':
         if (b.owner !== p) return 'NEED THE BALL';
         this.impactShot(p, aim); Shake.add(0.35); break;
+      case 'fortress':
+        for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 7) o.fx.slimed = 3;
+        FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 7, 48); break;
+      case 'symphony':
+        for (const q of this.teams[p.team]) if (!q.isGK) q.fx.burst = Math.max(q.fx.burst || 0, 3);
+        p.fx.vision = Math.max(p.fx.vision || 0, 6); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 4, 36); break;
+      case 'steal': {
+        const o = b.owner;
+        if (!o || o.team === p.team) return 'NO CARRIER NEAR';
+        if (o.isGK) return 'THE KEEPER HAS IT';
+        const dx = o.pos.x - p.pos.x, dz = o.pos.z - p.pos.z, d = len2D(dx, dz);
+        if (d > 10) return 'TOO FAR';
+        p.tackleProof = Math.max(p.tackleProof, 0.6);
+        this.dashP(p, dx / (d || 1), dz / (d || 1), Math.max(16, d / 0.32), 0.32, { home: o, onEnd: () => { const c = this.ball.owner; if (c && c.team !== p.team && !c.isGK && dist2D(c.pos, p.pos) < 2.8 && !(c.fx.bubble > 0)) { this.ball.release(); c.pickBlock = 0.6; this.possess(p); this.label(p, 'STOLEN', p.aura); } } });
+        break;
+      }
+      case 'starfall':
+        if (!p.onGround) return 'ON THE GROUND ONLY';
+        p.vel.y = 15; p.onGround = false; p.starfall = true; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.6, 24); break;
       default: return false;
     }
     p.awakeMoveUsed = true;

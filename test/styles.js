@@ -97,7 +97,11 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   });
   check('bots play the new styles', sims.every((s) => s.used > 3), sims);
   const styles = await page.evaluate(() => EGO.STYLE_IDS.map((k) => k + ':' + EGO.STYLES[k].rarity));
-  check('10 styles, new ones in the spin pools', styles.length === 10 && ['PROWLER:Legendary', 'TRICKSTER:Epic', 'THUNDER:Mythic'].every((x) => styles.includes(x)), styles);
+  check('14 styles, new ones in the spin pools', styles.length === 14 && ['PROWLER:Legendary', 'TRICKSTER:Epic', 'THUNDER:Mythic', 'WARDEN:Epic', 'MAESTRO:Legendary', 'BLITZ:Legendary', 'COMET:Mythic'].every((x) => styles.includes(x)), styles);
+  const pools = await page.evaluate(() => [['WARDEN', 1], ['MAESTRO', 2], ['BLITZ', 2], ['COMET', 3]].map(([id, r]) => EGO.poolFor('style', r).includes(id)));
+  check('the four newest can be spun', pools.every(Boolean), pools);
+  const fresh = await page.evaluate(() => ['WARDEN', 'MAESTRO', 'BLITZ', 'COMET'].map((id) => { const st = EGO.STYLES[id]; return st.abilities.every((a) => EGO.ABILITIES[a]) && !!st.awaken && !!st.awaken.move; }));
+  check('each has three abilities, an Awakening and a signature move', fresh.every(Boolean), fresh);
   check('no errors', logs.length === 0, logs.slice(0, 4));
   console.log(results.join('\n'));
   await browser.close();
