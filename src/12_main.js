@@ -93,7 +93,7 @@ const Game = {
     Replay.offer = null; Replay.hideOffer();
     const res = forfeit ? 'forfeit' : m.result.res;
     const hs = forfeit ? (m.human ? Object.assign({}, m.human.stats) : { goals: 0, assists: 0, shots: 0, tackles: 0 }) : (m.result.human || { goals: 0, assists: 0, shots: 0, tackles: 0 });
-    const idle = !forfeit && !!m.result.idle; // online: a bot played for you, so this match gives nothing
+    const idle = !forfeit && !!(m.result.idle || m.result.noReward); // online: a bot played for you, or they were far below your rank: nothing
     const earned = idle ? 'forfeit' : res; // what rewards are worked out from
     const earn = [];
     if (!forfeit && !idle) {
@@ -123,7 +123,7 @@ const Game = {
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, daily, goalsDone });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && m.result.noReward, daily, goalsDone });
     if (res === 'win') Sfx.fanfare(2);
     if (res === 'win' && !idle) Portal.happy();
     Portal.midgame();

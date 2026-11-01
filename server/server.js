@@ -95,7 +95,7 @@ function newCode() { let c; do { c = ''; for (let i = 0; i < 4; i++) c += CODE_C
 function maxPerTeam(room) { return room.size - 1; } // keepers are always bots
 function summary(room) {
   return { t: 'room', code: room.code, host: room.host, mode: room.mode, size: room.size, state: room.match ? 'match' : 'room',
-    players: room.players.map((p) => ({ id: p.id, name: p.name, team: p.team })) };
+    players: room.players.map((p) => ({ id: p.id, name: p.name, team: p.team, rp: p.rp || 0 })) };
 }
 function broadcast(room, msg) { const s = JSON.stringify(msg); for (const p of room.players) if (p.ws.readyState === 1) p.ws.send(s); }
 function sync(room) { broadcast(room, summary(room)); }
@@ -177,7 +177,8 @@ function startMatch(room) {
   const m = new G.Match(room.mode, 0.5, { humans, size: room.size, home, away, length: Number(process.env.MATCH_SECONDS) || undefined, goldenLength: Number(process.env.GOLDEN_SECONDS) || undefined });
   room.match = m; room.events = []; room.steps = 0; room.acc = 0; room.last = Date.now();
   for (const h of m.humans) h.ctl = toCtl({}, null);
-  const roster = m.players.map((p) => ({ team: p.team, role: p.role, number: p.number, name: p.name, style: p.styleId, flow: p.flowId, look: p.lookIds || null, skin: p.skin, id: p.netId || null }));
+  const rpOf = (id) => { const rp = room.players.find((x) => x.id === id); return rp ? rp.rp || 0 : 0; };
+  const roster = m.players.map((p) => ({ team: p.team, role: p.role, number: p.number, name: p.name, style: p.styleId, flow: p.flowId, look: p.lookIds || null, skin: p.skin, id: p.netId || null, rp: p.netId ? rpOf(p.netId) : 0 }));
   broadcast(room, { t: 'start', mode: room.mode, size: room.size, home: G.TEAM[0].club, away: G.TEAM[1].club, awayKit: G.TEAM[1].away, roster, looks: m.players.map((p) => p.lookIds || null) });
   sync(room);
 }
@@ -258,6 +259,7 @@ wss.on('connection', (ws) => {
         me.look = {}; if (m.look && typeof m.look === 'object') for (const s of G.SKIN_SLOTS) if (G.SKINS[m.look[s.id]] && G.SKINS[m.look[s.id]].slot === s.id) me.look[s.id] = m.look[s.id];
         me.club = G.CLUBS[m.club] ? m.club : 'ROVERS';
         me.tone = Number.isInteger(m.tone) && m.tone >= 0 && m.tone < 8 ? m.tone : 1;
+        me.rp = Math.max(0, Math.min(99999, Math.floor(Number(m.rp) || 0)));
         if (room) sync(room);
         break;
       }

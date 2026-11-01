@@ -755,7 +755,7 @@ const UI = {
     $('r-score').innerHTML = `<span style="color:${TEAM[0].hex}">${TEAM[0].short} ${r.score[0]}</span><span>:</span><span style="color:${TEAM[1].hex}">${r.score[1]} ${TEAM[1].short}</span><span class="chip">${esc(r.modeName)}</span>`;
     const s = r.human || { goals: 0, assists: 0, shots: 0, tackles: 0 };
     $('r-stats').innerHTML = [['GOALS', s.goals], ['ASSISTS', s.assists], ['SHOTS', s.shots], ['TACKLES', s.tackles]].map(([k, v]) => `<div><span class="label">${k}</span><b>${v}</b></div>`).join('');
-    $('r-earn').innerHTML = (r.idle ? '<div class="idle-note"><span>A BOT PLAYED FOR YOU, SO THIS MATCH GIVES NO REWARDS</span></div>' : '') + r.earn.map(([k, v]) => `<div><span>${esc(k)}</span><span>+${v}</span></div>`).join('') + `<div class="tot"><span>EMERALDS EARNED</span><span>+${r.emeralds}</span></div>`;
+    $('r-earn').innerHTML = (r.idle ? `<div class="idle-note"><span>${r.noReward === 'rank' ? 'THEY WERE FAR BELOW YOUR RANK, SO THIS MATCH GIVES NO REWARDS' : 'A BOT PLAYED FOR YOU, SO THIS MATCH GIVES NO REWARDS'}</span></div>` : '') + r.earn.map(([k, v]) => `<div><span>${esc(k)}</span><span>+${v}</span></div>`).join('') + `<div class="tot"><span>EMERALDS EARNED</span><span>+${r.emeralds}</span></div>`;
     if (r.ranked) {
       const tier = tierOf(r.rpAfter), moved = tierOf(r.rpBefore) !== tier;
       const delta = r.rpAfter - r.rpBefore;
