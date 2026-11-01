@@ -646,6 +646,35 @@ const CHALLENGE_IDS = Object.keys(CHALLENGES);
    A style from a spin is yours until your next style spin replaces it. Blueprints keep a style for good: GOALS
    (long-term goals you grind) pay them out, and the Locker turns them into styles. Some steps also give a skin
    you cannot get anywhere else */
+/** codes on the Profile screen. Only a scrambled fingerprint of each code is kept here (codeHash), never the
+    code itself, so nobody can read it in the page. Spaces, case and symbols do not matter. Each works once per save */
+const codeNorm = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+function codeHash(s, seed = 1405) {
+  const str = codeNorm(s);
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507); h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507); h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+const CODES = {
+  yszaepofxo: { name: 'TESTER PACK', give: 'all' }, // the owner's tester code: every style, Flow and skin, emeralds and blueprints
+};
+/** try a code: returns the message to show. 'all' unlocks everything you can own (not rank or level) */
+function redeemCode(d, text) {
+  if (!codeNorm(text)) return { ok: false, msg: 'TYPE A CODE FIRST' };
+  const h = codeHash(text), c = CODES[h];
+  if (!c) return { ok: false, msg: 'THAT CODE DOES NOT WORK' };
+  if (d.codes.includes(h)) return { ok: false, msg: 'YOU ALREADY USED THAT CODE' };
+  d.codes.push(h);
+  if (c.give === 'all') {
+    d.styles = STYLE_IDS.slice(); d.flows = FLOW_IDS.slice();
+    d.skins = Object.keys(SKINS).filter((k) => !SKINS[k].base);
+    d.emeralds += 99999; d.bp += 999;
+  }
+  if (c.emeralds) d.emeralds += c.emeralds;
+  return { ok: true, msg: c.name + ' UNLOCKED' + (c.give === 'all' ? ': EVERY STYLE, FLOW AND SKIN, +99999 EMERALDS, +999 BLUEPRINTS' : '') };
+}
 const BP_COST = { Rare: 2, Epic: 4, Legendary: 7, Mythic: 12, Generational: 20 };
 const GOALS = [
   { id: 'goals', name: 'SCORE GOALS', stat: 'goals', steps: [5, 15, 40, 100, 250], bp: [2, 3, 5, 8, 12] },

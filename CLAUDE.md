@@ -61,6 +61,10 @@ file in file-name order into ONE function scope. There are no imports or exports
 
 - Mode `freekick` (`MODES.freekick.practice`, FREE KICKS on the start screen): you, a keeper and a wall of two (`p.wall`, the AI skips them). `startFreeKicks`, `nextFreeKick`, `updateFreeKick`, `fkResult`, `endFreeKicks` in 08_match.js; `m.fk` holds the round. `p.fkHold` keeps you behind the ball (only shots and `FK_SHOTS` abilities). No clock, no Awakening, no rewards; `Game.finishMatch` shows `UI.showPractice` and keeps `Save.data.fkBest`. Test: `node test/freekicks.js`.
 
+## Codes
+
+- The CODES box on the Profile screen: `CODES` in 07_data.js is keyed by `codeHash(text)` (spaces, case and symbols ignored), so the codes themselves never appear in the project. Never write a code in plain text in `src/`, tests, commits or docs (the repo is public). `redeemCode(d, text)` gives the reward once per save (`Save.data.codes`). `give: 'all'` is the owner's tester pack: every style, Flow and skin, +99999 emeralds, +999 blueprints (not rank or level). Test: `node test/codes.js` (set `SCORZ_TESTER_CODE` to check the real code).
+
 ## Builds
 
 - `npm run build` makes `docs/index.html` (GitHub Pages, itch.io). `npm run build:crazygames` makes `dist/crazygames/index.html`, the same game with the CrazyGames SDK script in `<head>`.

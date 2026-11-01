@@ -394,6 +394,12 @@ body.touch #chat-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0
 
 /* account and friends (on the Profile screen) */
 .pf-acc { padding: 16px; display: grid; gap: 10px; }
+.pf-code { padding: 16px; display: grid; gap: 10px; }
+.pf-code h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: .9; }
+.pf-code-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.pf-code-row .on-in { flex: 1 1 200px; text-transform: uppercase; letter-spacing: .06em; }
+#pf-code-msg { margin: 0; min-height: 1em; color: var(--danger); }
+#pf-code-msg[data-ok="1"] { color: var(--emerald); }
 .pf-acc h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: .9; }
 .pf-note { margin: 0; color: var(--muted); font-size: 18px; max-width: 70ch; }
 .pf-note.small { font-size: 15px; }
@@ -847,7 +853,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0,
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [],
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true, shiftLock: false },
       howto: false,
     };
@@ -890,6 +896,7 @@ const Save = {
     out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
     out.tone = clamp(Math.floor(Number(out.tone)), 0, 7); if (!Number.isFinite(out.tone)) out.tone = 1;
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
+    out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
     out.goalSteps = out.goalSteps && typeof out.goalSteps === 'object' ? out.goalSteps : {};
     out.settings = Object.assign({}, def.settings, out.settings || {});
     const st = out.settings;
@@ -3847,6 +3854,35 @@ const CHALLENGE_IDS = Object.keys(CHALLENGES);
    A style from a spin is yours until your next style spin replaces it. Blueprints keep a style for good: GOALS
    (long-term goals you grind) pay them out, and the Locker turns them into styles. Some steps also give a skin
    you cannot get anywhere else */
+/** codes on the Profile screen. Only a scrambled fingerprint of each code is kept here (codeHash), never the
+    code itself, so nobody can read it in the page. Spaces, case and symbols do not matter. Each works once per save */
+const codeNorm = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+function codeHash(s, seed = 1405) {
+  const str = codeNorm(s);
+  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+  for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507); h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507); h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+const CODES = {
+  yszaepofxo: { name: 'TESTER PACK', give: 'all' }, // the owner's tester code: every style, Flow and skin, emeralds and blueprints
+};
+/** try a code: returns the message to show. 'all' unlocks everything you can own (not rank or level) */
+function redeemCode(d, text) {
+  if (!codeNorm(text)) return { ok: false, msg: 'TYPE A CODE FIRST' };
+  const h = codeHash(text), c = CODES[h];
+  if (!c) return { ok: false, msg: 'THAT CODE DOES NOT WORK' };
+  if (d.codes.includes(h)) return { ok: false, msg: 'YOU ALREADY USED THAT CODE' };
+  d.codes.push(h);
+  if (c.give === 'all') {
+    d.styles = STYLE_IDS.slice(); d.flows = FLOW_IDS.slice();
+    d.skins = Object.keys(SKINS).filter((k) => !SKINS[k].base);
+    d.emeralds += 99999; d.bp += 999;
+  }
+  if (c.emeralds) d.emeralds += c.emeralds;
+  return { ok: true, msg: c.name + ' UNLOCKED' + (c.give === 'all' ? ': EVERY STYLE, FLOW AND SKIN, +99999 EMERALDS, +999 BLUEPRINTS' : '') };
+}
 const BP_COST = { Rare: 2, Epic: 4, Legendary: 7, Mythic: 12, Generational: 20 };
 const GOALS = [
   { id: 'goals', name: 'SCORE GOALS', stat: 'goals', steps: [5, 15, 40, 100, 250], bp: [2, 3, 5, 8, 12] },
@@ -8145,6 +8181,9 @@ const UI = {
         <div class="sub-head"><h2>PROFILE</h2><button class="btn small" id="profile-back" type="button">BACK</button></div>
         <section class="panel pf-acc" id="pf-acc"></section>
         <div class="pf-top"><div class="panel pf-card" id="pf-card"></div><div class="panel pf-best" id="pf-best"></div></div>
+        <section class="panel pf-code"><h3>CODES</h3>
+          <form class="pf-code-row" id="pf-code-form" autocomplete="off"><input class="on-in" id="pf-code" maxlength="40" placeholder="TYPE A CODE" aria-label="Code" spellcheck="false" autocapitalize="characters"><button class="btn blue" type="submit">REDEEM</button></form>
+          <p class="label" id="pf-code-msg" aria-live="polite"></p></section>
         <section class="panel pf-hist"><h3>MATCH HISTORY</h3><div id="pf-hist"></div></section>
       </div>
     </section>`;
@@ -8390,6 +8429,12 @@ const UI = {
     click('lob-profile', () => this.show('profile'));
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
     click('profile-back', () => this.show('lobby'));
+    $('pf-code-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const r = redeemCode(Save.data, $('pf-code').value);
+      $('pf-code-msg').textContent = r.msg; $('pf-code-msg').dataset.ok = r.ok ? '1' : '';
+      if (r.ok) { $('pf-code').value = ''; Save.save(); Sfx.fanfare(2); this.renderProfile(); } else Sfx.deny();
+    });
     click('fc-close', () => { $('friend-card').hidden = true; });
     click('spin-back', () => { if (!this.spinning) this.show('lobby'); });
     click('locker-back', () => this.show('lobby'));
@@ -9133,7 +9178,7 @@ window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS,
-  EMOTES, FK_SHOTS,
+  EMOTES, FK_SHOTS, CODES, codeHash, redeemCode,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
