@@ -319,7 +319,9 @@ class Player {
     let lL = s * 0.9 * run, lR = -s * 0.9 * run, aL = -s * 0.8 * run, aR = s * 0.8 * run, aLz = 0.06, aRz = -0.06;
     let hx = 0, hy = 0, lRz = 0, snapX = false;
     if (!this.onGround && st === 'free') { lL = -0.55; lR = 0.35; aL = -0.5; aR = -0.3; aLz = 0.5; aRz = -0.5; }
-    if (this.charging) { lR = 0.4 + this.charge * 0.8; aLz = 0.7; aRz = -0.35; bx = -0.05 - this.charge * 0.08; }
+    if (this.charging) { // winding up: the kicking leg draws back, arms open for balance, body leans back and coils
+      const c = this.charge; lR = 0.4 + c * 1.15; lL = -0.12 * c; aLz = 0.7 + 0.45 * c; aRz = -0.35 - 0.35 * c; aL = -0.35 * c; aR = 0.4 * c; bx = -0.05 - c * 0.14; bz = -0.1 * c;
+    }
     if (this.kickT >= 0 && this.kickStyle !== 'throw') {
       const t = this.kickT, ks = this.kickStyle, env = Math.sin(Math.PI * clamp(t, 0, 1));
       lR = t < 0.35 ? lerp(0.2, 1.1, t / 0.35) : t < 0.7 ? lerp(1.1, -1.45, (t - 0.35) / 0.35) : lerp(-1.45, 0, (t - 0.7) / 0.3);
@@ -328,6 +330,14 @@ class Player {
       else if (ks === 'rabona') { lRz = 0.55 * env; bz = -0.16 * env; aLz = 1.0; } // kicking leg wraps behind the standing leg
       else if (ks === 'outside') { lRz = -0.45 * env; lR *= 0.7; } // flick with the outside of the boot
       else if (ks === 'nolook') hy = 0.95 * (this.noLookSide || 1) * env; // eyes the other way
+      else if (ks === 'strike') { // plant, whip the leg through and follow through high; big shots lift you off your toes
+        const k = clamp(this.kickPow == null ? 0.7 : this.kickPow, 0, 1.4);
+        lR = t < 0.22 ? lerp(1.3, 1.5, t / 0.22) : t < 0.5 ? lerp(1.5, -1.6 - 0.5 * k, (t - 0.22) / 0.28) : lerp(-1.6 - 0.5 * k, 0, (t - 0.5) / 0.5);
+        lL = t < 0.5 ? 0.15 : lerp(0.15, 0, (t - 0.5) / 0.5);
+        bx = t < 0.22 ? -0.16 : t < 0.5 ? lerp(-0.16, 0.24, (t - 0.22) / 0.28) : lerp(0.24, 0, (t - 0.5) / 0.5);
+        by = 0.72 + (t > 0.3 && t < 0.75 ? 0.12 * k * Math.sin(Math.PI * (t - 0.3) / 0.45) : 0);
+        aL = t < 0.5 ? -0.5 : lerp(-0.5, 0, (t - 0.5) / 0.5); aR = t < 0.5 ? 0.6 : lerp(0.6, 0, (t - 0.5) / 0.5); aLz = 1.0; aRz = -0.75; bz = 0.12 * env;
+      }
     }
     if (this.setPiece && this.setPiece.type === 'throw') { aL = aR = -2.85; aLz = 0.12; aRz = -0.12; lL = lR = 0; } // ball held over the head
     if (this.kickT >= 0 && this.kickStyle === 'throw') { const t = clamp(this.kickT, 0, 1); aL = aR = lerp(-2.85, -0.5, t); aLz = 0.12; aRz = -0.12; lR = 0.1; lL = -0.1; lRz = 0; bx = 0.12 * Math.sin(Math.PI * t); }

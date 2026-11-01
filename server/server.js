@@ -22,7 +22,7 @@ const PORT = Number(process.env.PORT) || 8787;
 const STEP = 1 / 60, SNAP_EVERY = 3;
 const MODES_OK = ['quick', 'koth', 'volleys', 'duel'];
 const STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken'];
-const KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw'];
+const KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
 const FX_SENT = ['burst', 'turbo', 'shuffle', 'lockdown', 'skyTrap', 'vision', 'scent', 'loaded', 'call', 'bubble', 'feathers'];
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 // doing nothing while the ball is in play: a warning after IDLE_SECONDS, a bot after IDLE_GRACE more
@@ -111,7 +111,7 @@ function toCtl(m, prev) {
   return {
     moveX: Math.max(-1, Math.min(1, +m.mx || 0)), moveY: Math.max(-1, Math.min(1, +m.my || 0)), sprint: b('sp'),
     jump: b('jump'), jumpHeld: b('jh'), shootDown: b('sd'), shootHeld: b('sh'), shootUp: b('su'), passDown: b('pd'), passUp: b('pu'),
-    dodge: b('dodge'), tackle: b('tackle'), ab: [b('a0'), b('a1'), b('a2')], flow: b('flow'), awaken: b('aw'), item: false, board: false,
+    dodge: b('dodge'), tackle: b('tackle'), ab: [b('a0'), b('a1'), b('a2')], flow: b('flow'), awaken: b('aw'), shiftLock: b('sl'), item: false, board: false,
     camYaw: Number.isFinite(+m.cy) ? +m.cy : 0, aim,
   };
 }

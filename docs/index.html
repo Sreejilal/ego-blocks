@@ -838,7 +838,7 @@ const Save = {
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
       spunStyle: null, bp: 0, goalSteps: {}, tone: 1,
-      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true },
+      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true, shiftLock: false },
       howto: false,
     };
   },
@@ -887,7 +887,7 @@ const Save = {
     st.btn = [0.85, 1, 1.15].includes(Number(st.btn)) ? Number(st.btn) : 1;
     st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false; st.server = typeof st.server === 'string' ? st.server.slice(0, 200) : '';
     st.chat = ['all', 'quick', 'off'].includes(st.chat) ? st.chat : 'all';
-    st.camPicked = !!st.camPicked; st.cam = !st.camPicked ? 'first' : st.cam === 'third' ? 'third' : 'first'; st.autoFs = st.autoFs !== false; // first person until you pick
+    st.camPicked = !!st.camPicked; st.cam = !st.camPicked ? 'first' : st.cam === 'third' ? 'third' : 'first'; st.autoFs = st.autoFs !== false; st.shiftLock = !!st.shiftLock; // first person until you pick
     out.account = out.account && typeof out.account === 'object' && typeof out.account.token === 'string' && typeof out.account.user === 'string' ? { user: out.account.user.slice(0, 12), token: out.account.token.slice(0, 128) } : null;
     out.name = String(out.name || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12);
     if (!Array.isArray(out.styles)) out.styles = ['ROOKIE'];
@@ -2867,7 +2867,9 @@ class Player {
     let lL = s * 0.9 * run, lR = -s * 0.9 * run, aL = -s * 0.8 * run, aR = s * 0.8 * run, aLz = 0.06, aRz = -0.06;
     let hx = 0, hy = 0, lRz = 0, snapX = false;
     if (!this.onGround && st === 'free') { lL = -0.55; lR = 0.35; aL = -0.5; aR = -0.3; aLz = 0.5; aRz = -0.5; }
-    if (this.charging) { lR = 0.4 + this.charge * 0.8; aLz = 0.7; aRz = -0.35; bx = -0.05 - this.charge * 0.08; }
+    if (this.charging) { // winding up: the kicking leg draws back, arms open for balance, body leans back and coils
+      const c = this.charge; lR = 0.4 + c * 1.15; lL = -0.12 * c; aLz = 0.7 + 0.45 * c; aRz = -0.35 - 0.35 * c; aL = -0.35 * c; aR = 0.4 * c; bx = -0.05 - c * 0.14; bz = -0.1 * c;
+    }
     if (this.kickT >= 0 && this.kickStyle !== 'throw') {
       const t = this.kickT, ks = this.kickStyle, env = Math.sin(Math.PI * clamp(t, 0, 1));
       lR = t < 0.35 ? lerp(0.2, 1.1, t / 0.35) : t < 0.7 ? lerp(1.1, -1.45, (t - 0.35) / 0.35) : lerp(-1.45, 0, (t - 0.7) / 0.3);
@@ -2876,6 +2878,14 @@ class Player {
       else if (ks === 'rabona') { lRz = 0.55 * env; bz = -0.16 * env; aLz = 1.0; } // kicking leg wraps behind the standing leg
       else if (ks === 'outside') { lRz = -0.45 * env; lR *= 0.7; } // flick with the outside of the boot
       else if (ks === 'nolook') hy = 0.95 * (this.noLookSide || 1) * env; // eyes the other way
+      else if (ks === 'strike') { // plant, whip the leg through and follow through high; big shots lift you off your toes
+        const k = clamp(this.kickPow == null ? 0.7 : this.kickPow, 0, 1.4);
+        lR = t < 0.22 ? lerp(1.3, 1.5, t / 0.22) : t < 0.5 ? lerp(1.5, -1.6 - 0.5 * k, (t - 0.22) / 0.28) : lerp(-1.6 - 0.5 * k, 0, (t - 0.5) / 0.5);
+        lL = t < 0.5 ? 0.15 : lerp(0.15, 0, (t - 0.5) / 0.5);
+        bx = t < 0.22 ? -0.16 : t < 0.5 ? lerp(-0.16, 0.24, (t - 0.22) / 0.28) : lerp(0.24, 0, (t - 0.5) / 0.5);
+        by = 0.72 + (t > 0.3 && t < 0.75 ? 0.12 * k * Math.sin(Math.PI * (t - 0.3) / 0.45) : 0);
+        aL = t < 0.5 ? -0.5 : lerp(-0.5, 0, (t - 0.5) / 0.5); aR = t < 0.5 ? 0.6 : lerp(0.6, 0, (t - 0.5) / 0.5); aLz = 1.0; aRz = -0.75; bz = 0.12 * env;
+      }
     }
     if (this.setPiece && this.setPiece.type === 'throw') { aL = aR = -2.85; aLz = 0.12; aRz = -0.12; lL = lR = 0; } // ball held over the head
     if (this.kickT >= 0 && this.kickStyle === 'throw') { const t = clamp(this.kickT, 0, 1); aL = aR = lerp(-2.85, -0.5, t); aLz = 0.12; aRz = -0.12; lR = 0.1; lL = -0.1; lRz = 0; bx = 0.12 * Math.sin(Math.PI * t); }
@@ -4123,7 +4133,7 @@ class Match {
     const ml = len2D(mx, mz); if (ml > 1) { mx /= ml; mz /= ml; }
     const live = this.phase === 'play' || this.phase === 'out' || this.phase === 'goal' || this.phase === 'end';
     p.mx = live ? mx : 0; p.mz = live ? mz : 0; p.sprint = c.sprint;
-    p.faceYaw = p.charging ? cy : null;
+    p.faceYaw = p.charging || c.shiftLock ? cy : null; // shift lock: always face where the camera looks
     p.jetThrust = c.jumpHeld && p.fx.jetpack > 0;
     if (this.phase !== 'play') { p.charging = false; p.charge = 0; return; }
     if (p.setPiece) { // throw-in, corner: pass plays it to a teammate, shoot plays it where you aim
@@ -4240,6 +4250,9 @@ class Match {
     if (o.curveIn) { const hl = len2D(v.x, v.z) || 1; const k = clamp(o.curveIn, -1, 1) * 7; cx = (-v.z / hl) * k; cz = (v.x / hl) * k; }
     p.stats.shots++;
     const trail = o.trail || (speed > 28 ? p.aura : null);
+    if (!o.kickStyle) { o.kickStyle = 'strike'; o.kickDur = lerp(0.36, 0.5, clamp(power, 0, 1)); } // a full strike, longer for big shots
+    p.kickPow = clamp(power, 0, 1.4);
+    if (power > 0.85 && b.pos.y < 1) FX.dirt(p.pos.x, p.pos.z, Math.sin(p.yaw), Math.cos(p.yaw), 6, 0.7); // turf flies on a big one
     return this.kick(p, v.x, v.y, v.z, Object.assign({ type: 'shot', trail, cx, cz }, o));
   }
   tryShoot(p, power, aim, o = {}) {
@@ -6022,7 +6035,7 @@ const Input = {
       tackle: e.has('KeyF') || e.has('PadX') || e.has('T_tackle'),
       ab: [e.has('KeyQ') || (e.has('PadLeft') && !chatPad) || e.has('T_ab0'), e.has('KeyE') || (e.has('PadUp') && !chatPad) || e.has('T_ab1'), e.has('KeyR') || (e.has('PadRight') && !chatPad) || e.has('T_ab2')],
       flow: e.has('KeyG') || e.has('PadY') || e.has('T_flow'),
-      awaken: e.has('KeyZ'), // the Flow button (G, Y, FLOW) awakens you too when only the Awakening bar is full
+      awaken: e.has('KeyZ'), shiftLock: !!Save.data.settings.shiftLock, // shift lock: you always face where the camera looks // the Flow button (G, Y, FLOW) awakens you too when only the Awakening bar is full
       item: e.has('KeyX') || (e.has('PadDown') && !chatPad) || e.has('T_item'),
       board: k.has('Tab') || this.padHeld(PAD.BACK) || T.board,
     };
@@ -6046,12 +6059,19 @@ const Cam = {
     Sfx.click(); UI.toast(s.cam === 'first' ? 'FIRST PERSON' : 'THIRD PERSON');
     if (Game.state === 'paused') UI.renderPause();
   },
+  /** L or the menu: shift lock on or off */
+  toggleShiftLock() {
+    const s = Save.data.settings; s.shiftLock = !s.shiftLock; Save.save();
+    Sfx.click(); UI.toast(s.shiftLock ? 'SHIFT LOCK ON' : 'SHIFT LOCK OFF');
+    if (Game.state === 'paused') UI.renderPause();
+  },
   /** your own model is hidden in first person; show it again for replays, menus and the other view */
   unhide() { if (this.hidden && this.hidden.P) this.hidden.P.root.visible = true; this.hidden = null; },
   look(realDt) {
     const s = Save.data.settings, sens = s.sens || 1, inv = s.invertY ? -1 : 1;
     const E = Input.edges;
     if (E.has('KeyV') || E.has('T_cam') || (E.has('PadRS') && !Replay.offer)) { this.toggle(); E.delete('KeyV'); E.delete('T_cam'); E.delete('PadRS'); } // one press, one switch
+    if (E.has('KeyL')) { E.delete('KeyL'); this.toggleShiftLock(); }
     if (Input.mdx || Input.mdy) this.snapYaw = null;
     this.yaw -= Input.mdx * 0.0024 * sens;
     this.pitch -= Input.mdy * 0.0021 * sens * inv;
@@ -6100,6 +6120,7 @@ const Cam = {
       const dist = this.dist + (wide ? 2.6 : 0) + (tall ? 1.7 : 0) - pk * 2;
       // behind and above you, a little higher than eye level so the pitch ahead shows over your head
       let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.85 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
+      if (Save.data.settings.shiftLock && !wide) { tx += -Math.cos(this.yaw) * 1.0; tz += Math.sin(this.yaw) * 1.0; ty -= 0.25; } // shift lock: over your right shoulder
       tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
       const k = 1 - Math.exp(-16 * realDt);
       this.pos.x += (tx - this.pos.x) * k; this.pos.y += (ty - this.pos.y) * k; this.pos.z += (tz - this.pos.z) * k;
@@ -6744,7 +6765,7 @@ const Portal = {
    an invite link. The offline game never needs any of this.
    ===================================================================== */
 const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken'];
-const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw'];
+const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
 const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
 const NET_DELAY = 0.12; // seconds the picture runs behind the server
 const CHAT_SHOW = [['all', 'ALL'], ['quick', 'QUICK'], ['off', 'OFF']];
@@ -7138,7 +7159,7 @@ const Net = {
   },
   sendInput() {
     const c = this.paused ? null : this.held, P = this.pend, nm = this.nm;
-    const msg = Object.assign({ t: 'input', mx: c ? +c.moveX.toFixed(2) : 0, my: c ? +c.moveY.toFixed(2) : 0, sp: !!(c && c.sprint), jh: !!(c && c.jumpHeld), sh: !!(c && c.shootHeld), cy: +nm.camYaw.toFixed(3), aim: [+nm.aim.x.toFixed(2), +nm.aim.y.toFixed(2), +nm.aim.z.toFixed(2)] }, P);
+    const msg = Object.assign({ t: 'input', mx: c ? +c.moveX.toFixed(2) : 0, my: c ? +c.moveY.toFixed(2) : 0, sp: !!(c && c.sprint), sl: !!(c && c.shiftLock), jh: !!(c && c.jumpHeld), sh: !!(c && c.shootHeld), cy: +nm.camYaw.toFixed(3), aim: [+nm.aim.x.toFixed(2), +nm.aim.y.toFixed(2), +nm.aim.z.toFixed(2)] }, P);
     this.send(msg);
     this.pend = {};
   },
@@ -7813,6 +7834,7 @@ const UI = {
             ${row(key('ENTER'), 'Watch the replay after a goal, a nutmeg or an ankle breaker. SAVE CLIP downloads it as a video')}
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
             ${row(key('V'), 'Switch camera: third person (behind you) or first person (your eyes)')}
+            ${row(key('L'), 'Shift lock: your player always faces where you look, so A and D step sideways with the ball in front. The camera sits over your shoulder')}
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}
@@ -8021,6 +8043,7 @@ const UI = {
         <div class="set">
           <span>Graphics</span><div class="seg" id="set-q"><button type="button" data-q="auto">AUTO</button><button type="button" data-q="low">LOW</button><button type="button" data-q="med">MED</button><button type="button" data-q="high">HIGH</button></div>
           <label for="set-sens">Look sensitivity</label><input type="range" id="set-sens" min="0.3" max="2.5" step="0.05">
+          <span>Shift lock</span><div class="seg" id="set-sl"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Camera</span><div class="seg" id="set-cam"><button type="button" data-v="third">3RD PERSON</button><button type="button" data-v="first">1ST PERSON</button></div>
           <span>Invert camera Y</span><div class="seg" id="set-inv"><button type="button" data-v="0">OFF</button><button type="button" data-v="1">ON</button></div>
           <span class="t-only">Button size</span><div class="seg t-only" id="set-btn"><button type="button" data-v="0.85">S</button><button type="button" data-v="1">M</button><button type="button" data-v="1.15">L</button></div>
@@ -8105,6 +8128,7 @@ const UI = {
     $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Portal.applyMute(); Save.save(); this.renderPause(); });
     $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
     $('set-assist').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.assist = v === '1'; Save.save(); this.renderPause(); });
+    $('set-sl').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null || (v === '1') === !!Save.data.settings.shiftLock) return; Cam.toggleShiftLock(); this.renderPause(); });
     $('set-cam').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v || v === Save.data.settings.cam) return; Cam.toggle(); this.renderPause(); });
     $('set-fs').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.autoFs = v === '1'; Save.save(); if ((v === '1') !== Touch.isFs()) Touch.toggleFs(); });
     click('btn-fs', () => { Save.data.settings.autoFs = !Touch.isFs(); Save.save(); Touch.toggleFs(); });
@@ -8378,6 +8402,7 @@ const UI = {
     $('set-cut').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.cutins !== false)));
     $('set-chat').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.chat));
     $('set-cam').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.cam));
+    $('set-sl').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !!s.shiftLock));
     Net.renderPeople();
     $('set-sens').value = s.sens;
     $('set-btn').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', Math.abs(parseFloat(b.dataset.v) - (s.btn || 1)) < 0.01));

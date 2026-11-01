@@ -49,7 +49,8 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
   check('C feints: a step-over to the side, tackle-proof while it happens', f.mid.state === 'dash' && f.mid.proof && f.mid.feint !== 0 && f.moved > 1, f);
   check('you keep the ball through the feint', f.keep, f);
   check('it cannot be spammed (once every 5 seconds), and the HUD says FEINT', !f.again && f.cd === 0 && /FEINT/.test(f.label), f);
-  const back = await A.evaluate(() => { EGO.Game.stepManual(60 * 5 + 10, false); return EGO.Game.match.human.dodgeCharges; });
+  // the recharge timer itself (slow-motion moments in a real match would stretch 5 seconds)
+  const back = await A.evaluate(() => { const h = EGO.Game.match.human; h.dodgeCharges = 0; h.dodgeRe = 0; h.awakeT = 0; h.tickTimers(4.9); const early = h.dodgeCharges; h.tickTimers(0.2); return early === 0 ? h.dodgeCharges : -1; });
   check('the feint is back after 5 seconds', back === 1, back);
   const tackled = await A.evaluate(() => {
     const m = EGO.Game.match, h = m.human; m.possess(h); h.dodgeCharges = 1;

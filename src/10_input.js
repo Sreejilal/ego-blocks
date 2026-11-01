@@ -101,7 +101,7 @@ const Input = {
       tackle: e.has('KeyF') || e.has('PadX') || e.has('T_tackle'),
       ab: [e.has('KeyQ') || (e.has('PadLeft') && !chatPad) || e.has('T_ab0'), e.has('KeyE') || (e.has('PadUp') && !chatPad) || e.has('T_ab1'), e.has('KeyR') || (e.has('PadRight') && !chatPad) || e.has('T_ab2')],
       flow: e.has('KeyG') || e.has('PadY') || e.has('T_flow'),
-      awaken: e.has('KeyZ'), // the Flow button (G, Y, FLOW) awakens you too when only the Awakening bar is full
+      awaken: e.has('KeyZ'), shiftLock: !!Save.data.settings.shiftLock, // shift lock: you always face where the camera looks // the Flow button (G, Y, FLOW) awakens you too when only the Awakening bar is full
       item: e.has('KeyX') || (e.has('PadDown') && !chatPad) || e.has('T_item'),
       board: k.has('Tab') || this.padHeld(PAD.BACK) || T.board,
     };
@@ -125,12 +125,19 @@ const Cam = {
     Sfx.click(); UI.toast(s.cam === 'first' ? 'FIRST PERSON' : 'THIRD PERSON');
     if (Game.state === 'paused') UI.renderPause();
   },
+  /** L or the menu: shift lock on or off */
+  toggleShiftLock() {
+    const s = Save.data.settings; s.shiftLock = !s.shiftLock; Save.save();
+    Sfx.click(); UI.toast(s.shiftLock ? 'SHIFT LOCK ON' : 'SHIFT LOCK OFF');
+    if (Game.state === 'paused') UI.renderPause();
+  },
   /** your own model is hidden in first person; show it again for replays, menus and the other view */
   unhide() { if (this.hidden && this.hidden.P) this.hidden.P.root.visible = true; this.hidden = null; },
   look(realDt) {
     const s = Save.data.settings, sens = s.sens || 1, inv = s.invertY ? -1 : 1;
     const E = Input.edges;
     if (E.has('KeyV') || E.has('T_cam') || (E.has('PadRS') && !Replay.offer)) { this.toggle(); E.delete('KeyV'); E.delete('T_cam'); E.delete('PadRS'); } // one press, one switch
+    if (E.has('KeyL')) { E.delete('KeyL'); this.toggleShiftLock(); }
     if (Input.mdx || Input.mdy) this.snapYaw = null;
     this.yaw -= Input.mdx * 0.0024 * sens;
     this.pitch -= Input.mdy * 0.0021 * sens * inv;
@@ -179,6 +186,7 @@ const Cam = {
       const dist = this.dist + (wide ? 2.6 : 0) + (tall ? 1.7 : 0) - pk * 2;
       // behind and above you, a little higher than eye level so the pitch ahead shows over your head
       let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.85 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
+      if (Save.data.settings.shiftLock && !wide) { tx += -Math.cos(this.yaw) * 1.0; tz += Math.sin(this.yaw) * 1.0; ty -= 0.25; } // shift lock: over your right shoulder
       tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
       const k = 1 - Math.exp(-16 * realDt);
       this.pos.x += (tx - this.pos.x) * k; this.pos.y += (ty - this.pos.y) * k; this.pos.z += (tz - this.pos.z) * k;

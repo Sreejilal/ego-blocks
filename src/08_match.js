@@ -206,7 +206,7 @@ class Match {
     const ml = len2D(mx, mz); if (ml > 1) { mx /= ml; mz /= ml; }
     const live = this.phase === 'play' || this.phase === 'out' || this.phase === 'goal' || this.phase === 'end';
     p.mx = live ? mx : 0; p.mz = live ? mz : 0; p.sprint = c.sprint;
-    p.faceYaw = p.charging ? cy : null;
+    p.faceYaw = p.charging || c.shiftLock ? cy : null; // shift lock: always face where the camera looks
     p.jetThrust = c.jumpHeld && p.fx.jetpack > 0;
     if (this.phase !== 'play') { p.charging = false; p.charge = 0; return; }
     if (p.setPiece) { // throw-in, corner: pass plays it to a teammate, shoot plays it where you aim
@@ -323,6 +323,9 @@ class Match {
     if (o.curveIn) { const hl = len2D(v.x, v.z) || 1; const k = clamp(o.curveIn, -1, 1) * 7; cx = (-v.z / hl) * k; cz = (v.x / hl) * k; }
     p.stats.shots++;
     const trail = o.trail || (speed > 28 ? p.aura : null);
+    if (!o.kickStyle) { o.kickStyle = 'strike'; o.kickDur = lerp(0.36, 0.5, clamp(power, 0, 1)); } // a full strike, longer for big shots
+    p.kickPow = clamp(power, 0, 1.4);
+    if (power > 0.85 && b.pos.y < 1) FX.dirt(p.pos.x, p.pos.z, Math.sin(p.yaw), Math.cos(p.yaw), 6, 0.7); // turf flies on a big one
     return this.kick(p, v.x, v.y, v.z, Object.assign({ type: 'shot', trail, cx, cz }, o));
   }
   tryShoot(p, power, aim, o = {}) {
