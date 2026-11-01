@@ -5,7 +5,7 @@
    real time so movement stays smooth. Rooms have a 4-letter code and
    an invite link. The offline game never needs any of this.
    ===================================================================== */
-const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup'];
+const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken'];
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw'];
 const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
 const NET_DELAY = 0.12; // seconds the picture runs behind the server
@@ -308,7 +308,7 @@ const Net = {
     if (m.me && nm.human) {
       const p = nm.human, me = m.me;
       p.abil.forEach((a, i) => { a.cd = me.cd[i] || 0; });
-      p.flow = me.fl; p.flowT = me.ft; p.awake = me.aw || 0; p.awakeT = me.awt || 0; p.stamina = me.st; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
+      p.flow = me.fl; p.flowT = me.ft; p.awake = me.aw || 0; p.awakeT = me.awt || 0; p.awakeMoveUsed = !!me.amu; p.stamina = me.st; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
       for (const k in p.fx) p.fx[k] = 0;
       Object.assign(p.fx, me.fx || {});
     }

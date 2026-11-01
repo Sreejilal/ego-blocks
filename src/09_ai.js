@@ -195,6 +195,7 @@ const AI = {
     }
     if (p.flow >= 100 && p.flowT <= 0 && ((c.hasBall && c.dGoal < 32) || (c.defending && c.carrierDist < 10)) && chance(0.5)) m.activateFlow(p);
     if (p.awake >= 100 && p.awakeT <= 0 && ((c.hasBall && c.dGoal < 30) || (c.defending && c.carrierDist < 8)) && chance(0.4)) m.activateAwaken(p);
+    if (p.awakeT > 0 && !p.awakeMoveUsed && ((c.hasBall && c.dGoal < 34) || (c.defending && c.carrierDist < 7) || (!c.hasBall && !c.defending)) && chance(0.5)) m.awakenMove(p);
     if (p.item && ITEMS[p.item].ai(p, m, c) && chance(0.55)) m.useItem(p);
     if (p.state !== 'free') return;
     if (m.ball.owner === p) this.decideCarrier(m, p, c, sk);

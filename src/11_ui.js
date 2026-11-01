@@ -124,7 +124,7 @@ const UI = {
             ${row(key('F'), 'Slide tackle')}
             ${row(key('Q') + key('E') + key('R'), 'Style abilities. Big moves get a quick cut-in; turn them off in the pause menu')}
             ${row(key('G'), 'Activate Flow when the bar is full')}
-            ${row(key('Z'), 'Awaken when the Awakening bar is full: 20s of your style\'s own power. G works too when only that bar is full')}
+            ${row(key('Z'), 'Awaken when the Awakening bar is full: 20s of your style\'s own power. Awakened, press Z again for its signature move (once). G works too')}
             ${row(key('X'), 'Use item (Lawless)')}
             ${row(key('TAB'), 'Scoreboard')}
             ${row(key('1') + key('2') + key('3') + key('4'), 'Online: quick chat. PASS!, NICE!, GG, ON ME')}
@@ -560,7 +560,7 @@ const UI = {
       const ar = p.awake >= 100 && p.awakeT <= 0;
       const apct = (p.awakeT > 0 ? p.awakeT / AWAKEN_TIME * 100 : p.awake).toFixed(1) + '%';
       $('awake-fill').style.width = apct; $('aws-fill').style.height = apct;
-      this.setText('aws-txt', p.awakeT > 0 ? Math.ceil(p.awakeT) + 's' : ar ? 'READY' : Math.floor(p.awake) + '%');
+      this.setText('aws-txt', p.awakeT > 0 ? Math.ceil(p.awakeT) + 's' + (!p.awakeMoveUsed && p.style.awaken.move ? ' · Z: ' + p.style.awaken.move.name : '') : ar ? 'READY' : Math.floor(p.awake) + '%');
       $('awakeside').classList.toggle('ready', ar); $('awakeside').classList.toggle('active', p.awakeT > 0);
       this.setText('awake-txt', p.awakeT > 0 ? (Touch.on ? '' : 'AWAKENED ') + Math.ceil(p.awakeT) + 's' : ar ? (Touch.on ? 'READY' : 'READY [Z]') : Math.floor(p.awake) + '%');
       $('awakebar').classList.toggle('ready', ar); $('awakebar').classList.toggle('active', p.awakeT > 0);
@@ -858,7 +858,8 @@ const UI = {
     if (tab === 'style') {
       const st = STYLES[id];
       det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
-        + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)} Big plays fill the bar.</p></div></div>` : '') + '</div>';
+        + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)} Big plays fill the bar.</p></div></div>` : '')
+        + (st.awaken && st.awaken.move ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><div><div class="t"><span class="key">Z</span><b>${esc(st.awaken.move.name)}</b><span class="label">AWAKENED · ONCE</span></div><p>${esc(st.awaken.move.desc)}</p></div></div>` : '') + '</div>';
     } else if (tab === 'club') {
       const c = CLUBS[id];
       det.innerHTML = head('', 'The club you play for. Your team wears its kit, and its fans fill your stands.') + `<div class="kits">${[['HOME', c.home], ['AWAY', c.away], ['KEEPER', c.keeper]].map(([n]) => `<div class="kitbox"><span class="kv"></span><span class="label">${n}</span></div>`).join('')}</div>

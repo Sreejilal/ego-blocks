@@ -131,7 +131,7 @@ class Player {
     mk(G.body, this.mat, body, 0, 0.36, 0);
     const headP = new THREE.Group(); headP.position.y = 0.72; body.add(headP);
     mk(G.head, this.mat, headP, 0, 0.24, 0);
-    mk(hairGeo(L.hairShape), hairMat(L.prism ? 'prism' : L.hair), headP, 0, 0.48, 0);
+    this.hairMesh = mk(hairGeo(L.hairShape), hairMat(L.prism ? 'prism' : L.hair), headP, 0, 0.48, 0);
     if (L.acc) {
       const am = this.accMat = new THREE.MeshLambertMaterial({ color: lin(L.acc.hex), vertexColors: true, emissive: lin(L.acc.hex), emissiveIntensity: L.acc.glow || 0.08 });
       if (L.acc.kind === 'band') mk(bandGeo(L.hairShape), am, headP, 0, 0, 0);
@@ -151,6 +151,7 @@ class Player {
     this.m.scene.remove(this.P.root, this.blob);
     for (const k of ['ring', 'bubble', 'ice', 'ownRing']) if (this[k]) { this.m.scene.remove(this[k]); this[k].material.dispose(); }
     this.skinTex.dispose(); this.mat.dispose();
+    if (this.hairGlowMat) this.hairGlowMat.dispose();
     if (this.accMat) this.accMat.dispose();
   }
   setState(s, dur = 0) { this.state = s; this.stateT = 0; this.stateDur = dur; }
@@ -262,7 +263,7 @@ class Player {
       if (this.stateT >= d.dur + d.rest) { this.dive = null; this.setState('free'); this.pos.y = Math.max(this.pos.y, 0); }
     } else {
       friction = 12;
-      if ((st === 'down' || st === 'stun' || st === 'frozen' || st === 'celebrate' || st === 'kickoff') && this.stateDur > 0 && this.stateT >= this.stateDur) this.setState('free');
+      if ((st === 'down' || st === 'stun' || st === 'frozen' || st === 'celebrate' || st === 'kickoff' || st === 'awaken') && this.stateDur > 0 && this.stateT >= this.stateDur) this.setState('free');
     }
     if (st !== 'dash' && st !== 'slide' && !(st === 'dive' && this.stateT < (this.dive ? this.dive.dur : 0))) {
       if (friction > 0) {
@@ -347,6 +348,11 @@ class Player {
         bz = -d.side * 1.3 * k; by = 0.72 + (d.high ? 0.7 : 0.35) * k * (this.stateT < d.dur ? 1 : Math.max(0, 1 - (this.stateT - d.dur) / 0.25));
         aL = aR = 0; aLz = 2.9; aRz = -2.9; lL = 0.2; lR = -0.2; break;
       }
+      case 'awaken': { // the transformation: rise up, arms out, head back, then land
+        const u = clamp(this.stateT / (this.stateDur || 1), 0, 1), w = Math.sin(Math.PI * u);
+        by = 0.72 + 0.55 * w; bx = -0.08 * w; aL = aR = -0.35 * w; aLz = 0.2 + 1.3 * w; aRz = -0.2 - 1.3 * w; lL = 0.12 * w; lR = -0.12 * w; hx = -0.4 * w;
+        break;
+      }
       case 'dash':
         if (this.feint) { // a step-over: the leg sweeps round over the ball, the body drops to the side, arms out
           const u = this.dash ? clamp(this.dash.t / this.dash.dur, 0, 1) : 1, w = Math.sin(Math.PI * u), sd = this.feint;
@@ -395,6 +401,13 @@ class Player {
     const bs = clamp(1 - this.pos.y / 5, 0.3, 1) * (st === 'down' ? 1.6 : st === 'dive' ? 1.5 : 1);
     this.blob.position.set(this.pos.x, 0.025, this.pos.z); this.blob.scale.set(bs, 1, bs);
     P.eyes.visible = this.flowT > 0 || this.awakeT > 0;
+    // awakened, your hair glows in your style's colour
+    if (this.hairMesh) {
+      const glow = this.awakeT > 0;
+      if (glow && !this.hairGlowMat) { this.hairBaseMat = this.hairMesh.material; this.hairGlowMat = this.hairBaseMat.clone(); this.hairGlowMat.emissive = lin(this.style.aura); this.hairGlowMat.emissiveIntensity = 0.7; }
+      const want = glow ? this.hairGlowMat : this.hairBaseMat || this.hairMesh.material;
+      if (want && this.hairMesh.material !== want) this.hairMesh.material = want;
+    }
     // awakened eyes glow in your style's colour, in Flow they glow in the Flow's
     const eyeHex = this.awakeT > 0 ? this.style.aura : this.flowId && FLOWS[this.flowId] ? FLOWS[this.flowId].color : this.style.aura;
     if (P.eyes.userData.hex !== eyeHex) { P.eyes.userData.hex = eyeHex; P.eyes.material = eyeMat(eyeHex); }

@@ -9,7 +9,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PORT = 18788, URL = 'http://localhost:' + PORT + '/';
 
 (async () => {
-  const srv = spawn(process.execPath, [path.join(__dirname, '..', 'server', 'server.js')], { env: Object.assign({}, process.env, { PORT: String(PORT), MATCH_SECONDS: '25', GOLDEN_SECONDS: '2' }) });
+  const srv = spawn(process.execPath, [path.join(__dirname, '..', 'server', 'server.js')], { env: Object.assign({}, process.env, { PORT: String(PORT), MATCH_SECONDS: '40', GOLDEN_SECONDS: '2' }) });
   let out = ''; srv.stdout.on('data', (d) => { out += d; }); srv.stderr.on('data', (d) => { out += d; });
   for (let i = 0; i < 50 && !/SCORZ server/.test(out); i++) await sleep(100);
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
@@ -72,7 +72,7 @@ const PORT = 18788, URL = 'http://localhost:' + PORT + '/';
   await sleep(200);
 
   // the final whistle
-  for (let i = 0; i < 60; i++) { const s = await A.evaluate(() => EGO.Game.state); if (s === 'results') break; await sleep(500); }
+  for (let i = 0; i < 160; i++) { const s = await A.evaluate(() => EGO.Game.state); if (s === 'results') break; await sleep(500); }
   const res = await Promise.all([A, B].map((p) => p.evaluate(() => ({ state: EGO.Game.state, title: document.getElementById('r-title').textContent, again: document.getElementById('r-again').textContent, hist: EGO.Save.data.history.length, played: EGO.Save.data.stats.played }))));
   check('both see the results, saved to their history', res.every((r) => r.state === 'results' && r.again === 'BACK TO ROOM' && r.hist === 1 && r.played === 1), res);
   await B.screenshot({ path: __dirname + '/shots/on4_results_phone.png' });

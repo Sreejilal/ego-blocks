@@ -293,7 +293,9 @@ const Touch = {
     }
     const fr = p.flow >= 100 && p.flowT <= 0, ar = !fr && p.awake >= 100 && p.awakeT <= 0 && !!p.style.awaken; // one button: FLOW, or AWAKEN when only that bar is full
     this.tog(b.flow, 'ready', fr || ar); this.tog(b.flow, 'active', p.flowT > 0 || p.awakeT > 0); this.tog(b.flow, 'off', !fr && !ar && p.flowT <= 0 && p.awakeT <= 0); this.tog(b.flow, 'awaken', ar || (p.awakeT > 0 && p.flowT <= 0));
-    this.setLabel('flow', p.flowT > 0 ? Math.ceil(p.flowT) + 'S' : fr ? 'FLOW!' : ar ? 'AWAKEN!' : p.awakeT > 0 ? Math.ceil(p.awakeT) + 'S' : Math.floor(p.flow) + '%');
+    const mv = p.awakeT > 0 && !p.awakeMoveUsed && p.style.awaken && p.style.awaken.move;
+    if (mv && !fr) this.tog(b.flow, 'ready', true);
+    this.setLabel('flow', p.flowT > 0 ? Math.ceil(p.flowT) + 'S' : fr ? 'FLOW!' : ar ? 'AWAKEN!' : mv ? 'MOVE!' : p.awakeT > 0 ? Math.ceil(p.awakeT) + 'S' : Math.floor(p.flow) + '%');
     if (m.cfg.items) {
       const key = p.item || '';
       if (c.item !== key) {

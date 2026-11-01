@@ -247,9 +247,12 @@ class Match {
       this.tackle(p, tx, tz);
     }
     for (let i = 0; i < 3; i++) if (c.ab[i]) this.useAbility(p, i);
-    if (c.awaken && !this.activateAwaken(p) && p.awakeT <= 0) { this.toast('AWAKENING NOT READY', 'bad', p); Sfx.deny(); }
+    if (c.awaken) { // Z: awaken; awakened, Z is your style's signature move (once)
+      if (p.awakeT > 0) this.tryAwakenMove(p);
+      else if (!this.activateAwaken(p)) { this.toast('AWAKENING NOT READY', 'bad', p); Sfx.deny(); }
+    }
     // the Flow button also awakens you when the Awakening bar is full and Flow is not
-    if (c.flow) { if (!this.activateFlow(p) && !this.activateAwaken(p) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
+    if (c.flow) { if (!this.activateFlow(p) && !this.activateAwaken(p) && !(p.awakeT > 0 && !p.awakeMoveUsed && this.tryAwakenMove(p)) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
     if (c.item) this.useItem(p);
   }
   pickPassTarget(p) {
@@ -733,14 +736,72 @@ class Match {
   activateAwaken(p) {
     const aw = p.style.awaken;
     if (!aw || p.isGK || p.awake < 100 || p.awakeT > 0 || !this.canAct(p)) return false;
-    p.awake = 0; p.awakeT = AWAKEN_TIME;
+    p.awake = 0; p.awakeT = AWAKEN_TIME; p.awakeMoveUsed = false;
     for (const a of p.abil) a.cd = 0;
+    // the transformation: a moment in the air that nobody can tackle (you keep the ball)
+    p.charging = false; p.charge = 0; p.vel.x = p.vel.z = 0; p.setState('awaken', 0.9); p.tackleProof = Math.max(p.tackleProof, 1.0);
     if (p.isHuman) this.featsOf(p).awakens++;
     this.label(p, 'AWAKENED · ' + aw.name, p.aura, 2.4);
     FX.awakenBurst(p);
     Sfx.flow(); Sfx.cutin();
     if (p.isHuman) { if (!this.cinematic(p, 'AWAKENING · ' + aw.name)) TimeCtl.slowMo(0.35, 0.8); Shake.add(0.4); }
     else Shake.add(0.12);
+    return true;
+  }
+  /** a human asks for the move: say why when it cannot happen */
+  tryAwakenMove(p) {
+    if (p.awakeMoveUsed) { this.toast('MOVE ALREADY USED THIS AWAKENING', 'bad', p); Sfx.deny(); return false; }
+    const r = this.awakenMove(p);
+    if (typeof r === 'string') { this.toast(r, 'bad', p); Sfx.deny(); return false; }
+    return r;
+  }
+  /** each style's signature move, once per Awakening. Returns true, or a reason it cannot happen now */
+  awakenMove(p) {
+    const aw = p.style.awaken, mv = aw && aw.move, b = this.ball;
+    if (!mv || p.awakeT <= 0 || p.awakeMoveUsed) return false;
+    if (!this.canAct(p)) return 'NOT NOW';
+    const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), aim = p.aimV || this.aim;
+    switch (mv.kind) {
+      case 'vision': p.fx.vision = Math.max(p.fx.vision || 0, 8); p.fx.burst = Math.max(p.fx.burst || 0, 3); break;
+      case 'lightspeed': p.tackleProof = Math.max(p.tackleProof, 0.8); this.dashP(p, fx, fz, 30, 0.55); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.6, 24); break;
+      case 'shadow':
+        p.tackleProof = Math.max(p.tackleProof, 0.6); this.dashP(p, fx, fz, 26, 0.32);
+        for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 5.5) this.stun(o, 1.1, 'frozen');
+        FX.feathers(p.pos.x, 1, p.pos.z, '#121018', 16); break;
+      case 'storm':
+        for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 7 && this.stun(o, 1.3)) this.label(o, 'ANKLES', p.aura);
+        FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 4, 36); break;
+      case 'shockwave':
+        for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 5.5) this.knockDown(o, 1.4, o.pos.x - p.pos.x, o.pos.z - p.pos.z, 4, p);
+        FX.ring(p.pos.x, 0.3, p.pos.z, p.aura, 5, 40); FX.ring(p.pos.x, 0.3, p.pos.z, '#ffffff', 3, 30); Shake.add(0.3); break;
+      case 'pull': {
+        if (b.owner === p) return 'YOU HAVE THE BALL';
+        if (b.owner && b.owner.team === p.team) return 'A TEAMMATE HAS IT';
+        if (dist2D(b.pos, p.pos) > 14) return 'THE BALL IS TOO FAR';
+        if (b.owner) { const o = b.owner; b.release(); o.pickBlock = 0.6; }
+        FX.trail(b.pos.x, b.pos.y, b.pos.z, p.aura, 0.4, 0.5); this.possess(p); break;
+      }
+      case 'pounce': {
+        if (b.owner === p) return 'YOU HAVE THE BALL';
+        if (b.owner && b.owner.team === p.team) return 'A TEAMMATE HAS IT';
+        const dx = b.pos.x - p.pos.x, dz = b.pos.z - p.pos.z, d = len2D(dx, dz);
+        if (d > 16) return 'THE BALL IS TOO FAR';
+        p.tackleProof = Math.max(p.tackleProof, 0.6);
+        this.dashP(p, dx / (d || 1), dz / (d || 1), Math.max(14, d / 0.35), 0.35, { onEnd: () => { const o = this.ball.owner; if ((!o || o.team !== p.team) && dist2D(this.ball.pos, p.pos) < 2.6) { if (o) { this.ball.release(); o.pickBlock = 0.6; } this.possess(p); } } });
+        break;
+      }
+      case 'skycannon':
+        if (b.owner !== p) return 'NEED THE BALL';
+        this.shootAt(p, aim, 1.25, { aerial: true, mult: 1.1 }); FX.sparks(b.pos.x, 1.4, b.pos.z, p.aura, 24, 6); break;
+      case 'bolt':
+        if (b.owner !== p) return 'NEED THE BALL';
+        this.impactShot(p, aim); Shake.add(0.35); break;
+      default: return false;
+    }
+    p.awakeMoveUsed = true;
+    this.label(p, mv.name, p.aura, 1.8);
+    FX.sparks(p.pos.x, 1.2, p.pos.z, p.aura, 30, 8, 0.2); Sfx.cutin();
+    if (p.isHuman) this.cinematic(p, mv.name);
     return true;
   }
   activateFlow(p) {

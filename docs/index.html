@@ -2679,7 +2679,7 @@ class Player {
     mk(G.body, this.mat, body, 0, 0.36, 0);
     const headP = new THREE.Group(); headP.position.y = 0.72; body.add(headP);
     mk(G.head, this.mat, headP, 0, 0.24, 0);
-    mk(hairGeo(L.hairShape), hairMat(L.prism ? 'prism' : L.hair), headP, 0, 0.48, 0);
+    this.hairMesh = mk(hairGeo(L.hairShape), hairMat(L.prism ? 'prism' : L.hair), headP, 0, 0.48, 0);
     if (L.acc) {
       const am = this.accMat = new THREE.MeshLambertMaterial({ color: lin(L.acc.hex), vertexColors: true, emissive: lin(L.acc.hex), emissiveIntensity: L.acc.glow || 0.08 });
       if (L.acc.kind === 'band') mk(bandGeo(L.hairShape), am, headP, 0, 0, 0);
@@ -2699,6 +2699,7 @@ class Player {
     this.m.scene.remove(this.P.root, this.blob);
     for (const k of ['ring', 'bubble', 'ice', 'ownRing']) if (this[k]) { this.m.scene.remove(this[k]); this[k].material.dispose(); }
     this.skinTex.dispose(); this.mat.dispose();
+    if (this.hairGlowMat) this.hairGlowMat.dispose();
     if (this.accMat) this.accMat.dispose();
   }
   setState(s, dur = 0) { this.state = s; this.stateT = 0; this.stateDur = dur; }
@@ -2810,7 +2811,7 @@ class Player {
       if (this.stateT >= d.dur + d.rest) { this.dive = null; this.setState('free'); this.pos.y = Math.max(this.pos.y, 0); }
     } else {
       friction = 12;
-      if ((st === 'down' || st === 'stun' || st === 'frozen' || st === 'celebrate' || st === 'kickoff') && this.stateDur > 0 && this.stateT >= this.stateDur) this.setState('free');
+      if ((st === 'down' || st === 'stun' || st === 'frozen' || st === 'celebrate' || st === 'kickoff' || st === 'awaken') && this.stateDur > 0 && this.stateT >= this.stateDur) this.setState('free');
     }
     if (st !== 'dash' && st !== 'slide' && !(st === 'dive' && this.stateT < (this.dive ? this.dive.dur : 0))) {
       if (friction > 0) {
@@ -2895,6 +2896,11 @@ class Player {
         bz = -d.side * 1.3 * k; by = 0.72 + (d.high ? 0.7 : 0.35) * k * (this.stateT < d.dur ? 1 : Math.max(0, 1 - (this.stateT - d.dur) / 0.25));
         aL = aR = 0; aLz = 2.9; aRz = -2.9; lL = 0.2; lR = -0.2; break;
       }
+      case 'awaken': { // the transformation: rise up, arms out, head back, then land
+        const u = clamp(this.stateT / (this.stateDur || 1), 0, 1), w = Math.sin(Math.PI * u);
+        by = 0.72 + 0.55 * w; bx = -0.08 * w; aL = aR = -0.35 * w; aLz = 0.2 + 1.3 * w; aRz = -0.2 - 1.3 * w; lL = 0.12 * w; lR = -0.12 * w; hx = -0.4 * w;
+        break;
+      }
       case 'dash':
         if (this.feint) { // a step-over: the leg sweeps round over the ball, the body drops to the side, arms out
           const u = this.dash ? clamp(this.dash.t / this.dash.dur, 0, 1) : 1, w = Math.sin(Math.PI * u), sd = this.feint;
@@ -2943,6 +2949,13 @@ class Player {
     const bs = clamp(1 - this.pos.y / 5, 0.3, 1) * (st === 'down' ? 1.6 : st === 'dive' ? 1.5 : 1);
     this.blob.position.set(this.pos.x, 0.025, this.pos.z); this.blob.scale.set(bs, 1, bs);
     P.eyes.visible = this.flowT > 0 || this.awakeT > 0;
+    // awakened, your hair glows in your style's colour
+    if (this.hairMesh) {
+      const glow = this.awakeT > 0;
+      if (glow && !this.hairGlowMat) { this.hairBaseMat = this.hairMesh.material; this.hairGlowMat = this.hairBaseMat.clone(); this.hairGlowMat.emissive = lin(this.style.aura); this.hairGlowMat.emissiveIntensity = 0.7; }
+      const want = glow ? this.hairGlowMat : this.hairBaseMat || this.hairMesh.material;
+      if (want && this.hairMesh.material !== want) this.hairMesh.material = want;
+    }
     // awakened eyes glow in your style's colour, in Flow they glow in the Flow's
     const eyeHex = this.awakeT > 0 ? this.style.aura : this.flowId && FLOWS[this.flowId] ? FLOWS[this.flowId].color : this.style.aura;
     if (P.eyes.userData.hex !== eyeHex) { P.eyes.userData.hex = eyeHex; P.eyes.material = eyeMat(eyeHex); }
@@ -3167,16 +3180,16 @@ const RARITY_HEX = { Rare: '#4aa8ff', Epic: '#b65cff', Legendary: '#ffc53a', Myt
 const NEED_BALL = 'NEED THE BALL';
 
 const STYLES = {
-  ROOKIE: { name: 'ROOKIE', rarity: 'Rare', hair: '#3b2a22', hairShape: 'short', aura: '#3fd6ff', blurb: 'Reads the whole pitch. The free starter, and it can still win games.', abilities: ['vision', 'quickShot', 'burst'], awaken: { name: 'FIRST LIGHT', desc: '+12% speed and shot power.', mods: { speed: 1.12, shot: 1.12 } } },
-  SPRINTER: { name: 'SPRINTER', rarity: 'Rare', hair: '#c8323e', hairShape: 'long', aura: '#ff5a3c', blurb: 'Raw pace. Burns past the back line, then bends it in.', abilities: ['turbo', 'cutInside', 'curler'], awaken: { name: 'RED LINE', desc: '+25% speed, and sprinting costs no stamina.', mods: { speed: 1.25, stamDrain: 0 } } },
-  PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'snapPass'], awaken: { name: 'NIGHTFALL', desc: 'Your feint recharges three times as fast, and you are 10% faster.', perk: 'dodge', mods: { speed: 1.1 } } },
-  TRICKSTER: { name: 'TRICKSTER', rarity: 'Epic', hair: '#ff5fb0', hairShape: 'messy', aura: '#ff5fb0', blurb: 'Flicks, nutmegs and snap feints. Makes defenders look silly.', abilities: ['rainbow', 'nutmeg', 'whiplash'], awaken: { name: 'SHOWTIME', desc: 'Your feint recharges three times as fast and tricks recharge even faster.', perk: 'dodge', mods: { cdRate: 1.5 } } },
-  ENFORCER: { name: 'ENFORCER', rarity: 'Epic', hair: '#8a1f33', hairShape: 'swept', aura: '#ffb02e', blurb: 'Midfield general. Flattens attackers and threads perfect through balls.', abilities: ['armSwipe', 'pinpointPass', 'lockdown'], awaken: { name: 'IRON WALL', desc: 'Tackles reach 60% further and come back twice as fast, and nobody can tackle you.', perk: 'tank', mods: { tackleRange: 1.6, tackleCd: 0.5 } } },
-  SHAMBLER: { name: 'SHAMBLER', rarity: 'Legendary', hair: '#a6c49c', hairShape: 'messy', aura: '#7dff6a', blurb: 'An undead dribble nobody can tackle, and long arms that steal anything.', abilities: ['undeadShuffle', 'graveGrab', 'lurch'], awaken: { name: 'RISEN', desc: 'Nobody can tackle you, and you are 12% faster.', perk: 'tank', mods: { speed: 1.12 } } },
-  PROWLER: { name: 'PROWLER', rarity: 'Legendary', hair: '#2b2f3a', hairShape: 'swept', aura: '#ff9d2e', blurb: 'A predator in the box. Smells loose balls first and finishes them first time.', abilities: ['scent', 'pounce', 'oneTouch'], awaken: { name: 'APEX', desc: '+22% speed when you do not have the ball, and +20% shot power.', mods: { huntSpeed: 1.22, shot: 1.2 } } },
-  MAGNET: { name: 'MAGNET', rarity: 'Mythic', hair: '#eef2f7', hairShape: 'fluffy', aura: '#8fd4ff', blurb: 'Kills any high ball dead on the boot, then finishes it in the air.', abilities: ['skyTrap', 'volley', 'fakeVolley'], awaken: { name: 'GRAVITY', desc: '+22% shot power and 10% faster.', mods: { shot: 1.22, speed: 1.1 } } },
-  THUNDER: { name: 'THUNDER', rarity: 'Mythic', hair: '#f2f2f2', hairShape: 'flattop', aura: '#ffe14d', blurb: 'A long-range bomber. Shots from 30 blocks out that dip, wobble and burn keepers.', abilities: ['longBomb', 'loaded', 'knuckle'], awaken: { name: 'STORM', desc: '+30% shot power.', mods: { shot: 1.3 } } },
-  RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'], awaken: { name: 'OVERDRIVE', desc: '+25% shot power and 10% faster.', mods: { shot: 1.25, speed: 1.1 } } },
+  ROOKIE: { name: 'ROOKIE', rarity: 'Rare', hair: '#3b2a22', hairShape: 'short', aura: '#3fd6ff', blurb: 'Reads the whole pitch. The free starter, and it can still win games.', abilities: ['vision', 'quickShot', 'burst'], awaken: { move: { name: 'PERFECT VISION', kind: 'vision', desc: 'See every passing lane for 8s and burst away.' }, name: 'FIRST LIGHT', desc: '+12% speed and shot power.', mods: { speed: 1.12, shot: 1.12 } } },
+  SPRINTER: { name: 'SPRINTER', rarity: 'Rare', hair: '#c8323e', hairShape: 'long', aura: '#ff5a3c', blurb: 'Raw pace. Burns past the back line, then bends it in.', abilities: ['turbo', 'cutInside', 'curler'], awaken: { move: { name: 'LIGHT SPEED', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'RED LINE', desc: '+25% speed, and sprinting costs no stamina.', mods: { speed: 1.25, stamDrain: 0 } } },
+  PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'snapPass'], awaken: { move: { name: 'SHADOW STEP', kind: 'shadow', desc: 'Flash forward and freeze every defender near you.' }, name: 'NIGHTFALL', desc: 'Your feint recharges three times as fast, and you are 10% faster.', perk: 'dodge', mods: { speed: 1.1 } } },
+  TRICKSTER: { name: 'TRICKSTER', rarity: 'Epic', hair: '#ff5fb0', hairShape: 'messy', aura: '#ff5fb0', blurb: 'Flicks, nutmegs and snap feints. Makes defenders look silly.', abilities: ['rainbow', 'nutmeg', 'whiplash'], awaken: { move: { name: 'ANKLE STORM', kind: 'storm', desc: 'Every opponent near you loses their footing.' }, name: 'SHOWTIME', desc: 'Your feint recharges three times as fast and tricks recharge even faster.', perk: 'dodge', mods: { cdRate: 1.5 } } },
+  ENFORCER: { name: 'ENFORCER', rarity: 'Epic', hair: '#8a1f33', hairShape: 'swept', aura: '#ffb02e', blurb: 'Midfield general. Flattens attackers and threads perfect through balls.', abilities: ['armSwipe', 'pinpointPass', 'lockdown'], awaken: { move: { name: 'SHOCKWAVE', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'IRON WALL', desc: 'Tackles reach 60% further and come back twice as fast, and nobody can tackle you.', perk: 'tank', mods: { tackleRange: 1.6, tackleCd: 0.5 } } },
+  SHAMBLER: { name: 'SHAMBLER', rarity: 'Legendary', hair: '#a6c49c', hairShape: 'messy', aura: '#7dff6a', blurb: 'An undead dribble nobody can tackle, and long arms that steal anything.', abilities: ['undeadShuffle', 'graveGrab', 'lurch'], awaken: { move: { name: 'GRAVE PULL', kind: 'pull', desc: 'Pull the ball to your feet from up to 14 blocks away.' }, name: 'RISEN', desc: 'Nobody can tackle you, and you are 12% faster.', perk: 'tank', mods: { speed: 1.12 } } },
+  PROWLER: { name: 'PROWLER', rarity: 'Legendary', hair: '#2b2f3a', hairShape: 'swept', aura: '#ff9d2e', blurb: 'A predator in the box. Smells loose balls first and finishes them first time.', abilities: ['scent', 'pounce', 'oneTouch'], awaken: { move: { name: 'APEX POUNCE', kind: 'pounce', desc: 'Leap onto the ball from up to 16 blocks away.' }, name: 'APEX', desc: '+22% speed when you do not have the ball, and +20% shot power.', mods: { huntSpeed: 1.22, shot: 1.2 } } },
+  MAGNET: { name: 'MAGNET', rarity: 'Mythic', hair: '#eef2f7', hairShape: 'fluffy', aura: '#8fd4ff', blurb: 'Kills any high ball dead on the boot, then finishes it in the air.', abilities: ['skyTrap', 'volley', 'fakeVolley'], awaken: { move: { name: 'SKY CANNON', kind: 'skycannon', desc: 'Pop the ball up and volley it at full power.' }, name: 'GRAVITY', desc: '+22% shot power and 10% faster.', mods: { shot: 1.22, speed: 1.1 } } },
+  THUNDER: { name: 'THUNDER', rarity: 'Mythic', hair: '#f2f2f2', hairShape: 'flattop', aura: '#ffe14d', blurb: 'A long-range bomber. Shots from 30 blocks out that dip, wobble and burn keepers.', abilities: ['longBomb', 'loaded', 'knuckle'], awaken: { move: { name: 'THUNDERBOLT', kind: 'bolt', desc: 'A straight shot so hard the keeper cannot catch it.' }, name: 'STORM', desc: '+30% shot power.', mods: { shot: 1.3 } } },
+  RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'], awaken: { move: { name: 'RAILSHOT', kind: 'bolt', desc: 'Dead straight, top power, from anywhere.' }, name: 'OVERDRIVE', desc: '+25% shot power and 10% faster.', mods: { shot: 1.25, speed: 1.1 } } },
 };
 const STYLE_IDS = Object.keys(STYLES);
 /** a bot's style: common styles most of the time, the rare ones now and then (like the spins) */
@@ -3473,7 +3486,7 @@ const FLOW_IDS = Object.keys(FLOWS);
 const AWAKEN_TIME = 20;
 /** the feint (C): a step-over cut nobody can tackle you through, once every FEINT_CD seconds */
 const FEINT_CD = 5;
-const AWAKEN_ALL = 'Cooldowns reset and recharge twice as fast, and ability effects last 50% longer.';
+const AWAKEN_ALL = 'Cooldowns reset and recharge twice as fast, and ability effects last 50% longer. Press Z again for its signature move, once.';
 const RAW_FLOW_DESC = 'No Flow equipped: +8% speed. Equip one from Flow Spins for a bigger buff.';
 
 const ITEMS = {
@@ -4150,9 +4163,12 @@ class Match {
       this.tackle(p, tx, tz);
     }
     for (let i = 0; i < 3; i++) if (c.ab[i]) this.useAbility(p, i);
-    if (c.awaken && !this.activateAwaken(p) && p.awakeT <= 0) { this.toast('AWAKENING NOT READY', 'bad', p); Sfx.deny(); }
+    if (c.awaken) { // Z: awaken; awakened, Z is your style's signature move (once)
+      if (p.awakeT > 0) this.tryAwakenMove(p);
+      else if (!this.activateAwaken(p)) { this.toast('AWAKENING NOT READY', 'bad', p); Sfx.deny(); }
+    }
     // the Flow button also awakens you when the Awakening bar is full and Flow is not
-    if (c.flow) { if (!this.activateFlow(p) && !this.activateAwaken(p) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
+    if (c.flow) { if (!this.activateFlow(p) && !this.activateAwaken(p) && !(p.awakeT > 0 && !p.awakeMoveUsed && this.tryAwakenMove(p)) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
     if (c.item) this.useItem(p);
   }
   pickPassTarget(p) {
@@ -4636,14 +4652,72 @@ class Match {
   activateAwaken(p) {
     const aw = p.style.awaken;
     if (!aw || p.isGK || p.awake < 100 || p.awakeT > 0 || !this.canAct(p)) return false;
-    p.awake = 0; p.awakeT = AWAKEN_TIME;
+    p.awake = 0; p.awakeT = AWAKEN_TIME; p.awakeMoveUsed = false;
     for (const a of p.abil) a.cd = 0;
+    // the transformation: a moment in the air that nobody can tackle (you keep the ball)
+    p.charging = false; p.charge = 0; p.vel.x = p.vel.z = 0; p.setState('awaken', 0.9); p.tackleProof = Math.max(p.tackleProof, 1.0);
     if (p.isHuman) this.featsOf(p).awakens++;
     this.label(p, 'AWAKENED · ' + aw.name, p.aura, 2.4);
     FX.awakenBurst(p);
     Sfx.flow(); Sfx.cutin();
     if (p.isHuman) { if (!this.cinematic(p, 'AWAKENING · ' + aw.name)) TimeCtl.slowMo(0.35, 0.8); Shake.add(0.4); }
     else Shake.add(0.12);
+    return true;
+  }
+  /** a human asks for the move: say why when it cannot happen */
+  tryAwakenMove(p) {
+    if (p.awakeMoveUsed) { this.toast('MOVE ALREADY USED THIS AWAKENING', 'bad', p); Sfx.deny(); return false; }
+    const r = this.awakenMove(p);
+    if (typeof r === 'string') { this.toast(r, 'bad', p); Sfx.deny(); return false; }
+    return r;
+  }
+  /** each style's signature move, once per Awakening. Returns true, or a reason it cannot happen now */
+  awakenMove(p) {
+    const aw = p.style.awaken, mv = aw && aw.move, b = this.ball;
+    if (!mv || p.awakeT <= 0 || p.awakeMoveUsed) return false;
+    if (!this.canAct(p)) return 'NOT NOW';
+    const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), aim = p.aimV || this.aim;
+    switch (mv.kind) {
+      case 'vision': p.fx.vision = Math.max(p.fx.vision || 0, 8); p.fx.burst = Math.max(p.fx.burst || 0, 3); break;
+      case 'lightspeed': p.tackleProof = Math.max(p.tackleProof, 0.8); this.dashP(p, fx, fz, 30, 0.55); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.6, 24); break;
+      case 'shadow':
+        p.tackleProof = Math.max(p.tackleProof, 0.6); this.dashP(p, fx, fz, 26, 0.32);
+        for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 5.5) this.stun(o, 1.1, 'frozen');
+        FX.feathers(p.pos.x, 1, p.pos.z, '#121018', 16); break;
+      case 'storm':
+        for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 7 && this.stun(o, 1.3)) this.label(o, 'ANKLES', p.aura);
+        FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 4, 36); break;
+      case 'shockwave':
+        for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 5.5) this.knockDown(o, 1.4, o.pos.x - p.pos.x, o.pos.z - p.pos.z, 4, p);
+        FX.ring(p.pos.x, 0.3, p.pos.z, p.aura, 5, 40); FX.ring(p.pos.x, 0.3, p.pos.z, '#ffffff', 3, 30); Shake.add(0.3); break;
+      case 'pull': {
+        if (b.owner === p) return 'YOU HAVE THE BALL';
+        if (b.owner && b.owner.team === p.team) return 'A TEAMMATE HAS IT';
+        if (dist2D(b.pos, p.pos) > 14) return 'THE BALL IS TOO FAR';
+        if (b.owner) { const o = b.owner; b.release(); o.pickBlock = 0.6; }
+        FX.trail(b.pos.x, b.pos.y, b.pos.z, p.aura, 0.4, 0.5); this.possess(p); break;
+      }
+      case 'pounce': {
+        if (b.owner === p) return 'YOU HAVE THE BALL';
+        if (b.owner && b.owner.team === p.team) return 'A TEAMMATE HAS IT';
+        const dx = b.pos.x - p.pos.x, dz = b.pos.z - p.pos.z, d = len2D(dx, dz);
+        if (d > 16) return 'THE BALL IS TOO FAR';
+        p.tackleProof = Math.max(p.tackleProof, 0.6);
+        this.dashP(p, dx / (d || 1), dz / (d || 1), Math.max(14, d / 0.35), 0.35, { onEnd: () => { const o = this.ball.owner; if ((!o || o.team !== p.team) && dist2D(this.ball.pos, p.pos) < 2.6) { if (o) { this.ball.release(); o.pickBlock = 0.6; } this.possess(p); } } });
+        break;
+      }
+      case 'skycannon':
+        if (b.owner !== p) return 'NEED THE BALL';
+        this.shootAt(p, aim, 1.25, { aerial: true, mult: 1.1 }); FX.sparks(b.pos.x, 1.4, b.pos.z, p.aura, 24, 6); break;
+      case 'bolt':
+        if (b.owner !== p) return 'NEED THE BALL';
+        this.impactShot(p, aim); Shake.add(0.35); break;
+      default: return false;
+    }
+    p.awakeMoveUsed = true;
+    this.label(p, mv.name, p.aura, 1.8);
+    FX.sparks(p.pos.x, 1.2, p.pos.z, p.aura, 30, 8, 0.2); Sfx.cutin();
+    if (p.isHuman) this.cinematic(p, mv.name);
     return true;
   }
   activateFlow(p) {
@@ -5455,6 +5529,7 @@ const AI = {
     }
     if (p.flow >= 100 && p.flowT <= 0 && ((c.hasBall && c.dGoal < 32) || (c.defending && c.carrierDist < 10)) && chance(0.5)) m.activateFlow(p);
     if (p.awake >= 100 && p.awakeT <= 0 && ((c.hasBall && c.dGoal < 30) || (c.defending && c.carrierDist < 8)) && chance(0.4)) m.activateAwaken(p);
+    if (p.awakeT > 0 && !p.awakeMoveUsed && ((c.hasBall && c.dGoal < 34) || (c.defending && c.carrierDist < 7) || (!c.hasBall && !c.defending)) && chance(0.5)) m.awakenMove(p);
     if (p.item && ITEMS[p.item].ai(p, m, c) && chance(0.55)) m.useItem(p);
     if (p.state !== 'free') return;
     if (m.ball.owner === p) this.decideCarrier(m, p, c, sk);
@@ -6365,7 +6440,9 @@ const Touch = {
     }
     const fr = p.flow >= 100 && p.flowT <= 0, ar = !fr && p.awake >= 100 && p.awakeT <= 0 && !!p.style.awaken; // one button: FLOW, or AWAKEN when only that bar is full
     this.tog(b.flow, 'ready', fr || ar); this.tog(b.flow, 'active', p.flowT > 0 || p.awakeT > 0); this.tog(b.flow, 'off', !fr && !ar && p.flowT <= 0 && p.awakeT <= 0); this.tog(b.flow, 'awaken', ar || (p.awakeT > 0 && p.flowT <= 0));
-    this.setLabel('flow', p.flowT > 0 ? Math.ceil(p.flowT) + 'S' : fr ? 'FLOW!' : ar ? 'AWAKEN!' : p.awakeT > 0 ? Math.ceil(p.awakeT) + 'S' : Math.floor(p.flow) + '%');
+    const mv = p.awakeT > 0 && !p.awakeMoveUsed && p.style.awaken && p.style.awaken.move;
+    if (mv && !fr) this.tog(b.flow, 'ready', true);
+    this.setLabel('flow', p.flowT > 0 ? Math.ceil(p.flowT) + 'S' : fr ? 'FLOW!' : ar ? 'AWAKEN!' : mv ? 'MOVE!' : p.awakeT > 0 ? Math.ceil(p.awakeT) + 'S' : Math.floor(p.flow) + '%');
     if (m.cfg.items) {
       const key = p.item || '';
       if (c.item !== key) {
@@ -6663,7 +6740,7 @@ const Portal = {
    real time so movement stays smooth. Rooms have a 4-letter code and
    an invite link. The offline game never needs any of this.
    ===================================================================== */
-const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup'];
+const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken'];
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw'];
 const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
 const NET_DELAY = 0.12; // seconds the picture runs behind the server
@@ -6966,7 +7043,7 @@ const Net = {
     if (m.me && nm.human) {
       const p = nm.human, me = m.me;
       p.abil.forEach((a, i) => { a.cd = me.cd[i] || 0; });
-      p.flow = me.fl; p.flowT = me.ft; p.awake = me.aw || 0; p.awakeT = me.awt || 0; p.stamina = me.st; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
+      p.flow = me.fl; p.flowT = me.ft; p.awake = me.aw || 0; p.awakeT = me.awt || 0; p.awakeMoveUsed = !!me.amu; p.stamina = me.st; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
       for (const k in p.fx) p.fx[k] = 0;
       Object.assign(p.fx, me.fx || {});
     }
@@ -7724,7 +7801,7 @@ const UI = {
             ${row(key('F'), 'Slide tackle')}
             ${row(key('Q') + key('E') + key('R'), 'Style abilities. Big moves get a quick cut-in; turn them off in the pause menu')}
             ${row(key('G'), 'Activate Flow when the bar is full')}
-            ${row(key('Z'), 'Awaken when the Awakening bar is full: 20s of your style\'s own power. G works too when only that bar is full')}
+            ${row(key('Z'), 'Awaken when the Awakening bar is full: 20s of your style\'s own power. Awakened, press Z again for its signature move (once). G works too')}
             ${row(key('X'), 'Use item (Lawless)')}
             ${row(key('TAB'), 'Scoreboard')}
             ${row(key('1') + key('2') + key('3') + key('4'), 'Online: quick chat. PASS!, NICE!, GG, ON ME')}
@@ -8160,7 +8237,7 @@ const UI = {
       const ar = p.awake >= 100 && p.awakeT <= 0;
       const apct = (p.awakeT > 0 ? p.awakeT / AWAKEN_TIME * 100 : p.awake).toFixed(1) + '%';
       $('awake-fill').style.width = apct; $('aws-fill').style.height = apct;
-      this.setText('aws-txt', p.awakeT > 0 ? Math.ceil(p.awakeT) + 's' : ar ? 'READY' : Math.floor(p.awake) + '%');
+      this.setText('aws-txt', p.awakeT > 0 ? Math.ceil(p.awakeT) + 's' + (!p.awakeMoveUsed && p.style.awaken.move ? ' · Z: ' + p.style.awaken.move.name : '') : ar ? 'READY' : Math.floor(p.awake) + '%');
       $('awakeside').classList.toggle('ready', ar); $('awakeside').classList.toggle('active', p.awakeT > 0);
       this.setText('awake-txt', p.awakeT > 0 ? (Touch.on ? '' : 'AWAKENED ') + Math.ceil(p.awakeT) + 's' : ar ? (Touch.on ? 'READY' : 'READY [Z]') : Math.floor(p.awake) + '%');
       $('awakebar').classList.toggle('ready', ar); $('awakebar').classList.toggle('active', p.awakeT > 0);
@@ -8458,7 +8535,8 @@ const UI = {
     if (tab === 'style') {
       const st = STYLES[id];
       det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
-        + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)} Big plays fill the bar.</p></div></div>` : '') + '</div>';
+        + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)} Big plays fill the bar.</p></div></div>` : '')
+        + (st.awaken && st.awaken.move ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><div><div class="t"><span class="key">Z</span><b>${esc(st.awaken.move.name)}</b><span class="label">AWAKENED · ONCE</span></div><p>${esc(st.awaken.move.desc)}</p></div></div>` : '') + '</div>';
     } else if (tab === 'club') {
       const c = CLUBS[id];
       det.innerHTML = head('', 'The club you play for. Your team wears its kit, and its fans fill your stands.') + `<div class="kits">${[['HOME', c.home], ['AWAY', c.away], ['KEEPER', c.keeper]].map(([n]) => `<div class="kitbox"><span class="kv"></span><span class="label">${n}</span></div>`).join('')}</div>

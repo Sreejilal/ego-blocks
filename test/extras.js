@@ -52,10 +52,16 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
   check('Z awakens you: 20s, cooldowns reset and recharge twice as fast', aw.t > 19 && aw.cds.every((c) => c < 0.1) && aw.cdRate === 2, aw);
   check("the style's own power: RED LINE is faster and sprinting is free", aw.speed >= 1.25 && aw.drain === 0, aw);
   check('the HUD shows the Awakening gauge on the side, lit up', /AWAKENED/.test(aw.bar) && aw.slot, aw);
-  const longer = await A.evaluate(() => { const m = EGO.Game.match, h = m.human; h.fx.turbo = 0; const i = h.abil.findIndex((a) => a.def.name === 'TURBO'); h.abil[i].cd = 0; m.useAbility(h, i); return +h.fx.turbo.toFixed(2); });
+  const longer = await A.evaluate(() => { EGO.Game.stepManual(150, false); const m = EGO.Game.match, h = m.human; h.setState('free'); h.fx.turbo = 0; const i = h.abil.findIndex((a) => a.def.name === 'TURBO'); h.abil[i].cd = 0; m.useAbility(h, i); return +h.fx.turbo.toFixed(2); });
   const normal = await A.evaluate(() => { const m = EGO.Game.match, h = m.human; h.awakeT = 0; h.fx.turbo = 0; const i = h.abil.findIndex((a) => a.def.name === 'TURBO'); h.abil[i].cd = 0; m.useAbility(h, i); return +h.fx.turbo.toFixed(2); });
   check('awakened, abilities last 50% longer', normal > 0 && Math.abs(longer - normal * 1.5) < 0.05, { awakened: longer, normal });
-  const viaG = await A.evaluate(() => { const m = EGO.Game.match, h = m.human; h.awakeT = 0; h.awake = 100; h.flow = 10; EGO.Input.edges.add('KeyG'); EGO.Game.stepManual(2, false); return h.awakeT > 0; });
+  const move = await A.evaluate(() => {
+    const m = EGO.Game.match, h = m.human; h.awakeT = 15; h.awakeMoveUsed = false; h.setState('free'); m.possess(h); const z0 = h.pos.z;
+    EGO.Input.edges.add('KeyZ'); EGO.Game.stepManual(20, false);
+    return { used: h.awakeMoveUsed, moved: +Math.abs(h.pos.z - z0).toFixed(1), name: EGO.STYLES.SPRINTER.awaken.move.name };
+  });
+  check('awakened, Z is the signature move of the style (RED LINE: LIGHT SPEED dash), once', move.used && move.moved > 4 && move.name === 'LIGHT SPEED', move);
+  const viaG = await A.evaluate(() => { const m = EGO.Game.match, h = m.human; EGO.Game.stepManual(60, false); h.setState('free'); h.awakeT = 0; h.awake = 100; h.flow = 10; EGO.Input.edges.add('KeyG'); EGO.Game.stepManual(2, false); return h.awakeT > 0; });
   check('the Flow button (G) awakens you when only the Awakening bar is full', viaG);
   const bots = await A.evaluate(() => { const r = EGO.simulate('quick', 0.6, 120, 3); return r; });
   check('bots awaken too (about 1 to 2 times each in a match)', bots && bots.awakens >= 1, { awakens: bots && bots.awakens, goals: bots && bots.goals });

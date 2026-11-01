@@ -21,7 +21,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PORT = Number(process.env.PORT) || 8787;
 const STEP = 1 / 60, SNAP_EVERY = 3;
 const MODES_OK = ['quick', 'koth', 'volleys', 'duel'];
-const STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup'];
+const STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken'];
 const KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw'];
 const FX_SENT = ['burst', 'turbo', 'shuffle', 'lockdown', 'skyTrap', 'vision', 'scent', 'loaded', 'call', 'bubble', 'feathers'];
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -195,7 +195,7 @@ function snapshot(room) {
   room.events = [];
   for (const rp of room.players) {
     const p = m.humans.find((h) => h.netId === rp.id);
-    const me = p ? { i: idx(p), cd: p.abil.map((a) => r2(a.cd)), fl: r2(p.flow), ft: r2(p.flowT), aw: r2(p.awake), awt: r2(p.awakeT), st: r2(p.stamina), dc: p.dodgeCharges, dr: r2(p.dodgeRe), tc: r2(p.tackleCd), tk: r2(p.mods.tackleCd), ph: r2(p.passHold || 0),
+    const me = p ? { i: idx(p), cd: p.abil.map((a) => r2(a.cd)), fl: r2(p.flow), ft: r2(p.flowT), aw: r2(p.awake), awt: r2(p.awakeT), amu: p.awakeMoveUsed ? 1 : 0, st: r2(p.stamina), dc: p.dodgeCharges, dr: r2(p.dodgeRe), tc: r2(p.tackleCd), tk: r2(p.mods.tackleCd), ph: r2(p.passHold || 0),
       fx: FX_SENT.reduce((o, k) => (p.fx[k] > 0 ? (o[k] = r2(p.fx[k]), o) : o), {}) } : null;
     send(rp.ws, Object.assign({ me }, base));
   }
