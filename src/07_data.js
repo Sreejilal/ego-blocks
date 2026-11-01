@@ -154,6 +154,7 @@ const ABILITIES = {
     use(p, m) {
       if (m.ball.owner === p) return 'ALREADY ON THE BALL';
       const b = m.ball;
+      if (b.owner && b.owner.isGK) return 'THE KEEPER HAS IT';
       if (b.owner && b.owner.team !== p.team && dist2D(b.owner.pos, p.pos) < 7.5) { m.graveGrab(p, b.owner); return true; }
       if (!b.owner && dist2D(b.pos, p.pos) < 6.5 && b.pos.y < 2.2) { m.graveGrab(p, null); return true; }
       return 'NO TARGET IN RANGE';

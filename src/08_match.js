@@ -442,7 +442,7 @@ class Match {
   }
   jump(p) {
     if (!p.onGround || p.state !== 'free') return false;
-    p.vel.y = 7.6; p.onGround = false;
+    p.vel.y = 9.4; p.onGround = false; // about 2 blocks high: up to headers and volleys
     const b = this.ball;
     if (b.owner === p) {
       b.release();
@@ -524,7 +524,7 @@ class Match {
         Sfx.kick(0.3);
       }
       for (const o of this.opponents(p)) {
-        if (o.state === 'down' || (o.isGK && o.state === 'hold')) continue;
+        if (o.state === 'down' || (o.isGK && this.ball.owner === o)) continue; // nobody takes the keeper's ball
         if (Math.hypot(o.pos.x - hx, o.pos.z - hz) > R + P_R * 0.5 || Math.abs(o.pos.y - p.pos.y) > 1.3) continue;
         S.hit = true;
         if (o === b.owner) {
@@ -561,7 +561,7 @@ class Match {
     if (this.involvesHuman(tackler, carrier)) TimeCtl.slowMo(0.45, 0.35);
   }
   knockDown(t, dur, dx, dz, power = 3, by = null) {
-    if (t.fx.bubble > 0 || (t.isGK && t.state === 'hold')) return false;
+    if (t.fx.bubble > 0 || (t.isGK && this.ball.owner === t)) return false;
     const b = this.ball;
     if (b.owner === t) {
       b.release();
@@ -586,7 +586,7 @@ class Match {
   steal(p, from) {
     const b = this.ball;
     if (b.owner !== from) return false;
-    if (from.iframes > 0 || from.tackleProof > 0 || from.fx.bubble > 0 || from.protect > 0 || (from.isGK && from.state === 'hold')) { this.ankleBreak(p, from); return false; }
+    if (from.iframes > 0 || from.tackleProof > 0 || from.fx.bubble > 0 || from.protect > 0 || from.isGK) { this.ankleBreak(p, from); return false; } // the keeper's ball is safe
     b.release(); this.possess(p);
     from.pickBlock = 0.8; this.stun(from, 0.45);
     p.stats.tackles++; this.flowAdd(p, 15);
@@ -777,6 +777,7 @@ class Match {
       case 'pull': {
         if (b.owner === p) return 'YOU HAVE THE BALL';
         if (b.owner && b.owner.team === p.team) return 'A TEAMMATE HAS IT';
+        if (b.owner && b.owner.isGK) return 'THE KEEPER HAS IT';
         if (dist2D(b.pos, p.pos) > 14) return 'THE BALL IS TOO FAR';
         if (b.owner) { const o = b.owner; b.release(); o.pickBlock = 0.6; }
         FX.trail(b.pos.x, b.pos.y, b.pos.z, p.aura, 0.4, 0.5); this.possess(p); break;
@@ -784,6 +785,7 @@ class Match {
       case 'pounce': {
         if (b.owner === p) return 'YOU HAVE THE BALL';
         if (b.owner && b.owner.team === p.team) return 'A TEAMMATE HAS IT';
+        if (b.owner && b.owner.isGK) return 'THE KEEPER HAS IT';
         const dx = b.pos.x - p.pos.x, dz = b.pos.z - p.pos.z, d = len2D(dx, dz);
         if (d > 16) return 'THE BALL IS TOO FAR';
         p.tackleProof = Math.max(p.tackleProof, 0.6);
@@ -1369,7 +1371,7 @@ class Match {
     for (const p of this.players) {
       if (!(p.fx.magnet > 0)) continue;
       if (Math.random() < 0.6) FX.trail(lerp(p.pos.x, b.pos.x, Math.random()), lerp(1, b.pos.y, Math.random()), lerp(p.pos.z, b.pos.z, Math.random()), '#ff4d5e', 0.12, 0.25);
-      if (b.owner && b.owner.team !== p.team && dist2D(b.owner.pos, p.pos) < 7.5 && !(b.owner.fx.bubble > 0) && !(b.owner.isGK && b.owner.state === 'hold')) {
+      if (b.owner && b.owner.team !== p.team && dist2D(b.owner.pos, p.pos) < 7.5 && !(b.owner.fx.bubble > 0) && !b.owner.isGK) {
         const o = b.owner; b.release(); o.pickBlock = 0.8;
         const dx = p.pos.x - b.pos.x, dz = p.pos.z - b.pos.z, l = len2D(dx, dz) || 1;
         b.vel.set(dx / l * 12, 3, dz / l * 12); b.kick = { by: p, type: 'loose', t: this.time };

@@ -461,7 +461,7 @@ const AI = {
   tryTackle(m, p, dt) {
     const c = m.ball.owner;
     if (!c || c.team === p.team || p.tackleCd > 0 || p.state !== 'free') return;
-    if (c.isGK && c.state === 'hold') return;
+    if (c.isGK) return; // nobody takes the keeper's ball
     const d = dist2D(c.pos, p.pos), sk = m.skill(p);
     const trig = (2.2 + 0.6 * sk) * p.mods.tackleRange;
     const away = d > 0.01 ? (c.vel.x * (c.pos.x - p.pos.x) + c.vel.z * (c.pos.z - p.pos.z)) / d : 0;
