@@ -7526,9 +7526,17 @@ const Net = {
   /* ---------- the connection ---------- */
   connect(then) {
     if (this.ws && this.ws.readyState === 1) { then(); return; }
-    if (this.ws && this.ws.readyState === 0) { this.onOpen = then; return; }
+    if ((this.ws && this.ws.readyState === 0) || this.waking) { this.onOpen = then; return; }
     this.url = this.serverUrl();
     this.setStatus('CONNECTING...');
+    // a free online server goes to sleep when nobody plays: wake it with a normal visit first (it can take a minute)
+    if (/^wss:/.test(this.url) && !/localhost|127\.0\.0\.1/.test(this.url) && !this.awake) {
+      this.waking = true; this.onOpen = then;
+      const slow = setTimeout(() => this.setStatus('WAKING THE SERVER UP. THIS CAN TAKE UP TO A MINUTE...'), 2500);
+      const done = () => { clearTimeout(slow); this.waking = false; this.awake = true; const f = this.onOpen; this.onOpen = null; this.connect(f || (() => {})); };
+      fetch(this.url.replace(/^wss:/, 'https:').replace(/\/ws$/, '/health'), { mode: 'no-cors', cache: 'no-store' }).then(done, done);
+      return;
+    }
     let ws;
     try { ws = new WebSocket(this.url); } catch (e) { this.setStatus('THAT SERVER ADDRESS DOES NOT WORK'); return; }
     this.ws = ws; this.onOpen = then;
@@ -7536,6 +7544,7 @@ const Net = {
     ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } this.onMessage(m); };
     ws.onclose = () => {
       const wasPlaying = Game.state === 'online';
+      this.awake = false; // it may have gone back to sleep
       this.ws = null; this.room = null; Portal.room(null);
       if (wasPlaying) { Game.toLobby(); UI.show('online'); }
       this.renderRoom();

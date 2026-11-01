@@ -1,0 +1,14 @@
+# Render (render.com) reads this file to run the SCORZ online server for free.
+# In Render: New > Blueprint > pick this repository > Apply. The link it gives is the game and the server in one.
+services:
+  - type: web
+    name: scorz-online
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node server/server.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"

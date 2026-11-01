@@ -84,6 +84,7 @@ file in file-name order into ONE function scope. There are no imports or exports
 ## Online server
 
 - `server/server.js` runs online matches; `server/headless.js` loads `src/01` to `src/09` into Node with stand-ins for canvas, sound, camera and particles. Anything those files call must exist there, so keep browser-only code out of them (put it in 10_ and later files) or give it a stand-in in headless.js.
+- Hosting: `render.yaml` runs it on Render's free plan (New > Blueprint in Render). The service link is the game and the server in one. Free instances sleep after 15 minutes with no traffic, so `Net.connect` first wakes a remote `wss:` server with a visit to `/health` ("WAKING THE SERVER UP"). The free filesystem is wiped on restarts, so accounts in `DATA_DIR` do not last there. To point the GitHub Pages build at it: `SCORZ_SERVER=wss://<name>.onrender.com/ws npm run build`.
 - `npm run server` starts it on port 8787 (or `PORT`). `MATCH_SECONDS` and `GOLDEN_SECONDS` shorten matches for tests.
 - Online modes: quick, koth, volleys, duel (not Lawless yet). Several humans per match: `Match` takes `opts.humans`, each human has `p.ctl`, `p.camYaw`, `p.aimV`, and toasts take the player they are for.
 - Tests: `node test/server_proto.js` (protocol) and `node test/online.js` (two real browsers).
