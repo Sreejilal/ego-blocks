@@ -10,6 +10,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // play a ranked win with 2 goals and an assist
   const one = await page.evaluate(() => {
+    const d0 = EGO.Save.data; EGO.Daily.sync(d0); d0.daily.done = true; // today's daily challenge is done, so only the match's own XP counts here
     const G = EGO.Game; G.startMatch('ranked'); G.manual = true; G.stepManual(170, false);
     const m = G.match; m.score = [3, 1]; m.human.stats.goals = 2; m.human.stats.assists = 1; m.human.stats.tackles = 2; m.clock = 0.1;
     G.stepManual(60 * 4.5, false);
@@ -40,7 +41,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await page.click('#lob-profile'); await sleep(200);
   const prof = await page.evaluate(() => ({ cur: EGO.UI.cur, rows: document.querySelectorAll('#pf-hist .pf-row').length, level: document.querySelector('.pf-lv b').textContent, skins: document.querySelectorAll('.pf-skin canvas').length, face: !!document.querySelector('.pf-head canvas'), first: document.querySelector('#pf-hist .pf-row').textContent }));
   check('the profile screen lists 20 matches, newest first', prof.cur === 'profile' && prof.rows === 20 && /QUICK MATCH/.test(prof.first), prof);
-  check('the profile card shows level, face and all six skin slots', prof.face && prof.skins === 6 && +prof.level === many.lv, prof);
+  const slots = await page.evaluate(() => EGO.SKIN_SLOTS ? EGO.SKIN_SLOTS.length : 7);
+  check('the profile card shows level, face and every skin slot', prof.face && prof.skins === slots && +prof.level === many.lv, Object.assign(prof, { slots }));
   await page.screenshot({ path: __dirname + '/shots/p2_profile.png' });
 
   // it survives a reload, and junk in the save is cleaned up

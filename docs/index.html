@@ -336,6 +336,12 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .crosshair.ball { outline: 3px solid #ffe9a8; outline-offset: 7px; }
 #hud .balltag { left: 50%; top: calc(50% + 26px); transform: translateX(-50%); font-family: var(--font-label); font-size: 11px; letter-spacing: .14em; color: #ffe9a8; text-shadow: 2px 2px 0 var(--ink); }
 
+/* GOALS and blueprints */
+.btn.ghost.goals { color: var(--emerald); }
+.gl-top { padding: 16px; display: grid; gap: 8px; }
+.gl-bp { font-family: var(--font-display); font-weight: 400; font-size: 54px; line-height: .9; color: var(--gold); }
+.gl-bp small { font-size: 24px; color: var(--muted); }
+
 /* daily gift and challenge */
 .btn.ghost.daily { position: relative; color: var(--gold); padding-right: 16px; }
 .btn.ghost.daily .dot { display: none; position: absolute; top: 4px; right: 3px; width: 8px; height: 8px; background: var(--emerald); box-shadow: 0 0 8px var(--emerald); animation: blink .8s steps(2) infinite; }
@@ -830,7 +836,8 @@ const Save = {
       xp: 0, history: [], pass: { season: 0, week: -1, xp: 0, got: 0, prog: {}, done: [] }, daily: { gift: '', day: '', ch: '', prog: 0, done: false }, best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
-      stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
+      stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
+      spunStyle: null, bp: 0, goalSteps: {},
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true },
       howto: false,
     };
@@ -868,6 +875,10 @@ const Save = {
     if (!Array.isArray(out.skins)) out.skins = [];
     out.skins = out.skins.filter((s) => typeof s === 'string');
     out.stats = Object.assign({}, def.stats, out.stats || {});
+    for (const k in out.stats) out.stats[k] = Math.max(0, Math.floor(Number(out.stats[k]) || 0));
+    out.spunStyle = typeof out.spunStyle === 'string' ? out.spunStyle : null;
+    out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
+    out.goalSteps = out.goalSteps && typeof out.goalSteps === 'object' ? out.goalSteps : {};
     out.settings = Object.assign({}, def.settings, out.settings || {});
     const st = out.settings;
     if (!['auto', 'low', 'med', 'high'].includes(st.quality)) st.quality = 'auto';
@@ -893,7 +904,10 @@ const Save = {
     d.styles = d.styles.filter((s) => STYLES[s]);
     if (!d.styles.includes('ROOKIE')) d.styles.unshift('ROOKIE');
     d.flows = d.flows.filter((f) => FLOWS[f]);
-    if (!STYLES[d.style] || !d.styles.includes(d.style)) d.style = 'ROOKIE';
+    if (d.spunStyle && (!STYLES[d.spunStyle] || d.styles.includes(d.spunStyle))) d.spunStyle = null;
+    if (!STYLES[d.style] || (!d.styles.includes(d.style) && d.style !== d.spunStyle)) d.style = 'ROOKIE'; // yours for good, or from your last spin
+    for (const g of GOALS) d.goalSteps[g.id] = clamp(Math.floor(Number(d.goalSteps[g.id]) || 0), 0, g.steps.length);
+    for (const k in d.goalSteps) if (!GOALS.some((g) => g.id === k)) delete d.goalSteps[k];
     if (d.flow && (!FLOWS[d.flow] || !d.flows.includes(d.flow))) d.flow = null;
     if (!CLUBS[d.club]) d.club = 'ROVERS';
     for (const k in d.pass.prog) if (!CHALLENGES[k]) delete d.pass.prog[k]; else d.pass.prog[k] = Math.max(0, Math.floor(Number(d.pass.prog[k]) || 0));
@@ -3499,6 +3513,7 @@ const SKINS = {
   SUNSET: { slot: 'color', name: 'SUNSET', rarity: 'Mythic', hex: '#ff7a2a' },
   PRISM: { slot: 'color', name: 'PRISM', rarity: 'Generational', hex: '#b65cff', prism: true },
   TEAM_BOOTS: { slot: 'boots', name: 'TEAM BOOTS', rarity: 'Rare', base: true, desc: 'Plain boots in your team colours.' },
+  GRIND_BOOTS: { slot: 'boots', name: 'GRINDER', rarity: 'Legendary', hex: '#ff7a1a', sparkle: true, obj: true, desc: 'From GOALS: win 25 matches.' },
   CHALK: { slot: 'boots', name: 'CHALK', rarity: 'Rare', hex: '#f4efe0' },
   BLACKOUT: { slot: 'boots', name: 'BLACKOUT', rarity: 'Rare', hex: '#121217' },
   LIME: { slot: 'boots', name: 'LIME', rarity: 'Epic', hex: '#a6ff2e' },
@@ -3507,11 +3522,13 @@ const SKINS = {
   GOLDEN: { slot: 'boots', name: 'GOLDEN', rarity: 'Mythic', hex: '#ffcc33' },
   STARDUST: { slot: 'boots', name: 'STARDUST', rarity: 'Generational', hex: '#241a5a', sparkle: true },
   NO_GLOVES: { slot: 'gloves', name: 'BARE HANDS', rarity: 'Rare', base: true, desc: 'No gloves.' },
+  AWAKE_GLOVES: { slot: 'gloves', name: 'AWAKENED', rarity: 'Mythic', hex: '#c9b8ff', obj: true, desc: 'From GOALS: awaken 10 times.' },
   BLACK_GLOVES: { slot: 'gloves', name: 'NIGHT GLOVES', rarity: 'Rare', hex: '#1a1a22' },
   WHITE_GLOVES: { slot: 'gloves', name: 'CHALK GLOVES', rarity: 'Rare', hex: '#f2f2ea' },
   RED_GLOVES: { slot: 'gloves', name: 'RED GLOVES', rarity: 'Epic', hex: '#d8262e' },
   GOLD_GLOVES: { slot: 'gloves', name: 'GOLD GLOVES', rarity: 'Legendary', hex: '#ffc93d' },
   NO_ACC: { slot: 'acc', name: 'NOTHING', rarity: 'Rare', base: true, desc: 'No extra.' },
+  ANKLE_BAND: { slot: 'acc', name: 'ANKLE TAKER', rarity: 'Legendary', acc: 'band', hex: '#9a6bff', glow: 0.5, obj: true, desc: 'From GOALS: break 75 ankles.' },
   RED_BAND: { slot: 'acc', name: 'RED HEADBAND', rarity: 'Rare', acc: 'band', hex: '#e0302a' },
   WHITE_BAND: { slot: 'acc', name: 'WHITE HEADBAND', rarity: 'Rare', acc: 'band', hex: '#f4f1e8' },
   BLACK_BAND: { slot: 'acc', name: 'BLACK HEADBAND', rarity: 'Epic', acc: 'band', hex: '#17171d' },
@@ -3528,6 +3545,8 @@ const SKINS = {
   LIGHTNING: { slot: 'kit', name: 'LIGHTNING', rarity: 'Epic', pattern: 'bolt', trim: '#ffe14d', desc: 'A bolt across the chest and yellow trim.' },
   BLAZE: { slot: 'kit', name: 'BLAZE', rarity: 'Legendary', pattern: 'flames', trim: '#ffb02e', desc: 'Flames up from the hem and orange trim.' },
   GOLD_TRIM: { slot: 'kit', name: 'GOLD TRIM', rarity: 'Legendary', pattern: 'plain', trim: '#ffd54a', desc: 'Your club kit with a gold collar, cuffs and number.' },
+  VETERAN_KIT: { slot: 'kit', name: 'VETERAN', rarity: 'Legendary', pattern: 'hoops', trim: '#ffd54a', obj: true, desc: 'From GOALS: win 150 matches.' },
+  LEGEND_KIT: { slot: 'kit', name: 'LEGEND', rarity: 'Mythic', pattern: 'stars', trim: '#ffd54a', obj: true, desc: 'From GOALS: play 300 matches.' },
   STARFIELD: { slot: 'kit', name: 'STARFIELD', rarity: 'Mythic', pattern: 'stars', trim: '#ffffff', desc: 'A shirt full of stars, with white trim.' },
   JUMP: { slot: 'celeb', name: 'BIG JUMP', rarity: 'Rare', base: true, celeb: 'jump', desc: 'Jump for joy with both arms up.' },
   AIRPLANE: { slot: 'celeb', name: 'AIRPLANE', rarity: 'Rare', celeb: 'plane', desc: 'Arms out wide, tilting side to side.' },
@@ -3541,7 +3560,7 @@ const SKINS = {
   CHAMP_BOOTS: { slot: 'boots', name: 'CHAMPION BOOTS', rarity: 'Legendary', hex: '#f6f2e6', sparkle: true, pass: true },
   TROPHY: { slot: 'celeb', name: 'TROPHY LIFT', rarity: 'Mythic', celeb: 'trophy', pass: true, desc: 'Hoist an invisible trophy over your head, again and again.' },
 };
-const SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base && !SKINS[k].pass); // what spins can give
+const SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base && !SKINS[k].pass && !SKINS[k].obj); // what spins can give (not pass or GOALS rewards)
 const LOCKER_SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base);
 /** the concrete colours and shapes a player model is built from: the style's defaults with skins on top */
 function lookFor(styleId, look = {}) {
@@ -3678,6 +3697,47 @@ const CHALLENGES = {
   comeback: { name: 'WIN AFTER FALLING BEHIND', goal: 1, xp: 600 },
 };
 const CHALLENGE_IDS = Object.keys(CHALLENGES);
+
+/* ---------- blueprints and GOALS ----------
+   A style from a spin is yours until your next style spin replaces it. Blueprints keep a style for good: GOALS
+   (long-term goals you grind) pay them out, and the Locker turns them into styles. Some steps also give a skin
+   you cannot get anywhere else */
+const BP_COST = { Rare: 2, Epic: 4, Legendary: 7, Mythic: 12, Generational: 20 };
+const GOALS = [
+  { id: 'goals', name: 'SCORE GOALS', stat: 'goals', steps: [5, 15, 40, 100, 250], bp: [2, 3, 5, 8, 12] },
+  { id: 'wins', name: 'WIN MATCHES', stat: 'wins', steps: [3, 10, 25, 60, 150], bp: [2, 3, 5, 8, 12], skins: { 2: 'GRIND_BOOTS', 4: 'VETERAN_KIT' } },
+  { id: 'assists', name: 'GET ASSISTS', stat: 'assists', steps: [3, 10, 30, 75], bp: [2, 3, 5, 8] },
+  { id: 'tackles', name: 'WIN TACKLES', stat: 'tackles', steps: [10, 30, 80, 200], bp: [2, 3, 5, 8] },
+  { id: 'ankles', name: 'BREAK ANKLES', stat: 'ankles', steps: [3, 10, 30, 75], bp: [2, 3, 5, 8], skins: { 3: 'ANKLE_BAND' } },
+  { id: 'awakens', name: 'AWAKEN', stat: 'awakens', steps: [3, 10, 30, 75], bp: [2, 3, 5, 8], skins: { 1: 'AWAKE_GLOVES' } },
+  { id: 'played', name: 'PLAY MATCHES', stat: 'played', steps: [5, 20, 50, 120, 300], bp: [1, 2, 4, 6, 10], skins: { 4: 'LEGEND_KIT' } },
+];
+const Goals = {
+  /** after each match: every finished step pays its blueprints (and sometimes a skin) */
+  check(d) {
+    const out = [];
+    for (const g of GOALS) {
+      let step = d.goalSteps[g.id] || 0;
+      while (step < g.steps.length && (d.stats[g.stat] || 0) >= g.steps[step]) {
+        const bp = g.bp[step], skin = g.skins && g.skins[step];
+        d.bp += bp;
+        if (skin && !d.skins.includes(skin)) d.skins.push(skin);
+        out.push(g.name + ' ' + g.steps[step] + ': +' + bp + ' BLUEPRINT' + (bp > 1 ? 'S' : '') + (skin ? ' AND ' + SKINS[skin].name : ''));
+        step++;
+      }
+      d.goalSteps[g.id] = step;
+    }
+    return out;
+  },
+  /** keep a style for good */
+  unlock(d, id) {
+    const st = STYLES[id];
+    if (!st || d.styles.includes(id) || d.bp < BP_COST[st.rarity]) return false;
+    d.bp -= BP_COST[st.rarity]; d.styles.push(id);
+    if (d.spunStyle === id) d.spunStyle = null;
+    return true;
+  },
+};
 
 /* ---------- daily: a free gift and one challenge each day. No streaks: missing a day costs nothing ---------- */
 const DAILY_CHALLENGES = {
@@ -7516,7 +7576,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + this.tplDaily() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -7553,7 +7613,7 @@ const UI = {
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
           <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
-          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button></div>
+          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">GOALS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button></div>
         </nav>
       </div>
       <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
@@ -7657,6 +7717,7 @@ const UI = {
             <li><b>Awakening</b> is your style's own power-up. Goals, assists, shots on target, tackles and tricks fill its bar. When it is full, press Z (or the Flow button) for 20 seconds of it: your cooldowns reset and recharge twice as fast, your abilities last longer, and you get your style's own boost.</li>
             <li><b>Flow</b> fills from completed passes, feints, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
             <li><b>Emeralds:</b> win 150, draw 80, loss 50, plus 20 a goal and 10 an assist.</li>
+            <li><b>Style spins</b> give you a style to play with until your next style spin replaces it. <b>Blueprints</b> keep a style for good: earn them from GOALS (on the start screen) and spend them in the Locker.</li>
             <li><b>Spins</b> cost 200. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
@@ -7722,6 +7783,26 @@ const UI = {
       return `<div class="pf-row"><span class="label">${when(h.t)}</span><span class="pf-mode">${esc(mode)}${h.size && h.mode !== 'duel' ? ' · ' + h.size + 'V' + h.size : ''}</span>
         <span class="pf-score">${short(h.club)} ${h.score[0]} : ${h.score[1]} ${short(h.opp)}</span><span class="pf-res ${h.res}">${h.res.toUpperCase()}</span>
         <span class="label">${h.g} G · ${h.a} A${STYLES[h.style] ? ' · ' + esc(STYLES[h.style].name) : ''}</span>${rp}</div>`;
+    }).join('');
+  },
+  tplGoals() {
+    return `<section id="scr-goals" class="screen sub-screen" hidden>
+      <div class="sub-wrap">
+        <div class="sub-head"><h2>GOALS</h2><button class="btn small" id="goals-back" type="button">BACK</button></div>
+        <section class="panel gl-top" id="gl-top"></section>
+        <section class="panel"><div class="gp-ch" id="gl-list"></div></section>
+      </div>
+    </section>`;
+  },
+  renderGoals() {
+    const d = Save.data;
+    $('gl-top').innerHTML = `<b class="gl-bp">${d.bp} <small>BLUEPRINTS</small></b><p class="gp-note">A style you spin is yours until your next style spin. Blueprints keep a style for good: open it in the Locker and press KEEP. Rare costs ${BP_COST.Rare}, Epic ${BP_COST.Epic}, Legendary ${BP_COST.Legendary}, Mythic ${BP_COST.Mythic}, Generational ${BP_COST.Generational}. Every goal below pays blueprints at each step, and some pay a skin you cannot spin.</p>`;
+    $('gl-list').innerHTML = GOALS.map((g) => {
+      const step = d.goalSteps[g.id] || 0, have = d.stats[g.stat] || 0, done = step >= g.steps.length;
+      const next = done ? g.steps[g.steps.length - 1] : g.steps[step], prev = step > 0 ? g.steps[step - 1] : 0;
+      const pct = done ? 100 : clamp((have - prev) / (next - prev) * 100, 0, 100);
+      const skin = !done && g.skins && g.skins[step] ? ' + ' + SKINS[g.skins[step]].name : '';
+      return `<div class="gp-c ${done ? 'done' : ''}"><b>${esc(g.name)} ${done ? '' : next}</b><span class="label">${done ? 'ALL DONE' : have + ' / ' + next + ' · +' + g.bp[step] + ' BLUEPRINT' + (g.bp[step] > 1 ? 'S' : '') + esc(skin)}</span><div class="xpbar"><i style="width:${pct.toFixed(0)}%"></i></div><span class="label">STEP ${Math.min(step + 1, g.steps.length)} OF ${g.steps.length}</span></div>`;
     }).join('');
   },
   tplPass() {
@@ -7872,6 +7953,8 @@ const UI = {
     click('go-pass', () => this.show('pass'));
     click('go-online', () => Net.open());
     click('pass-back', () => this.show('lobby'));
+    click('goals-back', () => this.show('lobby'));
+    click('go-goals', () => this.show('goals'));
     click('lob-profile', () => this.show('profile'));
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
     click('profile-back', () => this.show('lobby'));
@@ -7915,12 +7998,12 @@ const UI = {
       if (Game.playing() || Game.state === 'paused') return;
       if (e.code === 'Escape' && !$('friend-card').hidden) { $('friend-card').hidden = true; return; }
       if (e.code === 'Escape' && !$('scr-daily').hidden) { $('scr-daily').hidden = true; return; }
-      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass' || this.cur === 'online') && !this.spinning && !(e.target && e.target.tagName === 'INPUT')) this.show('lobby');
+      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass' || this.cur === 'goals' || this.cur === 'online') && !this.spinning && !(e.target && e.target.tagName === 'INPUT')) this.show('lobby');
     });
   },
   show(name) {
     this.cur = name;
-    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', online: 'scr-online', hud: 'hud' };
+    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
@@ -7929,6 +8012,7 @@ const UI = {
     if (name === 'howto') { Save.data.howto = true; Save.save(); }
     if (name === 'profile') this.renderProfile();
     if (name === 'pass') this.renderPass();
+    if (name === 'goals') this.renderGoals();
   },
   /* ---------- lobby ---------- */
   renderLobby() {
@@ -8217,9 +8301,11 @@ const UI = {
     const P = r.pass || { xp: 0, challenges: [], tiers: [] }, pd = Save.data.pass;
     $('r-pass').innerHTML = `<span class="label">GAME PASS · TIER ${Pass.tier(Save.data)} / ${PASS_TIERS} · +${P.xp} XP${P.xp ? '' : (r.res === 'forfeit' || r.idle ? '' : ' (DO SOMETHING ON THE BALL TO EARN PASS XP)')}</span><div class="xpbar pass"><i style="width:${(pd.xp % PASS_TIER_XP) / PASS_TIER_XP * 100}%"></i></div>`
       + P.challenges.map((c) => `<span class="label pl-ch">CHALLENGE DONE: ${esc(c)}</span>`).join('') + P.tiers.map((t) => `<span class="label pl-tier">${esc(t)}</span>`).join('');
+    $('r-daily').dataset.goals = '';
     const D = r.daily;
     $('r-daily').innerHTML = !D ? '' : D.now ? `<span class="label pl-ch">DAILY CHALLENGE DONE: ${esc(D.name)} +${DAILY_REWARD.emeralds} EMERALDS +${DAILY_REWARD.xp} XP</span>`
       : `<span class="label">DAILY CHALLENGE · ${esc(D.name)} · ${D.done ? 'DONE' : D.prog + ' / ' + D.goal}</span>`;
+    if (r.goalsDone && r.goalsDone.length) $('r-daily').innerHTML += r.goalsDone.map((t) => `<span class="label pl-tier">GOAL DONE: ${esc(t)}</span>`).join('');
     $('hint').hidden = true;
     $('scr-results').hidden = false;
   },
@@ -8253,7 +8339,11 @@ const UI = {
     const id = pick(pool);
     const owned = kind === 'style' ? d.styles : kind === 'flow' ? d.flows : d.skins;
     const dupe = owned.includes(id);
-    if (dupe) d.emeralds += 50; else owned.push(id);
+    let replaced = null;
+    if (dupe) d.emeralds += 50;
+    else if (kind === 'style') { replaced = d.spunStyle !== id ? d.spunStyle : null; d.spunStyle = id; d.style = id; } // yours (and on) until your next style spin
+    else owned.push(id);
+    this.spinReplaced = replaced;
     d.stats.spins = (d.stats.spins || 0) + 1;
     Save.save();
     this.spinning = true;
@@ -8265,13 +8355,18 @@ const UI = {
     this.spinning = false;
     $('spin-skip').hidden = true;
     const src = kind === 'style' ? STYLES[id] : kind === 'flow' ? FLOWS[id] : SKINS[id];
-    const tag = dupe ? '<span class="tag dupe">DUPLICATE · +50 EMERALDS</span>' : '<span class="tag">NEW</span>';
+    const tag = dupe ? `<span class="tag dupe">${kind === 'style' ? 'ALREADY YOURS' : 'DUPLICATE'} · +50 EMERALDS</span>`
+      : kind === 'style' ? `<span class="tag">YOURS UNTIL YOUR NEXT STYLE SPIN${this.spinReplaced ? ' · REPLACES ' + esc(STYLES[this.spinReplaced].name) : ''}</span>` : '<span class="tag">NEW</span>';
     const slotName = kind === 'skin' ? '<span class="label">' + SKIN_SLOTS.find((sl) => sl.id === src.slot).name + ' SKIN</span>' : '';
     const res = $('spin-result');
-    res.innerHTML = `<span class="cv"></span><span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${slotName}${tag}${!dupe ? '<button class="btn small blue" id="spin-equip" type="button">EQUIP</button>' : ''}`;
+    const keep = kind === 'style' && !dupe ? `<span class="label">KEEP IT FOR GOOD: ${BP_COST[src.rarity]} BLUEPRINTS (YOU HAVE ${Save.data.bp})</span>`
+      + (Save.data.bp >= BP_COST[src.rarity] ? '<button class="btn small emerald" id="spin-keep" type="button">KEEP IT</button>' : '') : '';
+    res.innerHTML = `<span class="cv"></span><span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${slotName}${tag}${!dupe && kind !== 'style' ? '<button class="btn small blue" id="spin-equip" type="button">EQUIP</button>' : ''}${keep}`;
     res.querySelector('.cv').replaceWith(kind === 'style' ? portraitCanvas(id, 48) : kind === 'flow' ? flowEmblemCanvas(id, 48) : skinCanvas(id, 48));
     res.classList.add('show');
     const eq = $('spin-equip');
+    const kp = $('spin-keep');
+    if (kp) kp.addEventListener('click', () => { if (Goals.unlock(Save.data, id)) { Save.save(); Sfx.coin(); kp.textContent = 'YOURS FOR GOOD'; kp.disabled = true; } });
     if (eq) eq.addEventListener('click', () => { Sfx.click(); if (kind === 'style') Save.data.style = id; else if (kind === 'flow') Save.data.flow = id; else Save.data.look[src.slot] = id; Save.save(); eq.textContent = 'EQUIPPED'; eq.disabled = true; });
     this.renderSpins(false);
   },
@@ -8280,7 +8375,7 @@ const UI = {
   /** what a card in the current tab stands for */
   lockerItem(id) {
     const d = Save.data, tab = this.lockerTab;
-    if (tab === 'style') { const st = STYLES[id]; return { name: st.name, rarity: st.rarity, owned: d.styles.includes(id), equipped: d.style === id, from: 'STYLE SPINS' }; }
+    if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
     if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
     if (tab === 'flow') { const fl = id === 'NONE' ? null : FLOWS[id]; return { name: fl ? fl.name : 'NO FLOW', rarity: fl ? fl.rarity : 'Rare', base: !fl, owned: !fl || d.flows.includes(id), equipped: (d.flow || 'NONE') === id, from: 'FLOW SPINS' }; }
     const sk = SKINS[id];
@@ -8302,7 +8397,7 @@ const UI = {
     const grid = $('locker-grid');
     grid.innerHTML = ids.map((id) => {
       const it = this.lockerItem(id);
-      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.equipped ? 'EQUIPPED' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
+      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.equipped ? 'EQUIPPED' : it.spun ? 'FROM SPIN' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
     }).join('');
     grid.querySelectorAll('.lcard').forEach((b) => {
       b.querySelector('.cv').replaceWith(this.lockerArt(b.dataset.id, 40));
@@ -8342,7 +8437,10 @@ const UI = {
     // name, rarity and the equip button sit under the 3D preview
     const cap = $('lk-cap');
     cap.innerHTML = `${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<b>${esc(it.name)}</b>`
-      + (it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`);
+      + (it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`)
+      + (tab === 'style' && (it.spun || !it.owned) ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
+    const kp = $('lk-keep');
+    if (kp) kp.addEventListener('click', () => { if (Goals.unlock(d, id)) { d.style = id; Save.save(); Sfx.coin(); this.renderLocker(); this.renderLobby(); } });
     const eq = $('lk-equip');
     if (eq) eq.addEventListener('click', () => {
       Sfx.click();
@@ -8463,6 +8561,8 @@ const Game = {
     d.stats.played++;
     if (res === 'win') d.stats.wins++; else if (res === 'draw') d.stats.draws++; else d.stats.losses++;
     d.stats.goals += hs.goals || 0; d.stats.assists += hs.assists || 0;
+    const ft = m.feats || {}; d.stats.tackles += hs.tackles || 0; d.stats.ankles += ft.ankles || 0; d.stats.awakens += ft.awakens || 0;
+    const goalsDone = Goals.check(d);
     // XP, the match history (last 20) and best stats
     const xp = matchXp(earned, hs), lvBefore = levelOf(d.xp).level;
     d.xp += xp;
@@ -8476,7 +8576,7 @@ const Game = {
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, daily });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, daily, goalsDone });
     if (res === 'win') Sfx.fanfare(2);
     if (res === 'win' && !idle) Portal.happy();
     Portal.midgame();
@@ -8560,6 +8660,7 @@ const Game = {
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
+  Goals, GOALS, BP_COST, SKIN_SLOTS,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

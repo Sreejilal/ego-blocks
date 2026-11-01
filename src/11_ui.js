@@ -10,7 +10,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + Net.tpl() + this.tplDaily() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -47,7 +47,7 @@ const UI = {
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
           <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
-          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button></div>
+          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">GOALS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button></div>
         </nav>
       </div>
       <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
@@ -151,6 +151,7 @@ const UI = {
             <li><b>Awakening</b> is your style's own power-up. Goals, assists, shots on target, tackles and tricks fill its bar. When it is full, press Z (or the Flow button) for 20 seconds of it: your cooldowns reset and recharge twice as fast, your abilities last longer, and you get your style's own boost.</li>
             <li><b>Flow</b> fills from completed passes, feints, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
             <li><b>Emeralds:</b> win 150, draw 80, loss 50, plus 20 a goal and 10 an assist.</li>
+            <li><b>Style spins</b> give you a style to play with until your next style spin replaces it. <b>Blueprints</b> keep a style for good: earn them from GOALS (on the start screen) and spend them in the Locker.</li>
             <li><b>Spins</b> cost 200. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
@@ -216,6 +217,26 @@ const UI = {
       return `<div class="pf-row"><span class="label">${when(h.t)}</span><span class="pf-mode">${esc(mode)}${h.size && h.mode !== 'duel' ? ' · ' + h.size + 'V' + h.size : ''}</span>
         <span class="pf-score">${short(h.club)} ${h.score[0]} : ${h.score[1]} ${short(h.opp)}</span><span class="pf-res ${h.res}">${h.res.toUpperCase()}</span>
         <span class="label">${h.g} G · ${h.a} A${STYLES[h.style] ? ' · ' + esc(STYLES[h.style].name) : ''}</span>${rp}</div>`;
+    }).join('');
+  },
+  tplGoals() {
+    return `<section id="scr-goals" class="screen sub-screen" hidden>
+      <div class="sub-wrap">
+        <div class="sub-head"><h2>GOALS</h2><button class="btn small" id="goals-back" type="button">BACK</button></div>
+        <section class="panel gl-top" id="gl-top"></section>
+        <section class="panel"><div class="gp-ch" id="gl-list"></div></section>
+      </div>
+    </section>`;
+  },
+  renderGoals() {
+    const d = Save.data;
+    $('gl-top').innerHTML = `<b class="gl-bp">${d.bp} <small>BLUEPRINTS</small></b><p class="gp-note">A style you spin is yours until your next style spin. Blueprints keep a style for good: open it in the Locker and press KEEP. Rare costs ${BP_COST.Rare}, Epic ${BP_COST.Epic}, Legendary ${BP_COST.Legendary}, Mythic ${BP_COST.Mythic}, Generational ${BP_COST.Generational}. Every goal below pays blueprints at each step, and some pay a skin you cannot spin.</p>`;
+    $('gl-list').innerHTML = GOALS.map((g) => {
+      const step = d.goalSteps[g.id] || 0, have = d.stats[g.stat] || 0, done = step >= g.steps.length;
+      const next = done ? g.steps[g.steps.length - 1] : g.steps[step], prev = step > 0 ? g.steps[step - 1] : 0;
+      const pct = done ? 100 : clamp((have - prev) / (next - prev) * 100, 0, 100);
+      const skin = !done && g.skins && g.skins[step] ? ' + ' + SKINS[g.skins[step]].name : '';
+      return `<div class="gp-c ${done ? 'done' : ''}"><b>${esc(g.name)} ${done ? '' : next}</b><span class="label">${done ? 'ALL DONE' : have + ' / ' + next + ' · +' + g.bp[step] + ' BLUEPRINT' + (g.bp[step] > 1 ? 'S' : '') + esc(skin)}</span><div class="xpbar"><i style="width:${pct.toFixed(0)}%"></i></div><span class="label">STEP ${Math.min(step + 1, g.steps.length)} OF ${g.steps.length}</span></div>`;
     }).join('');
   },
   tplPass() {
@@ -366,6 +387,8 @@ const UI = {
     click('go-pass', () => this.show('pass'));
     click('go-online', () => Net.open());
     click('pass-back', () => this.show('lobby'));
+    click('goals-back', () => this.show('lobby'));
+    click('go-goals', () => this.show('goals'));
     click('lob-profile', () => this.show('profile'));
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
     click('profile-back', () => this.show('lobby'));
@@ -409,12 +432,12 @@ const UI = {
       if (Game.playing() || Game.state === 'paused') return;
       if (e.code === 'Escape' && !$('friend-card').hidden) { $('friend-card').hidden = true; return; }
       if (e.code === 'Escape' && !$('scr-daily').hidden) { $('scr-daily').hidden = true; return; }
-      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass' || this.cur === 'online') && !this.spinning && !(e.target && e.target.tagName === 'INPUT')) this.show('lobby');
+      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass' || this.cur === 'goals' || this.cur === 'online') && !this.spinning && !(e.target && e.target.tagName === 'INPUT')) this.show('lobby');
     });
   },
   show(name) {
     this.cur = name;
-    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', online: 'scr-online', hud: 'hud' };
+    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
@@ -423,6 +446,7 @@ const UI = {
     if (name === 'howto') { Save.data.howto = true; Save.save(); }
     if (name === 'profile') this.renderProfile();
     if (name === 'pass') this.renderPass();
+    if (name === 'goals') this.renderGoals();
   },
   /* ---------- lobby ---------- */
   renderLobby() {
@@ -711,9 +735,11 @@ const UI = {
     const P = r.pass || { xp: 0, challenges: [], tiers: [] }, pd = Save.data.pass;
     $('r-pass').innerHTML = `<span class="label">GAME PASS · TIER ${Pass.tier(Save.data)} / ${PASS_TIERS} · +${P.xp} XP${P.xp ? '' : (r.res === 'forfeit' || r.idle ? '' : ' (DO SOMETHING ON THE BALL TO EARN PASS XP)')}</span><div class="xpbar pass"><i style="width:${(pd.xp % PASS_TIER_XP) / PASS_TIER_XP * 100}%"></i></div>`
       + P.challenges.map((c) => `<span class="label pl-ch">CHALLENGE DONE: ${esc(c)}</span>`).join('') + P.tiers.map((t) => `<span class="label pl-tier">${esc(t)}</span>`).join('');
+    $('r-daily').dataset.goals = '';
     const D = r.daily;
     $('r-daily').innerHTML = !D ? '' : D.now ? `<span class="label pl-ch">DAILY CHALLENGE DONE: ${esc(D.name)} +${DAILY_REWARD.emeralds} EMERALDS +${DAILY_REWARD.xp} XP</span>`
       : `<span class="label">DAILY CHALLENGE · ${esc(D.name)} · ${D.done ? 'DONE' : D.prog + ' / ' + D.goal}</span>`;
+    if (r.goalsDone && r.goalsDone.length) $('r-daily').innerHTML += r.goalsDone.map((t) => `<span class="label pl-tier">GOAL DONE: ${esc(t)}</span>`).join('');
     $('hint').hidden = true;
     $('scr-results').hidden = false;
   },
@@ -747,7 +773,11 @@ const UI = {
     const id = pick(pool);
     const owned = kind === 'style' ? d.styles : kind === 'flow' ? d.flows : d.skins;
     const dupe = owned.includes(id);
-    if (dupe) d.emeralds += 50; else owned.push(id);
+    let replaced = null;
+    if (dupe) d.emeralds += 50;
+    else if (kind === 'style') { replaced = d.spunStyle !== id ? d.spunStyle : null; d.spunStyle = id; d.style = id; } // yours (and on) until your next style spin
+    else owned.push(id);
+    this.spinReplaced = replaced;
     d.stats.spins = (d.stats.spins || 0) + 1;
     Save.save();
     this.spinning = true;
@@ -759,13 +789,18 @@ const UI = {
     this.spinning = false;
     $('spin-skip').hidden = true;
     const src = kind === 'style' ? STYLES[id] : kind === 'flow' ? FLOWS[id] : SKINS[id];
-    const tag = dupe ? '<span class="tag dupe">DUPLICATE · +50 EMERALDS</span>' : '<span class="tag">NEW</span>';
+    const tag = dupe ? `<span class="tag dupe">${kind === 'style' ? 'ALREADY YOURS' : 'DUPLICATE'} · +50 EMERALDS</span>`
+      : kind === 'style' ? `<span class="tag">YOURS UNTIL YOUR NEXT STYLE SPIN${this.spinReplaced ? ' · REPLACES ' + esc(STYLES[this.spinReplaced].name) : ''}</span>` : '<span class="tag">NEW</span>';
     const slotName = kind === 'skin' ? '<span class="label">' + SKIN_SLOTS.find((sl) => sl.id === src.slot).name + ' SKIN</span>' : '';
     const res = $('spin-result');
-    res.innerHTML = `<span class="cv"></span><span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${slotName}${tag}${!dupe ? '<button class="btn small blue" id="spin-equip" type="button">EQUIP</button>' : ''}`;
+    const keep = kind === 'style' && !dupe ? `<span class="label">KEEP IT FOR GOOD: ${BP_COST[src.rarity]} BLUEPRINTS (YOU HAVE ${Save.data.bp})</span>`
+      + (Save.data.bp >= BP_COST[src.rarity] ? '<button class="btn small emerald" id="spin-keep" type="button">KEEP IT</button>' : '') : '';
+    res.innerHTML = `<span class="cv"></span><span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${slotName}${tag}${!dupe && kind !== 'style' ? '<button class="btn small blue" id="spin-equip" type="button">EQUIP</button>' : ''}${keep}`;
     res.querySelector('.cv').replaceWith(kind === 'style' ? portraitCanvas(id, 48) : kind === 'flow' ? flowEmblemCanvas(id, 48) : skinCanvas(id, 48));
     res.classList.add('show');
     const eq = $('spin-equip');
+    const kp = $('spin-keep');
+    if (kp) kp.addEventListener('click', () => { if (Goals.unlock(Save.data, id)) { Save.save(); Sfx.coin(); kp.textContent = 'YOURS FOR GOOD'; kp.disabled = true; } });
     if (eq) eq.addEventListener('click', () => { Sfx.click(); if (kind === 'style') Save.data.style = id; else if (kind === 'flow') Save.data.flow = id; else Save.data.look[src.slot] = id; Save.save(); eq.textContent = 'EQUIPPED'; eq.disabled = true; });
     this.renderSpins(false);
   },
@@ -774,7 +809,7 @@ const UI = {
   /** what a card in the current tab stands for */
   lockerItem(id) {
     const d = Save.data, tab = this.lockerTab;
-    if (tab === 'style') { const st = STYLES[id]; return { name: st.name, rarity: st.rarity, owned: d.styles.includes(id), equipped: d.style === id, from: 'STYLE SPINS' }; }
+    if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
     if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
     if (tab === 'flow') { const fl = id === 'NONE' ? null : FLOWS[id]; return { name: fl ? fl.name : 'NO FLOW', rarity: fl ? fl.rarity : 'Rare', base: !fl, owned: !fl || d.flows.includes(id), equipped: (d.flow || 'NONE') === id, from: 'FLOW SPINS' }; }
     const sk = SKINS[id];
@@ -796,7 +831,7 @@ const UI = {
     const grid = $('locker-grid');
     grid.innerHTML = ids.map((id) => {
       const it = this.lockerItem(id);
-      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.equipped ? 'EQUIPPED' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
+      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.equipped ? 'EQUIPPED' : it.spun ? 'FROM SPIN' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
     }).join('');
     grid.querySelectorAll('.lcard').forEach((b) => {
       b.querySelector('.cv').replaceWith(this.lockerArt(b.dataset.id, 40));
@@ -836,7 +871,10 @@ const UI = {
     // name, rarity and the equip button sit under the 3D preview
     const cap = $('lk-cap');
     cap.innerHTML = `${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<b>${esc(it.name)}</b>`
-      + (it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`);
+      + (it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`)
+      + (tab === 'style' && (it.spun || !it.owned) ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
+    const kp = $('lk-keep');
+    if (kp) kp.addEventListener('click', () => { if (Goals.unlock(d, id)) { d.style = id; Save.save(); Sfx.coin(); this.renderLocker(); this.renderLobby(); } });
     const eq = $('lk-equip');
     if (eq) eq.addEventListener('click', () => {
       Sfx.click();

@@ -108,6 +108,8 @@ const Game = {
     d.stats.played++;
     if (res === 'win') d.stats.wins++; else if (res === 'draw') d.stats.draws++; else d.stats.losses++;
     d.stats.goals += hs.goals || 0; d.stats.assists += hs.assists || 0;
+    const ft = m.feats || {}; d.stats.tackles += hs.tackles || 0; d.stats.ankles += ft.ankles || 0; d.stats.awakens += ft.awakens || 0;
+    const goalsDone = Goals.check(d);
     // XP, the match history (last 20) and best stats
     const xp = matchXp(earned, hs), lvBefore = levelOf(d.xp).level;
     d.xp += xp;
@@ -121,7 +123,7 @@ const Game = {
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, daily });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, daily, goalsDone });
     if (res === 'win') Sfx.fanfare(2);
     if (res === 'win' && !idle) Portal.happy();
     Portal.midgame();
@@ -205,6 +207,7 @@ const Game = {
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
+  Goals, GOALS, BP_COST, SKIN_SLOTS,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

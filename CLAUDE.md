@@ -52,6 +52,7 @@ file in file-name order into ONE function scope. There are no imports or exports
 - Each Flow in `FLOWS` has a `color`, an `fx` look (drawn by `FX.flow`, also on the start screen) and `mods`; `start` effects run when it switches on (`stamina`, `resetCd`).
 - Each style in `STYLES` has `awaken` (name, desc, `mods`, optional `perk`: `dodge` or `tank`). Big plays (`flowAdd` amounts of 10+) fill `p.awake`; Z or the Flow button starts it (`activateAwaken`) for `AWAKEN_TIME`. Awakened: cooldowns reset and run x2, ability `fx` set while awakened last 50% longer. Online sends `aw`/`awt` in `me` and flag 128.
 - The `kit` skin slot: skins with `pattern` and `trim`, drawn on the team's colours (`makePlayerSkin`), so sides stay readable. Keepers keep their kit.
+- Style spins set `Save.data.spunStyle` (yours until the next style spin replaces it); `d.styles` are kept for good. Blueprints (`d.bp`) come from `GOALS` steps (`Goals.check` after each match, from `d.stats`) and `Goals.unlock` keeps a style (`BP_COST` by rarity). GOALS-only skins have `obj: true` and never come from spins. Test: `node test/blueprints.js`.
 - `Daily` (07_data.js): `Save.data.daily`, a gift once per local day and one challenge from `DAILY_CHALLENGES`. No streaks on purpose. Test: `node test/extras.js`.
 
 ## Builds

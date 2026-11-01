@@ -82,7 +82,8 @@ const Save = {
       xp: 0, history: [], pass: { season: 0, week: -1, xp: 0, got: 0, prog: {}, done: [] }, daily: { gift: '', day: '', ch: '', prog: 0, done: false }, best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
-      stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0 },
+      stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
+      spunStyle: null, bp: 0, goalSteps: {},
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true },
       howto: false,
     };
@@ -120,6 +121,10 @@ const Save = {
     if (!Array.isArray(out.skins)) out.skins = [];
     out.skins = out.skins.filter((s) => typeof s === 'string');
     out.stats = Object.assign({}, def.stats, out.stats || {});
+    for (const k in out.stats) out.stats[k] = Math.max(0, Math.floor(Number(out.stats[k]) || 0));
+    out.spunStyle = typeof out.spunStyle === 'string' ? out.spunStyle : null;
+    out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
+    out.goalSteps = out.goalSteps && typeof out.goalSteps === 'object' ? out.goalSteps : {};
     out.settings = Object.assign({}, def.settings, out.settings || {});
     const st = out.settings;
     if (!['auto', 'low', 'med', 'high'].includes(st.quality)) st.quality = 'auto';
@@ -145,7 +150,10 @@ const Save = {
     d.styles = d.styles.filter((s) => STYLES[s]);
     if (!d.styles.includes('ROOKIE')) d.styles.unshift('ROOKIE');
     d.flows = d.flows.filter((f) => FLOWS[f]);
-    if (!STYLES[d.style] || !d.styles.includes(d.style)) d.style = 'ROOKIE';
+    if (d.spunStyle && (!STYLES[d.spunStyle] || d.styles.includes(d.spunStyle))) d.spunStyle = null;
+    if (!STYLES[d.style] || (!d.styles.includes(d.style) && d.style !== d.spunStyle)) d.style = 'ROOKIE'; // yours for good, or from your last spin
+    for (const g of GOALS) d.goalSteps[g.id] = clamp(Math.floor(Number(d.goalSteps[g.id]) || 0), 0, g.steps.length);
+    for (const k in d.goalSteps) if (!GOALS.some((g) => g.id === k)) delete d.goalSteps[k];
     if (d.flow && (!FLOWS[d.flow] || !d.flows.includes(d.flow))) d.flow = null;
     if (!CLUBS[d.club]) d.club = 'ROVERS';
     for (const k in d.pass.prog) if (!CHALLENGES[k]) delete d.pass.prog[k]; else d.pass.prog[k] = Math.max(0, Math.floor(Number(d.pass.prog[k]) || 0));

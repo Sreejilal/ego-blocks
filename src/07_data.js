@@ -361,6 +361,7 @@ const SKINS = {
   SUNSET: { slot: 'color', name: 'SUNSET', rarity: 'Mythic', hex: '#ff7a2a' },
   PRISM: { slot: 'color', name: 'PRISM', rarity: 'Generational', hex: '#b65cff', prism: true },
   TEAM_BOOTS: { slot: 'boots', name: 'TEAM BOOTS', rarity: 'Rare', base: true, desc: 'Plain boots in your team colours.' },
+  GRIND_BOOTS: { slot: 'boots', name: 'GRINDER', rarity: 'Legendary', hex: '#ff7a1a', sparkle: true, obj: true, desc: 'From GOALS: win 25 matches.' },
   CHALK: { slot: 'boots', name: 'CHALK', rarity: 'Rare', hex: '#f4efe0' },
   BLACKOUT: { slot: 'boots', name: 'BLACKOUT', rarity: 'Rare', hex: '#121217' },
   LIME: { slot: 'boots', name: 'LIME', rarity: 'Epic', hex: '#a6ff2e' },
@@ -369,11 +370,13 @@ const SKINS = {
   GOLDEN: { slot: 'boots', name: 'GOLDEN', rarity: 'Mythic', hex: '#ffcc33' },
   STARDUST: { slot: 'boots', name: 'STARDUST', rarity: 'Generational', hex: '#241a5a', sparkle: true },
   NO_GLOVES: { slot: 'gloves', name: 'BARE HANDS', rarity: 'Rare', base: true, desc: 'No gloves.' },
+  AWAKE_GLOVES: { slot: 'gloves', name: 'AWAKENED', rarity: 'Mythic', hex: '#c9b8ff', obj: true, desc: 'From GOALS: awaken 10 times.' },
   BLACK_GLOVES: { slot: 'gloves', name: 'NIGHT GLOVES', rarity: 'Rare', hex: '#1a1a22' },
   WHITE_GLOVES: { slot: 'gloves', name: 'CHALK GLOVES', rarity: 'Rare', hex: '#f2f2ea' },
   RED_GLOVES: { slot: 'gloves', name: 'RED GLOVES', rarity: 'Epic', hex: '#d8262e' },
   GOLD_GLOVES: { slot: 'gloves', name: 'GOLD GLOVES', rarity: 'Legendary', hex: '#ffc93d' },
   NO_ACC: { slot: 'acc', name: 'NOTHING', rarity: 'Rare', base: true, desc: 'No extra.' },
+  ANKLE_BAND: { slot: 'acc', name: 'ANKLE TAKER', rarity: 'Legendary', acc: 'band', hex: '#9a6bff', glow: 0.5, obj: true, desc: 'From GOALS: break 75 ankles.' },
   RED_BAND: { slot: 'acc', name: 'RED HEADBAND', rarity: 'Rare', acc: 'band', hex: '#e0302a' },
   WHITE_BAND: { slot: 'acc', name: 'WHITE HEADBAND', rarity: 'Rare', acc: 'band', hex: '#f4f1e8' },
   BLACK_BAND: { slot: 'acc', name: 'BLACK HEADBAND', rarity: 'Epic', acc: 'band', hex: '#17171d' },
@@ -390,6 +393,8 @@ const SKINS = {
   LIGHTNING: { slot: 'kit', name: 'LIGHTNING', rarity: 'Epic', pattern: 'bolt', trim: '#ffe14d', desc: 'A bolt across the chest and yellow trim.' },
   BLAZE: { slot: 'kit', name: 'BLAZE', rarity: 'Legendary', pattern: 'flames', trim: '#ffb02e', desc: 'Flames up from the hem and orange trim.' },
   GOLD_TRIM: { slot: 'kit', name: 'GOLD TRIM', rarity: 'Legendary', pattern: 'plain', trim: '#ffd54a', desc: 'Your club kit with a gold collar, cuffs and number.' },
+  VETERAN_KIT: { slot: 'kit', name: 'VETERAN', rarity: 'Legendary', pattern: 'hoops', trim: '#ffd54a', obj: true, desc: 'From GOALS: win 150 matches.' },
+  LEGEND_KIT: { slot: 'kit', name: 'LEGEND', rarity: 'Mythic', pattern: 'stars', trim: '#ffd54a', obj: true, desc: 'From GOALS: play 300 matches.' },
   STARFIELD: { slot: 'kit', name: 'STARFIELD', rarity: 'Mythic', pattern: 'stars', trim: '#ffffff', desc: 'A shirt full of stars, with white trim.' },
   JUMP: { slot: 'celeb', name: 'BIG JUMP', rarity: 'Rare', base: true, celeb: 'jump', desc: 'Jump for joy with both arms up.' },
   AIRPLANE: { slot: 'celeb', name: 'AIRPLANE', rarity: 'Rare', celeb: 'plane', desc: 'Arms out wide, tilting side to side.' },
@@ -403,7 +408,7 @@ const SKINS = {
   CHAMP_BOOTS: { slot: 'boots', name: 'CHAMPION BOOTS', rarity: 'Legendary', hex: '#f6f2e6', sparkle: true, pass: true },
   TROPHY: { slot: 'celeb', name: 'TROPHY LIFT', rarity: 'Mythic', celeb: 'trophy', pass: true, desc: 'Hoist an invisible trophy over your head, again and again.' },
 };
-const SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base && !SKINS[k].pass); // what spins can give
+const SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base && !SKINS[k].pass && !SKINS[k].obj); // what spins can give (not pass or GOALS rewards)
 const LOCKER_SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base);
 /** the concrete colours and shapes a player model is built from: the style's defaults with skins on top */
 function lookFor(styleId, look = {}) {
@@ -540,6 +545,47 @@ const CHALLENGES = {
   comeback: { name: 'WIN AFTER FALLING BEHIND', goal: 1, xp: 600 },
 };
 const CHALLENGE_IDS = Object.keys(CHALLENGES);
+
+/* ---------- blueprints and GOALS ----------
+   A style from a spin is yours until your next style spin replaces it. Blueprints keep a style for good: GOALS
+   (long-term goals you grind) pay them out, and the Locker turns them into styles. Some steps also give a skin
+   you cannot get anywhere else */
+const BP_COST = { Rare: 2, Epic: 4, Legendary: 7, Mythic: 12, Generational: 20 };
+const GOALS = [
+  { id: 'goals', name: 'SCORE GOALS', stat: 'goals', steps: [5, 15, 40, 100, 250], bp: [2, 3, 5, 8, 12] },
+  { id: 'wins', name: 'WIN MATCHES', stat: 'wins', steps: [3, 10, 25, 60, 150], bp: [2, 3, 5, 8, 12], skins: { 2: 'GRIND_BOOTS', 4: 'VETERAN_KIT' } },
+  { id: 'assists', name: 'GET ASSISTS', stat: 'assists', steps: [3, 10, 30, 75], bp: [2, 3, 5, 8] },
+  { id: 'tackles', name: 'WIN TACKLES', stat: 'tackles', steps: [10, 30, 80, 200], bp: [2, 3, 5, 8] },
+  { id: 'ankles', name: 'BREAK ANKLES', stat: 'ankles', steps: [3, 10, 30, 75], bp: [2, 3, 5, 8], skins: { 3: 'ANKLE_BAND' } },
+  { id: 'awakens', name: 'AWAKEN', stat: 'awakens', steps: [3, 10, 30, 75], bp: [2, 3, 5, 8], skins: { 1: 'AWAKE_GLOVES' } },
+  { id: 'played', name: 'PLAY MATCHES', stat: 'played', steps: [5, 20, 50, 120, 300], bp: [1, 2, 4, 6, 10], skins: { 4: 'LEGEND_KIT' } },
+];
+const Goals = {
+  /** after each match: every finished step pays its blueprints (and sometimes a skin) */
+  check(d) {
+    const out = [];
+    for (const g of GOALS) {
+      let step = d.goalSteps[g.id] || 0;
+      while (step < g.steps.length && (d.stats[g.stat] || 0) >= g.steps[step]) {
+        const bp = g.bp[step], skin = g.skins && g.skins[step];
+        d.bp += bp;
+        if (skin && !d.skins.includes(skin)) d.skins.push(skin);
+        out.push(g.name + ' ' + g.steps[step] + ': +' + bp + ' BLUEPRINT' + (bp > 1 ? 'S' : '') + (skin ? ' AND ' + SKINS[skin].name : ''));
+        step++;
+      }
+      d.goalSteps[g.id] = step;
+    }
+    return out;
+  },
+  /** keep a style for good */
+  unlock(d, id) {
+    const st = STYLES[id];
+    if (!st || d.styles.includes(id) || d.bp < BP_COST[st.rarity]) return false;
+    d.bp -= BP_COST[st.rarity]; d.styles.push(id);
+    if (d.spunStyle === id) d.spunStyle = null;
+    return true;
+  },
+};
 
 /* ---------- daily: a free gift and one challenge each day. No streaks: missing a day costs nothing ---------- */
 const DAILY_CHALLENGES = {
