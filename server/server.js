@@ -21,7 +21,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const PORT = Number(process.env.PORT) || 8787;
 const STEP = 1 / 60, SNAP_EVERY = 3;
 const MODES_OK = ['quick', 'koth', 'volleys', 'duel'];
-const STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken'];
+const STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken', 'emote'];
 const KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
 const FX_SENT = ['burst', 'turbo', 'shuffle', 'lockdown', 'skyTrap', 'vision', 'scent', 'loaded', 'call', 'bubble', 'feathers'];
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -111,12 +111,12 @@ function toCtl(m, prev) {
   return {
     moveX: Math.max(-1, Math.min(1, +m.mx || 0)), moveY: Math.max(-1, Math.min(1, +m.my || 0)), sprint: b('sp'),
     jump: b('jump'), jumpHeld: b('jh'), shootDown: b('sd'), shootHeld: b('sh'), shootUp: b('su'), passDown: b('pd'), passUp: b('pu'),
-    dodge: b('dodge'), tackle: b('tackle'), ab: [b('a0'), b('a1'), b('a2')], flow: b('flow'), awaken: b('aw'), shiftLock: b('sl'), item: false, board: false,
+    dodge: b('dodge'), tackle: b('tackle'), ab: [b('a0'), b('a1'), b('a2')], flow: b('flow'), awaken: b('aw'), shiftLock: b('sl'), emote: Number.isInteger(m && m.em) && m.em >= 0 && m.em < G.EMOTES.length ? m.em : -1, item: false, board: false,
     camYaw: Number.isFinite(+m.cy) ? +m.cy : 0, aim,
   };
 }
 const EDGES = ['jump', 'shootDown', 'shootUp', 'passDown', 'passUp', 'dodge', 'tackle', 'flow', 'awaken'];
-function clearEdges(c) { for (const k of EDGES) c[k] = false; c.ab = [false, false, false]; }
+function clearEdges(c) { for (const k of EDGES) c[k] = false; c.ab = [false, false, false]; c.emote = -1; }
 /** moving or pressing anything counts; only turning the camera does not */
 const active = (c) => Math.abs(c.moveX) > 0.2 || Math.abs(c.moveY) > 0.2 || c.sprint || c.jumpHeld || c.shootHeld || EDGES.some((k) => c[k]) || c.ab.some(Boolean);
 /** one step of the idle clock for a human player */
@@ -188,7 +188,7 @@ function snapshot(room) {
     if (p.charging) flags |= 1; if (p.onGround) flags |= 2; if (p.flowT > 0) flags |= 4; if (p.callT > 0 || p.fx.call > 0) flags |= 8;
     if (p.fx.shuffle > 0) flags |= 16; if (p.fx.lockdown > 0) flags |= 32; if (p.fx.bubble > 0) flags |= 64; if (p.awakeT > 0) flags |= 128; if (p.setPiece && p.setPiece.type === 'throw') flags |= 256;
     return [r2(p.pos.x), r2(p.pos.y), r2(p.pos.z), r2(p.vel.x), r2(p.vel.z), r2(p.yaw), STATES.indexOf(p.state), r2(p.stateT), r2(p.stateDur), r2(p.kickT), KICKS.indexOf(p.kickStyle || null), flags, r2(p.charge),
-      p.dive ? p.dive.side : 0, p.dive ? (p.dive.high ? 1 : 0) : 0, p.dive ? r2(p.dive.dur) : 0, r2(p.flipT)];
+      p.dive ? p.dive.side : 0, p.dive ? (p.dive.high ? 1 : 0) : 0, p.dive ? r2(p.dive.dur) : 0, r2(p.flipT), p.state === 'emote' ? G.EMOTES.findIndex((e) => e.id === p.emote) : -1];
   });
   const base = { t: 'snap', n: room.steps, ph: m.phase, pt: r2(m.phaseT), c: r2(m.clock), g: m.golden ? r2(m.goldenClock) : -1, s: m.score, b: [r2(b.pos.x), r2(b.pos.y), r2(b.pos.z), idx(b.owner)], pl,
     hill: m.hill ? [r2(m.hill.x), r2(m.hill.z), m.hill.holder] : null, ev: room.events };
@@ -305,7 +305,7 @@ wss.on('connection', (ws) => {
             room.events.push({ e: 'back', to: me.id });
           }
           if (active(c)) { p.idleT = 0; if (p.idleWarned != null) { p.idleWarned = null; room.events.push({ e: 'idleok', to: me.id }); } }
-          for (const k of EDGES) c[k] = c[k] || (p.ctl && p.ctl[k]); c.ab = c.ab.map((v, i) => v || (p.ctl && p.ctl.ab[i])); p.ctl = c;
+          for (const k of EDGES) c[k] = c[k] || (p.ctl && p.ctl[k]); c.ab = c.ab.map((v, i) => v || (p.ctl && p.ctl.ab[i])); if (c.emote < 0 && p.ctl) c.emote = p.ctl.emote; p.ctl = c;
         }
         break;
       case 'chat': if (room) chat(me, room, m); break;

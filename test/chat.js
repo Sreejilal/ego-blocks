@@ -107,7 +107,8 @@ const notes = (c) => c.got.filter((m) => m.t === 'chat-note').map((m) => m.text)
   await C.evaluate(() => EGO.Net.send({ t: 'leave' })); await C.context().close(); await sleep(300);
 
   // in a match
-  await A.click('#on-go'); await sleep(2000);
+  await A.click('#on-go'); await sleep(1500);
+  for (let i = 0; i < 40; i++) { if (await A.evaluate(() => !!(EGO.Net.nm && EGO.Net.snaps.length > 2))) break; await sleep(250); } // the match is running on this screen
   await A.keyboard.press('Digit1');
   let feedB = '';
   for (let i = 0; i < 16 && !/PASS!/.test(feedB); i++) { await sleep(250); feedB = await B.evaluate(() => document.getElementById('chatfeed').textContent); }

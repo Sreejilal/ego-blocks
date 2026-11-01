@@ -5,7 +5,7 @@
    real time so movement stays smooth. Rooms have a 4-letter code and
    an invite link. The offline game never needs any of this.
    ===================================================================== */
-const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken'];
+const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken', 'emote'];
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
 const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
 const NET_DELAY = 0.12; // seconds the picture runs behind the server
@@ -278,7 +278,7 @@ const Net = {
   },
   /** in a match: 1 to 4 (or VIEW + D-pad) send a phrase, T opens the chat box */
   chatKeys() {
-    if (!Portal.chatAllowed()) return;
+    if (!Portal.chatAllowed() || UI.emoteOpen) return; // the emote wheel uses 1 to 6
     const E = Input.edges;
     for (let i = 0; i < 4; i++) if (E.has('Digit' + (i + 1)) || E.has('Numpad' + (i + 1))) this.quick(i);
     if (Input.padHeld(PAD.BACK)) ['PadUp', 'PadRight', 'PadDown', 'PadLeft'].forEach((k, i) => { if (E.has(k)) this.quick(i); });
@@ -362,6 +362,7 @@ const Net = {
       p.vel.set(B[3], 0, B[4]);
       p.yaw = A[5] + wrapA(B[5] - A[5]) * k;
       const st = NET_STATES[B[6]] || 'free';
+      if (B[17] >= 0 && EMOTES[B[17]]) p.emote = EMOTES[B[17]].id;
       if (p.state !== st) p.setState(st, B[8]);
       p.stateT = B[7] + since; p.stateDur = B[8];
       p.kickT = B[9] >= 0 ? Math.min(0.999, B[9] + since / 0.3) : -1; p.kickStyle = NET_KICKS[B[10]] || null;
@@ -395,6 +396,7 @@ const Net = {
     const P = this.pend;
     P.jump = P.jump || c.jump; P.sd = P.sd || c.shootDown; P.su = P.su || c.shootUp; P.pd = P.pd || c.passDown; P.pu = P.pu || c.passUp;
     P.dodge = P.dodge || c.dodge; P.tackle = P.tackle || c.tackle; P.flow = P.flow || c.flow; P.aw = P.aw || c.awaken;
+    if (c.emote >= 0) P.em = c.emote;
     P.a0 = P.a0 || c.ab[0]; P.a1 = P.a1 || c.ab[1]; P.a2 = P.a2 || c.ab[2];
     this.held = c;
   },
@@ -408,6 +410,7 @@ const Net = {
   frame(rdt) {
     const nm = this.nm; if (!nm) return;
     const busy = this.paused || this.typing();
+    if (!busy) UI.emoteKeys();
     if (!busy) Cam.look(rdt);
     this.collect(busy ? null : Input.controls());
     if (!busy) this.chatKeys();

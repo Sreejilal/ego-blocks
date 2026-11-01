@@ -263,7 +263,7 @@ class Player {
       if (this.stateT >= d.dur + d.rest) { this.dive = null; this.setState('free'); this.pos.y = Math.max(this.pos.y, 0); }
     } else {
       friction = 12;
-      if ((st === 'down' || st === 'stun' || st === 'frozen' || st === 'celebrate' || st === 'kickoff' || st === 'awaken') && this.stateDur > 0 && this.stateT >= this.stateDur) this.setState('free');
+      if ((st === 'down' || st === 'stun' || st === 'frozen' || st === 'celebrate' || st === 'kickoff' || st === 'awaken' || st === 'emote') && this.stateDur > 0 && this.stateT >= this.stateDur) this.setState('free');
     }
     if (st !== 'dash' && st !== 'slide' && !(st === 'dive' && this.stateT < (this.dive ? this.dive.dur : 0))) {
       if (friction > 0) {
@@ -370,8 +370,8 @@ class Player {
         } else { bx = 0.32; aL = 0.7; aR = 0.7; lL = s * 1.1; lR = -s * 1.1; }
         break;
       case 'windup': bx = 0.5; by = 0.6; aL = 0.9; aR = 0.9; aLz = 0.4; aRz = -0.4; lL = -0.5; lR = 0.4; break;
-      case 'celebrate': {
-        const t = this.stateT, c = this.look.celeb;
+      case 'celebrate': case 'emote': {
+        const t = this.stateT, c = st === 'emote' ? this.emote : this.look.celeb;
         lL = lR = 0; bx = 0; aL = aR = 0;
         if (c === 'plane') { aLz = 1.55; aRz = -1.55; bz = Math.sin(t * 3.2) * 0.38; bx = 0.18; lL = Math.sin(t * 9) * 0.5; lR = -lL; by = 0.72 + Math.abs(Math.cos(t * 9)) * 0.05; }
         else if (c === 'shush') { aR = -2.55; aRz = 0.35; aL = 0.1; aLz = 0.35; hx = -0.08 + Math.sin(t * 2.2) * 0.06; bz = Math.sin(t * 1.6) * 0.05; }
@@ -394,6 +394,10 @@ class Player {
           if (ph > 0.8 && ph < 0.9) bx = 0.25;
           const k = Math.floor(t / 1.7);
           if (ph >= 0.8 && this._meteor !== k) { this._meteor = k; FX.ring(this.pos.x, 0.2, this.pos.z, this.aura, 1.6, 26); FX.sparks(this.pos.x, 0.4, this.pos.z, this.aura, 18, 7); Shake.add(this.isHuman ? 0.25 : 0); }
+        } else if (c === 'wave') { aR = -2.75 + Math.sin(t * 11) * 0.2; aRz = -0.25 + Math.sin(t * 11) * 0.35; aLz = 0.1; hx = -0.1;
+        } else if (c === 'clap') { const cl = Math.abs(Math.sin(t * 9)); aL = aR = -1.35; aLz = 0.15 + cl * 0.45; aRz = -aLz; by = 0.72 + cl * 0.02;
+        } else if (c === 'flex') { aL = aR = -1.55; aLz = 1.45 + Math.sin(t * 5) * 0.08; aRz = -aLz; by = 0.72 - 0.04 * Math.abs(Math.sin(t * 5)); hx = 0.06;
+        } else if (c === 'point') { aR = -3.0; aRz = -0.15; aL = 0.2; aLz = 0.3; hx = -0.4;
         } else { const j = Math.abs(Math.sin(t * 9)); by = 0.72 + j * 0.25; aLz = 2.6 + Math.sin(t * 14) * 0.3; aRz = -2.6 - Math.sin(t * 14) * 0.3; }
         break;
       }

@@ -336,6 +336,13 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .crosshair.ball { outline: 3px solid #ffe9a8; outline-offset: 7px; }
 #hud .balltag { left: 50%; top: calc(50% + 26px); transform: translateX(-50%); font-family: var(--font-label); font-size: 11px; letter-spacing: .14em; color: #ffe9a8; text-shadow: 2px 2px 0 var(--ink); }
 
+/* the emote wheel */
+#emote-pop { position: absolute; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(520px, calc(100% - 32px)); padding: 12px; display: grid; gap: 8px; box-sizing: border-box; z-index: 30; }
+#emote-pop .em-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+#emote-pop .em-grid .btn { font-size: 20px; padding: 6px 8px 9px; }
+body.touch #emote-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0px)); }
+body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
+
 /* GOALS and blueprints */
 .btn.ghost.goals { color: var(--emerald); }
 .gl-top { padding: 16px; display: grid; gap: 8px; }
@@ -1521,6 +1528,7 @@ const ICON_MAPS = {
   beam: ['............', '............', '........kkk.', '.......kwwwk', 'AAAAAAAkwkwk', 'wwwwwwwkwwwk', 'AAAAAAAkwkwk', '.......kwwwk', '........kkk.', '............', '............', '............'],
   flip: ['............', '...AAAAA....', '..A.....A...', '.A.......A..', '.A.......A..', '.A......AAA.', '.A.......A..', '............', '....kkk.....', '...kwwwk....', '...kwwwk....', '....kkk.....'],
   shield: ['............', '..AAAAAAAA..', '..AwwwwwwA..', '..AwwwwwwA..', '..AwwwwwwA..', '..AwwwwwwA..', '...AwwwwA...', '...AwwwwA...', '....AwwA....', '.....AA.....', '............', '............'],
+  smile: ['............', '...kkkkkk...', '..kwwwwwwk..', '.kwwwwwwwwk.', '.kwkwwwwkwk.', '.kwwwwwwwwk.', '.kwkwwwwkwk.', '.kwwkkkkwwk.', '..kwwwwwwk..', '...kkkkkk...', '............', '............'],
   cam: ['............', '...kkkk.....', '.kkkwwkkkkk.', '.kwwwwwwwwk.', '.kwwwkkwwwk.', '.kwwkwwkwwk.', '.kwwkwwkwwk.', '.kwwwkkwwwk.', '.kwwwwwwwwk.', '.kkkkkkkkkk.', '............', '............'],
   chat: ['............', '.kkkkkkkkkk.', 'kwwwwwwwwwwk', 'kwwwwwwwwwwk', 'kwkkwkkwkkwk', 'kwkkwkkwkkwk', 'kwwwwwwwwwwk', 'kwwwwwwwwwwk', '.kkkwwkkkkk.', '...kwk......', '...kk.......', '............'],
   call: ['............', '..AAAAAAAA..', '.AAAAwwAAAA.', '.AAAAwwAAAA.', '.AAAAwwAAAA.', '.AAAAwwAAAA.', '.AAAAAAAAAA.', '.AAAAwwAAAA.', '..AAAAAAAA..', '....AA......', '...AA.......', '............'],
@@ -2811,7 +2819,7 @@ class Player {
       if (this.stateT >= d.dur + d.rest) { this.dive = null; this.setState('free'); this.pos.y = Math.max(this.pos.y, 0); }
     } else {
       friction = 12;
-      if ((st === 'down' || st === 'stun' || st === 'frozen' || st === 'celebrate' || st === 'kickoff' || st === 'awaken') && this.stateDur > 0 && this.stateT >= this.stateDur) this.setState('free');
+      if ((st === 'down' || st === 'stun' || st === 'frozen' || st === 'celebrate' || st === 'kickoff' || st === 'awaken' || st === 'emote') && this.stateDur > 0 && this.stateT >= this.stateDur) this.setState('free');
     }
     if (st !== 'dash' && st !== 'slide' && !(st === 'dive' && this.stateT < (this.dive ? this.dive.dur : 0))) {
       if (friction > 0) {
@@ -2918,8 +2926,8 @@ class Player {
         } else { bx = 0.32; aL = 0.7; aR = 0.7; lL = s * 1.1; lR = -s * 1.1; }
         break;
       case 'windup': bx = 0.5; by = 0.6; aL = 0.9; aR = 0.9; aLz = 0.4; aRz = -0.4; lL = -0.5; lR = 0.4; break;
-      case 'celebrate': {
-        const t = this.stateT, c = this.look.celeb;
+      case 'celebrate': case 'emote': {
+        const t = this.stateT, c = st === 'emote' ? this.emote : this.look.celeb;
         lL = lR = 0; bx = 0; aL = aR = 0;
         if (c === 'plane') { aLz = 1.55; aRz = -1.55; bz = Math.sin(t * 3.2) * 0.38; bx = 0.18; lL = Math.sin(t * 9) * 0.5; lR = -lL; by = 0.72 + Math.abs(Math.cos(t * 9)) * 0.05; }
         else if (c === 'shush') { aR = -2.55; aRz = 0.35; aL = 0.1; aLz = 0.35; hx = -0.08 + Math.sin(t * 2.2) * 0.06; bz = Math.sin(t * 1.6) * 0.05; }
@@ -2942,6 +2950,10 @@ class Player {
           if (ph > 0.8 && ph < 0.9) bx = 0.25;
           const k = Math.floor(t / 1.7);
           if (ph >= 0.8 && this._meteor !== k) { this._meteor = k; FX.ring(this.pos.x, 0.2, this.pos.z, this.aura, 1.6, 26); FX.sparks(this.pos.x, 0.4, this.pos.z, this.aura, 18, 7); Shake.add(this.isHuman ? 0.25 : 0); }
+        } else if (c === 'wave') { aR = -2.75 + Math.sin(t * 11) * 0.2; aRz = -0.25 + Math.sin(t * 11) * 0.35; aLz = 0.1; hx = -0.1;
+        } else if (c === 'clap') { const cl = Math.abs(Math.sin(t * 9)); aL = aR = -1.35; aLz = 0.15 + cl * 0.45; aRz = -aLz; by = 0.72 + cl * 0.02;
+        } else if (c === 'flex') { aL = aR = -1.55; aLz = 1.45 + Math.sin(t * 5) * 0.08; aRz = -aLz; by = 0.72 - 0.04 * Math.abs(Math.sin(t * 5)); hx = 0.06;
+        } else if (c === 'point') { aR = -3.0; aRz = -0.15; aL = 0.2; aLz = 0.3; hx = -0.4;
         } else { const j = Math.abs(Math.sin(t * 9)); by = 0.72 + j * 0.25; aLz = 2.6 + Math.sin(t * 14) * 0.3; aRz = -2.6 - Math.sin(t * 14) * 0.3; }
         break;
       }
@@ -3905,6 +3917,8 @@ const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /** bot difficulty 0..1 from rank points */
 /* each tier is a clear step: bot skill (reactions, passing, tackles, keepers) and how full and loud the stadium is */
 /** quick-chat phrases, the same list on the server and in the game. The first four have keys 1 to 4 */
+/** emotes from the wheel (B, the EMOTE button, D-pad down): you stand and do it for a moment, everyone sees it */
+const EMOTES = [{ id: 'wave', name: 'WAVE' }, { id: 'clap', name: 'CLAP' }, { id: 'robot', name: 'ROBOT' }, { id: 'shush', name: 'SHUSH' }, { id: 'flex', name: 'FLEX' }, { id: 'point', name: 'POINT UP' }];
 const QUICK_CHAT = ['PASS!', 'NICE!', 'GG', 'ON ME', 'SHOOT!', 'DEFEND!', 'THANKS', 'SORRY'];
 const TIER_SKILL = [0.15, 0.33, 0.5, 0.65, 0.8, 1.0];
 const TIER_FANS = [0.25, 0.36, 0.48, 0.62, 0.8, 1];
@@ -4134,6 +4148,7 @@ class Match {
     const ml = len2D(mx, mz); if (ml > 1) { mx /= ml; mz /= ml; }
     const live = this.phase === 'play' || this.phase === 'out' || this.phase === 'goal' || this.phase === 'end';
     p.mx = live ? mx : 0; p.mz = live ? mz : 0; p.sprint = c.sprint;
+    if (c.emote != null && c.emote >= 0 && live) this.emote(p, c.emote);
     p.faceYaw = p.charging || c.shiftLock ? cy : null; // shift lock: always face where the camera looks
     p.jetThrust = c.jumpHeld && p.fx.jetpack > 0;
     if (this.phase !== 'play') { p.charging = false; p.charge = 0; return; }
@@ -4690,6 +4705,16 @@ class Match {
     Sfx.flow(); Sfx.cutin();
     if (p.isHuman) { if (!this.cinematic(p, 'AWAKENING · ' + aw.name)) TimeCtl.slowMo(0.35, 0.8); Shake.add(0.4); }
     else Shake.add(0.12);
+    return true;
+  }
+  /** an emote from the wheel: stand still for a moment and do it. Not with the ball, and once every 3 seconds */
+  emote(p, i) {
+    const em = EMOTES[i]; if (!em) return false;
+    if (this.ball.owner === p) { if (p.isHuman) { this.toast('NOT WITH THE BALL', 'bad', p); Sfx.deny(); } return false; }
+    if (p.state !== 'free' || (p.emoteCd || 0) > this.time) return false;
+    p.emote = em.id; p.emoteCd = this.time + 3; p.charging = false; p.charge = 0;
+    p.setState('emote', 1.6);
+    this.label(p, em.name, '#ffffff', 1.3);
     return true;
   }
   /** a human asks for the move: say why when it cannot happen */
@@ -5963,7 +5988,7 @@ const Input = {
       if (inGame && GAME_KEYS.has(e.code)) e.preventDefault();
       if (e.code === 'Tab' && Game.playing()) e.preventDefault();
       if (!e.repeat) { this.down.add(e.code); this.edges.add(e.code); }
-      if (e.code === 'Escape') { if (Net.chatOpen) Net.closeChat(false); else Game.onEscape(); }
+      if (e.code === 'Escape') { if (Net.chatOpen) Net.closeChat(false); else if (UI.emoteOpen) UI.toggleEmotes(false); else Game.onEscape(); }
       else if (e.code === 'KeyP' && !e.repeat && (Game.playing() || Game.state === 'paused')) Game.onEscape(); // P pauses too: in fullscreen ESC only leaves fullscreen
       this.usingPad = false;
     });
@@ -6031,7 +6056,7 @@ const Input = {
   axis(i) { const p = this.pad; if (!p || !p.axes[i]) return 0; const v = p.axes[i]; return Math.abs(v) < 0.16 ? 0 : v; },
   controls() {
     const k = this.down, e = this.edges, u = this.up;
-    const chatPad = Game.state === 'online' && this.padHeld(PAD.BACK); // online, VIEW + D-pad picks a quick-chat phrase
+    const chatPad = (Game.state === 'online' && this.padHeld(PAD.BACK)) || UI.emoteOpen; // online, VIEW + D-pad picks a quick-chat phrase; the emote wheel uses the D-pad too
     let mx = (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0);
     let my = (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0);
     const lx = this.axis(0), ly = this.axis(1);
@@ -6048,11 +6073,13 @@ const Input = {
       tackle: e.has('KeyF') || e.has('PadX') || e.has('T_tackle'),
       ab: [e.has('KeyQ') || (e.has('PadLeft') && !chatPad) || e.has('T_ab0'), e.has('KeyE') || (e.has('PadUp') && !chatPad) || e.has('T_ab1'), e.has('KeyR') || (e.has('PadRight') && !chatPad) || e.has('T_ab2')],
       flow: e.has('KeyG') || e.has('PadY') || e.has('T_flow'),
-      awaken: e.has('KeyZ'), shiftLock: !!Save.data.settings.shiftLock, // shift lock: you always face where the camera looks // the Flow button (G, Y, FLOW) awakens you too when only the Awakening bar is full
+      emote: this.takeEmote(), awaken: e.has('KeyZ'), shiftLock: !!Save.data.settings.shiftLock, // shift lock: you always face where the camera looks // the Flow button (G, Y, FLOW) awakens you too when only the Awakening bar is full
       item: e.has('KeyX') || (e.has('PadDown') && !chatPad) || e.has('T_item'),
       board: k.has('Tab') || this.padHeld(PAD.BACK) || T.board,
     };
   },
+  emotePick: -1,
+  takeEmote() { const i = this.emotePick; this.emotePick = -1; return i; },
   consumeEdges() { this.edges.clear(); this.up.clear(); },
   endFrame() { this.mdx = 0; this.mdy = 0; },
 };
@@ -6207,7 +6234,7 @@ const Touch = {
     return `<div class="stick idle" id="t-stick"><div class="ring"></div><div class="base"></div><div class="knob"></div><b class="lb">MOVE</b></div>`
       + btn('shoot', 'big', 'SHOOT', '<span class="chg"></span>') + btn('pass', 'pass', 'PASS') + btn('dt', 'dt', 'TACKLE', '<span class="pips"><i></i></span>') + btn('jump', '', 'JUMP')
       + btn('ab0', 'ab', '') + btn('ab1', 'ab', '') + btn('ab2', 'ab', '') + btn('flow', 'flow off', 'FLOW') + btn('item', 'item off', 'ITEM')
-      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tb sm" data-act="cam" aria-label="Switch camera"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
+      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tb sm" data-act="cam" aria-label="Switch camera"><i class="ic"></i></div><div class="tb sm" data-act="emote" aria-label="Emotes"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
   },
   init() {
     const el = document.createElement('div');
@@ -6225,6 +6252,7 @@ const Touch = {
     icon('pause', iconURL('pause'));
     icon('chat', iconURL('chat'));
     icon('cam', iconURL('cam'));
+    icon('emote', iconURL('smile'));
     icon('shoot', iconURL('shot', '#ffffff'));
     icon('pass', iconURL('pass', '#a9c7ff'));
     icon('jump', iconURL('jump'));
@@ -6308,7 +6336,7 @@ const Touch = {
     put('pause', W - Math.max(raw.r, 8) - 30, raw.t + 30, 46);
     // chat (online) and camera sit next to pause; an upright phone has no room beside the score, so they stack under it
     this.b.chat.hidden = Game.state !== 'online' || !Portal.chatAllowed();
-    const tops = this.b.chat.hidden ? ['cam'] : ['chat', 'cam'], px = W - Math.max(raw.r, 8) - 30;
+    const tops = this.b.chat.hidden ? ['cam', 'emote'] : ['chat', 'cam', 'emote'], px = W - Math.max(raw.r, 8) - 30;
     tops.forEach((a, i) => (portrait ? put(a, px, raw.t + 86 + i * 56, 46) : put(a, px - 56 * (i + 1), raw.t + 30, 46)));
     this.R = 58 * s;
     this.ghost.x = sa.l + (portrait ? 80 : 104) * s;
@@ -6336,7 +6364,7 @@ const Touch = {
     const rec = { kind: 'btn', act, el: btn, x0: x, y0: y, lx: x, ly: y, looking: false };
     this.ptrs.set(id, rec);
     btn.classList.add('down');
-    if (act === 'pause' || act === 'board' || act === 'chat' || act === 'cam') return; // these act on release
+    if (act === 'pause' || act === 'board' || act === 'chat' || act === 'cam' || act === 'emote') return; // these act on release
     if (act === 'dt') { const m = Game.match, p = m && m.human; act = p && m.ball.owner === p ? 'dodge' : 'tackle'; rec.act = act; }
     this.held.add(act);
     Input.edges.add('T_' + act);
@@ -6374,6 +6402,7 @@ const Touch = {
       if (r.act === 'pause') { if (e) Game.pause(); return; }
       if (r.act === 'chat') { if (e) Net.openChat(); return; }
       if (r.act === 'cam') { if (e) Input.edges.add('T_cam'); return; }
+      if (r.act === 'emote') { if (e) UI.toggleEmotes(); return; }
       if (r.act === 'board') { if (e) { this.board = !this.board; this.boardT = 8; } return; }
       this.held.delete(r.act);
       Input.up.add('T_' + r.act);
@@ -6777,7 +6806,7 @@ const Portal = {
    real time so movement stays smooth. Rooms have a 4-letter code and
    an invite link. The offline game never needs any of this.
    ===================================================================== */
-const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken'];
+const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken', 'emote'];
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
 const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
 const NET_DELAY = 0.12; // seconds the picture runs behind the server
@@ -7050,7 +7079,7 @@ const Net = {
   },
   /** in a match: 1 to 4 (or VIEW + D-pad) send a phrase, T opens the chat box */
   chatKeys() {
-    if (!Portal.chatAllowed()) return;
+    if (!Portal.chatAllowed() || UI.emoteOpen) return; // the emote wheel uses 1 to 6
     const E = Input.edges;
     for (let i = 0; i < 4; i++) if (E.has('Digit' + (i + 1)) || E.has('Numpad' + (i + 1))) this.quick(i);
     if (Input.padHeld(PAD.BACK)) ['PadUp', 'PadRight', 'PadDown', 'PadLeft'].forEach((k, i) => { if (E.has(k)) this.quick(i); });
@@ -7134,6 +7163,7 @@ const Net = {
       p.vel.set(B[3], 0, B[4]);
       p.yaw = A[5] + wrapA(B[5] - A[5]) * k;
       const st = NET_STATES[B[6]] || 'free';
+      if (B[17] >= 0 && EMOTES[B[17]]) p.emote = EMOTES[B[17]].id;
       if (p.state !== st) p.setState(st, B[8]);
       p.stateT = B[7] + since; p.stateDur = B[8];
       p.kickT = B[9] >= 0 ? Math.min(0.999, B[9] + since / 0.3) : -1; p.kickStyle = NET_KICKS[B[10]] || null;
@@ -7167,6 +7197,7 @@ const Net = {
     const P = this.pend;
     P.jump = P.jump || c.jump; P.sd = P.sd || c.shootDown; P.su = P.su || c.shootUp; P.pd = P.pd || c.passDown; P.pu = P.pu || c.passUp;
     P.dodge = P.dodge || c.dodge; P.tackle = P.tackle || c.tackle; P.flow = P.flow || c.flow; P.aw = P.aw || c.awaken;
+    if (c.emote >= 0) P.em = c.emote;
     P.a0 = P.a0 || c.ab[0]; P.a1 = P.a1 || c.ab[1]; P.a2 = P.a2 || c.ab[2];
     this.held = c;
   },
@@ -7180,6 +7211,7 @@ const Net = {
   frame(rdt) {
     const nm = this.nm; if (!nm) return;
     const busy = this.paused || this.typing();
+    if (!busy) UI.emoteKeys();
     if (!busy) Cam.look(rdt);
     this.collect(busy ? null : Input.controls());
     if (!busy) this.chatKeys();
@@ -7724,7 +7756,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + this.tplEmotes();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -7824,6 +7856,7 @@ const UI = {
             ${row(key('DOUBLE TAP'), 'Double tap the right side to face the goal')}
             ${row(key('SCORE'), 'Tap the score for the scoreboard. The top right button pauses')}
             ${row(key('CAMERA'), 'The camera button at the top switches between third person and first person')}
+            ${row(key('EMOTE'), 'The smiley button at the top opens the emote wheel')}
             ${row(key('CHAT'), 'Online: the bubble next to pause opens quick chat. Typing needs an account')}
             ${row(key('REPLAY'), 'After a goal, a nutmeg or an ankle breaker, tap REPLAY to watch it again')}
           </div></section>
@@ -7847,12 +7880,13 @@ const UI = {
             ${row(key('ENTER'), 'Watch the replay after a goal, a nutmeg or an ankle breaker. SAVE CLIP downloads it as a video')}
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
             ${row(key('V'), 'Switch camera: third person (behind you) or first person (your eyes)')}
+            ${row(key('B'), 'Emote wheel: wave, clap, robot, shush, flex, point up. Pick with 1 to 6. Not while you have the ball')}
             ${row(key('L'), 'Shift lock: your player always faces where you look, so A and D step sideways with the ball in front. The camera sits over your shoulder')}
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}
             ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Feint')}${row(key('X'), 'Slide tackle')}
-            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
+            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('D-PAD DOWN'), 'Emote wheel (not in Lawless), then the D-pad picks')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
           </div></section>
           <section class="panel"><h3>WINNING THE BALL</h3><ul>
             <li><b>Run into a loose ball</b> to dribble it. You cannot run through a carrier, you have to tackle.</li>
@@ -8008,6 +8042,28 @@ const UI = {
       <div class="hint" id="hint" hidden></div>
     </section>`;
   },
+  tplEmotes() {
+    return `<div id="emote-pop" class="panel" hidden><div class="cp-head"><span class="label">EMOTES</span><button class="btn ghost" id="em-close" type="button">CLOSE</button></div>
+      <div class="em-grid">${EMOTES.map((e, i) => `<button class="btn small" type="button" data-em="${i}"><span class="key">${i + 1}</span> ${e.name}</button>`).join('')}</div>
+      <p class="label em-pad">CONTROLLER: D-PAD LEFT, UP, RIGHT, DOWN</p></div>`;
+  },
+  emoteOpen: false,
+  /** open or close the emote wheel (B, the EMOTE button, D-pad down) */
+  toggleEmotes(on = !this.emoteOpen) {
+    if (on && !Game.playing()) return;
+    this.emoteOpen = on; $('emote-pop').hidden = !on;
+    if (on) Input.releaseLock(); else if (Game.playing() && !Net.paused && !Touch.on) Input.requestLock();
+  },
+  pickEmote(i) { Input.emotePick = i; Sfx.click(); this.toggleEmotes(false); },
+  /** in a match: B opens the wheel; while it is open 1 to 6 (or the D-pad) pick */
+  emoteKeys() {
+    const E = Input.edges;
+    if (E.has('KeyB') || (E.has('PadDown') && !this.emoteOpen && !(Game.match && Game.match.cfg && Game.match.cfg.items))) { E.delete('KeyB'); E.delete('PadDown'); this.toggleEmotes(); return; }
+    if (!this.emoteOpen) return;
+    for (let i = 0; i < EMOTES.length; i++) if (E.has('Digit' + (i + 1)) || E.has('Numpad' + (i + 1))) { E.delete('Digit' + (i + 1)); E.delete('Numpad' + (i + 1)); this.pickEmote(i); return; }
+    ['PadLeft', 'PadUp', 'PadRight', 'PadDown'].forEach((k, i) => { if (E.has(k)) { E.delete(k); this.pickEmote(i); } });
+    if (E.has('PadB')) this.toggleEmotes(false);
+  },
   tplDaily() {
     return `<section id="scr-daily" class="overlay" hidden>
       <div class="dialog panel daily-box">
@@ -8099,6 +8155,8 @@ const UI = {
     click('go-howto', () => this.show('howto'));
     click('go-daily', () => { this.renderDaily(); $('scr-daily').hidden = false; });
     click('dl-close', () => { $('scr-daily').hidden = true; });
+    click('em-close', () => this.toggleEmotes(false));
+    $('emote-pop').addEventListener('click', (e) => { const b = e.target.closest('[data-em]'); if (b) this.pickEmote(+b.dataset.em); });
     click('go-profile', () => this.show('profile'));
     click('go-pass', () => this.show('pass'));
     click('go-online', () => Net.open());
@@ -8431,6 +8489,7 @@ const UI = {
   },
   showPause(on) {
     if (on && Net.chatOpen) Net.closeChat(false);
+    if (on && this.emoteOpen) this.toggleEmotes(false);
     if (on) { this.renderPause(); $('scoreboard').hidden = true; Touch.board = false; for (const l of this.labels) { l.t = 0; l.el.hidden = true; } this.youLabel.hidden = true; }
     $('scr-pause').hidden = !on;
   },
@@ -8645,7 +8704,7 @@ const Game = {
   },
   applyQuality() { const q = Save.data.settings.quality; World.setQuality(q === 'auto' ? this.autoQ : q); },
   toLobby() {
-    Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false);
+    Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false); UI.toggleEmotes(false);
     if (this.match) { this.match.dispose(); this.match = null; }
     Net.nm = null; Net.paused = false;
     Input.releaseLock();
@@ -8773,6 +8832,7 @@ const Game = {
         Replay.update(rdt);
         Shake.update(rdt);
       } else if (this.state === 'match') {
+        UI.emoteKeys();
         Cam.look(rdt);
         m.ctl = Input.controls();
         const sdt = TimeCtl.step(rdt);
@@ -8822,6 +8882,7 @@ window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS,
+  EMOTES,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

@@ -16,7 +16,7 @@ const Input = {
       if (inGame && GAME_KEYS.has(e.code)) e.preventDefault();
       if (e.code === 'Tab' && Game.playing()) e.preventDefault();
       if (!e.repeat) { this.down.add(e.code); this.edges.add(e.code); }
-      if (e.code === 'Escape') { if (Net.chatOpen) Net.closeChat(false); else Game.onEscape(); }
+      if (e.code === 'Escape') { if (Net.chatOpen) Net.closeChat(false); else if (UI.emoteOpen) UI.toggleEmotes(false); else Game.onEscape(); }
       else if (e.code === 'KeyP' && !e.repeat && (Game.playing() || Game.state === 'paused')) Game.onEscape(); // P pauses too: in fullscreen ESC only leaves fullscreen
       this.usingPad = false;
     });
@@ -84,7 +84,7 @@ const Input = {
   axis(i) { const p = this.pad; if (!p || !p.axes[i]) return 0; const v = p.axes[i]; return Math.abs(v) < 0.16 ? 0 : v; },
   controls() {
     const k = this.down, e = this.edges, u = this.up;
-    const chatPad = Game.state === 'online' && this.padHeld(PAD.BACK); // online, VIEW + D-pad picks a quick-chat phrase
+    const chatPad = (Game.state === 'online' && this.padHeld(PAD.BACK)) || UI.emoteOpen; // online, VIEW + D-pad picks a quick-chat phrase; the emote wheel uses the D-pad too
     let mx = (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0);
     let my = (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0);
     const lx = this.axis(0), ly = this.axis(1);
@@ -101,11 +101,13 @@ const Input = {
       tackle: e.has('KeyF') || e.has('PadX') || e.has('T_tackle'),
       ab: [e.has('KeyQ') || (e.has('PadLeft') && !chatPad) || e.has('T_ab0'), e.has('KeyE') || (e.has('PadUp') && !chatPad) || e.has('T_ab1'), e.has('KeyR') || (e.has('PadRight') && !chatPad) || e.has('T_ab2')],
       flow: e.has('KeyG') || e.has('PadY') || e.has('T_flow'),
-      awaken: e.has('KeyZ'), shiftLock: !!Save.data.settings.shiftLock, // shift lock: you always face where the camera looks // the Flow button (G, Y, FLOW) awakens you too when only the Awakening bar is full
+      emote: this.takeEmote(), awaken: e.has('KeyZ'), shiftLock: !!Save.data.settings.shiftLock, // shift lock: you always face where the camera looks // the Flow button (G, Y, FLOW) awakens you too when only the Awakening bar is full
       item: e.has('KeyX') || (e.has('PadDown') && !chatPad) || e.has('T_item'),
       board: k.has('Tab') || this.padHeld(PAD.BACK) || T.board,
     };
   },
+  emotePick: -1,
+  takeEmote() { const i = this.emotePick; this.emotePick = -1; return i; },
   consumeEdges() { this.edges.clear(); this.up.clear(); },
   endFrame() { this.mdx = 0; this.mdy = 0; },
 };

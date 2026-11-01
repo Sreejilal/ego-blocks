@@ -10,7 +10,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + this.tplEmotes();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -110,6 +110,7 @@ const UI = {
             ${row(key('DOUBLE TAP'), 'Double tap the right side to face the goal')}
             ${row(key('SCORE'), 'Tap the score for the scoreboard. The top right button pauses')}
             ${row(key('CAMERA'), 'The camera button at the top switches between third person and first person')}
+            ${row(key('EMOTE'), 'The smiley button at the top opens the emote wheel')}
             ${row(key('CHAT'), 'Online: the bubble next to pause opens quick chat. Typing needs an account')}
             ${row(key('REPLAY'), 'After a goal, a nutmeg or an ankle breaker, tap REPLAY to watch it again')}
           </div></section>
@@ -133,12 +134,13 @@ const UI = {
             ${row(key('ENTER'), 'Watch the replay after a goal, a nutmeg or an ankle breaker. SAVE CLIP downloads it as a video')}
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
             ${row(key('V'), 'Switch camera: third person (behind you) or first person (your eyes)')}
+            ${row(key('B'), 'Emote wheel: wave, clap, robot, shush, flex, point up. Pick with 1 to 6. Not while you have the ball')}
             ${row(key('L'), 'Shift lock: your player always faces where you look, so A and D step sideways with the ball in front. The camera sits over your shoulder')}
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}
             ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Feint')}${row(key('X'), 'Slide tackle')}
-            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
+            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('D-PAD DOWN'), 'Emote wheel (not in Lawless), then the D-pad picks')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
           </div></section>
           <section class="panel"><h3>WINNING THE BALL</h3><ul>
             <li><b>Run into a loose ball</b> to dribble it. You cannot run through a carrier, you have to tackle.</li>
@@ -294,6 +296,28 @@ const UI = {
       <div class="hint" id="hint" hidden></div>
     </section>`;
   },
+  tplEmotes() {
+    return `<div id="emote-pop" class="panel" hidden><div class="cp-head"><span class="label">EMOTES</span><button class="btn ghost" id="em-close" type="button">CLOSE</button></div>
+      <div class="em-grid">${EMOTES.map((e, i) => `<button class="btn small" type="button" data-em="${i}"><span class="key">${i + 1}</span> ${e.name}</button>`).join('')}</div>
+      <p class="label em-pad">CONTROLLER: D-PAD LEFT, UP, RIGHT, DOWN</p></div>`;
+  },
+  emoteOpen: false,
+  /** open or close the emote wheel (B, the EMOTE button, D-pad down) */
+  toggleEmotes(on = !this.emoteOpen) {
+    if (on && !Game.playing()) return;
+    this.emoteOpen = on; $('emote-pop').hidden = !on;
+    if (on) Input.releaseLock(); else if (Game.playing() && !Net.paused && !Touch.on) Input.requestLock();
+  },
+  pickEmote(i) { Input.emotePick = i; Sfx.click(); this.toggleEmotes(false); },
+  /** in a match: B opens the wheel; while it is open 1 to 6 (or the D-pad) pick */
+  emoteKeys() {
+    const E = Input.edges;
+    if (E.has('KeyB') || (E.has('PadDown') && !this.emoteOpen && !(Game.match && Game.match.cfg && Game.match.cfg.items))) { E.delete('KeyB'); E.delete('PadDown'); this.toggleEmotes(); return; }
+    if (!this.emoteOpen) return;
+    for (let i = 0; i < EMOTES.length; i++) if (E.has('Digit' + (i + 1)) || E.has('Numpad' + (i + 1))) { E.delete('Digit' + (i + 1)); E.delete('Numpad' + (i + 1)); this.pickEmote(i); return; }
+    ['PadLeft', 'PadUp', 'PadRight', 'PadDown'].forEach((k, i) => { if (E.has(k)) { E.delete(k); this.pickEmote(i); } });
+    if (E.has('PadB')) this.toggleEmotes(false);
+  },
   tplDaily() {
     return `<section id="scr-daily" class="overlay" hidden>
       <div class="dialog panel daily-box">
@@ -385,6 +409,8 @@ const UI = {
     click('go-howto', () => this.show('howto'));
     click('go-daily', () => { this.renderDaily(); $('scr-daily').hidden = false; });
     click('dl-close', () => { $('scr-daily').hidden = true; });
+    click('em-close', () => this.toggleEmotes(false));
+    $('emote-pop').addEventListener('click', (e) => { const b = e.target.closest('[data-em]'); if (b) this.pickEmote(+b.dataset.em); });
     click('go-profile', () => this.show('profile'));
     click('go-pass', () => this.show('pass'));
     click('go-online', () => Net.open());
@@ -717,6 +743,7 @@ const UI = {
   },
   showPause(on) {
     if (on && Net.chatOpen) Net.closeChat(false);
+    if (on && this.emoteOpen) this.toggleEmotes(false);
     if (on) { this.renderPause(); $('scoreboard').hidden = true; Touch.board = false; for (const l of this.labels) { l.t = 0; l.el.hidden = true; } this.youLabel.hidden = true; }
     $('scr-pause').hidden = !on;
   },

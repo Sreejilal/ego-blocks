@@ -207,6 +207,7 @@ class Match {
     const ml = len2D(mx, mz); if (ml > 1) { mx /= ml; mz /= ml; }
     const live = this.phase === 'play' || this.phase === 'out' || this.phase === 'goal' || this.phase === 'end';
     p.mx = live ? mx : 0; p.mz = live ? mz : 0; p.sprint = c.sprint;
+    if (c.emote != null && c.emote >= 0 && live) this.emote(p, c.emote);
     p.faceYaw = p.charging || c.shiftLock ? cy : null; // shift lock: always face where the camera looks
     p.jetThrust = c.jumpHeld && p.fx.jetpack > 0;
     if (this.phase !== 'play') { p.charging = false; p.charge = 0; return; }
@@ -763,6 +764,16 @@ class Match {
     Sfx.flow(); Sfx.cutin();
     if (p.isHuman) { if (!this.cinematic(p, 'AWAKENING · ' + aw.name)) TimeCtl.slowMo(0.35, 0.8); Shake.add(0.4); }
     else Shake.add(0.12);
+    return true;
+  }
+  /** an emote from the wheel: stand still for a moment and do it. Not with the ball, and once every 3 seconds */
+  emote(p, i) {
+    const em = EMOTES[i]; if (!em) return false;
+    if (this.ball.owner === p) { if (p.isHuman) { this.toast('NOT WITH THE BALL', 'bad', p); Sfx.deny(); } return false; }
+    if (p.state !== 'free' || (p.emoteCd || 0) > this.time) return false;
+    p.emote = em.id; p.emoteCd = this.time + 3; p.charging = false; p.charge = 0;
+    p.setState('emote', 1.6);
+    this.label(p, em.name, '#ffffff', 1.3);
     return true;
   }
   /** a human asks for the move: say why when it cannot happen */

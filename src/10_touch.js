@@ -23,7 +23,7 @@ const Touch = {
     return `<div class="stick idle" id="t-stick"><div class="ring"></div><div class="base"></div><div class="knob"></div><b class="lb">MOVE</b></div>`
       + btn('shoot', 'big', 'SHOOT', '<span class="chg"></span>') + btn('pass', 'pass', 'PASS') + btn('dt', 'dt', 'TACKLE', '<span class="pips"><i></i></span>') + btn('jump', '', 'JUMP')
       + btn('ab0', 'ab', '') + btn('ab1', 'ab', '') + btn('ab2', 'ab', '') + btn('flow', 'flow off', 'FLOW') + btn('item', 'item off', 'ITEM')
-      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tb sm" data-act="cam" aria-label="Switch camera"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
+      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tb sm" data-act="cam" aria-label="Switch camera"><i class="ic"></i></div><div class="tb sm" data-act="emote" aria-label="Emotes"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
   },
   init() {
     const el = document.createElement('div');
@@ -41,6 +41,7 @@ const Touch = {
     icon('pause', iconURL('pause'));
     icon('chat', iconURL('chat'));
     icon('cam', iconURL('cam'));
+    icon('emote', iconURL('smile'));
     icon('shoot', iconURL('shot', '#ffffff'));
     icon('pass', iconURL('pass', '#a9c7ff'));
     icon('jump', iconURL('jump'));
@@ -124,7 +125,7 @@ const Touch = {
     put('pause', W - Math.max(raw.r, 8) - 30, raw.t + 30, 46);
     // chat (online) and camera sit next to pause; an upright phone has no room beside the score, so they stack under it
     this.b.chat.hidden = Game.state !== 'online' || !Portal.chatAllowed();
-    const tops = this.b.chat.hidden ? ['cam'] : ['chat', 'cam'], px = W - Math.max(raw.r, 8) - 30;
+    const tops = this.b.chat.hidden ? ['cam', 'emote'] : ['chat', 'cam', 'emote'], px = W - Math.max(raw.r, 8) - 30;
     tops.forEach((a, i) => (portrait ? put(a, px, raw.t + 86 + i * 56, 46) : put(a, px - 56 * (i + 1), raw.t + 30, 46)));
     this.R = 58 * s;
     this.ghost.x = sa.l + (portrait ? 80 : 104) * s;
@@ -152,7 +153,7 @@ const Touch = {
     const rec = { kind: 'btn', act, el: btn, x0: x, y0: y, lx: x, ly: y, looking: false };
     this.ptrs.set(id, rec);
     btn.classList.add('down');
-    if (act === 'pause' || act === 'board' || act === 'chat' || act === 'cam') return; // these act on release
+    if (act === 'pause' || act === 'board' || act === 'chat' || act === 'cam' || act === 'emote') return; // these act on release
     if (act === 'dt') { const m = Game.match, p = m && m.human; act = p && m.ball.owner === p ? 'dodge' : 'tackle'; rec.act = act; }
     this.held.add(act);
     Input.edges.add('T_' + act);
@@ -190,6 +191,7 @@ const Touch = {
       if (r.act === 'pause') { if (e) Game.pause(); return; }
       if (r.act === 'chat') { if (e) Net.openChat(); return; }
       if (r.act === 'cam') { if (e) Input.edges.add('T_cam'); return; }
+      if (r.act === 'emote') { if (e) UI.toggleEmotes(); return; }
       if (r.act === 'board') { if (e) { this.board = !this.board; this.boardT = 8; } return; }
       this.held.delete(r.act);
       Input.up.add('T_' + r.act);
