@@ -598,9 +598,18 @@ function matchSides(homeId, awayId) {
 /* ---------- team sizes: casual modes are 3v3; ranked grows as you climb ---------- */
 /** who plays where. 3v3: a keeper, a defender and a midfielder; 4v4 adds a striker; 5v5 picks a setup at random for
     each team: ultra defensive (two defenders) or ultra attacking (two strikers). FW is the second striker */
-/** free kick practice: how many kicks, and the abilities you can use on one (the shots) */
+/** free kicks: how many in practice, and the three kick types. sp: speed at no and full power, curve: how hard
+    full spin bends it (blocks/s/s), g: gravity (DIP has topspin, so it drops fast) */
 const FK_KICKS = 10;
-const FK_SHOTS = ['quickShot', 'curler', 'volley', 'impactShot', 'oneTouch', 'knuckle', 'longBomb', 'overhead'];
+const FK_TYPES = {
+  curve: { name: 'CURVE', sp: [19, 29], curve: 11, g: 1, desc: 'BENDS AROUND THE WALL' },
+  power: { name: 'POWER', sp: [28, 39], curve: 2.5, g: 1.4, desc: 'FAST, WOBBLES AND DROPS' },
+  dip: { name: 'DIP', sp: [19, 27], curve: 4, g: 1.75, desc: 'UP OVER THE WALL, THEN DOWN' },
+};
+const FK_TYPE_IDS = Object.keys(FK_TYPES);
+const FK_TOL = 0.08; // how far from the perfect power you can be (the green zone on the power bar)
+/** the perfect power for a distance: further out needs more */
+const fkIdeal = (D) => clamp(0.42 + (D - 16) / 12 * 0.36, 0.4, 0.86);
 const ROSTERS = { 2: ['GK', 'ST'], 3: ['GK', 'DEF', 'MID'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] };
 const SETUPS_5 = { defensive: { name: 'ULTRA DEFENSIVE', roles: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] }, attacking: { name: 'ULTRA ATTACKING', roles: ['GK', 'DEF', 'MID', 'ST', 'FW'] } };
 /** the most attacking role first: you play it, and it takes the kickoff */

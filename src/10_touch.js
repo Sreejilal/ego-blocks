@@ -280,7 +280,8 @@ const Touch = {
       const tf = p.tackleCd > 0 ? clamp(p.tackleCd / (2.2 * p.mods.tackleCd), 0, 1) : 0;
       this.setCd('dt', tf, p.tackleCd > 0 ? String(Math.ceil(p.tackleCd)) : '');
     }
-    const pl = !own ? 'CALL' : p.passHold > 0.24 ? 'LOB' : 'PASS';
+    const pl = p.fkHold ? 'TYPE' : !own ? 'CALL' : p.passHold > 0.24 ? 'LOB' : 'PASS';
+    if (c.fk !== !!p.fkHold) { c.fk = !!p.fkHold; document.getElementById('touch').classList.toggle('fk', c.fk); } // a free kick: only MOVE (curve), TYPE and SHOOT
     if (c.pl !== pl) {
       c.pl = pl;
       this.parts.pass.lb.textContent = pl;

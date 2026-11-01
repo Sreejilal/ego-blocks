@@ -47,7 +47,7 @@ class Match {
   /* ---------- setup ---------- */
   /** 5v5: each team plays ultra defensive or ultra attacking, picked at random (opts.setups to choose) */
   rolesFor(team) {
-    if (this.cfg.practice) return team === 0 ? ['ST'] : ['GK', 'DEF', 'DEF2']; // free kicks: you against a keeper and a wall of two
+    if (this.cfg.practice) return team === 0 ? ['ST'] : ['GK', 'DEF', 'DEF2', 'MID', 'ST']; // free kicks: you against a keeper, a wall and defenders in the box
     return this.size === 5 ? SETUPS_5[this.setups[team]].roles : ROSTERS[this.size];
   }
   buildTeams(opts) {
@@ -101,7 +101,8 @@ class Match {
   oppGoalZ(team) { return this.dir(team) * F.L; }
   ownGoalZ(team) { return -this.dir(team) * F.L; }
   prog(team, pos) { return pos.z * this.dir(team); }
-  skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.size) * 0.11 + Math.max(0, s - 0.6) * 0.8, 0.45, 1.5) : s; } // keepers get a boost in small teams (they face more shots) and against very good bots (who shoot from far)
+  skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.gkSize()) * 0.11 + Math.max(0, s - 0.6) * 0.8, 0.45, 1.5) : s; }
+  gkSize() { return this.fk ? 5 : this.size; } // free kicks: no small-team keeper boost (one shot at a time) // keepers get a boost in small teams (they face more shots) and against very good bots (who shoot from far)
   opponents(p) { return this.teams[1 - p.team]; }
   inOwnBox(p, pos = p.pos) {
     const gz = this.ownGoalZ(p.team);
@@ -229,6 +230,7 @@ class Match {
       else if (c.shootUp || c.shootDown) this.takeSetPiece(p, 'shoot');
       return;
     }
+    if (p.fkHold) { this.freeKickControls(dt, c, p, cy); return; }
     if (!this.canAct(p)) { if (p.state !== 'dash') { p.charging = false; p.charge = 0; } return; }
     if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; }
     if (p.charging) {
@@ -245,10 +247,6 @@ class Match {
       p.shotBuffer.t -= dt;
       if (this.ball.owner === p) { const sb = p.shotBuffer; p.shotBuffer = null; this.shootAt(p, p.aimV || this.aim, sb.power, { curveIn: sb.curveIn }); }
       else if (p.shotBuffer.t <= 0) p.shotBuffer = null;
-    }
-    if (p.fkHold) { // lining up a free kick: shoot, or a shooting ability, and nothing else
-      for (let i = 0; i < 3; i++) if (c.ab[i]) { if (FK_SHOTS.includes(p.abil[i].id)) this.useAbility(p, i); else { this.toast('ONLY SHOTS ON A FREE KICK', 'bad', p); Sfx.deny(); } }
-      return;
     }
     if (c.passDown) p.passHold = 0.0001;
     if (p.passHold > 0) p.passHold += dt;
@@ -289,7 +287,7 @@ class Match {
   /* ---------- ball helpers ---------- */
   possess(p, silent = false) {
     const b = this.ball, k = b.kick;
-    b.owner = p; b.held = false; b.inGoal = 0; b.vel.set(0, 0, 0); b.curve.set(0, 0, 0); b.straightT = 0; b.kick = null;
+    b.owner = p; b.held = false; b.inGoal = 0; b.vel.set(0, 0, 0); b.curve.set(0, 0, 0); b.straightT = 0; b.kick = null; b.gMul = 1;
     b.touch(p);
     p.pickBlock = 0; p.gotBallT = this.time; p.stats.touches = (p.stats.touches || 0) + 1;
     if (k && k.by && k.by !== p) {
@@ -316,7 +314,7 @@ class Match {
     if (wasOwner && !o.keepPos) { b.pos.x = p.pos.x + vx / hl * 0.6; b.pos.z = p.pos.z + vz / hl * 0.6; b.pos.y = Math.max(BALL_R, Math.min(b.pos.y, p.pos.y + BALL_R + 0.2)); }
     b.vel.set(vx, vy, vz);
     b.curve.set(o.cx || 0, 0, o.cz || 0); b.curveDecay = o.curveDecay == null ? 1.4 : o.curveDecay;
-    b.straightT = o.straight || 0; b.inGoal = 0;
+    b.straightT = o.straight || 0; b.inGoal = 0; b.gMul = o.gMul || 1;
     b.kick = { by: p, type: o.type || 'shot', to: o.to || null, t: this.time, trail: o.trail || null, special: o.special || null, counted: false,
       aerial: !!(o.aerial || o.special === 'volley' || o.special === 'overhead'), // struck in the air: counts in Volleys Only
       curved: !!(o.cx || o.cz), fx: b.pos.x, fz: b.pos.z };
@@ -804,13 +802,14 @@ class Match {
   nextFreeKick() {
     const k = this.fk, h = this.human;
     if (k.n >= k.total) { this.endFreeKicks(); return; }
-    k.n++; k.state = 'aim'; k.t = 0; k.hit = null;
+    k.n++; k.state = 'aim'; k.t = 0; k.hit = null; k.dist = 0;
     this.phase = 'play'; this.phaseT = 0; this.lastPass = null;
     const gz = this.oppGoalZ(h.team), s = sgn(gz);
     const dist = rand(16, 27), x = rand(-1, 1) * Math.min(F.W - 5, 4 + dist * 0.45), z = gz - s * dist;
     let dx = -x, dz = gz - z; const l = Math.hypot(dx, dz); dx /= l; dz /= l;
     const yaw = Math.atan2(dx, dz);
-    k.x = x; k.z = z;
+    k.x = x; k.z = z; k.dist = dist;
+    h.fkShot = { type: h.fkShot ? h.fkShot.type : 'curve', curve: 0 };
     for (const p of this.players) {
       p.dash = p.slide = p.dive = null; p.charging = false; p.charge = 0; p.kickT = -1; p.flipT = -1; p.pending = null; p.shotBuffer = null;
       p.vel.set(0, 0, 0); p.pos.y = 0; p.onGround = true; p.setState('free');
@@ -820,12 +819,65 @@ class Match {
     this.possess(h, true); h.protect = 1;
     const side = Math.abs(x) > 1 ? sgn(x) : pick([-1, 1]); // the near post (a kick from the middle: either one)
     let wx = side * F.GW * 0.5 - x, wz = gz - z; const wl = Math.hypot(wx, wz); wx /= wl; wz /= wl;
-    this.fkWall.forEach((w, i) => { const o = (i - (this.fkWall.length - 1) / 2) * 0.85; w.pos.set(x + wx * 7 - wz * o, 0, z + wz * 7 + wx * o); w.yaw = yaw + Math.PI; });
+    const n = dist < 19 ? 4 : dist < 23 ? 3 : 2; // closer in, a bigger wall
+    this.fkWall.forEach((w, i) => {
+      if (i < n) { const o = (i - (n - 1) / 2) * 0.85; w.pos.set(x + wx * 7 - wz * o, 0, z + wz * 7 + wx * o); w.yaw = yaw + Math.PI; }
+      else { const j = i - n, sx = j % 2 ? -side : side; w.pos.set(sx * (F.GW + 2.2 + j), 0, gz - s * (3 + j * 1.5)); w.yaw = s > 0 ? Math.PI : 0; } // marking in the box, wide of the posts
+    });
     const g = this.teams[1].find((p) => p.isGK);
     if (g) { g.pos.set(-side * 0.9, 0, gz - s * 1.2); g.yaw = yaw + Math.PI; }
-    for (const a of h.abil) if (FK_SHOTS.includes(a.id)) a.cd = 0; // try your shooting abilities every kick
-    Hud.freeKick(yaw);
+    Hud.freeKick(yaw, dist);
     this.toast('KICK ' + k.n + ' OF ' + k.total + ' · ' + Math.round(dist) + ' BLOCKS OUT', 'gold', h);
+  }
+  /** lining up a free kick: aim with the camera, A/D (stick) sets the curve, pass changes the kick type,
+      hold shoot for power and let go. Abilities are off */
+  freeKickControls(dt, c, p, cy) {
+    const s = p.fkShot || (p.fkShot = { type: 'curve', curve: 0 });
+    p.faceYaw = cy;
+    if (Math.abs(c.moveX) > 0.15) s.curve = clamp(s.curve + c.moveX * dt * 1.4, -1, 1);
+    if (c.passDown) { s.type = FK_TYPE_IDS[(FK_TYPE_IDS.indexOf(s.type) + 1) % FK_TYPE_IDS.length]; Sfx.click(); }
+    for (let i = 0; i < 3; i++) if (c.ab[i]) { this.toast('ABILITIES ARE OFF ON FREE KICKS', 'bad', p); Sfx.deny(); }
+    if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; }
+    if (p.charging) {
+      if (!c.shootHeld && !c.shootUp) { p.charging = false; p.charge = 0; }
+      else p.charge = Math.min(1, p.charge + dt / 1.1); // a little slower than a normal shot, so you can hit the green zone
+    }
+    if (c.shootUp && p.charging) {
+      const power = p.charge; p.charging = false; p.charge = 0;
+      this.freeKickShot(p, power, p.aimV || this.aim);
+    }
+  }
+  /** the launch for a free kick: towards your target, bending with the spin. Off the perfect power it flies too
+      high (over the bar) or too low (into the wall) */
+  fkLaunch(p, power, target) {
+    const s = p.fkShot, T0 = FK_TYPES[s.type], b = this.ball;
+    const fx = b.pos.x, fz = b.pos.z, fy = BALL_R;
+    const dx = target.x - fx, dz = target.z - fz, D = Math.hypot(dx, dz) || 1, ux = dx / D, uz = dz / D;
+    const err = power - fkIdeal(D), miss = Math.abs(err) > FK_TOL ? err - Math.sign(err) * FK_TOL : 0;
+    const ty = target.y + miss * 9;
+    const sp = lerp(T0.sp[0], T0.sp[1], clamp(power, 0, 1)) * p.mods.shot, g = BALL_G * T0.g, T = D / sp;
+    const vy = clamp((ty - fy + 0.5 * g * T * T) / T, -3, 16);
+    const acc = s.curve * T0.curve;
+    return { fx, fy, fz, vx: ux * sp, vy, vz: uz * sp, cx: -uz * acc, cz: ux * acc, g: T0.g, T };
+  }
+  freeKickShot(p, power, target) {
+    const L = this.fkLaunch(p, power, target), s = p.fkShot;
+    p.stats.shots++;
+    if (power > 0.8) FX.dirt(p.pos.x, p.pos.z, Math.sin(p.yaw), Math.cos(p.yaw), 6, 0.7);
+    return this.kick(p, L.vx, L.vy, L.vz, { type: 'shot', cx: L.cx, cz: L.cz, curveDecay: 0, gMul: L.g, trail: p.aura, special: s.type === 'power' ? 'knuckle' : null, kickStyle: 'strike', kickDur: 0.45 });
+  }
+  /** the first part of the ball's path at perfect power (the dotted line): you see if it clears the wall, not where it ends */
+  fkPath(p, target, frac = 0.42) {
+    const L = this.fkLaunch(p, fkIdeal(Math.hypot(target.x - this.ball.pos.x, target.z - this.ball.pos.z)), target), out = [];
+    let x = L.fx, y = L.fy, z = L.fz, vx = L.vx, vy = L.vy, vz = L.vz;
+    const h = 1 / 60, steps = Math.ceil(L.T * frac / h);
+    for (let i = 1; i <= steps; i++) {
+      vy -= BALL_G * L.g * h; vx += L.cx * h; vz += L.cz * h;
+      const k = 1 - 0.05 * h; vx *= k; vy *= k; vz *= k;
+      x += vx * h; y += vy * h; z += vz * h;
+      if (i % 3 === 0) out.push({ x, y, z });
+    }
+    return out;
   }
   updateFreeKick(dt) {
     const k = this.fk, b = this.ball, h = this.human;
@@ -1146,7 +1198,7 @@ class Match {
     const t = clamp(((b.pos.x - ax) * abx + (b.pos.y - ay) * aby + (b.pos.z - az) * abz) / l2, 0, 1);
     const cx = ax + abx * t, cy = ay + aby * t, cz = az + abz * t;
     const dist = Math.hypot(b.pos.x - cx, b.pos.y - cy, b.pos.z - cz);
-    const reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.size) * 0.14; // longer reach in small teams, where keepers face more shots
+    const reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.gkSize()) * 0.14; // longer reach in small teams, where keepers face more shots
     if (dist > BALL_R + reach) return;
     const k = b.kick;
     const shooter = k && k.by && k.by.team !== gk.team && k.type === 'shot' ? k.by : null;

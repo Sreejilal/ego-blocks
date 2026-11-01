@@ -506,15 +506,18 @@ const AI = {
       const t = (gz - b.pos.z) / b.vel.z;
       if (t > 0 && t < 1.8) {
         const px = b.pos.x + b.vel.x * t + 0.5 * b.curve.x * t * t;
-        let py = b.straightT > 0 ? b.pos.y + b.vel.y * t : b.pos.y + b.vel.y * t - 0.5 * BALL_G * t * t;
+        const g = BALL_G * (b.gMul || 1);
+        let py = b.straightT > 0 ? b.pos.y + b.vel.y * t : b.pos.y + b.vel.y * t - 0.5 * g * t * t;
         if (py < BALL_R) py = BALL_R + Math.min(1.2, Math.abs(py) * 0.4);
-        if (Math.abs(px) < F.GW + 1.0 && py < F.GH + 0.9) {
-          if (a.react == null) a.react = lerp(0.4, 0.08, Math.min(1, sk)) * rand(0.8, 1.2);
+        // a free kick: the wall hides it, so the keeper only picks it up once it is past the wall
+        const screened = m.fk && b.kick && Math.hypot(b.pos.x - b.kick.fx, b.pos.z - b.kick.fz) < 7.6;
+        if (Math.abs(px) < F.GW + 1.0 && py < F.GH + 0.9 && !screened) {
+          if (a.react == null) a.react = lerp(0.4, 0.08, Math.min(1, sk)) * rand(0.8, 1.2) * (b.kick && b.kick.special === 'knuckle' ? 1.8 : 1); // a wobbling knuckleball is hard to read
           a.react -= dt;
           if (a.react <= 0) {
             const tk = Math.max(0.06, (p.pos.z - b.pos.z) / b.vel.z);
             const kx = b.pos.x + b.vel.x * tk + 0.5 * b.curve.x * tk * tk;
-            let ky = b.straightT > 0 ? b.pos.y + b.vel.y * tk : b.pos.y + b.vel.y * tk - 0.5 * BALL_G * tk * tk;
+            let ky = b.straightT > 0 ? b.pos.y + b.vel.y * tk : b.pos.y + b.vel.y * tk - 0.5 * g * tk * tk;
             if (ky < BALL_R) ky = BALL_R;
             const dx = kx - p.pos.x;
             if (Math.abs(dx) > 0.75 || ky > 2.1) { this.dive(m, p, dx, ky, tk, sk); a.react = null; return; }

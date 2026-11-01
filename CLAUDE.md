@@ -59,7 +59,8 @@ file in file-name order into ONE function scope. There are no imports or exports
 
 ## Free kick practice
 
-- Mode `freekick` (`MODES.freekick.practice`, FREE KICKS on the start screen): you, a keeper and a wall of two (`p.wall`, the AI skips them). `startFreeKicks`, `nextFreeKick`, `updateFreeKick`, `fkResult`, `endFreeKicks` in 08_match.js; `m.fk` holds the round. `p.fkHold` keeps you behind the ball (only shots and `FK_SHOTS` abilities). No clock, no Awakening, no rewards; `Game.finishMatch` shows `UI.showPractice` and keeps `Save.data.fkBest`. Test: `node test/freekicks.js`.
+- Mode `freekick` (`MODES.freekick.practice`, FREE KICKS on the start screen): you, a keeper, a wall of 2 to 4 (closer in, bigger) and defenders in the box (`p.wall`, the AI skips them). `startFreeKicks`, `nextFreeKick`, `updateFreeKick`, `fkResult`, `endFreeKicks` in 08_match.js; `m.fk` holds the round. No clock, no Awakening, no rewards; `Game.finishMatch` shows `UI.showPractice` and keeps `Save.data.fkBest`.
+- Free kick controls (`p.fkHold`, `freeKickControls`): the camera aims (the target always sits on the goal, `Cam.computeAim`; `Cam.fkFace` turns to it), move X sets `p.fkShot.curve`, pass cycles `FK_TYPES` (CURVE, POWER, DIP), hold shoot for power: off `fkIdeal(D)` by more than `FK_TOL` it flies over the bar or into the wall (`fkLaunch`). DIP uses `ball.gMul` (more gravity). Abilities are off. The keeper is screened until the ball passes the wall and reads knuckleballs late (09_ai.js). `FKHud` (11_fk.js) draws the target, the first part of the path (`fkPath`) and the panel. Test: `node test/freekicks.js`.
 
 ## Codes
 

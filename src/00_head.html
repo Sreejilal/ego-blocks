@@ -461,6 +461,24 @@ body.touch #hud .awakebar .track { height: 6px; }
 .stamina { display: flex; gap: 2px; }
 .stamina img { width: 22px; height: 22px; }
 .hotbar { display: flex; gap: 8px; align-items: flex-end; padding-bottom: 12px; }
+/* free kicks: the type, curve and power panel takes the place of the Flow bar and hotbar */
+#hud.fk .dock > :not(.fkpanel) { display: none !important; }
+.fkpanel { display: grid; gap: 6px; padding: 10px 12px; width: 420px; max-width: calc(100vw - 32px); box-sizing: border-box; margin-bottom: 12px; }
+.fk-row { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 8px; }
+.fk-row:first-child { grid-template-columns: 64px auto 1fr auto; }
+.fk-row b { font-family: var(--font-display); font-weight: 400; font-size: 26px; line-height: 1; color: var(--gold, #ffcb3d); }
+.fk-curve, .fk-pow { position: relative; height: 14px; background: var(--ink); border: var(--px) solid var(--slate-3); }
+.fk-curve::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--slate-3); }
+.fk-curve i { position: absolute; top: -3px; bottom: -3px; width: 8px; margin-left: -4px; left: 50%; background: #7cf2ff; }
+.fk-pow em { position: absolute; top: 0; bottom: 0; background: rgba(46, 227, 143, .45); }
+.fk-pow i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #ffcb3d; }
+.fk-pow i.good { background: #2ee38f; } .fk-pow i.over { background: #ff4d5e; }
+body.touch .fkpanel .key { display: none; }
+#touch.fk [data-act="ab0"], #touch.fk [data-act="ab1"], #touch.fk [data-act="ab2"], #touch.fk [data-act="dt"], #touch.fk [data-act="jump"], #touch.fk [data-act="flow"], #touch.fk [data-act="item"] { display: none !important; }
+@media (orientation: portrait) { body.touch #hud.fk .dock { top: calc(176px + env(safe-area-inset-top, 0px)); } } /* below the minimap and the corner buttons */
+@media (max-height: 520px) and (orientation: landscape) { body.touch #hud.fk .dock { top: calc(64px + env(safe-area-inset-top, 0px)); } } /* below the scoreboard's tap area */
+body.touch .fkpanel { width: 300px; padding: 6px 8px; gap: 4px; margin-bottom: 0; }
+body.touch .fk-row b { font-size: 20px; }
 .slot { position: relative; width: 62px; height: 62px; background: rgba(9,11,22,.78); border: var(--px) solid var(--ink); box-shadow: inset 0 0 0 3px var(--slate-3); display: grid; place-items: center; }
 .slot img { width: 38px; height: 38px; }
 .slot .k { position: absolute; left: -3px; top: -3px; }

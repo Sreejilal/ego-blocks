@@ -473,6 +473,24 @@ body.touch #hud .awakebar .track { height: 6px; }
 .stamina { display: flex; gap: 2px; }
 .stamina img { width: 22px; height: 22px; }
 .hotbar { display: flex; gap: 8px; align-items: flex-end; padding-bottom: 12px; }
+/* free kicks: the type, curve and power panel takes the place of the Flow bar and hotbar */
+#hud.fk .dock > :not(.fkpanel) { display: none !important; }
+.fkpanel { display: grid; gap: 6px; padding: 10px 12px; width: 420px; max-width: calc(100vw - 32px); box-sizing: border-box; margin-bottom: 12px; }
+.fk-row { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 8px; }
+.fk-row:first-child { grid-template-columns: 64px auto 1fr auto; }
+.fk-row b { font-family: var(--font-display); font-weight: 400; font-size: 26px; line-height: 1; color: var(--gold, #ffcb3d); }
+.fk-curve, .fk-pow { position: relative; height: 14px; background: var(--ink); border: var(--px) solid var(--slate-3); }
+.fk-curve::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--slate-3); }
+.fk-curve i { position: absolute; top: -3px; bottom: -3px; width: 8px; margin-left: -4px; left: 50%; background: #7cf2ff; }
+.fk-pow em { position: absolute; top: 0; bottom: 0; background: rgba(46, 227, 143, .45); }
+.fk-pow i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #ffcb3d; }
+.fk-pow i.good { background: #2ee38f; } .fk-pow i.over { background: #ff4d5e; }
+body.touch .fkpanel .key { display: none; }
+#touch.fk [data-act="ab0"], #touch.fk [data-act="ab1"], #touch.fk [data-act="ab2"], #touch.fk [data-act="dt"], #touch.fk [data-act="jump"], #touch.fk [data-act="flow"], #touch.fk [data-act="item"] { display: none !important; }
+@media (orientation: portrait) { body.touch #hud.fk .dock { top: calc(176px + env(safe-area-inset-top, 0px)); } } /* below the minimap and the corner buttons */
+@media (max-height: 520px) and (orientation: landscape) { body.touch #hud.fk .dock { top: calc(64px + env(safe-area-inset-top, 0px)); } } /* below the scoreboard's tap area */
+body.touch .fkpanel { width: 300px; padding: 6px 8px; gap: 4px; margin-bottom: 0; }
+body.touch .fk-row b { font-size: 20px; }
 .slot { position: relative; width: 62px; height: 62px; background: rgba(9,11,22,.78); border: var(--px) solid var(--ink); box-shadow: inset 0 0 0 3px var(--slate-3); display: grid; place-items: center; }
 .slot img { width: 38px; height: 38px; }
 .slot .k { position: absolute; left: -3px; top: -3px; }
@@ -3045,7 +3063,7 @@ class Ball {
   dispose() { this.m.scene.remove(this.mesh, this.blob); }
   reset(x = 0, z = 0, y = BALL_R) {
     this.owner = null; this.held = false; this.inGoal = 0; this.kick = null; this.straightT = 0;
-    this.pos.set(x, y, z); this.vel.set(0, 0, 0); this.curve.set(0, 0, 0); this.last.copy(this.pos); this.spinRate = 0;
+    this.pos.set(x, y, z); this.vel.set(0, 0, 0); this.curve.set(0, 0, 0); this.last.copy(this.pos); this.spinRate = 0; this.gMul = 1;
   }
   touch(p) {
     if (!p) return;
@@ -3105,7 +3123,7 @@ class Ball {
     const n = clamp(Math.ceil(sp0 * dt / 0.16), 1, 10);
     const h = dt / n;
     for (let i = 0; i < n; i++) {
-      if (this.straightT > 0) this.straightT -= h; else this.vel.y -= BALL_G * h;
+      if (this.straightT > 0) this.straightT -= h; else this.vel.y -= BALL_G * (this.gMul || 1) * h; // gMul: a DIP free kick drops faster
       if (this.curve.x !== 0 || this.curve.z !== 0) {
         this.vel.x += this.curve.x * h; this.vel.z += this.curve.z * h;
         if (this.curveDecay > 0) { const k = Math.exp(-h / this.curveDecay); this.curve.x *= k; this.curve.z *= k; }
@@ -3118,7 +3136,7 @@ class Ball {
         if (this.vel.y < -2.2) {
           if (this.vel.y < -6) Sfx.thud(clamp(-this.vel.y / 16, 0.2, 1));
           this.vel.y = -this.vel.y * 0.52; this.vel.x *= 0.88; this.vel.z *= 0.88;
-          this.curve.multiplyScalar(0.4);
+          this.curve.multiplyScalar(0.4); this.gMul = 1;
         } else {
           this.vel.y = 0;
           this.curve.multiplyScalar(Math.exp(-h * 6));
@@ -3806,9 +3824,18 @@ function matchSides(homeId, awayId) {
 /* ---------- team sizes: casual modes are 3v3; ranked grows as you climb ---------- */
 /** who plays where. 3v3: a keeper, a defender and a midfielder; 4v4 adds a striker; 5v5 picks a setup at random for
     each team: ultra defensive (two defenders) or ultra attacking (two strikers). FW is the second striker */
-/** free kick practice: how many kicks, and the abilities you can use on one (the shots) */
+/** free kicks: how many in practice, and the three kick types. sp: speed at no and full power, curve: how hard
+    full spin bends it (blocks/s/s), g: gravity (DIP has topspin, so it drops fast) */
 const FK_KICKS = 10;
-const FK_SHOTS = ['quickShot', 'curler', 'volley', 'impactShot', 'oneTouch', 'knuckle', 'longBomb', 'overhead'];
+const FK_TYPES = {
+  curve: { name: 'CURVE', sp: [19, 29], curve: 11, g: 1, desc: 'BENDS AROUND THE WALL' },
+  power: { name: 'POWER', sp: [28, 39], curve: 2.5, g: 1.4, desc: 'FAST, WOBBLES AND DROPS' },
+  dip: { name: 'DIP', sp: [19, 27], curve: 4, g: 1.75, desc: 'UP OVER THE WALL, THEN DOWN' },
+};
+const FK_TYPE_IDS = Object.keys(FK_TYPES);
+const FK_TOL = 0.08; // how far from the perfect power you can be (the green zone on the power bar)
+/** the perfect power for a distance: further out needs more */
+const fkIdeal = (D) => clamp(0.42 + (D - 16) / 12 * 0.36, 0.4, 0.86);
 const ROSTERS = { 2: ['GK', 'ST'], 3: ['GK', 'DEF', 'MID'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] };
 const SETUPS_5 = { defensive: { name: 'ULTRA DEFENSIVE', roles: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] }, attacking: { name: 'ULTRA ATTACKING', roles: ['GK', 'DEF', 'MID', 'ST', 'FW'] } };
 /** the most attacking role first: you play it, and it takes the kickoff */
@@ -4101,7 +4128,7 @@ class Match {
   /* ---------- setup ---------- */
   /** 5v5: each team plays ultra defensive or ultra attacking, picked at random (opts.setups to choose) */
   rolesFor(team) {
-    if (this.cfg.practice) return team === 0 ? ['ST'] : ['GK', 'DEF', 'DEF2']; // free kicks: you against a keeper and a wall of two
+    if (this.cfg.practice) return team === 0 ? ['ST'] : ['GK', 'DEF', 'DEF2', 'MID', 'ST']; // free kicks: you against a keeper, a wall and defenders in the box
     return this.size === 5 ? SETUPS_5[this.setups[team]].roles : ROSTERS[this.size];
   }
   buildTeams(opts) {
@@ -4155,7 +4182,8 @@ class Match {
   oppGoalZ(team) { return this.dir(team) * F.L; }
   ownGoalZ(team) { return -this.dir(team) * F.L; }
   prog(team, pos) { return pos.z * this.dir(team); }
-  skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.size) * 0.11 + Math.max(0, s - 0.6) * 0.8, 0.45, 1.5) : s; } // keepers get a boost in small teams (they face more shots) and against very good bots (who shoot from far)
+  skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.gkSize()) * 0.11 + Math.max(0, s - 0.6) * 0.8, 0.45, 1.5) : s; }
+  gkSize() { return this.fk ? 5 : this.size; } // free kicks: no small-team keeper boost (one shot at a time) // keepers get a boost in small teams (they face more shots) and against very good bots (who shoot from far)
   opponents(p) { return this.teams[1 - p.team]; }
   inOwnBox(p, pos = p.pos) {
     const gz = this.ownGoalZ(p.team);
@@ -4283,6 +4311,7 @@ class Match {
       else if (c.shootUp || c.shootDown) this.takeSetPiece(p, 'shoot');
       return;
     }
+    if (p.fkHold) { this.freeKickControls(dt, c, p, cy); return; }
     if (!this.canAct(p)) { if (p.state !== 'dash') { p.charging = false; p.charge = 0; } return; }
     if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; }
     if (p.charging) {
@@ -4299,10 +4328,6 @@ class Match {
       p.shotBuffer.t -= dt;
       if (this.ball.owner === p) { const sb = p.shotBuffer; p.shotBuffer = null; this.shootAt(p, p.aimV || this.aim, sb.power, { curveIn: sb.curveIn }); }
       else if (p.shotBuffer.t <= 0) p.shotBuffer = null;
-    }
-    if (p.fkHold) { // lining up a free kick: shoot, or a shooting ability, and nothing else
-      for (let i = 0; i < 3; i++) if (c.ab[i]) { if (FK_SHOTS.includes(p.abil[i].id)) this.useAbility(p, i); else { this.toast('ONLY SHOTS ON A FREE KICK', 'bad', p); Sfx.deny(); } }
-      return;
     }
     if (c.passDown) p.passHold = 0.0001;
     if (p.passHold > 0) p.passHold += dt;
@@ -4343,7 +4368,7 @@ class Match {
   /* ---------- ball helpers ---------- */
   possess(p, silent = false) {
     const b = this.ball, k = b.kick;
-    b.owner = p; b.held = false; b.inGoal = 0; b.vel.set(0, 0, 0); b.curve.set(0, 0, 0); b.straightT = 0; b.kick = null;
+    b.owner = p; b.held = false; b.inGoal = 0; b.vel.set(0, 0, 0); b.curve.set(0, 0, 0); b.straightT = 0; b.kick = null; b.gMul = 1;
     b.touch(p);
     p.pickBlock = 0; p.gotBallT = this.time; p.stats.touches = (p.stats.touches || 0) + 1;
     if (k && k.by && k.by !== p) {
@@ -4370,7 +4395,7 @@ class Match {
     if (wasOwner && !o.keepPos) { b.pos.x = p.pos.x + vx / hl * 0.6; b.pos.z = p.pos.z + vz / hl * 0.6; b.pos.y = Math.max(BALL_R, Math.min(b.pos.y, p.pos.y + BALL_R + 0.2)); }
     b.vel.set(vx, vy, vz);
     b.curve.set(o.cx || 0, 0, o.cz || 0); b.curveDecay = o.curveDecay == null ? 1.4 : o.curveDecay;
-    b.straightT = o.straight || 0; b.inGoal = 0;
+    b.straightT = o.straight || 0; b.inGoal = 0; b.gMul = o.gMul || 1;
     b.kick = { by: p, type: o.type || 'shot', to: o.to || null, t: this.time, trail: o.trail || null, special: o.special || null, counted: false,
       aerial: !!(o.aerial || o.special === 'volley' || o.special === 'overhead'), // struck in the air: counts in Volleys Only
       curved: !!(o.cx || o.cz), fx: b.pos.x, fz: b.pos.z };
@@ -4858,13 +4883,14 @@ class Match {
   nextFreeKick() {
     const k = this.fk, h = this.human;
     if (k.n >= k.total) { this.endFreeKicks(); return; }
-    k.n++; k.state = 'aim'; k.t = 0; k.hit = null;
+    k.n++; k.state = 'aim'; k.t = 0; k.hit = null; k.dist = 0;
     this.phase = 'play'; this.phaseT = 0; this.lastPass = null;
     const gz = this.oppGoalZ(h.team), s = sgn(gz);
     const dist = rand(16, 27), x = rand(-1, 1) * Math.min(F.W - 5, 4 + dist * 0.45), z = gz - s * dist;
     let dx = -x, dz = gz - z; const l = Math.hypot(dx, dz); dx /= l; dz /= l;
     const yaw = Math.atan2(dx, dz);
-    k.x = x; k.z = z;
+    k.x = x; k.z = z; k.dist = dist;
+    h.fkShot = { type: h.fkShot ? h.fkShot.type : 'curve', curve: 0 };
     for (const p of this.players) {
       p.dash = p.slide = p.dive = null; p.charging = false; p.charge = 0; p.kickT = -1; p.flipT = -1; p.pending = null; p.shotBuffer = null;
       p.vel.set(0, 0, 0); p.pos.y = 0; p.onGround = true; p.setState('free');
@@ -4874,12 +4900,65 @@ class Match {
     this.possess(h, true); h.protect = 1;
     const side = Math.abs(x) > 1 ? sgn(x) : pick([-1, 1]); // the near post (a kick from the middle: either one)
     let wx = side * F.GW * 0.5 - x, wz = gz - z; const wl = Math.hypot(wx, wz); wx /= wl; wz /= wl;
-    this.fkWall.forEach((w, i) => { const o = (i - (this.fkWall.length - 1) / 2) * 0.85; w.pos.set(x + wx * 7 - wz * o, 0, z + wz * 7 + wx * o); w.yaw = yaw + Math.PI; });
+    const n = dist < 19 ? 4 : dist < 23 ? 3 : 2; // closer in, a bigger wall
+    this.fkWall.forEach((w, i) => {
+      if (i < n) { const o = (i - (n - 1) / 2) * 0.85; w.pos.set(x + wx * 7 - wz * o, 0, z + wz * 7 + wx * o); w.yaw = yaw + Math.PI; }
+      else { const j = i - n, sx = j % 2 ? -side : side; w.pos.set(sx * (F.GW + 2.2 + j), 0, gz - s * (3 + j * 1.5)); w.yaw = s > 0 ? Math.PI : 0; } // marking in the box, wide of the posts
+    });
     const g = this.teams[1].find((p) => p.isGK);
     if (g) { g.pos.set(-side * 0.9, 0, gz - s * 1.2); g.yaw = yaw + Math.PI; }
-    for (const a of h.abil) if (FK_SHOTS.includes(a.id)) a.cd = 0; // try your shooting abilities every kick
-    Hud.freeKick(yaw);
+    Hud.freeKick(yaw, dist);
     this.toast('KICK ' + k.n + ' OF ' + k.total + ' · ' + Math.round(dist) + ' BLOCKS OUT', 'gold', h);
+  }
+  /** lining up a free kick: aim with the camera, A/D (stick) sets the curve, pass changes the kick type,
+      hold shoot for power and let go. Abilities are off */
+  freeKickControls(dt, c, p, cy) {
+    const s = p.fkShot || (p.fkShot = { type: 'curve', curve: 0 });
+    p.faceYaw = cy;
+    if (Math.abs(c.moveX) > 0.15) s.curve = clamp(s.curve + c.moveX * dt * 1.4, -1, 1);
+    if (c.passDown) { s.type = FK_TYPE_IDS[(FK_TYPE_IDS.indexOf(s.type) + 1) % FK_TYPE_IDS.length]; Sfx.click(); }
+    for (let i = 0; i < 3; i++) if (c.ab[i]) { this.toast('ABILITIES ARE OFF ON FREE KICKS', 'bad', p); Sfx.deny(); }
+    if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; }
+    if (p.charging) {
+      if (!c.shootHeld && !c.shootUp) { p.charging = false; p.charge = 0; }
+      else p.charge = Math.min(1, p.charge + dt / 1.1); // a little slower than a normal shot, so you can hit the green zone
+    }
+    if (c.shootUp && p.charging) {
+      const power = p.charge; p.charging = false; p.charge = 0;
+      this.freeKickShot(p, power, p.aimV || this.aim);
+    }
+  }
+  /** the launch for a free kick: towards your target, bending with the spin. Off the perfect power it flies too
+      high (over the bar) or too low (into the wall) */
+  fkLaunch(p, power, target) {
+    const s = p.fkShot, T0 = FK_TYPES[s.type], b = this.ball;
+    const fx = b.pos.x, fz = b.pos.z, fy = BALL_R;
+    const dx = target.x - fx, dz = target.z - fz, D = Math.hypot(dx, dz) || 1, ux = dx / D, uz = dz / D;
+    const err = power - fkIdeal(D), miss = Math.abs(err) > FK_TOL ? err - Math.sign(err) * FK_TOL : 0;
+    const ty = target.y + miss * 9;
+    const sp = lerp(T0.sp[0], T0.sp[1], clamp(power, 0, 1)) * p.mods.shot, g = BALL_G * T0.g, T = D / sp;
+    const vy = clamp((ty - fy + 0.5 * g * T * T) / T, -3, 16);
+    const acc = s.curve * T0.curve;
+    return { fx, fy, fz, vx: ux * sp, vy, vz: uz * sp, cx: -uz * acc, cz: ux * acc, g: T0.g, T };
+  }
+  freeKickShot(p, power, target) {
+    const L = this.fkLaunch(p, power, target), s = p.fkShot;
+    p.stats.shots++;
+    if (power > 0.8) FX.dirt(p.pos.x, p.pos.z, Math.sin(p.yaw), Math.cos(p.yaw), 6, 0.7);
+    return this.kick(p, L.vx, L.vy, L.vz, { type: 'shot', cx: L.cx, cz: L.cz, curveDecay: 0, gMul: L.g, trail: p.aura, special: s.type === 'power' ? 'knuckle' : null, kickStyle: 'strike', kickDur: 0.45 });
+  }
+  /** the first part of the ball's path at perfect power (the dotted line): you see if it clears the wall, not where it ends */
+  fkPath(p, target, frac = 0.42) {
+    const L = this.fkLaunch(p, fkIdeal(Math.hypot(target.x - this.ball.pos.x, target.z - this.ball.pos.z)), target), out = [];
+    let x = L.fx, y = L.fy, z = L.fz, vx = L.vx, vy = L.vy, vz = L.vz;
+    const h = 1 / 60, steps = Math.ceil(L.T * frac / h);
+    for (let i = 1; i <= steps; i++) {
+      vy -= BALL_G * L.g * h; vx += L.cx * h; vz += L.cz * h;
+      const k = 1 - 0.05 * h; vx *= k; vy *= k; vz *= k;
+      x += vx * h; y += vy * h; z += vz * h;
+      if (i % 3 === 0) out.push({ x, y, z });
+    }
+    return out;
   }
   updateFreeKick(dt) {
     const k = this.fk, b = this.ball, h = this.human;
@@ -5200,7 +5279,7 @@ class Match {
     const t = clamp(((b.pos.x - ax) * abx + (b.pos.y - ay) * aby + (b.pos.z - az) * abz) / l2, 0, 1);
     const cx = ax + abx * t, cy = ay + aby * t, cz = az + abz * t;
     const dist = Math.hypot(b.pos.x - cx, b.pos.y - cy, b.pos.z - cz);
-    const reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.size) * 0.14; // longer reach in small teams, where keepers face more shots
+    const reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.gkSize()) * 0.14; // longer reach in small teams, where keepers face more shots
     if (dist > BALL_R + reach) return;
     const k = b.kick;
     const shooter = k && k.by && k.by.team !== gk.team && k.type === 'shot' ? k.by : null;
@@ -6146,15 +6225,18 @@ const AI = {
       const t = (gz - b.pos.z) / b.vel.z;
       if (t > 0 && t < 1.8) {
         const px = b.pos.x + b.vel.x * t + 0.5 * b.curve.x * t * t;
-        let py = b.straightT > 0 ? b.pos.y + b.vel.y * t : b.pos.y + b.vel.y * t - 0.5 * BALL_G * t * t;
+        const g = BALL_G * (b.gMul || 1);
+        let py = b.straightT > 0 ? b.pos.y + b.vel.y * t : b.pos.y + b.vel.y * t - 0.5 * g * t * t;
         if (py < BALL_R) py = BALL_R + Math.min(1.2, Math.abs(py) * 0.4);
-        if (Math.abs(px) < F.GW + 1.0 && py < F.GH + 0.9) {
-          if (a.react == null) a.react = lerp(0.4, 0.08, Math.min(1, sk)) * rand(0.8, 1.2);
+        // a free kick: the wall hides it, so the keeper only picks it up once it is past the wall
+        const screened = m.fk && b.kick && Math.hypot(b.pos.x - b.kick.fx, b.pos.z - b.kick.fz) < 7.6;
+        if (Math.abs(px) < F.GW + 1.0 && py < F.GH + 0.9 && !screened) {
+          if (a.react == null) a.react = lerp(0.4, 0.08, Math.min(1, sk)) * rand(0.8, 1.2) * (b.kick && b.kick.special === 'knuckle' ? 1.8 : 1); // a wobbling knuckleball is hard to read
           a.react -= dt;
           if (a.react <= 0) {
             const tk = Math.max(0.06, (p.pos.z - b.pos.z) / b.vel.z);
             const kx = b.pos.x + b.vel.x * tk + 0.5 * b.curve.x * tk * tk;
-            let ky = b.straightT > 0 ? b.pos.y + b.vel.y * tk : b.pos.y + b.vel.y * tk - 0.5 * BALL_G * tk * tk;
+            let ky = b.straightT > 0 ? b.pos.y + b.vel.y * tk : b.pos.y + b.vel.y * tk - 0.5 * g * tk * tk;
             if (ky < BALL_R) ky = BALL_R;
             const dx = kx - p.pos.x;
             if (Math.abs(dx) > 0.75 || ky > 2.1) { this.dive(m, p, dx, ky, tk, sk); a.react = null; return; }
@@ -6340,7 +6422,12 @@ const Cam = {
   yaw: 0, pitch: -0.13, dist: 7.0, hidden: null, pos: V3(0, 5, -10), pivotY: 1.7, aim: V3(), onTarget: false, fwd: V3(0, 0, 1), snapYaw: null, punchT: 0, punchDur: 1, punchK: 0,
   /** a quick zoom in and back out for the cut-ins */
   punch(dur) { this.punchT = this.punchDur = dur; },
-  reset(yaw = 0) { this.yaw = yaw; this.pitch = -0.13; this.pos.set(0, 5, -10); this.pivotY = 1.7; this.snapYaw = null; this.unhide(); },
+  reset(yaw = 0) { this.yaw = yaw; this.pitch = -0.13; this.pos.set(0, 5, -10); this.pivotY = 1.7; this.snapYaw = null; this.snapPitch = null; this.unhide(); },
+  /** a free kick: turn to the goal with the crosshair on its middle (at once, or a quick turn) */
+  fkFace(yaw, dist, instant) {
+    const pitch = Math.atan2(1.5 - (this.first() ? CAM_EYE : 2.55), dist);
+    if (instant) { this.yaw = yaw; this.pitch = pitch; this.snapYaw = null; this.snapPitch = null; } else { this.snapYaw = yaw; this.snapPitch = pitch; }
+  },
   first() { return Save.data.settings.cam === 'first'; },
   /** V, R3 or the camera button: third person <-> first person */
   toggle() {
@@ -6363,19 +6450,19 @@ const Cam = {
     const E = Input.edges;
     if (E.has('KeyV') || E.has('T_cam') || (E.has('PadRS') && !Replay.offer)) { this.toggle(); E.delete('KeyV'); E.delete('T_cam'); E.delete('PadRS'); } // one press, one switch
     if (E.has('KeyL')) { E.delete('KeyL'); this.toggleShiftLock(); }
-    if (Input.mdx || Input.mdy) this.snapYaw = null;
+    if (Input.mdx || Input.mdy) this.snapYaw = this.snapPitch = null;
     this.yaw -= Input.mdx * 0.0024 * sens;
     this.pitch -= Input.mdy * 0.0021 * sens * inv;
     if (Touch.lookDX || Touch.lookDY) {
-      this.snapYaw = null;
+      this.snapYaw = this.snapPitch = null;
       this.yaw -= Touch.lookDX * T_LOOK_X * sens;
       this.pitch -= Touch.lookDY * T_LOOK_Y * sens * inv;
       Touch.lookDX = 0; Touch.lookDY = 0;
     }
     if (this.snapYaw != null) {
       this.yaw = dampAngle(this.yaw, this.snapYaw, 13, realDt);
-      this.pitch = damp(this.pitch, -0.13, 10, realDt);
-      if (Math.abs(wrapA(this.snapYaw - this.yaw)) < 0.01) this.snapYaw = null;
+      this.pitch = damp(this.pitch, this.snapPitch != null ? this.snapPitch : -0.13, 10, realDt);
+      if (Math.abs(wrapA(this.snapYaw - this.yaw)) < 0.01 && Math.abs(this.pitch - (this.snapPitch != null ? this.snapPitch : this.pitch)) < 0.01) this.snapYaw = this.snapPitch = null;
     }
     const k = Input.down;
     this.yaw += ((k.has('ArrowLeft') ? 1 : 0) - (k.has('ArrowRight') ? 1 : 0)) * 2.5 * realDt * sens;
@@ -6426,6 +6513,13 @@ const Cam = {
     const o = World.camera.position, d = this.fwd;
     const gz = m.oppGoalZ(p.team);
     let set = false;
+    if (p.fkHold && d.z * gz > 1e-3) { // a free kick: the target is always on the goal, under the crosshair
+      const t = (gz - o.z) / d.z;
+      this.aim.set(clamp(o.x + d.x * t, -F.GW - 5, F.GW + 5), clamp(o.y + d.y * t, 0.2, F.GH + 3), gz);
+      this.onTarget = Math.abs(this.aim.x) < F.GW && this.aim.y < F.GH;
+      m.aim.copy(this.aim); m.camYaw = this.yaw; m.aimOnTarget = this.onTarget;
+      return;
+    }
     if (Math.abs(d.z) > 1e-4) {
       const plane = d.z * gz > 0 ? gz : -gz;
       const t = (plane - o.z) / d.z;
@@ -6439,7 +6533,7 @@ const Cam = {
       if (t > 0 && t < 70) { this.aim.set(o.x + d.x * t, 0.3, o.z + d.z * t); set = true; }
     }
     if (!set) this.aim.set(o.x + d.x * 45, clamp(o.y + d.y * 45, 0.25, 9), o.z + d.z * 45);
-    if (Save.data.settings.assist !== false) this.assist(p, gz, Touch.on && !Input.usingPad ? 1 : 0.6); // phones get the strongest help
+    if (Save.data.settings.assist !== false && !p.fkHold) this.assist(p, gz, Touch.on && !Input.usingPad ? 1 : 0.6); // phones get the strongest help (not on a free kick: the target is yours)
     this.onTarget = Math.abs(this.aim.z - gz) < 0.6 && Math.abs(this.aim.x) < F.GW && this.aim.y < F.GH;
     m.aim.copy(this.aim); m.camYaw = this.yaw; m.aimOnTarget = this.onTarget;
   },
@@ -6742,7 +6836,8 @@ const Touch = {
       const tf = p.tackleCd > 0 ? clamp(p.tackleCd / (2.2 * p.mods.tackleCd), 0, 1) : 0;
       this.setCd('dt', tf, p.tackleCd > 0 ? String(Math.ceil(p.tackleCd)) : '');
     }
-    const pl = !own ? 'CALL' : p.passHold > 0.24 ? 'LOB' : 'PASS';
+    const pl = p.fkHold ? 'TYPE' : !own ? 'CALL' : p.passHold > 0.24 ? 'LOB' : 'PASS';
+    if (c.fk !== !!p.fkHold) { c.fk = !!p.fkHold; document.getElementById('touch').classList.toggle('fk', c.fk); } // a free kick: only MOVE (curve), TYPE and SHOOT
     if (c.pl !== pl) {
       c.pl = pl;
       this.parts.pass.lb.textContent = pl;
@@ -7046,6 +7141,59 @@ const Portal = {
     if (!code || !BUILD.server || (Net.room && Net.room.code === code)) return;
     if (Game.state !== 'lobby') Game.toLobby();
     Net.open(); $('on-code').value = code; Net.join(code);
+  },
+};
+
+/* ---- 11_fk.js ---- */
+/* =====================================================================
+   FKHud: free kick aids. A target on the goal where you aim, dots for the
+   first part of the ball's path, and the panel (kick type, curve, power)
+   ===================================================================== */
+const FKHud = {
+  built: false, on: false, target: null, dots: [],
+  build() {
+    if (this.built) return;
+    this.built = true;
+    // the target: a square frame that stands just in front of the goal mouth
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffcb3d, transparent: true, opacity: 0.95, depthTest: false });
+    const g = new THREE.Group(), s = 0.62, t = 0.09;
+    for (const [w, h, x, y] of [[s * 2, t, 0, s], [s * 2, t, 0, -s], [t, s * 2, s, 0], [t, s * 2, -s, 0], [0.16, 0.16, 0, 0]]) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); m.position.set(x, y, 0); m.renderOrder = 20; g.add(m);
+    }
+    g.visible = false; World.scene.add(g); this.target = g;
+    const dg = new THREE.BoxGeometry(0.2, 0.2, 0.2), dm = new THREE.MeshBasicMaterial({ color: 0xfff3b0, transparent: true, opacity: 0.9, depthTest: false });
+    for (let i = 0; i < 30; i++) { const d = new THREE.Mesh(dg, dm); d.visible = false; d.renderOrder = 20; World.scene.add(d); this.dots.push(d); }
+  },
+  hide() {
+    if (!this.on) return;
+    this.on = false;
+    if (this.target) this.target.visible = false;
+    for (const d of this.dots) d.visible = false;
+    $('fkpanel').hidden = true;
+  },
+  update(m) {
+    const p = m && m.human, show = !!(m && m.fk && p && p.fkHold && m.phase === 'play' && m.ball.owner === p);
+    $('hud').classList.toggle('fk', !!(m && m.fk)); // free kicks: the panel replaces the Flow bar and hotbar
+    if (!show) { this.hide(); return; }
+    this.build();
+    if (!this.on) { this.on = true; $('fkpanel').hidden = false; }
+    const s = p.fkShot, T = FK_TYPES[s.type], aim = p.aimV || m.aim, gz = m.oppGoalZ(p.team);
+    // the target, a little in front of the goal line so it is never hidden by the net
+    this.target.visible = true;
+    this.target.position.set(aim.x, aim.y, aim.z - Math.sign(gz) * 0.15);
+    this.target.rotation.y = gz > 0 ? Math.PI : 0;
+    const path = m.fkPath(p, aim);
+    this.dots.forEach((d, i) => { const q = path[i]; d.visible = !!q; if (q) d.position.set(q.x, q.y, q.z); });
+    // the panel
+    UI.setText('fk-type', T.name); UI.setText('fk-desc', T.desc);
+    $('fk-cmark').style.left = (50 + s.curve * 50).toFixed(1) + '%';
+    const D = Math.hypot(aim.x - m.ball.pos.x, aim.z - m.ball.pos.z), ideal = fkIdeal(D);
+    const z = $('fk-zone'); z.style.left = ((ideal - FK_TOL) * 100).toFixed(1) + '%'; z.style.width = (FK_TOL * 200).toFixed(1) + '%';
+    const f = $('fk-pfill'), ch = p.charging ? p.charge : 0;
+    f.style.width = (ch * 100).toFixed(1) + '%';
+    f.className = ch > ideal + FK_TOL ? 'over' : ch >= ideal - FK_TOL ? 'good' : '';
+    const pad = Input.usingPad;
+    UI.setText('fk-typekey', pad ? 'LT' : 'RMB'); UI.setText('fk-curvekey', pad ? 'L STICK' : 'A D'); UI.setText('fk-powkey', pad ? 'RT' : 'LMB');
   },
 };
 
@@ -8025,7 +8173,7 @@ const UI = {
     Hud.flowReady = () => {};
     Hud.lockHint = () => this.lockHint();
     Hud.cutin = (p, name) => this.cutin(p, name);
-    Hud.freeKick = (yaw) => { Cam.snapYaw = yaw; }; // a new free kick: the camera turns to the goal
+    Hud.freeKick = (yaw, dist) => Cam.fkFace(yaw, dist, false); // a new free kick: the camera turns to the goal
     Hud.flash = (hex) => { const fl = $('flash'); fl.className = ''; fl.style.background = hex || '#ffffff'; fl.animate([{ opacity: 0.45 }, { opacity: 0 }], { duration: 260, easing: 'steps(4)' }); };
     this.renderLobby();
   },
@@ -8295,6 +8443,11 @@ const UI = {
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
       <canvas id="minimap" width="132" height="200"></canvas>
       <div class="dock">
+        <div class="fkpanel panel" id="fkpanel" hidden>
+          <div class="fk-row"><span class="label">TYPE</span><b id="fk-type">CURVE</b><span class="label" id="fk-desc"></span><span class="key k" id="fk-typekey">RMB</span></div>
+          <div class="fk-row"><span class="label">CURVE</span><div class="fk-curve"><i id="fk-cmark"></i></div><span class="key k" id="fk-curvekey">A D</span></div>
+          <div class="fk-row"><span class="label">POWER</span><div class="fk-pow"><em id="fk-zone"></em><i id="fk-pfill"></i></div><span class="key k" id="fk-powkey">LMB</span></div>
+        </div>
         <div class="flowbar" id="flowbar"><div class="lbl"><span id="flow-name">FLOW</span><b id="flow-txt">0%</b></div><div class="track"><div class="fill" id="flow-fill"></div><div class="ticks"></div></div></div>
         <div class="flowbar awakebar" id="awakebar"><div class="lbl"><span id="awake-name">AWAKENING</span><b id="awake-txt">0%</b></div><div class="track"><div class="fill" id="awake-fill"></div></div></div>
         <div class="stamina" id="stamina"></div>
@@ -8579,6 +8732,7 @@ const UI = {
   setText(id, v) { const c = this.hudCache; if (c[id] !== v) { c[id] = v; $(id).textContent = v; } },
   updateHud(m, dt) {
     const p = m.human; if (!p) return;
+    FKHud.update(m);
     this.setText('sc0', String(m.score[0])); this.setText('sc1', String(m.score[1]));
     if (m.fk) { this.setText('clock', Math.min(m.fk.n, m.fk.total) + '/' + m.fk.total); this.setText('clock-sub', 'FREE KICK'); }
     else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL'); }
@@ -8644,7 +8798,7 @@ const UI = {
     if (!Game.playing()) { h.hidden = true; return; }
     let txt = '';
     const fk = Game.match && Game.match.fk;
-    if (fk && this.hintT > 0 && !(Input.lockFailed || (!Input.locked && !Input.usingPad && !Touch.on))) txt = Touch.on && !Input.usingPad ? 'DRAG TO AIM · HOLD SHOOT, LET GO TO FIRE' : Input.usingPad ? 'RIGHT STICK AIMS · HOLD RT, LET GO TO FIRE' : 'MOUSE AIMS · HOLD LMB, LET GO TO FIRE'; // free kicks
+    if (fk && this.hintT > 0 && !(Input.lockFailed || (!Input.locked && !Input.usingPad && !Touch.on))) txt = Touch.on && !Input.usingPad ? 'DRAG TO AIM · STICK CURVES · TYPE CHANGES THE KICK · HOLD SHOOT' : Input.usingPad ? 'RIGHT STICK AIMS · LEFT STICK CURVES · LT CHANGES THE KICK · HOLD RT' : 'MOUSE AIMS · A D CURVE · RMB CHANGES THE KICK · HOLD LMB'; // free kicks
     else if (Touch.on && !Input.usingPad) {
       if (this.hintT > 0) {
         const ctl = 'LEFT THUMB MOVES · DRAG THE RIGHT SIDE TO AIM · HOLD SHOOT, LET GO TO FIRE';
@@ -8988,7 +9142,7 @@ const Game = {
   },
   applyQuality() { const q = Save.data.settings.quality; World.setQuality(q === 'auto' ? this.autoQ : q); },
   toLobby() {
-    Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false); UI.toggleEmotes(false);
+    Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false); UI.toggleEmotes(false); FKHud.hide();
     if (this.match) { this.match.dispose(); this.match = null; }
     Net.nm = null; Net.paused = false;
     Input.releaseLock();
@@ -9012,7 +9166,8 @@ const Game = {
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
     World.setSun(SUN_MATCH);
-    Cam.reset(this.match.fk ? this.match.human.yaw : 0); // free kicks: start looking at the goal
+    Cam.reset(0);
+    if (this.match.fk) Cam.fkFace(this.match.human.yaw, this.match.fk.dist, true); // free kicks: start looking at the goal
     this.state = 'match';
     UI.show('hud'); UI.buildHud(this.match);
     Sfx.setCrowd(0.55);
@@ -9178,7 +9333,7 @@ window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS,
-  EMOTES, FK_SHOTS, CODES, codeHash, redeemCode,
+  EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, CODES, codeHash, redeemCode,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

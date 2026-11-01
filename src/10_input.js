@@ -117,7 +117,12 @@ const Cam = {
   yaw: 0, pitch: -0.13, dist: 7.0, hidden: null, pos: V3(0, 5, -10), pivotY: 1.7, aim: V3(), onTarget: false, fwd: V3(0, 0, 1), snapYaw: null, punchT: 0, punchDur: 1, punchK: 0,
   /** a quick zoom in and back out for the cut-ins */
   punch(dur) { this.punchT = this.punchDur = dur; },
-  reset(yaw = 0) { this.yaw = yaw; this.pitch = -0.13; this.pos.set(0, 5, -10); this.pivotY = 1.7; this.snapYaw = null; this.unhide(); },
+  reset(yaw = 0) { this.yaw = yaw; this.pitch = -0.13; this.pos.set(0, 5, -10); this.pivotY = 1.7; this.snapYaw = null; this.snapPitch = null; this.unhide(); },
+  /** a free kick: turn to the goal with the crosshair on its middle (at once, or a quick turn) */
+  fkFace(yaw, dist, instant) {
+    const pitch = Math.atan2(1.5 - (this.first() ? CAM_EYE : 2.55), dist);
+    if (instant) { this.yaw = yaw; this.pitch = pitch; this.snapYaw = null; this.snapPitch = null; } else { this.snapYaw = yaw; this.snapPitch = pitch; }
+  },
   first() { return Save.data.settings.cam === 'first'; },
   /** V, R3 or the camera button: third person <-> first person */
   toggle() {
@@ -140,19 +145,19 @@ const Cam = {
     const E = Input.edges;
     if (E.has('KeyV') || E.has('T_cam') || (E.has('PadRS') && !Replay.offer)) { this.toggle(); E.delete('KeyV'); E.delete('T_cam'); E.delete('PadRS'); } // one press, one switch
     if (E.has('KeyL')) { E.delete('KeyL'); this.toggleShiftLock(); }
-    if (Input.mdx || Input.mdy) this.snapYaw = null;
+    if (Input.mdx || Input.mdy) this.snapYaw = this.snapPitch = null;
     this.yaw -= Input.mdx * 0.0024 * sens;
     this.pitch -= Input.mdy * 0.0021 * sens * inv;
     if (Touch.lookDX || Touch.lookDY) {
-      this.snapYaw = null;
+      this.snapYaw = this.snapPitch = null;
       this.yaw -= Touch.lookDX * T_LOOK_X * sens;
       this.pitch -= Touch.lookDY * T_LOOK_Y * sens * inv;
       Touch.lookDX = 0; Touch.lookDY = 0;
     }
     if (this.snapYaw != null) {
       this.yaw = dampAngle(this.yaw, this.snapYaw, 13, realDt);
-      this.pitch = damp(this.pitch, -0.13, 10, realDt);
-      if (Math.abs(wrapA(this.snapYaw - this.yaw)) < 0.01) this.snapYaw = null;
+      this.pitch = damp(this.pitch, this.snapPitch != null ? this.snapPitch : -0.13, 10, realDt);
+      if (Math.abs(wrapA(this.snapYaw - this.yaw)) < 0.01 && Math.abs(this.pitch - (this.snapPitch != null ? this.snapPitch : this.pitch)) < 0.01) this.snapYaw = this.snapPitch = null;
     }
     const k = Input.down;
     this.yaw += ((k.has('ArrowLeft') ? 1 : 0) - (k.has('ArrowRight') ? 1 : 0)) * 2.5 * realDt * sens;
@@ -203,6 +208,13 @@ const Cam = {
     const o = World.camera.position, d = this.fwd;
     const gz = m.oppGoalZ(p.team);
     let set = false;
+    if (p.fkHold && d.z * gz > 1e-3) { // a free kick: the target is always on the goal, under the crosshair
+      const t = (gz - o.z) / d.z;
+      this.aim.set(clamp(o.x + d.x * t, -F.GW - 5, F.GW + 5), clamp(o.y + d.y * t, 0.2, F.GH + 3), gz);
+      this.onTarget = Math.abs(this.aim.x) < F.GW && this.aim.y < F.GH;
+      m.aim.copy(this.aim); m.camYaw = this.yaw; m.aimOnTarget = this.onTarget;
+      return;
+    }
     if (Math.abs(d.z) > 1e-4) {
       const plane = d.z * gz > 0 ? gz : -gz;
       const t = (plane - o.z) / d.z;
@@ -216,7 +228,7 @@ const Cam = {
       if (t > 0 && t < 70) { this.aim.set(o.x + d.x * t, 0.3, o.z + d.z * t); set = true; }
     }
     if (!set) this.aim.set(o.x + d.x * 45, clamp(o.y + d.y * 45, 0.25, 9), o.z + d.z * 45);
-    if (Save.data.settings.assist !== false) this.assist(p, gz, Touch.on && !Input.usingPad ? 1 : 0.6); // phones get the strongest help
+    if (Save.data.settings.assist !== false && !p.fkHold) this.assist(p, gz, Touch.on && !Input.usingPad ? 1 : 0.6); // phones get the strongest help (not on a free kick: the target is yours)
     this.onTarget = Math.abs(this.aim.z - gz) < 0.6 && Math.abs(this.aim.x) < F.GW && this.aim.y < F.GH;
     m.aim.copy(this.aim); m.camYaw = this.yaw; m.aimOnTarget = this.onTarget;
   },

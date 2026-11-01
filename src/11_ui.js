@@ -22,7 +22,7 @@ const UI = {
     Hud.flowReady = () => {};
     Hud.lockHint = () => this.lockHint();
     Hud.cutin = (p, name) => this.cutin(p, name);
-    Hud.freeKick = (yaw) => { Cam.snapYaw = yaw; }; // a new free kick: the camera turns to the goal
+    Hud.freeKick = (yaw, dist) => Cam.fkFace(yaw, dist, false); // a new free kick: the camera turns to the goal
     Hud.flash = (hex) => { const fl = $('flash'); fl.className = ''; fl.style.background = hex || '#ffffff'; fl.animate([{ opacity: 0.45 }, { opacity: 0 }], { duration: 260, easing: 'steps(4)' }); };
     this.renderLobby();
   },
@@ -292,6 +292,11 @@ const UI = {
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
       <canvas id="minimap" width="132" height="200"></canvas>
       <div class="dock">
+        <div class="fkpanel panel" id="fkpanel" hidden>
+          <div class="fk-row"><span class="label">TYPE</span><b id="fk-type">CURVE</b><span class="label" id="fk-desc"></span><span class="key k" id="fk-typekey">RMB</span></div>
+          <div class="fk-row"><span class="label">CURVE</span><div class="fk-curve"><i id="fk-cmark"></i></div><span class="key k" id="fk-curvekey">A D</span></div>
+          <div class="fk-row"><span class="label">POWER</span><div class="fk-pow"><em id="fk-zone"></em><i id="fk-pfill"></i></div><span class="key k" id="fk-powkey">LMB</span></div>
+        </div>
         <div class="flowbar" id="flowbar"><div class="lbl"><span id="flow-name">FLOW</span><b id="flow-txt">0%</b></div><div class="track"><div class="fill" id="flow-fill"></div><div class="ticks"></div></div></div>
         <div class="flowbar awakebar" id="awakebar"><div class="lbl"><span id="awake-name">AWAKENING</span><b id="awake-txt">0%</b></div><div class="track"><div class="fill" id="awake-fill"></div></div></div>
         <div class="stamina" id="stamina"></div>
@@ -576,6 +581,7 @@ const UI = {
   setText(id, v) { const c = this.hudCache; if (c[id] !== v) { c[id] = v; $(id).textContent = v; } },
   updateHud(m, dt) {
     const p = m.human; if (!p) return;
+    FKHud.update(m);
     this.setText('sc0', String(m.score[0])); this.setText('sc1', String(m.score[1]));
     if (m.fk) { this.setText('clock', Math.min(m.fk.n, m.fk.total) + '/' + m.fk.total); this.setText('clock-sub', 'FREE KICK'); }
     else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL'); }
@@ -641,7 +647,7 @@ const UI = {
     if (!Game.playing()) { h.hidden = true; return; }
     let txt = '';
     const fk = Game.match && Game.match.fk;
-    if (fk && this.hintT > 0 && !(Input.lockFailed || (!Input.locked && !Input.usingPad && !Touch.on))) txt = Touch.on && !Input.usingPad ? 'DRAG TO AIM · HOLD SHOOT, LET GO TO FIRE' : Input.usingPad ? 'RIGHT STICK AIMS · HOLD RT, LET GO TO FIRE' : 'MOUSE AIMS · HOLD LMB, LET GO TO FIRE'; // free kicks
+    if (fk && this.hintT > 0 && !(Input.lockFailed || (!Input.locked && !Input.usingPad && !Touch.on))) txt = Touch.on && !Input.usingPad ? 'DRAG TO AIM · STICK CURVES · TYPE CHANGES THE KICK · HOLD SHOOT' : Input.usingPad ? 'RIGHT STICK AIMS · LEFT STICK CURVES · LT CHANGES THE KICK · HOLD RT' : 'MOUSE AIMS · A D CURVE · RMB CHANGES THE KICK · HOLD LMB'; // free kicks
     else if (Touch.on && !Input.usingPad) {
       if (this.hintT > 0) {
         const ctl = 'LEFT THUMB MOVES · DRAG THE RIGHT SIDE TO AIM · HOLD SHOOT, LET GO TO FIRE';

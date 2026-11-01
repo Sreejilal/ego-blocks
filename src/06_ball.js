@@ -23,7 +23,7 @@ class Ball {
   dispose() { this.m.scene.remove(this.mesh, this.blob); }
   reset(x = 0, z = 0, y = BALL_R) {
     this.owner = null; this.held = false; this.inGoal = 0; this.kick = null; this.straightT = 0;
-    this.pos.set(x, y, z); this.vel.set(0, 0, 0); this.curve.set(0, 0, 0); this.last.copy(this.pos); this.spinRate = 0;
+    this.pos.set(x, y, z); this.vel.set(0, 0, 0); this.curve.set(0, 0, 0); this.last.copy(this.pos); this.spinRate = 0; this.gMul = 1;
   }
   touch(p) {
     if (!p) return;
@@ -83,7 +83,7 @@ class Ball {
     const n = clamp(Math.ceil(sp0 * dt / 0.16), 1, 10);
     const h = dt / n;
     for (let i = 0; i < n; i++) {
-      if (this.straightT > 0) this.straightT -= h; else this.vel.y -= BALL_G * h;
+      if (this.straightT > 0) this.straightT -= h; else this.vel.y -= BALL_G * (this.gMul || 1) * h; // gMul: a DIP free kick drops faster
       if (this.curve.x !== 0 || this.curve.z !== 0) {
         this.vel.x += this.curve.x * h; this.vel.z += this.curve.z * h;
         if (this.curveDecay > 0) { const k = Math.exp(-h / this.curveDecay); this.curve.x *= k; this.curve.z *= k; }
@@ -96,7 +96,7 @@ class Ball {
         if (this.vel.y < -2.2) {
           if (this.vel.y < -6) Sfx.thud(clamp(-this.vel.y / 16, 0.2, 1));
           this.vel.y = -this.vel.y * 0.52; this.vel.x *= 0.88; this.vel.z *= 0.88;
-          this.curve.multiplyScalar(0.4);
+          this.curve.multiplyScalar(0.4); this.gMul = 1;
         } else {
           this.vel.y = 0;
           this.curve.multiplyScalar(Math.exp(-h * 6));
