@@ -282,6 +282,7 @@ const Touch = {
     }
     const pl = p.fkHold ? 'TYPE' : !own ? 'CALL' : p.passHold > 0.24 ? 'LOB' : 'PASS';
     if (c.fk !== !!p.fkHold) { c.fk = !!p.fkHold; document.getElementById('touch').classList.toggle('fk', c.fk); } // a free kick: only MOVE (curve), TYPE and SHOOT
+    if (c.wall !== !!p.inWall) { c.wall = !!p.inWall; document.getElementById('touch').classList.toggle('wall', c.wall); } // in the wall: only JUMP
     if (c.pl !== pl) {
       c.pl = pl;
       this.parts.pass.lb.textContent = pl;

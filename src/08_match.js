@@ -153,7 +153,7 @@ class Match {
     if (ph === 'goal' && this.phaseT >= (this.fk ? 2.4 : 3.9)) { if (this.fk) this.nextFreeKick(); else if (this.pendingEnd) this.endMatch(); else this.setupKickoff(1 - this.lastGoal.team); }
     if (ph === 'out' && this.phaseT >= 1.05) this.doRestart();
     if ((ph === 'play' || ph === 'out') && !this.fk) this.tickClock(dt);
-    if (this.hill && ph === 'play') this.updateHill(dt);
+    if (this.hill && ph === 'play' && !this.fk) this.updateHill(dt);
 
     for (const p of this.players) { p.tickTimers(dt); p.computeMods(); }
     if (ph === 'play' || ph === 'out' || ph === 'goal') AI.update(this, dt);
@@ -176,7 +176,7 @@ class Match {
     this.ball.update(dt);
     this.updateBlocks();
     if (this.phase === 'play') { this.ballContacts(); this.checkGoalAndOut(); }
-    if (this.cfg.items) this.updateItems(dt);
+    if (this.cfg.items && !this.fk) this.updateItems(dt);
     this.updateFx(dt);
     for (const p of this.players) p.animate(dt);
   }
@@ -190,7 +190,7 @@ class Match {
       }
     } else {
       this.goldenClock -= dt;
-      if (this.goldenClock <= 0) { this.goldenClock = 0; this.endMatch(); }
+      if (this.goldenClock <= 0) { this.goldenClock = 0; if (this.score[0] === this.score[1] && this.human && !this.online) this.startBattle(); else this.endMatch(); } // still level: a free kick battle
     }
   }
   endMatch() {
@@ -231,6 +231,7 @@ class Match {
       return;
     }
     if (p.fkHold) { this.freeKickControls(dt, c, p, cy); return; }
+    if (p.inWall) { p.mx = p.mz = 0; p.charging = false; p.charge = 0; if (c.jump) this.jump(p); return; } // in the wall for their free kick: jump to block it
     if (!this.canAct(p)) { if (p.state !== 'dash') { p.charging = false; p.charge = 0; } return; }
     if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; }
     if (p.charging) {
@@ -798,36 +799,85 @@ class Match {
     Hud.banner('FREE KICKS', 'AIM, THEN HOLD SHOOT FOR POWER', '#b65cff');
     this.nextFreeKick();
   }
-  /** a new spot 16 to 27 blocks out. Like real football the wall covers the near-post half and the keeper the far half */
+  /** a new spot 16 to 27 blocks out. Like real football the wall covers the near-post half and the keeper the far
+      half. Practice: always you. A free kick battle: the team whose turn it is, and the other team makes the wall */
   nextFreeKick() {
     const k = this.fk, h = this.human;
-    if (k.n >= k.total) { this.endFreeKicks(); return; }
-    k.n++; k.state = 'aim'; k.t = 0; k.hit = null; k.dist = 0;
+    let t = h.team;
+    if (k.battle) { t = this.battleNext(); if (t < 0) { this.endBattle(); return; } }
+    else if (k.n >= k.total) { this.endFreeKicks(); return; }
+    k.n++; k.state = 'aim'; k.t = 0; k.hit = null; k.dist = 0; k.botT = null;
     this.phase = 'play'; this.phaseT = 0; this.lastPass = null;
-    const gz = this.oppGoalZ(h.team), s = sgn(gz);
+    const sh = t === h.team ? h : this.teams[t].find((p) => p.role === leadRole(this.rolesFor(t)));
+    k.shooter = sh;
+    const gz = this.oppGoalZ(t), s = sgn(gz);
     const dist = rand(16, 27), x = rand(-1, 1) * Math.min(F.W - 5, 4 + dist * 0.45), z = gz - s * dist;
     let dx = -x, dz = gz - z; const l = Math.hypot(dx, dz); dx /= l; dz /= l;
     const yaw = Math.atan2(dx, dz);
     k.x = x; k.z = z; k.dist = dist;
-    h.fkShot = { type: h.fkShot ? h.fkShot.type : 'curve', curve: 0 };
+    sh.fkShot = { type: sh.fkShot ? sh.fkShot.type : 'curve', curve: 0 };
     for (const p of this.players) {
       p.dash = p.slide = p.dive = null; p.charging = false; p.charge = 0; p.kickT = -1; p.flipT = -1; p.pending = null; p.shotBuffer = null;
-      p.vel.set(0, 0, 0); p.pos.y = 0; p.onGround = true; p.setState('free');
+      p.vel.set(0, 0, 0); p.pos.y = 0; p.onGround = true; p.setState('free'); p.fkHold = false; p.inWall = false;
     }
     this.ball.reset(x, z);
-    h.yaw = yaw; h.pos.set(x - dx * 0.62, 0, z - dz * 0.62); h.fkHold = true;
-    this.possess(h, true); h.protect = 1;
+    sh.yaw = yaw; sh.pos.set(x - dx * 0.62, 0, z - dz * 0.62); sh.fkHold = sh === h; // a bot takes it by itself (botFreeKick)
+    this.possess(sh, true); sh.protect = 1;
+    // the wall: the other team's outfield players, you first when it is their kick
+    this.fkWall = this.teams[1 - t].filter((p) => !p.isGK).sort((a, b) => (b === h) - (a === h));
+    this.teams[t].filter((p) => p !== sh && !p.isGK).forEach((p, i) => { p.pos.set(x + (i % 2 ? 1 : -1) * (3 + i), 0, z - s * (5 + i)); p.yaw = yaw; }); // your teammates stand back
+    const og = this.teams[t].find((p) => p.isGK); if (og) { og.pos.set(0, 0, -gz + s * 1.2); og.yaw = s > 0 ? 0 : Math.PI; }
     const side = Math.abs(x) > 1 ? sgn(x) : pick([-1, 1]); // the near post (a kick from the middle: either one)
     let wx = side * F.GW * 0.5 - x, wz = gz - z; const wl = Math.hypot(wx, wz); wx /= wl; wz /= wl;
-    const n = dist < 19 ? 4 : dist < 23 ? 3 : 2; // closer in, a bigger wall
+    const n = Math.min(this.fkWall.length, dist < 19 ? 4 : dist < 23 ? 3 : 2); // closer in, a bigger wall
+    k.wallNow = this.fkWall.slice(0, n);
     this.fkWall.forEach((w, i) => {
-      if (i < n) { const o = (i - (n - 1) / 2) * 0.85; w.pos.set(x + wx * 7 - wz * o, 0, z + wz * 7 + wx * o); w.yaw = yaw + Math.PI; }
+      if (i < n) { const o = (i - (n - 1) / 2) * 0.85; w.pos.set(x + wx * 7 - wz * o, 0, z + wz * 7 + wx * o); w.yaw = yaw + Math.PI; if (w === h) w.inWall = true; }
       else { const j = i - n, sx = j % 2 ? -side : side; w.pos.set(sx * (F.GW + 2.2 + j), 0, gz - s * (3 + j * 1.5)); w.yaw = s > 0 ? Math.PI : 0; } // marking in the box, wide of the posts
     });
-    const g = this.teams[1].find((p) => p.isGK);
+    const g = this.teams[1 - t].find((p) => p.isGK);
     if (g) { g.pos.set(-side * 0.9, 0, gz - s * 1.2); g.yaw = yaw + Math.PI; }
-    Hud.freeKick(yaw, dist);
-    this.toast('KICK ' + k.n + ' OF ' + k.total + ' · ' + Math.round(dist) + ' BLOCKS OUT', 'gold', h);
+    if (sh === h) { Hud.freeKick(yaw, dist); this.toast(k.battle ? 'YOUR KICK · ' + Math.round(dist) + ' BLOCKS OUT' : 'KICK ' + k.n + ' OF ' + k.total + ' · ' + Math.round(dist) + ' BLOCKS OUT', 'gold', h); }
+    else if (h.inWall) { const yw = Math.atan2(x - h.pos.x, z - h.pos.z); h.yaw = yw; Hud.freeKick(yw, 7); this.toast(Touch.on ? 'THEIR KICK · YOU ARE IN THE WALL · TAP JUMP TO BLOCK IT' : 'THEIR KICK · YOU ARE IN THE WALL · SPACE TO JUMP AND BLOCK IT', 'gold', h); }
+  }
+  /* ---------- the free kick battle: still level after golden goal ---------- */
+  startBattle() {
+    this.fk = { battle: true, bs: [0, 0], kicks: [0, 0], log: [], n: 0, total: 3, state: 'done', t: -0.9, shooter: null, wallNow: [] };
+    this.ball.release();
+    for (const p of this.players) { p.wall = !p.isGK; p.charging = false; p.charge = 0; p.mx = p.mz = 0; }
+    if (this.human) this.human.inWall = true; // you wait for the first kick
+    Hud.banner('FREE KICK BATTLE', 'STILL LEVEL. 3 FREE KICKS EACH, THEN SUDDEN DEATH', '#b65cff');
+    Sfx.whistle(2); Sfx.roar(0.6);
+  }
+  /** whose kick is next (you first), or -1 when it is decided: one side cannot catch up, or level kicks after 3 each */
+  battleNext() {
+    const k = this.fk, [a, b] = k.bs, [ka, kb] = k.kicks, R = k.total;
+    if (ka === kb && ka >= R && a !== b) return -1;
+    if (ka <= R && kb <= R && (a > b + Math.max(0, R - kb) || b > a + Math.max(0, R - ka))) return -1;
+    return ka <= kb ? 0 : 1;
+  }
+  battleLine() { const [a, b] = this.fk.bs; return 'FREE KICK BATTLE · ' + TEAM[0].short + ' ' + a + ' : ' + b + ' ' + TEAM[1].short; }
+  endBattle() {
+    const k = this.fk, w = k.bs[0] > k.bs[1] ? 0 : 1, hum = this.human ? this.human.team : 0;
+    k.state = 'end';
+    for (const p of this.players) { p.fkHold = false; p.inWall = false; p.wall = false; }
+    this.endMatch();
+    this.result.res = w === hum ? 'win' : 'loss'; this.result.battle = k.bs.slice();
+    Hud.banner(w === hum ? 'YOU WIN THE BATTLE' : 'THEY WIN THE BATTLE', this.battleLine(), w === hum ? '#2ee38f' : '#ff4d5e');
+    for (const p of this.players) if (p.team === w) p.setState('celebrate', 99);
+    World.excite[w] = 1;
+  }
+  /** a bot takes its free kick: mostly a curler round the wall, sometimes a dip or a power shot. Better bots are more exact */
+  botFreeKick(p) {
+    const b = this.ball, gz = this.oppGoalZ(p.team), sk = clamp(this.skill(p), 0, 1), wall = this.fk.wallNow || [];
+    const wx = wall.length ? wall.reduce((a, w) => a + w.pos.x, 0) / wall.length : b.pos.x;
+    const near = Math.abs(b.pos.x) > 1 ? sgn(b.pos.x) : (wx > b.pos.x ? 1 : -1), r = Math.random(), err = lerp(1.7, 0.5, sk);
+    let type = 'curve', curve = -0.8 * near * sgn(gz), tx = -near * 6.5, ty = 2.0;
+    if (r > 0.85) { type = 'power'; curve = 0; tx = -near * 3.6; ty = 2.4; } else if (r > 0.6) { type = 'dip'; curve = 0; tx = near * 3.2; ty = 2.4; }
+    p.fkShot = { type, curve: clamp(curve + rand(-0.3, 0.3) * (1.2 - sk), -1, 1) };
+    const t = V3(tx + rand(-err, err), ty + rand(-err, err) * 0.4, gz), D = Math.hypot(t.x - b.pos.x, t.z - b.pos.z);
+    p.yaw = Math.atan2(t.x - b.pos.x, t.z - b.pos.z);
+    return this.freeKickShot(p, fkIdeal(D) + rand(-1, 1) * lerp(0.16, 0.06, sk), t);
   }
   /** lining up a free kick: aim with the camera, A/D (stick) sets the curve, pass changes the kick type,
       hold shoot for power and let go. Abilities are off */
@@ -880,31 +930,40 @@ class Match {
     return out;
   }
   updateFreeKick(dt) {
-    const k = this.fk, b = this.ball, h = this.human;
-    if (!k || !h || this.phase !== 'play') return;
+    const k = this.fk, b = this.ball;
+    if (!k || this.phase !== 'play') return;
     k.t += dt;
+    if (k.state === 'done') { if (k.t > 1.8) this.nextFreeKick(); return; }
+    const sh = k.shooter; if (!sh) return;
     if (k.state === 'aim') {
-      if (b.owner === h) { // stand behind the ball as you turn, so it stays on its spot
-        h.pos.x = k.x - Math.sin(h.yaw) * 0.62; h.pos.z = k.z - Math.cos(h.yaw) * 0.62; h.vel.x = h.vel.z = 0; h.protect = Math.max(h.protect, 0.3);
+      if (b.owner === sh) { // stand behind the ball as you turn, so it stays on its spot
+        sh.pos.x = k.x - Math.sin(sh.yaw) * 0.62; sh.pos.z = k.z - Math.cos(sh.yaw) * 0.62; sh.vel.x = sh.vel.z = 0; sh.protect = Math.max(sh.protect, 0.3);
+        if (!sh.isHuman) { if (k.botT == null) k.botT = rand(1.4, 2.3); if (k.t > k.botT) this.botFreeKick(sh); }
         return;
       }
-      k.state = 'flight'; k.t = 0; h.fkHold = false; // it is taken: the wall jumps
-      for (const w of this.fkWall) if (w.onGround && chance(0.6)) { w.vel.y = rand(6, 7.5); w.onGround = false; }
+      k.state = 'flight'; k.t = 0; sh.fkHold = false; // it is taken: the wall jumps (you jump yourself)
+      if (k.battle) k.kicks[sh.team]++;
+      for (const w of k.wallNow || this.fkWall) if (!w.isHuman && w.onGround && chance(0.6)) { w.vel.y = rand(6, 7.5); w.onGround = false; }
       return;
     }
     if (k.state === 'flight') {
       const o = b.owner, lt = b.lastTouch;
-      if (lt && lt.team !== h.team) k.hit = lt.isGK ? 'SAVED' : 'BLOCKED'; // the keeper or the wall got a touch on it
-      if (o && o.team !== h.team) this.fkResult(k.hit);
-      else if (o === h && k.hit) this.fkResult(k.hit); // it came back off the wall to you
+      if (lt && lt.team !== sh.team) k.hit = lt.isGK ? 'SAVED' : 'BLOCKED'; // the keeper or the wall got a touch on it
+      if (o && o.team !== sh.team) this.fkResult(k.hit);
+      else if (o && o.team === sh.team && k.hit) this.fkResult(k.hit); // it came back off the wall
       else if (k.t > 4.5 || (k.t > 1.2 && !o && b.vel.lengthSq() < 1)) this.fkResult(k.hit || 'MISS');
-      return;
     }
-    if (k.state === 'done' && k.t > 1.8) this.nextFreeKick();
   }
   fkResult(what) {
     const k = this.fk; if (!k || k.state !== 'flight') return;
-    k.state = 'done'; k.t = 0; k.log.push(what); this.score[1]++;
+    k.state = 'done'; k.t = 0; k.log.push(what);
+    if (k.battle) {
+      const mine = this.human && k.shooter.team === this.human.team;
+      Hud.banner(what, this.battleLine(), mine ? '#ff4d5e' : '#2ee38f', true);
+      if (mine) Sfx.deny(); else Sfx.coin();
+      return;
+    }
+    this.score[1]++;
     Hud.banner(what, 'KICK ' + k.n + ' OF ' + k.total, what === 'MISS' ? '#ff4d5e' : '#ffcb3d', true);
     if (what === 'MISS') Sfx.deny();
   }
@@ -1235,6 +1294,7 @@ class Match {
   }
   onGoal(side) {
     const b = this.ball, team = side > 0 ? 0 : 1, k = b.kick;
+    if (this.fk && this.fk.battle) { this.battleGoal(team); return; }
     if (this.cfg.aerialOnly && !(k && k.aerial)) { // Volleys Only: a goal off the ground does not count
       b.inGoal = 0; this.onOut();
       Hud.banner('NO GOAL', 'ONLY VOLLEYS AND HEADERS COUNT', '#ff4d5e', true); Sfx.deny();
@@ -1276,6 +1336,19 @@ class Match {
     FX.sparks(b.pos.x, b.pos.y, b.pos.z, TEAM[team].hex, 40, 9, 0.28);
     Hud.goal(team, scorer, assister, own);
     for (const p of this.players) { p.charging = false; p.pending = null; p.ai.wantShot = null; if (p.state === 'windup') p.setState('free'); }
+  }
+  /** a goal in the free kick battle: it counts for the battle, not the match score */
+  battleGoal(team) {
+    const k = this.fk, b = this.ball;
+    if (k.state !== 'flight') { b.reset(0, 0); return; } // not from a kick (a loose ball rolled in)
+    k.state = 'goal'; k.log.push('GOAL'); k.bs[team]++;
+    this.phase = 'goal'; this.phaseT = 0;
+    if (k.shooter) { k.shooter.setState('celebrate', 2.2); k.shooter.fkHold = false; }
+    const yours = this.human && team === this.human.team;
+    Hud.banner('GOAL!', this.battleLine(), yours ? '#2ee38f' : '#ff4d5e');
+    Sfx.roar(1); Sfx.whistle(1); World.excite[team] = 1; Shake.add(0.3);
+    FX.sparks(b.pos.x, b.pos.y, b.pos.z, TEAM[team].hex, 30, 8, 0.28);
+    b.owner = null; b.kick = null;
   }
   onOut() {
     if (this.fk) { this.fkResult(this.fk.hit || 'MISS'); return; } // free kicks: no throw-ins, just the next kick

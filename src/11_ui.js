@@ -162,6 +162,7 @@ const UI = {
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
             <li><b>Play with friends:</b> create a room, send the code or invite link, pick teams and a mode, and bots fill the empty spots. Keyboard, controller and phone players can all join the same room. It needs the SCORZ server running (see the README).</li>
             <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
+            <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
             <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
             <li><b>Featured mode</b> changes every 3 hours, the same for everyone: King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3) and Lawless.</li>
             <li><b>Team size:</b> Quick Match and Lawless are 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
@@ -583,7 +584,8 @@ const UI = {
     const p = m.human; if (!p) return;
     FKHud.update(m);
     this.setText('sc0', String(m.score[0])); this.setText('sc1', String(m.score[1]));
-    if (m.fk) { this.setText('clock', Math.min(m.fk.n, m.fk.total) + '/' + m.fk.total); this.setText('clock-sub', 'FREE KICK'); }
+    if (m.fk && m.fk.battle) { this.setText('clock', m.fk.bs[0] + '-' + m.fk.bs[1]); this.setText('clock-sub', 'FK BATTLE'); }
+    else if (m.fk) { this.setText('clock', Math.min(m.fk.n, m.fk.total) + '/' + m.fk.total); this.setText('clock-sub', 'FREE KICK'); }
     else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL'); }
     else { this.setText('clock', fmtTime(m.clock)); this.setText('clock-sub', ''); }
     this.setText('hud-em', String(Save.data.emeralds));
@@ -646,7 +648,7 @@ const UI = {
     const h = $('hint'); if (!h) return;
     if (!Game.playing()) { h.hidden = true; return; }
     let txt = '';
-    const fk = Game.match && Game.match.fk;
+    const fk = Game.match && Game.match.human && Game.match.human.fkHold; // your free kick
     if (fk && this.hintT > 0 && !(Input.lockFailed || (!Input.locked && !Input.usingPad && !Touch.on))) txt = Touch.on && !Input.usingPad ? 'DRAG TO AIM · STICK CURVES · TYPE CHANGES THE KICK · HOLD SHOOT' : Input.usingPad ? 'RIGHT STICK AIMS · LEFT STICK CURVES · LT CHANGES THE KICK · HOLD RT' : 'MOUSE AIMS · A D CURVE · RMB CHANGES THE KICK · HOLD LMB'; // free kicks
     else if (Touch.on && !Input.usingPad) {
       if (this.hintT > 0) {

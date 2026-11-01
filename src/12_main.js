@@ -92,7 +92,7 @@ const Game = {
     this.ended = true;
     const m = this.match, d = Save.data;
     Replay.offer = null; Replay.hideOffer();
-    if (m.fk) { // free kick practice: your score and your best, no rewards
+    if (m.cfg.practice) { // free kick practice: your score and your best, no rewards
       if (forfeit) { this.toLobby(); return; }
       const P = m.result.practice, best = d.fkBest || 0;
       if (P.goals > best) d.fkBest = P.goals;
@@ -136,7 +136,7 @@ const Game = {
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name, xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && m.result.noReward, daily, goalsDone });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name + (!forfeit && m.result.battle ? ' · FREE KICK BATTLE ' + m.result.battle.join('-') : ''), xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && m.result.noReward, daily, goalsDone });
     if (res === 'win') Sfx.fanfare(2);
     if (res === 'win' && !idle) Portal.happy();
     Portal.midgame();
