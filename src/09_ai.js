@@ -7,7 +7,7 @@ const AI = {
     if (m.aiTeamT <= 0) { m.aiTeamT = 0.18; this.predict(m); this.assign(m, 0); this.assign(m, 1); }
     for (const p of m.players) {
       if (p.isHuman && !m.autopilot) continue;
-      if (p.setPiece) { p.mx = p.mz = 0; continue; } // taking a throw-in, corner or goal kick: the match plays it
+      if (p.setPiece || p.wall) { p.mx = p.mz = 0; continue; } // taking a throw-in, corner or goal kick: the match plays it. A free kick wall stays put
       if (p.isGK) this.keeper(m, p, dt);
       else this.outfield(m, p, dt);
     }

@@ -239,7 +239,7 @@ class Player {
       if (ownsBall) base *= 0.94;
       if (this.charging) base *= 0.62;
       if (st === 'hold') base *= 0.6;
-      maxSpeed = this.setPiece ? 0 : base * m.speed; // a throw-in or corner taker stands still
+      maxSpeed = this.setPiece || this.fkHold ? 0 : base * m.speed; // a throw-in, corner or free kick taker stands still
       if (sprinting && m.stamDrain > 0) {
         this.stamina -= 13 * dt * m.stamDrain; this.stamDelay = 0.7; // about 7.5s of sprint: the whole pitch
         if (this.stamina <= 0) { this.stamina = 0; this.exhausted = true; }

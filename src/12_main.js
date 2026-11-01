@@ -55,7 +55,7 @@ const Game = {
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
     World.setSun(SUN_MATCH);
-    Cam.reset(0);
+    Cam.reset(this.match.fk ? this.match.human.yaw : 0); // free kicks: start looking at the goal
     this.state = 'match';
     UI.show('hud'); UI.buildHud(this.match);
     Sfx.setCrowd(0.55);
@@ -91,6 +91,18 @@ const Game = {
     this.ended = true;
     const m = this.match, d = Save.data;
     Replay.offer = null; Replay.hideOffer();
+    if (m.fk) { // free kick practice: your score and your best, no rewards
+      if (forfeit) { this.toLobby(); return; }
+      const P = m.result.practice, best = d.fkBest || 0;
+      if (P.goals > best) d.fkBest = P.goals;
+      Save.save();
+      this.state = 'results'; m.paused = true;
+      Input.releaseLock();
+      UI.showPractice(Object.assign({ best: Math.max(best, P.goals), newBest: P.goals > best }, P));
+      if (P.goals > best) Sfx.fanfare(2);
+      Sfx.setCrowd(0.3);
+      return;
+    }
     const res = forfeit ? 'forfeit' : m.result.res;
     const hs = forfeit ? (m.human ? Object.assign({}, m.human.stats) : { goals: 0, assists: 0, shots: 0, tackles: 0 }) : (m.result.human || { goals: 0, assists: 0, shots: 0, tackles: 0 });
     const idle = !forfeit && !!(m.result.idle || m.result.noReward); // online: a bot played for you, or they were far below your rank: nothing
@@ -209,7 +221,7 @@ window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS,
-  EMOTES,
+  EMOTES, FK_SHOTS,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

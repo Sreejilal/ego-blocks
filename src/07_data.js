@@ -598,6 +598,9 @@ function matchSides(homeId, awayId) {
 /* ---------- team sizes: casual modes are 3v3; ranked grows as you climb ---------- */
 /** who plays where. 3v3: a keeper, a defender and a midfielder; 4v4 adds a striker; 5v5 picks a setup at random for
     each team: ultra defensive (two defenders) or ultra attacking (two strikers). FW is the second striker */
+/** free kick practice: how many kicks, and the abilities you can use on one (the shots) */
+const FK_KICKS = 10;
+const FK_SHOTS = ['quickShot', 'curler', 'volley', 'impactShot', 'oneTouch', 'knuckle', 'longBomb', 'overhead'];
 const ROSTERS = { 2: ['GK', 'ST'], 3: ['GK', 'DEF', 'MID'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] };
 const SETUPS_5 = { defensive: { name: 'ULTRA DEFENSIVE', roles: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] }, attacking: { name: 'ULTRA ATTACKING', roles: ['GK', 'DEF', 'MID', 'ST', 'FW'] } };
 /** the most attacking role first: you play it, and it takes the kickoff */

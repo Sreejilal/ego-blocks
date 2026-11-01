@@ -55,6 +55,10 @@ file in file-name order into ONE function scope. There are no imports or exports
 - Style spins set `Save.data.spunStyle` (yours until the next style spin replaces it); `d.styles` are kept for good. Blueprints (`d.bp`) come from `GOALS` steps (`Goals.check` after each match, from `d.stats`) and `Goals.unlock` keeps a style (`BP_COST` by rarity). GOALS-only skins have `obj: true` and never come from spins. Test: `node test/blueprints.js`.
 - `Daily` (07_data.js): `Save.data.daily`, a gift once per local day and one challenge from `DAILY_CHALLENGES`. No streaks on purpose. Test: `node test/extras.js`.
 
+## Free kick practice
+
+- Mode `freekick` (`MODES.freekick.practice`, FREE KICKS on the start screen): you, a keeper and a wall of two (`p.wall`, the AI skips them). `startFreeKicks`, `nextFreeKick`, `updateFreeKick`, `fkResult`, `endFreeKicks` in 08_match.js; `m.fk` holds the round. `p.fkHold` keeps you behind the ball (only shots and `FK_SHOTS` abilities). No clock, no Awakening, no rewards; `Game.finishMatch` shows `UI.showPractice` and keeps `Save.data.fkBest`. Test: `node test/freekicks.js`.
+
 ## Builds
 
 - `npm run build` makes `docs/index.html` (GitHub Pages, itch.io). `npm run build:crazygames` makes `dist/crazygames/index.html`, the same game with the CrazyGames SDK script in `<head>`.

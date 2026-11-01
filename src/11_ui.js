@@ -22,6 +22,7 @@ const UI = {
     Hud.flowReady = () => {};
     Hud.lockHint = () => this.lockHint();
     Hud.cutin = (p, name) => this.cutin(p, name);
+    Hud.freeKick = (yaw) => { Cam.snapYaw = yaw; }; // a new free kick: the camera turns to the goal
     Hud.flash = (hex) => { const fl = $('flash'); fl.className = ''; fl.style.background = hex || '#ffffff'; fl.animate([{ opacity: 0.45 }, { opacity: 0 }], { duration: 260, easing: 'steps(4)' }); };
     this.renderLobby();
   },
@@ -47,7 +48,7 @@ const UI = {
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
           <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
-          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">GOALS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE &amp; HISTORY</button></div>
+          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">GOALS</button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE<span class="ph-x"> &amp; HISTORY</span></button></div>
         </nav>
       </div>
       <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
@@ -161,6 +162,7 @@ const UI = {
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
             <li><b>Play with friends:</b> create a room, send the code or invite link, pick teams and a mode, and bots fill the empty spots. Keyboard, controller and phone players can all join the same room. It needs the SCORZ server running (see the README).</li>
             <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
+            <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
             <li><b>Featured mode</b> changes every 3 hours, the same for everyone: King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3) and Lawless.</li>
             <li><b>Team size:</b> Quick Match and Lawless are 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
@@ -417,6 +419,7 @@ const UI = {
     click('pass-back', () => this.show('lobby'));
     click('goals-back', () => this.show('lobby'));
     click('go-goals', () => this.show('goals'));
+    click('go-fk', () => Game.startMatch('freekick'));
     click('lob-profile', () => this.show('profile'));
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
     click('profile-back', () => this.show('lobby'));
@@ -519,7 +522,7 @@ const UI = {
   /* ---------- HUD ---------- */
   buildHud(m) {
     const p = m.human;
-    $('hud-mode').textContent = m.cfg.name + (m.mode === 'duel' ? '' : ' · ' + m.size + 'V' + m.size) + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
+    $('hud-mode').textContent = m.cfg.name + (m.mode === 'duel' || m.fk ? '' : ' · ' + m.size + 'V' + m.size) + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
     $('hud-badge').src = badgeURL(tierOf(Save.data.rp)); $('hud-badge').hidden = !m.cfg.ranked;
     $('hud-em-ico').src = iconURL('emerald'); $('hud-em').textContent = Save.data.emeralds;
     for (const t of [0, 1]) { // the score bar wears each club's shirt
@@ -565,7 +568,8 @@ const UI = {
   updateHud(m, dt) {
     const p = m.human; if (!p) return;
     this.setText('sc0', String(m.score[0])); this.setText('sc1', String(m.score[1]));
-    if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL'); }
+    if (m.fk) { this.setText('clock', Math.min(m.fk.n, m.fk.total) + '/' + m.fk.total); this.setText('clock-sub', 'FREE KICK'); }
+    else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL'); }
     else { this.setText('clock', fmtTime(m.clock)); this.setText('clock-sub', ''); }
     this.setText('hud-em', String(Save.data.emeralds));
     p.abil.forEach((a, i) => {
@@ -627,7 +631,9 @@ const UI = {
     const h = $('hint'); if (!h) return;
     if (!Game.playing()) { h.hidden = true; return; }
     let txt = '';
-    if (Touch.on && !Input.usingPad) {
+    const fk = Game.match && Game.match.fk;
+    if (fk && this.hintT > 0 && !(Input.lockFailed || (!Input.locked && !Input.usingPad && !Touch.on))) txt = Touch.on && !Input.usingPad ? 'DRAG TO AIM · HOLD SHOOT, LET GO TO FIRE' : Input.usingPad ? 'RIGHT STICK AIMS · HOLD RT, LET GO TO FIRE' : 'MOUSE AIMS · HOLD LMB, LET GO TO FIRE'; // free kicks
+    else if (Touch.on && !Input.usingPad) {
       if (this.hintT > 0) {
         const ctl = 'LEFT THUMB MOVES · DRAG THE RIGHT SIDE TO AIM · HOLD SHOOT, LET GO TO FIRE';
         const tall = window.innerHeight > window.innerWidth;
@@ -772,6 +778,18 @@ const UI = {
     $('r-daily').innerHTML = !D ? '' : D.now ? `<span class="label pl-ch">DAILY CHALLENGE DONE: ${esc(D.name)} +${DAILY_REWARD.emeralds} EMERALDS +${DAILY_REWARD.xp} XP</span>`
       : `<span class="label">DAILY CHALLENGE · ${esc(D.name)} · ${D.done ? 'DONE' : D.prog + ' / ' + D.goal}</span>`;
     if (r.goalsDone && r.goalsDone.length) $('r-daily').innerHTML += r.goalsDone.map((t) => `<span class="label pl-tier">GOAL DONE: ${esc(t)}</span>`).join('');
+    $('hint').hidden = true;
+    $('scr-results').hidden = false;
+  },
+  /** free kick practice: your score, your best, what happened to each kick */
+  showPractice(r) {
+    $('r-again').textContent = 'AGAIN'; $('r-lobby').textContent = 'LOBBY';
+    $('r-title').textContent = r.goals + ' / ' + r.total; $('r-title').style.color = r.goals >= 7 ? '#2ee38f' : r.goals >= 4 ? '#ffcb3d' : '#ff4d5e';
+    $('r-score').innerHTML = `<span>${r.newBest ? 'NEW BEST!' : 'BEST ' + r.best + ' / ' + r.total}</span><span class="chip">FREE KICKS</span>`;
+    const n = (w) => r.log.filter((x) => x === w).length;
+    $('r-stats').innerHTML = [['GOALS', n('GOAL')], ['SAVED', n('SAVED')], ['BLOCKED', n('BLOCKED')], ['MISSED', n('MISS')]].map(([k, v]) => `<div><span class="label">${k}</span><b>${v}</b></div>`).join('');
+    $('r-earn').innerHTML = '<div class="idle-note"><span>PRACTICE GIVES NO REWARDS. JUST GET BETTER</span></div>';
+    $('r-rank').hidden = true; $('r-xp').innerHTML = ''; $('r-pass').innerHTML = ''; $('r-daily').innerHTML = '';
     $('hint').hidden = true;
     $('scr-results').hidden = false;
   },
