@@ -837,7 +837,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {},
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1,
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true },
       howto: false,
     };
@@ -878,6 +878,7 @@ const Save = {
     for (const k in out.stats) out.stats[k] = Math.max(0, Math.floor(Number(out.stats[k]) || 0));
     out.spunStyle = typeof out.spunStyle === 'string' ? out.spunStyle : null;
     out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
+    out.tone = clamp(Math.floor(Number(out.tone)), 0, 7); if (!Number.isFinite(out.tone)) out.tone = 1;
     out.goalSteps = out.goalSteps && typeof out.goalSteps === 'object' ? out.goalSteps : {};
     out.settings = Object.assign({}, def.settings, out.settings || {});
     const st = out.settings;
@@ -1623,7 +1624,7 @@ function portraitCanvas(styleId, size = 96, look = null) {
   const st = STYLES[styleId] || STYLES.ROOKIE;
   const c = mkCanvas(16, 16), g = c.getContext('2d');
   g.fillStyle = st.aura; g.globalAlpha = 0.28; g.fillRect(0, 0, 16, 16); g.globalAlpha = 1;
-  const skin = '#e8b48a', hair = (look && look.hair) || st.hair, shape = (look && look.hairShape) || st.hairShape;
+  const skin = (look && look.skin) || '#e8b48a', hair = (look && look.hair) || st.hair, shape = (look && look.hairShape) || st.hairShape;
   g.fillStyle = '#0a0c17'; g.fillRect(3, 3, 10, 11);
   g.fillStyle = skin; g.fillRect(4, 4, 8, 9);
   g.fillStyle = hair; g.fillRect(4, 3, 8, 3); g.fillRect(3, 4, 1, 4); g.fillRect(12, 4, 1, 4);
@@ -1636,6 +1637,9 @@ function portraitCanvas(styleId, size = 96, look = null) {
   if (shape === 'messy') { g.fillRect(5, 2, 2, 1); g.fillRect(9, 2, 1, 1); }
   if (shape === 'swept') { g.fillRect(4, 2, 8, 1); g.fillRect(11, 1, 2, 1); }
   if (shape === 'bun') { g.fillRect(6, 1, 4, 2); }
+  if (shape === 'afro') { g.fillRect(2, 1, 12, 3); g.fillRect(2, 4, 2, 5); g.fillRect(12, 4, 2, 5); }
+  if (shape === 'undercut') { g.fillStyle = skin; g.fillRect(3, 5, 1, 3); g.fillRect(12, 5, 1, 3); g.fillStyle = hair; g.fillRect(4, 1, 8, 3); g.fillRect(10, 2, 3, 2); }
+  if (shape === 'ponytail') { g.fillRect(12, 6, 2, 5); }
   if (shape === 'flattop') { g.fillRect(4, 0, 8, 3); }
   if (shape === 'crop') { g.fillStyle = skin; g.fillRect(4, 4, 8, 2); g.fillStyle = '#0a0c17'; g.fillRect(3, 4, 1, 4); g.fillRect(12, 4, 1, 4); g.fillStyle = hair; g.fillRect(5, 2, 3, 1); }
   if (shape === 'mohawk') { g.fillStyle = skin; g.fillRect(4, 3, 3, 2); g.fillRect(9, 3, 3, 2); g.fillStyle = hair; g.fillRect(7, 0, 2, 5); }
@@ -2547,7 +2551,7 @@ const TimeCtl = {
    ===================================================================== */
 // the two sides of the current match (club, kit, keeper kit, UI colour); Match sets them with matchSides()
 const TEAM = [null, null];
-const SKIN_TONES = ['#f1c7a0', '#e0ac85', '#c48b62', '#9a6643', '#6e4a32', '#f6d6b8'];
+const SKIN_TONES = ['#f1c7a0', '#e0ac85', '#c48b62', '#9a6643', '#6e4a32', '#f6d6b8', '#b07a52', '#4e3424']; // you pick yours in the Locker (Save.data.tone)
 const EYE_COLS = ['#2b1d14', '#1d2b4a', '#2a3a1c', '#3a2a14'];
 const RUN_SPEED = 6.9, SPRINT_SPEED = 10.4;
 
@@ -2583,6 +2587,9 @@ const HAIR_SHAPES = {
   spiky: [[-0.26, -0.06, -0.26, 0.26, 0.1, 0.26], [-0.2, 0.1, -0.16, -0.08, 0.26, -0.04], [0.02, 0.1, -0.06, 0.14, 0.3, 0.06], [-0.1, 0.1, 0.08, 0.02, 0.22, 0.2], [0.12, 0.1, -0.22, 0.24, 0.24, -0.1], [-0.22, 0.1, 0.02, -0.12, 0.2, 0.14], [-0.26, -0.24, -0.29, 0.26, 0.0, -0.18]],
   bun: [[-0.26, -0.05, -0.26, 0.26, 0.08, 0.26], [-0.26, -0.22, -0.29, 0.26, 0.0, -0.18], [-0.11, 0.08, -0.24, 0.11, 0.27, -0.04]],
   flattop: [[-0.27, -0.06, -0.27, 0.27, 0.27, 0.27], [-0.27, -0.16, -0.29, 0.27, 0.0, -0.18]],
+  afro: [[-0.33, -0.12, -0.33, 0.33, 0.28, 0.33]],
+  undercut: [[-0.255, -0.02, -0.255, 0.255, 0.04, 0.255], [-0.2, 0.04, -0.22, 0.2, 0.17, 0.27], [-0.16, 0.12, 0.2, 0.16, 0.19, 0.32]],
+  ponytail: [[-0.26, -0.05, -0.26, 0.26, 0.09, 0.26], [-0.08, -0.36, -0.36, 0.08, 0.04, -0.24], [-0.1, -0.02, -0.33, 0.1, 0.08, -0.24]],
   mohawk: [[-0.25, -0.03, -0.25, 0.25, 0.02, 0.25], [-0.06, 0.0, -0.29, 0.06, 0.14, 0.25], [-0.05, 0.14, 0.1, 0.05, 0.25, 0.21], [-0.05, 0.14, -0.07, 0.05, 0.31, 0.05], [-0.05, 0.14, -0.25, 0.05, 0.24, -0.12]],
 };
 /** headband size: hug the head, or the hair where the band crosses it (head-local y 0.355 to 0.415) */
@@ -2629,6 +2636,7 @@ class Player {
     this.side = o.side || TEAM[this.team];
     this.lookIds = o.look || {}; // the skin ids (online games send these so every screen builds the same player)
     this.look = lookFor(o.style, this.lookIds);
+    this.look.skin = this.skin; // portraits and cut-ins show your skin colour too
     this.pos = V3(); this.vel = V3(); this.yaw = 0; this.onGround = true; this.airT = 0;
     this.mx = 0; this.mz = 0; this.sprint = false; this.faceYaw = null; this.exhausted = false;
     this.stamina = 100; this.stamDelay = 0;
@@ -3501,6 +3509,9 @@ const SKINS = {
   CLOUD: { slot: 'hair', name: 'CLOUD', rarity: 'Legendary', shape: 'fluffy' },
   SPIKES: { slot: 'hair', name: 'SPIKES', rarity: 'Legendary', shape: 'spiky' },
   MOHAWK: { slot: 'hair', name: 'MOHAWK', rarity: 'Mythic', shape: 'mohawk' },
+  PONYTAIL: { slot: 'hair', name: 'PONYTAIL', rarity: 'Rare', shape: 'ponytail' },
+  UNDERCUT: { slot: 'hair', name: 'UNDERCUT', rarity: 'Epic', shape: 'undercut' },
+  AFRO: { slot: 'hair', name: 'AFRO', rarity: 'Legendary', shape: 'afro' },
   STYLE_COLOR: { slot: 'color', name: 'STYLE COLOUR', rarity: 'Rare', base: true, desc: 'The hair colour that comes with your style.' },
   JET: { slot: 'color', name: 'JET', rarity: 'Rare', hex: '#15131b' },
   CHESTNUT: { slot: 'color', name: 'CHESTNUT', rarity: 'Rare', hex: '#6b3e22' },
@@ -3512,6 +3523,10 @@ const SKINS = {
   VIOLET: { slot: 'color', name: 'VIOLET', rarity: 'Legendary', hex: '#9150e8' },
   SUNSET: { slot: 'color', name: 'SUNSET', rarity: 'Mythic', hex: '#ff7a2a' },
   PRISM: { slot: 'color', name: 'PRISM', rarity: 'Generational', hex: '#b65cff', prism: true },
+  SILVER: { slot: 'color', name: 'SILVER', rarity: 'Epic', hex: '#cfd6e0' },
+  GINGER: { slot: 'color', name: 'GINGER', rarity: 'Rare', hex: '#d9682b' },
+  TEAL: { slot: 'color', name: 'TEAL', rarity: 'Legendary', hex: '#2ec4b6' },
+  BUBBLEGUM: { slot: 'color', name: 'BUBBLEGUM', rarity: 'Epic', hex: '#ff8fc8' },
   TEAM_BOOTS: { slot: 'boots', name: 'TEAM BOOTS', rarity: 'Rare', base: true, desc: 'Plain boots in your team colours.' },
   GRIND_BOOTS: { slot: 'boots', name: 'GRINDER', rarity: 'Legendary', hex: '#ff7a1a', sparkle: true, obj: true, desc: 'From GOALS: win 25 matches.' },
   CHALK: { slot: 'boots', name: 'CHALK', rarity: 'Rare', hex: '#f4efe0' },
@@ -3521,12 +3536,22 @@ const SKINS = {
   ICE: { slot: 'boots', name: 'ICE', rarity: 'Legendary', hex: '#8fe6ff' },
   GOLDEN: { slot: 'boots', name: 'GOLDEN', rarity: 'Mythic', hex: '#ffcc33' },
   STARDUST: { slot: 'boots', name: 'STARDUST', rarity: 'Generational', hex: '#241a5a', sparkle: true },
+  ROYAL: { slot: 'boots', name: 'ROYAL', rarity: 'Rare', hex: '#2f3fd6' },
+  CHERRY: { slot: 'boots', name: 'CHERRY', rarity: 'Rare', hex: '#b0202e' },
+  NEON_PINK: { slot: 'boots', name: 'NEON PINK', rarity: 'Epic', hex: '#ff3dbb' },
+  TOXIC: { slot: 'boots', name: 'TOXIC', rarity: 'Epic', hex: '#7dff3a', sparkle: true },
+  FROST: { slot: 'boots', name: 'FROST', rarity: 'Legendary', hex: '#d6f4ff', sparkle: true },
+  SUNFIRE: { slot: 'boots', name: 'SUNFIRE', rarity: 'Legendary', hex: '#ff8a3d', sparkle: true },
+  VOID: { slot: 'boots', name: 'VOID', rarity: 'Mythic', hex: '#1a0f2e', sparkle: true },
   NO_GLOVES: { slot: 'gloves', name: 'BARE HANDS', rarity: 'Rare', base: true, desc: 'No gloves.' },
   AWAKE_GLOVES: { slot: 'gloves', name: 'AWAKENED', rarity: 'Mythic', hex: '#c9b8ff', obj: true, desc: 'From GOALS: awaken 10 times.' },
   BLACK_GLOVES: { slot: 'gloves', name: 'NIGHT GLOVES', rarity: 'Rare', hex: '#1a1a22' },
   WHITE_GLOVES: { slot: 'gloves', name: 'CHALK GLOVES', rarity: 'Rare', hex: '#f2f2ea' },
   RED_GLOVES: { slot: 'gloves', name: 'RED GLOVES', rarity: 'Epic', hex: '#d8262e' },
   GOLD_GLOVES: { slot: 'gloves', name: 'GOLD GLOVES', rarity: 'Legendary', hex: '#ffc93d' },
+  BLUE_GLOVES: { slot: 'gloves', name: 'COBALT GLOVES', rarity: 'Rare', hex: '#2f6bff' },
+  LIME_GLOVES: { slot: 'gloves', name: 'LIME GLOVES', rarity: 'Epic', hex: '#a6ff2e' },
+  VOID_GLOVES: { slot: 'gloves', name: 'VOID GLOVES', rarity: 'Mythic', hex: '#2a1748' },
   NO_ACC: { slot: 'acc', name: 'NOTHING', rarity: 'Rare', base: true, desc: 'No extra.' },
   ANKLE_BAND: { slot: 'acc', name: 'ANKLE TAKER', rarity: 'Legendary', acc: 'band', hex: '#9a6bff', glow: 0.5, obj: true, desc: 'From GOALS: break 75 ankles.' },
   RED_BAND: { slot: 'acc', name: 'RED HEADBAND', rarity: 'Rare', acc: 'band', hex: '#e0302a' },
@@ -3537,6 +3562,9 @@ const SKINS = {
   GOLD_CHAIN: { slot: 'acc', name: 'GOLD CHAIN', rarity: 'Legendary', acc: 'chain', hex: '#ffc93d' },
   CHROME_MASK: { slot: 'acc', name: 'CHROME MASK', rarity: 'Mythic', acc: 'mask', hex: '#b8c4d6', glow: 0.35 },
   ICE_CHAIN: { slot: 'acc', name: 'ICE CHAIN', rarity: 'Generational', acc: 'chain', hex: '#7ff6ff', glow: 0.8 },
+  BLUE_BAND: { slot: 'acc', name: 'BLUE HEADBAND', rarity: 'Rare', acc: 'band', hex: '#2f6bff' },
+  GOLD_BAND: { slot: 'acc', name: 'GOLD HEADBAND', rarity: 'Legendary', acc: 'band', hex: '#ffd54a', glow: 0.3 },
+  NEON_MASK: { slot: 'acc', name: 'NEON MASK', rarity: 'Legendary', acc: 'mask', hex: '#3dffb0', glow: 0.5 },
   // kits: a pattern (and trim) on your team's colours, so teammates can still tell the sides apart
   TEAM_KIT: { slot: 'kit', name: 'CLUB KIT', rarity: 'Rare', base: true, desc: 'Your club kit, just as it is.' },
   PINSTRIPE: { slot: 'kit', name: 'PINSTRIPE', rarity: 'Rare', pattern: 'pinstripe', desc: 'Thin stripes in your team colours.' },
@@ -3545,6 +3573,10 @@ const SKINS = {
   LIGHTNING: { slot: 'kit', name: 'LIGHTNING', rarity: 'Epic', pattern: 'bolt', trim: '#ffe14d', desc: 'A bolt across the chest and yellow trim.' },
   BLAZE: { slot: 'kit', name: 'BLAZE', rarity: 'Legendary', pattern: 'flames', trim: '#ffb02e', desc: 'Flames up from the hem and orange trim.' },
   GOLD_TRIM: { slot: 'kit', name: 'GOLD TRIM', rarity: 'Legendary', pattern: 'plain', trim: '#ffd54a', desc: 'Your club kit with a gold collar, cuffs and number.' },
+  STRIPES_KIT: { slot: 'kit', name: 'CLASSIC STRIPES', rarity: 'Rare', pattern: 'stripes', desc: 'Old-school stripes in your team colours.' },
+  HOOPS_KIT: { slot: 'kit', name: 'HOOPS', rarity: 'Rare', pattern: 'hoops', desc: 'Bands round the shirt.' },
+  HALVES_KIT: { slot: 'kit', name: 'HALF AND HALF', rarity: 'Epic', pattern: 'halves', desc: 'One half each colour.' },
+  SASH_KIT: { slot: 'kit', name: 'GOLD SASH', rarity: 'Legendary', pattern: 'sash', trim: '#ffd54a', desc: 'A sash across the chest and gold trim.' },
   VETERAN_KIT: { slot: 'kit', name: 'VETERAN', rarity: 'Legendary', pattern: 'hoops', trim: '#ffd54a', obj: true, desc: 'From GOALS: win 150 matches.' },
   LEGEND_KIT: { slot: 'kit', name: 'LEGEND', rarity: 'Mythic', pattern: 'stars', trim: '#ffd54a', obj: true, desc: 'From GOALS: play 300 matches.' },
   STARFIELD: { slot: 'kit', name: 'STARFIELD', rarity: 'Mythic', pattern: 'stars', trim: '#ffffff', desc: 'A shirt full of stars, with white trim.' },
@@ -3937,7 +3969,8 @@ class Match {
         const style = net ? net.style : human ? (opts.style || Save.data.style) : botStyle();
         const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
         const look = net ? net.look : human ? (opts.look || Save.data.look) : botLook();
-        const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[1] : null, number: num, name: net ? net.name : human ? 'YOU' : names.pop() });
+        const tone = net ? net.tone : Save.data.tone;
+        const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[Number.isInteger(tone) ? tone : 1] || SKIN_TONES[1] : null, number: num, name: net ? net.name : human ? 'YOU' : names.pop() });
         if (!human && (team === 1 || opts.teamD)) p.speedMul = 1 + 0.045 * (opts.teamD ? opts.teamD[team] : this.d); // bots are a little quicker with skill (both teams when each has its own skill)
         this.players.push(p); this.teams[team].push(p);
         if (net) { p.netId = net.id; this.humans.push(p); } else if (human) this.human = p;
@@ -6776,7 +6809,7 @@ const Net = {
   },
   close() { if (this.ws) { this.ws.onclose = null; try { this.ws.close(); } catch (e) {} } this.ws = null; this.room = null; this.renderRoom(); },
   send(m) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(m)); },
-  hello() { const d = Save.data; this.send({ t: 'hello', name: d.name, style: d.style, flow: d.flow, look: d.look, club: d.club, token: Account.token }); },
+  hello() { const d = Save.data; this.send({ t: 'hello', name: d.name, style: d.style, flow: d.flow, look: d.look, club: d.club, tone: d.tone, token: Account.token }); },
   onMessage(m) {
     switch (m.t) {
       case 'welcome': this.id = m.id; break;
@@ -7433,11 +7466,12 @@ const Showcase = {
     const d = Save.data, sp = this.spec || {};
     const style = sp.style || d.style, flow = sp.flow !== undefined ? sp.flow : d.flow, look = Object.assign({}, d.look, sp.look || {});
     const club = sp.club || d.club;
-    const key = [style, flow || '', club, SKIN_SLOTS.map((s) => look[s.id]).join(',')].join('|');
+    const tone = sp.tone != null ? sp.tone : Save.data.tone;
+    const key = [style, flow || '', club, tone, SKIN_SLOTS.map((s) => look[s.id]).join(',')].join('|');
     if (this.p && this.key === key) return;
     if (this.p) this.p.dispose();
     this.key = key; this.flow = flow;
-    this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: 'ST', human: true, style, flow, look, side: sideFor(club), number: 10, name: 'YOU', skin: SKIN_TONES[1] });
+    this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: 'ST', human: true, style, flow, look, side: sideFor(club), number: 10, name: 'YOU', skin: SKIN_TONES[tone] || SKIN_TONES[1] });
     const aura = col(this.p.aura);
     this.ringMat.color.copy(aura); this.glowMat.color.copy(aura); this.beamMat.color.copy(col('#fff1d6')).lerp(aura, 0.35);
     this.p.P.root.visible = this.p.blob.visible = this.on;
@@ -7970,8 +8004,8 @@ const UI = {
     click('ltab-style', () => { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.renderLocker(); });
     click('ltab-flow', () => { this.lockerTab = 'flow'; this.lockerSel = Save.data.flow || 'NONE'; this.renderLocker(); });
     click('ltab-club', () => { this.lockerTab = 'club'; this.lockerSel = Save.data.club; this.renderLocker(); });
-    click('ltab-skin', () => { this.lockerTab = 'skin'; this.lockerSel = Save.data.look[this.skinSlot]; this.renderLocker(); });
-    $('lk-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); this.skinSlot = b.dataset.slot; this.lockerSel = Save.data.look[this.skinSlot]; this.renderLocker(); });
+    click('ltab-skin', () => { this.lockerTab = 'skin'; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
+    $('lk-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); this.skinSlot = b.dataset.slot; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
     click('btn-mute', () => { Save.data.settings.mute = !Save.data.settings.mute; Portal.applyMute(); Save.save(); this.renderLobby(); });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('p-resume', () => Game.resume());
@@ -8378,21 +8412,25 @@ const UI = {
     if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
     if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
     if (tab === 'flow') { const fl = id === 'NONE' ? null : FLOWS[id]; return { name: fl ? fl.name : 'NO FLOW', rarity: fl ? fl.rarity : 'Rare', base: !fl, owned: !fl || d.flows.includes(id), equipped: (d.flow || 'NONE') === id, from: 'FLOW SPINS' }; }
+    if (id.startsWith('TONE')) { const n = +id.slice(4); return { name: 'SKIN ' + (n + 1), rarity: 'Rare', base: true, owned: true, equipped: d.tone === n }; }
     const sk = SKINS[id];
     return { name: sk.name, rarity: sk.rarity, base: !!sk.base, owned: !!sk.base || d.skins.includes(id), equipped: d.look[sk.slot] === id, from: sk.pass ? 'GAME PASS TIER ' + (PASS_REWARDS.findIndex((r) => r.skin === id) + 1) : 'SKIN SPINS' };
   },
   lockerArt(id, size) {
     const tab = this.lockerTab;
     if (tab === 'club') return crestCanvas(id, size);
-    return tab === 'style' ? portraitCanvas(id, size, lookFor(id, Save.data.look)) : tab === 'flow' ? flowEmblemCanvas(id === 'NONE' ? null : id, size) : skinCanvas(id, size);
+    const look = Object.assign(lookFor(Save.data.style, Save.data.look), { skin: SKIN_TONES[Save.data.tone] });
+    if (id.startsWith && id.startsWith('TONE')) return portraitCanvas(Save.data.style, size, Object.assign(look, { skin: SKIN_TONES[+id.slice(4)] }));
+    return tab === 'style' ? portraitCanvas(id, size, Object.assign(lookFor(id, Save.data.look), { skin: SKIN_TONES[Save.data.tone] })) : tab === 'flow' ? flowEmblemCanvas(id === 'NONE' ? null : id, size) : skinCanvas(id, size);
   },
   renderLocker() {
     const d = Save.data, tab = this.lockerTab;
     for (const t of ['style', 'flow', 'skin', 'club']) $('ltab-' + t).setAttribute('aria-selected', tab === t);
     const slots = $('lk-slots');
     slots.hidden = tab !== 'skin';
-    if (tab === 'skin') slots.innerHTML = SKIN_SLOTS.map((sl) => `<button class="tab" type="button" role="tab" data-slot="${sl.id}" aria-selected="${this.skinSlot === sl.id}">${sl.name}</button>`).join('');
+    if (tab === 'skin') slots.innerHTML = `<button class="tab" type="button" role="tab" data-slot="tone" aria-selected="${this.skinSlot === 'tone'}">SKIN</button>` + SKIN_SLOTS.map((sl) => `<button class="tab" type="button" role="tab" data-slot="${sl.id}" aria-selected="${this.skinSlot === sl.id}">${sl.name}</button>`).join('');
     const ids = tab === 'club' ? CLUB_IDS : tab === 'style' ? STYLE_IDS : tab === 'flow' ? ['NONE'].concat(FLOW_IDS)
+      : this.skinSlot === 'tone' ? SKIN_TONES.map((t, i) => 'TONE' + i)
       : [SKIN_SLOTS.find((sl) => sl.id === this.skinSlot).base].concat(LOCKER_SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
     const grid = $('locker-grid');
     grid.innerHTML = ids.map((id) => {
@@ -8409,6 +8447,7 @@ const UI = {
     if (tab === 'style') spec.style = id;
     else if (tab === 'club') spec.club = id;
     else if (tab === 'flow') spec.flow = id === 'NONE' ? null : id;
+    else if (id.startsWith('TONE')) spec.tone = +id.slice(4);
     else { spec.look[SKINS[id].slot] = id; spec.celebrate = SKINS[id].slot === 'celeb'; }
     Showcase.preview(spec);
   },
@@ -8429,6 +8468,8 @@ const UI = {
       const fl = id === 'NONE' ? null : FLOWS[id];
       det.innerHTML = head('', '') + `<p style="margin:0;font-size:22px">${esc(fl ? fl.desc : RAW_FLOW_DESC)}</p>
         <p style="margin:0;color:var(--muted)">Fill the Flow bar with completed passes, feints, tackles and shots on target. Press G for 15 seconds of Flow: glowing eyes, a swirling aura and this buff.</p>`;
+    } else if (id.startsWith('TONE')) {
+      det.innerHTML = head('SKIN COLOUR', 'Pick the skin colour of your player. All of them are free, and you can change any time.');
     } else {
       const sk = SKINS[id], slot = SKIN_SLOTS.find((sl) => sl.id === sk.slot);
       det.innerHTML = head(slot.name + ' SKIN' + (sk.pass ? ' · GAME PASS ONLY' : ''), sk.desc || '') + `<p style="margin:0;color:var(--muted)">Skins only change how you look. They never change your stats.${sk.slot === 'celeb' ? ' You play it when you score.' : ''}</p>`;
@@ -8444,7 +8485,7 @@ const UI = {
     const eq = $('lk-equip');
     if (eq) eq.addEventListener('click', () => {
       Sfx.click();
-      if (tab === 'style') d.style = id; else if (tab === 'club') d.club = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else d.look[SKINS[id].slot] = id;
+      if (tab === 'style') d.style = id; else if (tab === 'club') d.club = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else if (id.startsWith('TONE')) d.tone = +id.slice(4); else d.look[SKINS[id].slot] = id;
       Save.save(); this.renderLocker();
     });
   },

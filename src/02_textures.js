@@ -505,7 +505,7 @@ function portraitCanvas(styleId, size = 96, look = null) {
   const st = STYLES[styleId] || STYLES.ROOKIE;
   const c = mkCanvas(16, 16), g = c.getContext('2d');
   g.fillStyle = st.aura; g.globalAlpha = 0.28; g.fillRect(0, 0, 16, 16); g.globalAlpha = 1;
-  const skin = '#e8b48a', hair = (look && look.hair) || st.hair, shape = (look && look.hairShape) || st.hairShape;
+  const skin = (look && look.skin) || '#e8b48a', hair = (look && look.hair) || st.hair, shape = (look && look.hairShape) || st.hairShape;
   g.fillStyle = '#0a0c17'; g.fillRect(3, 3, 10, 11);
   g.fillStyle = skin; g.fillRect(4, 4, 8, 9);
   g.fillStyle = hair; g.fillRect(4, 3, 8, 3); g.fillRect(3, 4, 1, 4); g.fillRect(12, 4, 1, 4);
@@ -518,6 +518,9 @@ function portraitCanvas(styleId, size = 96, look = null) {
   if (shape === 'messy') { g.fillRect(5, 2, 2, 1); g.fillRect(9, 2, 1, 1); }
   if (shape === 'swept') { g.fillRect(4, 2, 8, 1); g.fillRect(11, 1, 2, 1); }
   if (shape === 'bun') { g.fillRect(6, 1, 4, 2); }
+  if (shape === 'afro') { g.fillRect(2, 1, 12, 3); g.fillRect(2, 4, 2, 5); g.fillRect(12, 4, 2, 5); }
+  if (shape === 'undercut') { g.fillStyle = skin; g.fillRect(3, 5, 1, 3); g.fillRect(12, 5, 1, 3); g.fillStyle = hair; g.fillRect(4, 1, 8, 3); g.fillRect(10, 2, 3, 2); }
+  if (shape === 'ponytail') { g.fillRect(12, 6, 2, 5); }
   if (shape === 'flattop') { g.fillRect(4, 0, 8, 3); }
   if (shape === 'crop') { g.fillStyle = skin; g.fillRect(4, 4, 8, 2); g.fillStyle = '#0a0c17'; g.fillRect(3, 4, 1, 4); g.fillRect(12, 4, 1, 4); g.fillStyle = hair; g.fillRect(5, 2, 3, 1); }
   if (shape === 'mohawk') { g.fillStyle = skin; g.fillRect(4, 3, 3, 2); g.fillRect(9, 3, 3, 2); g.fillStyle = hair; g.fillRect(7, 0, 2, 5); }

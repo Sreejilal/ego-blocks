@@ -171,7 +171,7 @@ function report(me, room, m) {
 
 /* ---------- matches ---------- */
 function startMatch(room) {
-  const humans = room.players.map((p) => ({ id: p.id, team: p.team, name: p.name, style: p.style, flow: p.flow, look: p.look }));
+  const humans = room.players.map((p) => ({ id: p.id, team: p.team, name: p.name, style: p.style, flow: p.flow, look: p.look, tone: p.tone }));
   // the host's club at home against another club
   const home = G.CLUBS[room.hostClub] ? room.hostClub : 'ROVERS', away = G.CLUB_IDS.filter((c) => c !== home)[Math.floor(Math.random() * (G.CLUB_IDS.length - 1))];
   const m = new G.Match(room.mode, 0.5, { humans, size: room.size, home, away, length: Number(process.env.MATCH_SECONDS) || undefined, goldenLength: Number(process.env.GOLDEN_SECONDS) || undefined });
@@ -257,6 +257,7 @@ wss.on('connection', (ws) => {
         me.flow = G.FLOWS[m.flow] ? m.flow : null;
         me.look = {}; if (m.look && typeof m.look === 'object') for (const s of G.SKIN_SLOTS) if (G.SKINS[m.look[s.id]] && G.SKINS[m.look[s.id]].slot === s.id) me.look[s.id] = m.look[s.id];
         me.club = G.CLUBS[m.club] ? m.club : 'ROVERS';
+        me.tone = Number.isInteger(m.tone) && m.tone >= 0 && m.tone < 8 ? m.tone : 1;
         if (room) sync(room);
         break;
       }

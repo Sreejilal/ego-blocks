@@ -66,7 +66,8 @@ class Match {
         const style = net ? net.style : human ? (opts.style || Save.data.style) : botStyle();
         const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
         const look = net ? net.look : human ? (opts.look || Save.data.look) : botLook();
-        const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[1] : null, number: num, name: net ? net.name : human ? 'YOU' : names.pop() });
+        const tone = net ? net.tone : Save.data.tone;
+        const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[Number.isInteger(tone) ? tone : 1] || SKIN_TONES[1] : null, number: num, name: net ? net.name : human ? 'YOU' : names.pop() });
         if (!human && (team === 1 || opts.teamD)) p.speedMul = 1 + 0.045 * (opts.teamD ? opts.teamD[team] : this.d); // bots are a little quicker with skill (both teams when each has its own skill)
         this.players.push(p); this.teams[team].push(p);
         if (net) { p.netId = net.id; this.humans.push(p); } else if (human) this.human = p;

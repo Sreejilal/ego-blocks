@@ -3,7 +3,7 @@
    ===================================================================== */
 // the two sides of the current match (club, kit, keeper kit, UI colour); Match sets them with matchSides()
 const TEAM = [null, null];
-const SKIN_TONES = ['#f1c7a0', '#e0ac85', '#c48b62', '#9a6643', '#6e4a32', '#f6d6b8'];
+const SKIN_TONES = ['#f1c7a0', '#e0ac85', '#c48b62', '#9a6643', '#6e4a32', '#f6d6b8', '#b07a52', '#4e3424']; // you pick yours in the Locker (Save.data.tone)
 const EYE_COLS = ['#2b1d14', '#1d2b4a', '#2a3a1c', '#3a2a14'];
 const RUN_SPEED = 6.9, SPRINT_SPEED = 10.4;
 
@@ -39,6 +39,9 @@ const HAIR_SHAPES = {
   spiky: [[-0.26, -0.06, -0.26, 0.26, 0.1, 0.26], [-0.2, 0.1, -0.16, -0.08, 0.26, -0.04], [0.02, 0.1, -0.06, 0.14, 0.3, 0.06], [-0.1, 0.1, 0.08, 0.02, 0.22, 0.2], [0.12, 0.1, -0.22, 0.24, 0.24, -0.1], [-0.22, 0.1, 0.02, -0.12, 0.2, 0.14], [-0.26, -0.24, -0.29, 0.26, 0.0, -0.18]],
   bun: [[-0.26, -0.05, -0.26, 0.26, 0.08, 0.26], [-0.26, -0.22, -0.29, 0.26, 0.0, -0.18], [-0.11, 0.08, -0.24, 0.11, 0.27, -0.04]],
   flattop: [[-0.27, -0.06, -0.27, 0.27, 0.27, 0.27], [-0.27, -0.16, -0.29, 0.27, 0.0, -0.18]],
+  afro: [[-0.33, -0.12, -0.33, 0.33, 0.28, 0.33]],
+  undercut: [[-0.255, -0.02, -0.255, 0.255, 0.04, 0.255], [-0.2, 0.04, -0.22, 0.2, 0.17, 0.27], [-0.16, 0.12, 0.2, 0.16, 0.19, 0.32]],
+  ponytail: [[-0.26, -0.05, -0.26, 0.26, 0.09, 0.26], [-0.08, -0.36, -0.36, 0.08, 0.04, -0.24], [-0.1, -0.02, -0.33, 0.1, 0.08, -0.24]],
   mohawk: [[-0.25, -0.03, -0.25, 0.25, 0.02, 0.25], [-0.06, 0.0, -0.29, 0.06, 0.14, 0.25], [-0.05, 0.14, 0.1, 0.05, 0.25, 0.21], [-0.05, 0.14, -0.07, 0.05, 0.31, 0.05], [-0.05, 0.14, -0.25, 0.05, 0.24, -0.12]],
 };
 /** headband size: hug the head, or the hair where the band crosses it (head-local y 0.355 to 0.415) */
@@ -85,6 +88,7 @@ class Player {
     this.side = o.side || TEAM[this.team];
     this.lookIds = o.look || {}; // the skin ids (online games send these so every screen builds the same player)
     this.look = lookFor(o.style, this.lookIds);
+    this.look.skin = this.skin; // portraits and cut-ins show your skin colour too
     this.pos = V3(); this.vel = V3(); this.yaw = 0; this.onGround = true; this.airT = 0;
     this.mx = 0; this.mz = 0; this.sprint = false; this.faceYaw = null; this.exhausted = false;
     this.stamina = 100; this.stamDelay = 0;
