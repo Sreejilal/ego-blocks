@@ -512,7 +512,7 @@ const AI = {
         // a free kick: the wall hides it, so the keeper only picks it up once it is past the wall
         const screened = m.fk && b.kick && Math.hypot(b.pos.x - b.kick.fx, b.pos.z - b.kick.fz) < 7.6;
         if (Math.abs(px) < F.GW + 1.0 && py < F.GH + 0.9 && !screened) {
-          if (a.react == null) a.react = lerp(0.4, 0.08, Math.min(1, sk)) * rand(0.8, 1.2) * (b.kick && b.kick.special === 'knuckle' ? 1.8 : 1); // a wobbling knuckleball is hard to read
+          if (a.react == null) a.react = lerp(0.4, 0.08, Math.min(1, sk)) * rand(0.8, 1.2) * (m.fk && b.kick && b.kick.special === 'knuckle' ? 1.8 : 1); // a free kick knuckleball is hard to read
           a.react -= dt;
           if (a.react <= 0) {
             const tk = Math.max(0.06, (p.pos.z - b.pos.z) / b.vel.z);
