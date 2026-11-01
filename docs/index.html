@@ -473,6 +473,22 @@ body.touch #hud .awakebar .track { height: 6px; }
 .stamina { display: flex; gap: 2px; }
 .stamina img { width: 22px; height: 22px; }
 .hotbar { display: flex; gap: 8px; align-items: flex-end; padding-bottom: 12px; }
+/* the tutorial's instructions, under the scoreboard */
+.tutbox { position: absolute; left: 50%; top: calc(84px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 14px 12px; display: grid; gap: 2px; text-align: center; z-index: 6; }
+.tutbox b { font-family: var(--font-display); font-weight: 400; font-size: 32px; line-height: 1; color: #ffcb3d; }
+.tutbox p { margin: 0; font-size: 18px; color: var(--text); }
+.tutbox.pop { animation: tutpop .35s ease-out; }
+@keyframes tutpop { 0% { transform: translateX(-50%) scale(.92); } 60% { transform: translateX(-50%) scale(1.04); } 100% { transform: translateX(-50%) scale(1); } }
+#hud:has(.tutbox:not([hidden])) #hint { display: none; } /* the box says what to do */
+body.touch .tutbox { width: min(340px, calc(100vw - 150px)); padding: 6px 10px 8px; }
+body.touch .tutbox b { font-size: 22px; } body.touch .tutbox p { font-size: 14px; }
+@media (orientation: portrait) { body.touch .tutbox { top: calc(176px + env(safe-area-inset-top, 0px)); width: calc(100vw - 32px); } }
+@media (max-height: 520px) and (orientation: landscape) { body.touch .tutbox { top: calc(64px + env(safe-area-inset-top, 0px)); } }
+.tut-btn { justify-self: start; margin-bottom: 12px; }
+.topbar .left { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
+@media (max-height: 520px) and (orientation: landscape) { #go-tut .tut-long { display: none; } #go-tut { padding: 3px 8px 5px; } }
+@media (max-height: 520px) and (max-width: 800px) and (orientation: landscape) { .topbar .left:has(#go-tut:not([hidden])) .chip { display: none; } } /* a small phone on its side: the tutorial button takes the season label's place */ /* a phone on its side: just TUTORIAL, so the top bar stays one row */
+
 /* free kicks: the type, curve and power panel takes the place of the Flow bar and hotbar */
 #hud.fk .dock > :not(.fkpanel) { display: none !important; }
 .fkpanel { display: grid; gap: 6px; padding: 10px 12px; width: 420px; max-width: calc(100vw - 32px); box-sizing: border-box; margin-bottom: 12px; }
@@ -872,7 +888,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [],
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false,
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true, shiftLock: false },
       howto: false,
     };
@@ -915,6 +931,7 @@ const Save = {
     out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
     out.tone = clamp(Math.floor(Number(out.tone)), 0, 7); if (!Number.isFinite(out.tone)) out.tone = 1;
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
+    out.tutorial = !!out.tutorial;
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
     out.goalSteps = out.goalSteps && typeof out.goalSteps === 'object' ? out.goalSteps : {};
     out.settings = Object.assign({}, def.settings, out.settings || {});
@@ -3825,6 +3842,21 @@ function matchSides(homeId, awayId) {
 /* ---------- team sizes: casual modes are 3v3; ranked grows as you climb ---------- */
 /** who plays where. 3v3: a keeper, a defender and a midfielder; 4v4 adds a striker; 5v5 picks a setup at random for
     each team: ultra defensive (two defenders) or ultra attacking (two strikers). FW is the second striker */
+/** the tutorial: one thing at a time, each done when you do it. k: keyboard and mouse, pad: controller, touch: phone */
+const TUT_STEPS = [
+  { id: 'move', title: 'MOVE', k: 'W A S D MOVES YOU. RUN TO THE GOLD SQUARE', pad: 'THE LEFT STICK MOVES YOU. RUN TO THE GOLD SQUARE', touch: 'YOUR LEFT THUMB MOVES YOU. RUN TO THE GOLD SQUARE' },
+  { id: 'look', title: 'LOOK AROUND', k: 'MOVE THE MOUSE TO TURN THE CAMERA. LOOK LEFT AND RIGHT', pad: 'THE RIGHT STICK TURNS THE CAMERA. LOOK LEFT AND RIGHT', touch: 'DRAG ON THE RIGHT SIDE TO TURN THE CAMERA. LOOK LEFT AND RIGHT' },
+  { id: 'sprint', title: 'SPRINT', k: 'HOLD SHIFT WHILE YOU MOVE TO SPRINT. IT USES STAMINA', pad: 'HOLD LB WHILE YOU MOVE TO SPRINT. IT USES STAMINA', touch: 'PUSH THE STICK ALL THE WAY OUT TO SPRINT. IT USES STAMINA' },
+  { id: 'ball', title: 'GET THE BALL', k: 'RUN INTO THE BALL TO TAKE IT', pad: 'RUN INTO THE BALL TO TAKE IT', touch: 'RUN INTO THE BALL TO TAKE IT' },
+  { id: 'pass', title: 'PASS', k: 'RIGHT MOUSE PASSES TO YOUR TEAMMATE. HOLD IT FOR A LOB', pad: 'LT PASSES TO YOUR TEAMMATE. HOLD IT FOR A LOB', touch: 'TAP PASS TO PASS TO YOUR TEAMMATE. HOLD IT FOR A LOB' },
+  { id: 'back', title: 'ONE MORE TIME', k: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT', pad: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT', touch: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT' },
+  { id: 'shoot', title: 'SHOOT', k: 'AIM AT THE GOAL WITH THE MOUSE. HOLD LEFT MOUSE FOR POWER, LET GO TO SHOOT', pad: 'AIM WITH THE RIGHT STICK. HOLD RT FOR POWER, LET GO TO SHOOT', touch: 'DRAG TO AIM. HOLD SHOOT FOR POWER, LET GO TO FIRE' },
+  { id: 'feint', title: 'FEINT', k: 'WITH THE BALL, PRESS C TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO', pad: 'WITH THE BALL, PRESS B TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO', touch: 'WITH THE BALL, TAP FEINT TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO' },
+  { id: 'tackle', title: 'TACKLE', k: 'THEY HAVE THE BALL. GET CLOSE AND PRESS F TO SLIDE IN AND WIN IT', pad: 'THEY HAVE THE BALL. GET CLOSE AND PRESS X TO SLIDE IN AND WIN IT', touch: 'THEY HAVE THE BALL. GET CLOSE AND TAP TACKLE TO SLIDE IN AND WIN IT' },
+  { id: 'ability', title: 'ABILITIES', k: 'YOUR STYLE HAS 3 ABILITIES. PRESS Q, E OR R TO USE ONE', pad: 'YOUR STYLE HAS 3 ABILITIES. PRESS THE D-PAD LEFT, UP OR RIGHT', touch: 'YOUR STYLE HAS 3 ABILITIES. TAP ONE OF THE ROUND ABILITY BUTTONS' },
+  { id: 'done', title: 'YOU ARE READY', k: 'NOW TRY A QUICK MATCH, THEN CLIMB THE RANKS. HAVE FUN!', pad: 'NOW TRY A QUICK MATCH, THEN CLIMB THE RANKS. HAVE FUN!', touch: 'NOW TRY A QUICK MATCH, THEN CLIMB THE RANKS. HAVE FUN!' },
+];
+const TUT_REWARD = 100; // emeralds, the first time you finish it
 /** free kicks: how many in practice, and the three kick types. sp: speed at no and full power, curve: how hard
     full spin bends it (blocks/s/s), g: gravity (DIP has topspin, so it drops fast) */
 const FK_KICKS = 10;
@@ -4094,6 +4126,7 @@ const MODES = {
   volleys: { name: 'VOLLEYS ONLY', ranked: false, items: false, aerialOnly: true, tip: 'ONLY VOLLEYS AND HEADERS COUNT' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
   freekick: { name: 'FREE KICKS', ranked: false, items: false, practice: true },
+  tutorial: { name: 'TUTORIAL', ranked: false, items: false, tutorial: true },
 };
 // kickoff spots on the first pitch's scale (see PITCH_KX / PITCH_KZ)
 const FORM = { GK: [0, -31.0], DEF: [0, -18], DEF2: [-8, -17], MID: [7, -9], LW: [11, -7], RW: [-11, -7], ST: [0, -2.2], FW: [-7, -4] };
@@ -4124,12 +4157,13 @@ class Match {
     this.buildTeams(opts);
     // whose PASS calls make teammates look up (the human; in a test match, a bot striker that calls like a human)
     this.caller = opts.caller ? this.teams[0].find((p) => p.role === leadRole(this.rolesFor(0))) : this.autopilot ? null : this.human;
-    if (this.cfg.practice && this.human) this.startFreeKicks(); else this.setupKickoff(0, true);
+    if (this.cfg.practice && this.human) this.startFreeKicks(); else if (this.cfg.tutorial && this.human) this.startTutorial(); else this.setupKickoff(0, true);
   }
   /* ---------- setup ---------- */
   /** 5v5: each team plays ultra defensive or ultra attacking, picked at random (opts.setups to choose) */
   rolesFor(team) {
     if (this.cfg.practice) return team === 0 ? ['ST'] : ['GK', 'DEF', 'DEF2', 'MID', 'ST']; // free kicks: you against a keeper, a wall and defenders in the box
+    if (this.cfg.tutorial) return team === 0 ? ['ST', 'MID'] : ['DEF']; // the tutorial: you, a teammate and one defender (an empty goal)
     return this.size === 5 ? SETUPS_5[this.setups[team]].roles : ROSTERS[this.size];
   }
   buildTeams(opts) {
@@ -4232,9 +4266,10 @@ class Match {
     this.time += dt; this.phaseT += dt;
     const ph = this.phase;
     if (ph === 'kickoff' && this.phaseT >= this.kickDelay) this.startPlay();
-    if (ph === 'goal' && this.phaseT >= (this.fk ? 2.4 : 3.9)) { if (this.fk) this.nextFreeKick(); else if (this.pendingEnd) this.endMatch(); else this.setupKickoff(1 - this.lastGoal.team); }
+    if (ph === 'goal' && this.tut && this.phaseT >= 2) { this.phase = 'play'; this.phaseT = 0; const h = this.human; this.ball.reset(clamp(h.pos.x, -F.W + 2, F.W - 2), clamp(h.pos.z, -F.L + 3, F.L - 3)); }
+    if (ph === 'goal' && !this.tut && this.phaseT >= (this.fk ? 2.4 : 3.9)) { if (this.fk) this.nextFreeKick(); else if (this.pendingEnd) this.endMatch(); else this.setupKickoff(1 - this.lastGoal.team); }
     if (ph === 'out' && this.phaseT >= 1.05) this.doRestart();
-    if ((ph === 'play' || ph === 'out') && !this.fk) this.tickClock(dt);
+    if ((ph === 'play' || ph === 'out') && !this.fk && !this.tut) this.tickClock(dt);
     if (this.hill && ph === 'play' && !this.fk) this.updateHill(dt);
 
     for (const p of this.players) { p.tickTimers(dt); p.computeMods(); }
@@ -4243,6 +4278,7 @@ class Match {
     for (const h of this.humans) if (h.ctl) this.updateHuman(dt, h.ctl, h);
     this.updateSetPiece(dt);
     if (this.fk) this.updateFreeKick(dt);
+    if (this.tut) this.updateTutorial(dt);
     // the return half of a one-two: as soon as the teammate has it, it goes straight back into your run
     const ot = this.oneTwoBack;
     if (ot) {
@@ -4836,7 +4872,7 @@ class Match {
   /** Awakening comes by itself: once a second each player may awaken. Big plays (p.awake) make it much likelier,
       and after one ends there is a rest before the next */
   updateAwakening(dt) {
-    if (this.phase !== 'play' || this.fk) return;
+    if (this.phase !== 'play' || this.fk || this.tut) return;
     this.awT = (this.awT || 0) + dt;
     if (this.awT < 1) return;
     this.awT -= 1;
@@ -4921,6 +4957,67 @@ class Match {
     if (g) { g.pos.set(-side * 0.9, 0, gz - s * 1.2); g.yaw = yaw + Math.PI; }
     if (sh === h) { Hud.freeKick(yaw, dist); this.toast(k.battle ? 'YOUR KICK · ' + Math.round(dist) + ' BLOCKS OUT' : 'KICK ' + k.n + ' OF ' + k.total + ' · ' + Math.round(dist) + ' BLOCKS OUT', 'gold', h); }
     else if (h.inWall) { const yw = Math.atan2(x - h.pos.x, z - h.pos.z); h.yaw = yw; Hud.freeKick(yw, 7); this.toast(Touch.on ? 'THEIR KICK · YOU ARE IN THE WALL · TAP JUMP TO BLOCK IT' : 'THEIR KICK · YOU ARE IN THE WALL · SPACE TO JUMP AND BLOCK IT', 'gold', h); }
+  }
+  /* ---------- the tutorial: one step at a time on a quiet pitch ---------- */
+  startTutorial() {
+    this.tut = { step: -1, t: 0, t0: 0, yaw0: null, turned: 0, sprintT: 0, mark: null, goals0: 0, backT: 0 };
+    for (const p of this.players) { if (!p.isHuman) p.wall = true; p.setState('free'); } // the others only do what the tutorial tells them
+    const h = this.human, mate = this.teams[0].find((p) => p !== h), d = this.teams[1][0], s = this.dir(h.team);
+    h.pos.set(0, 0, -12 * s); h.yaw = s > 0 ? 0 : Math.PI;
+    mate.pos.set(10, 0, -4 * s); d.pos.set(-14, 0, 14 * s);
+    this.ball.reset(-F.W + 1.5, -F.L + 3); // out of the way until you need it
+    this.phase = 'play'; this.phaseT = 0;
+    this.tutStep(0);
+  }
+  tutStep(i) {
+    const T = this.tut, h = this.human, b = this.ball, s = this.dir(h.team), gz = this.oppGoalZ(h.team);
+    const mate = this.teams[0].find((p) => p !== h), d = this.teams[1][0];
+    T.step = i; T.t = 0; T.t0 = this.time; T.backT = 0;
+    const id = TUT_STEPS[i].id, ahead = (k) => ({ x: clamp(h.pos.x + Math.sin(h.yaw) * k, -F.W + 3, F.W - 3), z: clamp(h.pos.z + Math.cos(h.yaw) * k, -F.L + 4, F.L - 4) });
+    const give = () => { if (b.owner !== h) { b.reset(h.pos.x, h.pos.z); this.possess(h, true); } };
+    if (id === 'move') T.mark = ahead(12);
+    else T.mark = null;
+    if (id === 'look') { T.yaw0 = null; T.turned = 0; }
+    if (id === 'ball') { const q = ahead(5); b.reset(q.x, q.z); }
+    if (id === 'pass') { give(); mate.pos.set(clamp(h.pos.x + 9, -F.W + 3, F.W - 3), 0, clamp(h.pos.z + 5 * s, -F.L + 4, F.L - 4)); mate.vel.set(0, 0, 0); }
+    if (id === 'shoot') { h.pos.set(0, 0, gz - s * 15); h.yaw = s > 0 ? 0 : Math.PI; b.reset(0, gz - s * 14.4); this.possess(h, true); T.goals0 = this.score[h.team]; Hud.freeKick(h.yaw, 15); d.pos.set(-F.W + 3, 0, 0); }
+    if (id === 'feint') give();
+    if (id === 'tackle') { const q = ahead(4); d.pos.set(q.x, 0, q.z); d.speedMul = 0.45; b.reset(q.x, q.z); this.possess(d, true); d.protect = 0; d.tackleProof = 0; }
+    if (id === 'ability') { give(); for (const a of h.abil) a.cd = 0; }
+    if (i > 0) Sfx.coin();
+  }
+  updateTutorial(dt) {
+    const T = this.tut, h = this.human, b = this.ball;
+    if (!T || !h || this.phase === 'end') return;
+    T.t += dt;
+    const mate = this.teams[0].find((p) => p !== h), d = this.teams[1][0], id = TUT_STEPS[T.step].id;
+    let done = false;
+    switch (id) {
+      case 'move': done = Math.hypot(h.pos.x - T.mark.x, h.pos.z - T.mark.z) < 2; break;
+      case 'look': if (T.yaw0 == null) T.yaw0 = this.camYaw; T.turned = Math.max(T.turned, Math.abs(wrapA(this.camYaw - T.yaw0))); done = T.turned > 1; break;
+      case 'sprint': T.sprintT = h.sprint && len2D(h.vel.x, h.vel.z) > 6.5 ? T.sprintT + dt : Math.max(0, T.sprintT - dt * 0.5); done = T.sprintT > 0.7; break;
+      case 'ball': done = b.owner === h; break;
+      case 'pass': done = !!(b.kick && b.kick.by === h && b.kick.type === 'pass') || !!(this.lastPass && this.lastPass.from === h && this.lastPass.t >= T.t0); break;
+      case 'back':
+        if (b.owner === mate) { T.backT += dt; if (T.backT > 0.7) { this.passTo(mate, h); T.backT = -99; } }
+        else if (!b.owner && T.backT >= 0 && T.t > 3) { b.reset(mate.pos.x, mate.pos.z); this.possess(mate, true); } // the pass missed: they fetch it
+        done = b.owner === h; break;
+      case 'shoot': done = this.score[h.team] > T.goals0; break;
+      case 'feint': done = !!h.feint; break;
+      case 'tackle': // they jog slowly round in a circle with the ball
+        if (b.owner === d) { const a = Math.atan2(d.pos.x, d.pos.z) + 0.6, tx = Math.sin(a) * 8, tz = Math.cos(a) * 8, dx = tx - d.pos.x, dz = tz - d.pos.z, l = Math.hypot(dx, dz) || 1; d.mx = dx / l; d.mz = dz / l; }
+        else if (!b.owner && b.lastTouch !== h && T.t > 1 && dist2D(b.pos, d.pos) < 1.5 && b.vel.lengthSq() < 1) this.possess(d, true); // they lost it by themselves: pick it up again
+        done = b.owner === h || (b.owner !== d && b.lastTouch === h); break; // you won it (a tackle knocks it loose)
+      case 'ability': done = h.abil.some((a) => a.cd > 0); break;
+      case 'done': if (T.t > 4) this.endTutorial(); break;
+    }
+    if (done) { d.speedMul = 1; this.tutStep(T.step + 1); }
+  }
+  endTutorial() {
+    const h = this.human;
+    this.phase = 'end'; this.phaseT = 0;
+    this.result = { res: 'tutorial', score: this.score.slice(), human: Object.assign({}, h.stats), players: [] };
+    h.setState('celebrate', 99); Sfx.whistle(3); Sfx.fanfare(2);
   }
   /* ---------- the free kick battle: still level after golden goal ---------- */
   startBattle() {
@@ -5405,7 +5502,7 @@ class Match {
       if (k.fx != null && Math.hypot(k.fx, this.oppGoalZ(scorer.team) - k.fz) >= 25) F.longShot++;
     }
     for (const h of this.human ? [this.human] : this.humans) if (this.score[h.team] < this.score[1 - h.team]) this.featsOf(h).trailed = true;
-    if (!this.fk) Replay.event(this, 'GOAL', scorer);
+    if (!this.fk && !this.tut) Replay.event(this, 'GOAL', scorer);
     if (this.golden) this.pendingEnd = true;
     b.owner = null; b.kick = null;
     TimeCtl.slowMo(0.3, 1.5);
@@ -5433,6 +5530,7 @@ class Match {
     b.owner = null; b.kick = null;
   }
   onOut() {
+    if (this.tut) { const h = this.human; this.ball.reset(clamp(h.pos.x, -F.W + 2, F.W - 2), clamp(h.pos.z, -F.L + 3, F.L - 3)); return; } // the tutorial: the ball comes back to you
     if (this.fk) { this.fkResult(this.fk.hit || 'MISS'); return; } // free kicks: no throw-ins, just the next kick
     const b = this.ball;
     const last = b.lastTeam < 0 ? (b.pos.z > 0 ? 0 : 1) : b.lastTeam;
@@ -7221,7 +7319,7 @@ const Portal = {
 
 /* ---- 11_fk.js ---- */
 /* =====================================================================
-   FKHud: free kick aids. A target on the goal where you aim, dots for the
+   TutHud (the tutorial's instructions and gold square) and FKHud: free kick aids. A target on the goal where you aim, dots for the
    first part of the ball's path, and the panel (kick type, curve, power)
    ===================================================================== */
 const FKHud = {
@@ -7269,6 +7367,26 @@ const FKHud = {
     f.className = ch > ideal + FK_TOL ? 'over' : ch >= ideal - FK_TOL ? 'good' : '';
     const pad = Input.usingPad;
     UI.setText('fk-typekey', pad ? 'LT' : 'RMB'); UI.setText('fk-curvekey', pad ? 'L STICK' : 'A D'); UI.setText('fk-powkey', pad ? 'RT' : 'LMB');
+  },
+};
+
+const TutHud = {
+  mark: null, step: -2,
+  update(m) {
+    const T = m && m.tut, box = $('tutbox');
+    if (!T || m.phase === 'end') { box.hidden = true; if (this.mark) this.mark.visible = false; this.step = -2; return; }
+    if (!this.mark) {
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffcb3d, transparent: true, opacity: 0.9, depthTest: false });
+      const g = new THREE.Group();
+      for (const [w, h, x, z] of [[3, 0.3, 0, 1.35], [3, 0.3, 0, -1.35], [0.3, 3, 1.35, 0], [0.3, 3, -1.35, 0]]) { const q = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); q.rotation.x = -Math.PI / 2; q.position.set(x, 0.05, z); q.renderOrder = 20; g.add(q); }
+      World.scene.add(g); this.mark = g;
+    }
+    this.mark.visible = !!T.mark;
+    if (T.mark) { this.mark.position.set(T.mark.x, 0, T.mark.z); this.mark.rotation.y = m.time * 1.5; }
+    const S = TUT_STEPS[T.step], how = Touch.on && !Input.usingPad ? 'touch' : Input.usingPad ? 'pad' : 'k';
+    box.hidden = false;
+    UI.setText('tut-n', 'STEP ' + (T.step + 1) + ' OF ' + TUT_STEPS.length); UI.setText('tut-title', S.title); UI.setText('tut-text', S[how]);
+    if (this.step !== T.step) { this.step = T.step; box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop'); } // a little bounce for each new step
   },
 };
 
@@ -8256,7 +8374,7 @@ const UI = {
   tplLobby() {
     return `<section id="scr-lobby" class="screen">
       <div class="topbar">
-        <span class="chip">SEASON 1 &middot; VOXEL CUP</span>
+        <div class="left"><span class="chip">SEASON 1 &middot; VOXEL CUP</span><button class="btn small pass" id="go-tut" type="button" hidden><span><span class="tut-long">NEW? PLAY THE </span>TUTORIAL</span></button></div>
         <div class="right">
           <span class="emer" title="Emeralds"><img class="px" id="lob-em-ico" alt=""><span id="lob-em">0</span></span>
           <button class="iconbtn" id="btn-fs" type="button" hidden>FULLSCREEN</button>
@@ -8274,7 +8392,7 @@ const UI = {
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
           <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
-          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">GOALS</button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE<span class="ph-x"> &amp; HISTORY</span></button></div>
+          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">GOALS</button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
       </div>
       <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
@@ -8325,6 +8443,7 @@ const UI = {
     return `<section id="scr-howto" class="screen sub-screen" hidden>
       <div class="sub-wrap">
         <div class="sub-head"><h2>HOW TO PLAY</h2><button class="btn small" id="howto-back" type="button">BACK</button></div>
+        <button class="btn blue tut-btn" id="howto-tut" type="button">PLAY THE TUTORIAL <span class="sub">2 MINUTES, LEARN EVERY CONTROL</span></button>
         <div class="howto">
           <section class="panel touchsec"><h3>TOUCH</h3><div class="ctrl">
             ${row(key('LEFT THUMB'), 'Touch anywhere on the left and drag to move. Push past the outer ring to sprint')}
@@ -8388,6 +8507,7 @@ const UI = {
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
             <li><b>Play with friends:</b> create a room, send the code or invite link, pick teams and a mode, and bots fill the empty spots. Keyboard, controller and phone players can all join the same room. It needs the SCORZ server running (see the README).</li>
             <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
+            <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
             <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
             <li><b>Featured mode</b> changes every 3 hours, the same for everyone: King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3) and Lawless.</li>
@@ -8518,6 +8638,7 @@ const UI = {
       <div class="idle-warn" id="idle-warn" hidden role="alert"><b id="idle-big"></b><span id="idle-small"></span></div>
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
       <canvas id="minimap" width="132" height="200"></canvas>
+      <div class="tutbox panel" id="tutbox" hidden><span class="label" id="tut-n"></span><b id="tut-title"></b><p id="tut-text"></p></div>
       <div class="dock">
         <div class="fkpanel panel" id="fkpanel" hidden>
           <div class="fk-row"><span class="label">TYPE</span><b id="fk-type">CURVE</b><span class="label" id="fk-desc"></span><span class="key k" id="fk-typekey">RMB</span></div>
@@ -8655,6 +8776,8 @@ const UI = {
     click('goals-back', () => this.show('lobby'));
     click('go-goals', () => this.show('goals'));
     click('go-fk', () => Game.startMatch('freekick'));
+    click('go-tut', () => Game.startMatch('tutorial'));
+    click('howto-tut', () => Game.startMatch('tutorial'));
     click('lob-profile', () => this.show('profile'));
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
     click('profile-back', () => this.show('lobby'));
@@ -8732,6 +8855,7 @@ const UI = {
     $('rank-sub').textContent = TIER_NAMES[tier] + ' · ' + sz + 'V' + sz;
     $('locker-sub').textContent = STYLES[d.style].name + (d.flow ? ' · ' + FLOWS[d.flow].name : '');
     Daily.sync(d); $('go-daily').classList.toggle('ready', Daily.giftReady(d));
+    $('go-tut').hidden = d.tutorial || d.stats.played >= 3; // new players: a way into the tutorial
     $('pro-badge').src = badgeURL(tier);
     Pass.sync(d); $('pass-sub').textContent = 'TIER ' + Pass.tier(d) + ' / ' + PASS_TIERS;
     $('pro-tier').textContent = TIER_NAMES[tier];
@@ -8763,7 +8887,7 @@ const UI = {
   /* ---------- HUD ---------- */
   buildHud(m) {
     const p = m.human;
-    $('hud-mode').textContent = m.cfg.name + (m.mode === 'duel' || m.fk ? '' : ' · ' + m.size + 'V' + m.size) + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
+    $('hud-mode').textContent = m.cfg.name + (m.mode === 'duel' || m.fk || m.tut ? '' : ' · ' + m.size + 'V' + m.size) + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
     $('hud-badge').src = badgeURL(tierOf(Save.data.rp)); $('hud-badge').hidden = !m.cfg.ranked;
     $('hud-em-ico').src = iconURL('emerald'); $('hud-em').textContent = Save.data.emeralds;
     for (const t of [0, 1]) { // the score bar wears each club's shirt
@@ -8808,9 +8932,10 @@ const UI = {
   setText(id, v) { const c = this.hudCache; if (c[id] !== v) { c[id] = v; $(id).textContent = v; } },
   updateHud(m, dt) {
     const p = m.human; if (!p) return;
-    FKHud.update(m);
+    FKHud.update(m); TutHud.update(m);
     this.setText('sc0', String(m.score[0])); this.setText('sc1', String(m.score[1]));
-    if (m.fk && m.fk.battle) { this.setText('clock', m.fk.bs[0] + '-' + m.fk.bs[1]); this.setText('clock-sub', 'FK BATTLE'); }
+    if (m.tut) { this.setText('clock', Math.min(m.tut.step + 1, TUT_STEPS.length) + '/' + TUT_STEPS.length); this.setText('clock-sub', 'TUTORIAL'); }
+    else if (m.fk && m.fk.battle) { this.setText('clock', m.fk.bs[0] + '-' + m.fk.bs[1]); this.setText('clock-sub', 'FK BATTLE'); }
     else if (m.fk) { this.setText('clock', Math.min(m.fk.n, m.fk.total) + '/' + m.fk.total); this.setText('clock-sub', 'FREE KICK'); }
     else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL'); }
     else { this.setText('clock', fmtTime(m.clock)); this.setText('clock-sub', ''); }
@@ -9021,6 +9146,17 @@ const UI = {
     $('r-daily').innerHTML = !D ? '' : D.now ? `<span class="label pl-ch">DAILY CHALLENGE DONE: ${esc(D.name)} +${DAILY_REWARD.emeralds} EMERALDS +${DAILY_REWARD.xp} XP</span>`
       : `<span class="label">DAILY CHALLENGE · ${esc(D.name)} · ${D.done ? 'DONE' : D.prog + ' / ' + D.goal}</span>`;
     if (r.goalsDone && r.goalsDone.length) $('r-daily').innerHTML += r.goalsDone.map((t) => `<span class="label pl-tier">GOAL DONE: ${esc(t)}</span>`).join('');
+    $('hint').hidden = true;
+    $('scr-results').hidden = false;
+  },
+  /** the tutorial is done: a first-time reward and a button straight into a quick match */
+  showTutorialDone(first) {
+    $('r-again').textContent = 'PLAY A QUICK MATCH'; $('r-lobby').textContent = 'LOBBY';
+    $('r-title').textContent = 'TUTORIAL DONE'; $('r-title').style.color = '#2ee38f';
+    $('r-score').innerHTML = '<span>YOU ARE READY</span><span class="chip">TUTORIAL</span>';
+    $('r-stats').innerHTML = '';
+    $('r-earn').innerHTML = first ? `<div class="tot"><span>FIRST TIME BONUS</span><span>+${TUT_REWARD}</span></div>` : '<div class="idle-note"><span>YOU CAN PLAY IT AGAIN ANY TIME FROM HOW TO PLAY</span></div>';
+    $('r-rank').hidden = true; $('r-xp').innerHTML = ''; $('r-pass').innerHTML = ''; $('r-daily').innerHTML = '';
     $('hint').hidden = true;
     $('scr-results').hidden = false;
   },
@@ -9280,6 +9416,16 @@ const Game = {
     this.ended = true;
     const m = this.match, d = Save.data;
     Replay.offer = null; Replay.hideOffer();
+    if (m.cfg.tutorial) { // the tutorial: a small reward the first time, then off to a real match
+      if (forfeit) { this.toLobby(); return; }
+      const first = !d.tutorial; d.tutorial = true; if (first) d.emeralds += TUT_REWARD;
+      Save.save();
+      this.state = 'results'; m.paused = true; this.lastMode = 'quick';
+      Input.releaseLock();
+      UI.showTutorialDone(first);
+      Sfx.setCrowd(0.3);
+      return;
+    }
     if (m.cfg.practice) { // free kick practice: your score and your best, no rewards
       if (forfeit) { this.toLobby(); return; }
       const P = m.result.practice, best = d.fkBest || 0;
@@ -9410,7 +9556,7 @@ window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS,
-  EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, CODES, codeHash, redeemCode,
+  EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, TUT_STEPS, TutHud, CODES, codeHash, redeemCode,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

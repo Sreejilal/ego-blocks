@@ -30,7 +30,7 @@ const UI = {
   tplLobby() {
     return `<section id="scr-lobby" class="screen">
       <div class="topbar">
-        <span class="chip">SEASON 1 &middot; VOXEL CUP</span>
+        <div class="left"><span class="chip">SEASON 1 &middot; VOXEL CUP</span><button class="btn small pass" id="go-tut" type="button" hidden><span><span class="tut-long">NEW? PLAY THE </span>TUTORIAL</span></button></div>
         <div class="right">
           <span class="emer" title="Emeralds"><img class="px" id="lob-em-ico" alt=""><span id="lob-em">0</span></span>
           <button class="iconbtn" id="btn-fs" type="button" hidden>FULLSCREEN</button>
@@ -48,7 +48,7 @@ const UI = {
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
           <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
-          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">GOALS</button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button">PROFILE<span class="ph-x"> &amp; HISTORY</span></button></div>
+          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">GOALS</button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
       </div>
       <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
@@ -99,6 +99,7 @@ const UI = {
     return `<section id="scr-howto" class="screen sub-screen" hidden>
       <div class="sub-wrap">
         <div class="sub-head"><h2>HOW TO PLAY</h2><button class="btn small" id="howto-back" type="button">BACK</button></div>
+        <button class="btn blue tut-btn" id="howto-tut" type="button">PLAY THE TUTORIAL <span class="sub">2 MINUTES, LEARN EVERY CONTROL</span></button>
         <div class="howto">
           <section class="panel touchsec"><h3>TOUCH</h3><div class="ctrl">
             ${row(key('LEFT THUMB'), 'Touch anywhere on the left and drag to move. Push past the outer ring to sprint')}
@@ -162,6 +163,7 @@ const UI = {
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
             <li><b>Play with friends:</b> create a room, send the code or invite link, pick teams and a mode, and bots fill the empty spots. Keyboard, controller and phone players can all join the same room. It needs the SCORZ server running (see the README).</li>
             <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
+            <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
             <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
             <li><b>Featured mode</b> changes every 3 hours, the same for everyone: King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3) and Lawless.</li>
@@ -292,6 +294,7 @@ const UI = {
       <div class="idle-warn" id="idle-warn" hidden role="alert"><b id="idle-big"></b><span id="idle-small"></span></div>
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
       <canvas id="minimap" width="132" height="200"></canvas>
+      <div class="tutbox panel" id="tutbox" hidden><span class="label" id="tut-n"></span><b id="tut-title"></b><p id="tut-text"></p></div>
       <div class="dock">
         <div class="fkpanel panel" id="fkpanel" hidden>
           <div class="fk-row"><span class="label">TYPE</span><b id="fk-type">CURVE</b><span class="label" id="fk-desc"></span><span class="key k" id="fk-typekey">RMB</span></div>
@@ -429,6 +432,8 @@ const UI = {
     click('goals-back', () => this.show('lobby'));
     click('go-goals', () => this.show('goals'));
     click('go-fk', () => Game.startMatch('freekick'));
+    click('go-tut', () => Game.startMatch('tutorial'));
+    click('howto-tut', () => Game.startMatch('tutorial'));
     click('lob-profile', () => this.show('profile'));
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
     click('profile-back', () => this.show('lobby'));
@@ -506,6 +511,7 @@ const UI = {
     $('rank-sub').textContent = TIER_NAMES[tier] + ' · ' + sz + 'V' + sz;
     $('locker-sub').textContent = STYLES[d.style].name + (d.flow ? ' · ' + FLOWS[d.flow].name : '');
     Daily.sync(d); $('go-daily').classList.toggle('ready', Daily.giftReady(d));
+    $('go-tut').hidden = d.tutorial || d.stats.played >= 3; // new players: a way into the tutorial
     $('pro-badge').src = badgeURL(tier);
     Pass.sync(d); $('pass-sub').textContent = 'TIER ' + Pass.tier(d) + ' / ' + PASS_TIERS;
     $('pro-tier').textContent = TIER_NAMES[tier];
@@ -537,7 +543,7 @@ const UI = {
   /* ---------- HUD ---------- */
   buildHud(m) {
     const p = m.human;
-    $('hud-mode').textContent = m.cfg.name + (m.mode === 'duel' || m.fk ? '' : ' · ' + m.size + 'V' + m.size) + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
+    $('hud-mode').textContent = m.cfg.name + (m.mode === 'duel' || m.fk || m.tut ? '' : ' · ' + m.size + 'V' + m.size) + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
     $('hud-badge').src = badgeURL(tierOf(Save.data.rp)); $('hud-badge').hidden = !m.cfg.ranked;
     $('hud-em-ico').src = iconURL('emerald'); $('hud-em').textContent = Save.data.emeralds;
     for (const t of [0, 1]) { // the score bar wears each club's shirt
@@ -582,9 +588,10 @@ const UI = {
   setText(id, v) { const c = this.hudCache; if (c[id] !== v) { c[id] = v; $(id).textContent = v; } },
   updateHud(m, dt) {
     const p = m.human; if (!p) return;
-    FKHud.update(m);
+    FKHud.update(m); TutHud.update(m);
     this.setText('sc0', String(m.score[0])); this.setText('sc1', String(m.score[1]));
-    if (m.fk && m.fk.battle) { this.setText('clock', m.fk.bs[0] + '-' + m.fk.bs[1]); this.setText('clock-sub', 'FK BATTLE'); }
+    if (m.tut) { this.setText('clock', Math.min(m.tut.step + 1, TUT_STEPS.length) + '/' + TUT_STEPS.length); this.setText('clock-sub', 'TUTORIAL'); }
+    else if (m.fk && m.fk.battle) { this.setText('clock', m.fk.bs[0] + '-' + m.fk.bs[1]); this.setText('clock-sub', 'FK BATTLE'); }
     else if (m.fk) { this.setText('clock', Math.min(m.fk.n, m.fk.total) + '/' + m.fk.total); this.setText('clock-sub', 'FREE KICK'); }
     else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL'); }
     else { this.setText('clock', fmtTime(m.clock)); this.setText('clock-sub', ''); }
@@ -795,6 +802,17 @@ const UI = {
     $('r-daily').innerHTML = !D ? '' : D.now ? `<span class="label pl-ch">DAILY CHALLENGE DONE: ${esc(D.name)} +${DAILY_REWARD.emeralds} EMERALDS +${DAILY_REWARD.xp} XP</span>`
       : `<span class="label">DAILY CHALLENGE · ${esc(D.name)} · ${D.done ? 'DONE' : D.prog + ' / ' + D.goal}</span>`;
     if (r.goalsDone && r.goalsDone.length) $('r-daily').innerHTML += r.goalsDone.map((t) => `<span class="label pl-tier">GOAL DONE: ${esc(t)}</span>`).join('');
+    $('hint').hidden = true;
+    $('scr-results').hidden = false;
+  },
+  /** the tutorial is done: a first-time reward and a button straight into a quick match */
+  showTutorialDone(first) {
+    $('r-again').textContent = 'PLAY A QUICK MATCH'; $('r-lobby').textContent = 'LOBBY';
+    $('r-title').textContent = 'TUTORIAL DONE'; $('r-title').style.color = '#2ee38f';
+    $('r-score').innerHTML = '<span>YOU ARE READY</span><span class="chip">TUTORIAL</span>';
+    $('r-stats').innerHTML = '';
+    $('r-earn').innerHTML = first ? `<div class="tot"><span>FIRST TIME BONUS</span><span>+${TUT_REWARD}</span></div>` : '<div class="idle-note"><span>YOU CAN PLAY IT AGAIN ANY TIME FROM HOW TO PLAY</span></div>';
+    $('r-rank').hidden = true; $('r-xp').innerHTML = ''; $('r-pass').innerHTML = ''; $('r-daily').innerHTML = '';
     $('hint').hidden = true;
     $('scr-results').hidden = false;
   },

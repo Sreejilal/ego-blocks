@@ -1,5 +1,5 @@
 /* =====================================================================
-   FKHud: free kick aids. A target on the goal where you aim, dots for the
+   TutHud (the tutorial's instructions and gold square) and FKHud: free kick aids. A target on the goal where you aim, dots for the
    first part of the ball's path, and the panel (kick type, curve, power)
    ===================================================================== */
 const FKHud = {
@@ -47,5 +47,25 @@ const FKHud = {
     f.className = ch > ideal + FK_TOL ? 'over' : ch >= ideal - FK_TOL ? 'good' : '';
     const pad = Input.usingPad;
     UI.setText('fk-typekey', pad ? 'LT' : 'RMB'); UI.setText('fk-curvekey', pad ? 'L STICK' : 'A D'); UI.setText('fk-powkey', pad ? 'RT' : 'LMB');
+  },
+};
+
+const TutHud = {
+  mark: null, step: -2,
+  update(m) {
+    const T = m && m.tut, box = $('tutbox');
+    if (!T || m.phase === 'end') { box.hidden = true; if (this.mark) this.mark.visible = false; this.step = -2; return; }
+    if (!this.mark) {
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffcb3d, transparent: true, opacity: 0.9, depthTest: false });
+      const g = new THREE.Group();
+      for (const [w, h, x, z] of [[3, 0.3, 0, 1.35], [3, 0.3, 0, -1.35], [0.3, 3, 1.35, 0], [0.3, 3, -1.35, 0]]) { const q = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat); q.rotation.x = -Math.PI / 2; q.position.set(x, 0.05, z); q.renderOrder = 20; g.add(q); }
+      World.scene.add(g); this.mark = g;
+    }
+    this.mark.visible = !!T.mark;
+    if (T.mark) { this.mark.position.set(T.mark.x, 0, T.mark.z); this.mark.rotation.y = m.time * 1.5; }
+    const S = TUT_STEPS[T.step], how = Touch.on && !Input.usingPad ? 'touch' : Input.usingPad ? 'pad' : 'k';
+    box.hidden = false;
+    UI.setText('tut-n', 'STEP ' + (T.step + 1) + ' OF ' + TUT_STEPS.length); UI.setText('tut-title', S.title); UI.setText('tut-text', S[how]);
+    if (this.step !== T.step) { this.step = T.step; box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop'); } // a little bounce for each new step
   },
 };

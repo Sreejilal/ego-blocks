@@ -12,6 +12,7 @@ const MODES = {
   volleys: { name: 'VOLLEYS ONLY', ranked: false, items: false, aerialOnly: true, tip: 'ONLY VOLLEYS AND HEADERS COUNT' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
   freekick: { name: 'FREE KICKS', ranked: false, items: false, practice: true },
+  tutorial: { name: 'TUTORIAL', ranked: false, items: false, tutorial: true },
 };
 // kickoff spots on the first pitch's scale (see PITCH_KX / PITCH_KZ)
 const FORM = { GK: [0, -31.0], DEF: [0, -18], DEF2: [-8, -17], MID: [7, -9], LW: [11, -7], RW: [-11, -7], ST: [0, -2.2], FW: [-7, -4] };
@@ -42,12 +43,13 @@ class Match {
     this.buildTeams(opts);
     // whose PASS calls make teammates look up (the human; in a test match, a bot striker that calls like a human)
     this.caller = opts.caller ? this.teams[0].find((p) => p.role === leadRole(this.rolesFor(0))) : this.autopilot ? null : this.human;
-    if (this.cfg.practice && this.human) this.startFreeKicks(); else this.setupKickoff(0, true);
+    if (this.cfg.practice && this.human) this.startFreeKicks(); else if (this.cfg.tutorial && this.human) this.startTutorial(); else this.setupKickoff(0, true);
   }
   /* ---------- setup ---------- */
   /** 5v5: each team plays ultra defensive or ultra attacking, picked at random (opts.setups to choose) */
   rolesFor(team) {
     if (this.cfg.practice) return team === 0 ? ['ST'] : ['GK', 'DEF', 'DEF2', 'MID', 'ST']; // free kicks: you against a keeper, a wall and defenders in the box
+    if (this.cfg.tutorial) return team === 0 ? ['ST', 'MID'] : ['DEF']; // the tutorial: you, a teammate and one defender (an empty goal)
     return this.size === 5 ? SETUPS_5[this.setups[team]].roles : ROSTERS[this.size];
   }
   buildTeams(opts) {
@@ -150,9 +152,10 @@ class Match {
     this.time += dt; this.phaseT += dt;
     const ph = this.phase;
     if (ph === 'kickoff' && this.phaseT >= this.kickDelay) this.startPlay();
-    if (ph === 'goal' && this.phaseT >= (this.fk ? 2.4 : 3.9)) { if (this.fk) this.nextFreeKick(); else if (this.pendingEnd) this.endMatch(); else this.setupKickoff(1 - this.lastGoal.team); }
+    if (ph === 'goal' && this.tut && this.phaseT >= 2) { this.phase = 'play'; this.phaseT = 0; const h = this.human; this.ball.reset(clamp(h.pos.x, -F.W + 2, F.W - 2), clamp(h.pos.z, -F.L + 3, F.L - 3)); }
+    if (ph === 'goal' && !this.tut && this.phaseT >= (this.fk ? 2.4 : 3.9)) { if (this.fk) this.nextFreeKick(); else if (this.pendingEnd) this.endMatch(); else this.setupKickoff(1 - this.lastGoal.team); }
     if (ph === 'out' && this.phaseT >= 1.05) this.doRestart();
-    if ((ph === 'play' || ph === 'out') && !this.fk) this.tickClock(dt);
+    if ((ph === 'play' || ph === 'out') && !this.fk && !this.tut) this.tickClock(dt);
     if (this.hill && ph === 'play' && !this.fk) this.updateHill(dt);
 
     for (const p of this.players) { p.tickTimers(dt); p.computeMods(); }
@@ -161,6 +164,7 @@ class Match {
     for (const h of this.humans) if (h.ctl) this.updateHuman(dt, h.ctl, h);
     this.updateSetPiece(dt);
     if (this.fk) this.updateFreeKick(dt);
+    if (this.tut) this.updateTutorial(dt);
     // the return half of a one-two: as soon as the teammate has it, it goes straight back into your run
     const ot = this.oneTwoBack;
     if (ot) {
@@ -754,7 +758,7 @@ class Match {
   /** Awakening comes by itself: once a second each player may awaken. Big plays (p.awake) make it much likelier,
       and after one ends there is a rest before the next */
   updateAwakening(dt) {
-    if (this.phase !== 'play' || this.fk) return;
+    if (this.phase !== 'play' || this.fk || this.tut) return;
     this.awT = (this.awT || 0) + dt;
     if (this.awT < 1) return;
     this.awT -= 1;
@@ -839,6 +843,67 @@ class Match {
     if (g) { g.pos.set(-side * 0.9, 0, gz - s * 1.2); g.yaw = yaw + Math.PI; }
     if (sh === h) { Hud.freeKick(yaw, dist); this.toast(k.battle ? 'YOUR KICK · ' + Math.round(dist) + ' BLOCKS OUT' : 'KICK ' + k.n + ' OF ' + k.total + ' · ' + Math.round(dist) + ' BLOCKS OUT', 'gold', h); }
     else if (h.inWall) { const yw = Math.atan2(x - h.pos.x, z - h.pos.z); h.yaw = yw; Hud.freeKick(yw, 7); this.toast(Touch.on ? 'THEIR KICK · YOU ARE IN THE WALL · TAP JUMP TO BLOCK IT' : 'THEIR KICK · YOU ARE IN THE WALL · SPACE TO JUMP AND BLOCK IT', 'gold', h); }
+  }
+  /* ---------- the tutorial: one step at a time on a quiet pitch ---------- */
+  startTutorial() {
+    this.tut = { step: -1, t: 0, t0: 0, yaw0: null, turned: 0, sprintT: 0, mark: null, goals0: 0, backT: 0 };
+    for (const p of this.players) { if (!p.isHuman) p.wall = true; p.setState('free'); } // the others only do what the tutorial tells them
+    const h = this.human, mate = this.teams[0].find((p) => p !== h), d = this.teams[1][0], s = this.dir(h.team);
+    h.pos.set(0, 0, -12 * s); h.yaw = s > 0 ? 0 : Math.PI;
+    mate.pos.set(10, 0, -4 * s); d.pos.set(-14, 0, 14 * s);
+    this.ball.reset(-F.W + 1.5, -F.L + 3); // out of the way until you need it
+    this.phase = 'play'; this.phaseT = 0;
+    this.tutStep(0);
+  }
+  tutStep(i) {
+    const T = this.tut, h = this.human, b = this.ball, s = this.dir(h.team), gz = this.oppGoalZ(h.team);
+    const mate = this.teams[0].find((p) => p !== h), d = this.teams[1][0];
+    T.step = i; T.t = 0; T.t0 = this.time; T.backT = 0;
+    const id = TUT_STEPS[i].id, ahead = (k) => ({ x: clamp(h.pos.x + Math.sin(h.yaw) * k, -F.W + 3, F.W - 3), z: clamp(h.pos.z + Math.cos(h.yaw) * k, -F.L + 4, F.L - 4) });
+    const give = () => { if (b.owner !== h) { b.reset(h.pos.x, h.pos.z); this.possess(h, true); } };
+    if (id === 'move') T.mark = ahead(12);
+    else T.mark = null;
+    if (id === 'look') { T.yaw0 = null; T.turned = 0; }
+    if (id === 'ball') { const q = ahead(5); b.reset(q.x, q.z); }
+    if (id === 'pass') { give(); mate.pos.set(clamp(h.pos.x + 9, -F.W + 3, F.W - 3), 0, clamp(h.pos.z + 5 * s, -F.L + 4, F.L - 4)); mate.vel.set(0, 0, 0); }
+    if (id === 'shoot') { h.pos.set(0, 0, gz - s * 15); h.yaw = s > 0 ? 0 : Math.PI; b.reset(0, gz - s * 14.4); this.possess(h, true); T.goals0 = this.score[h.team]; Hud.freeKick(h.yaw, 15); d.pos.set(-F.W + 3, 0, 0); }
+    if (id === 'feint') give();
+    if (id === 'tackle') { const q = ahead(4); d.pos.set(q.x, 0, q.z); d.speedMul = 0.45; b.reset(q.x, q.z); this.possess(d, true); d.protect = 0; d.tackleProof = 0; }
+    if (id === 'ability') { give(); for (const a of h.abil) a.cd = 0; }
+    if (i > 0) Sfx.coin();
+  }
+  updateTutorial(dt) {
+    const T = this.tut, h = this.human, b = this.ball;
+    if (!T || !h || this.phase === 'end') return;
+    T.t += dt;
+    const mate = this.teams[0].find((p) => p !== h), d = this.teams[1][0], id = TUT_STEPS[T.step].id;
+    let done = false;
+    switch (id) {
+      case 'move': done = Math.hypot(h.pos.x - T.mark.x, h.pos.z - T.mark.z) < 2; break;
+      case 'look': if (T.yaw0 == null) T.yaw0 = this.camYaw; T.turned = Math.max(T.turned, Math.abs(wrapA(this.camYaw - T.yaw0))); done = T.turned > 1; break;
+      case 'sprint': T.sprintT = h.sprint && len2D(h.vel.x, h.vel.z) > 6.5 ? T.sprintT + dt : Math.max(0, T.sprintT - dt * 0.5); done = T.sprintT > 0.7; break;
+      case 'ball': done = b.owner === h; break;
+      case 'pass': done = !!(b.kick && b.kick.by === h && b.kick.type === 'pass') || !!(this.lastPass && this.lastPass.from === h && this.lastPass.t >= T.t0); break;
+      case 'back':
+        if (b.owner === mate) { T.backT += dt; if (T.backT > 0.7) { this.passTo(mate, h); T.backT = -99; } }
+        else if (!b.owner && T.backT >= 0 && T.t > 3) { b.reset(mate.pos.x, mate.pos.z); this.possess(mate, true); } // the pass missed: they fetch it
+        done = b.owner === h; break;
+      case 'shoot': done = this.score[h.team] > T.goals0; break;
+      case 'feint': done = !!h.feint; break;
+      case 'tackle': // they jog slowly round in a circle with the ball
+        if (b.owner === d) { const a = Math.atan2(d.pos.x, d.pos.z) + 0.6, tx = Math.sin(a) * 8, tz = Math.cos(a) * 8, dx = tx - d.pos.x, dz = tz - d.pos.z, l = Math.hypot(dx, dz) || 1; d.mx = dx / l; d.mz = dz / l; }
+        else if (!b.owner && b.lastTouch !== h && T.t > 1 && dist2D(b.pos, d.pos) < 1.5 && b.vel.lengthSq() < 1) this.possess(d, true); // they lost it by themselves: pick it up again
+        done = b.owner === h || (b.owner !== d && b.lastTouch === h); break; // you won it (a tackle knocks it loose)
+      case 'ability': done = h.abil.some((a) => a.cd > 0); break;
+      case 'done': if (T.t > 4) this.endTutorial(); break;
+    }
+    if (done) { d.speedMul = 1; this.tutStep(T.step + 1); }
+  }
+  endTutorial() {
+    const h = this.human;
+    this.phase = 'end'; this.phaseT = 0;
+    this.result = { res: 'tutorial', score: this.score.slice(), human: Object.assign({}, h.stats), players: [] };
+    h.setState('celebrate', 99); Sfx.whistle(3); Sfx.fanfare(2);
   }
   /* ---------- the free kick battle: still level after golden goal ---------- */
   startBattle() {
@@ -1323,7 +1388,7 @@ class Match {
       if (k.fx != null && Math.hypot(k.fx, this.oppGoalZ(scorer.team) - k.fz) >= 25) F.longShot++;
     }
     for (const h of this.human ? [this.human] : this.humans) if (this.score[h.team] < this.score[1 - h.team]) this.featsOf(h).trailed = true;
-    if (!this.fk) Replay.event(this, 'GOAL', scorer);
+    if (!this.fk && !this.tut) Replay.event(this, 'GOAL', scorer);
     if (this.golden) this.pendingEnd = true;
     b.owner = null; b.kick = null;
     TimeCtl.slowMo(0.3, 1.5);
@@ -1351,6 +1416,7 @@ class Match {
     b.owner = null; b.kick = null;
   }
   onOut() {
+    if (this.tut) { const h = this.human; this.ball.reset(clamp(h.pos.x, -F.W + 2, F.W - 2), clamp(h.pos.z, -F.L + 3, F.L - 3)); return; } // the tutorial: the ball comes back to you
     if (this.fk) { this.fkResult(this.fk.hit || 'MISS'); return; } // free kicks: no throw-ins, just the next kick
     const b = this.ball;
     const last = b.lastTeam < 0 ? (b.pos.z > 0 ? 0 : 1) : b.lastTeam;

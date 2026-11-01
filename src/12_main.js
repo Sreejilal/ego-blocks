@@ -92,6 +92,16 @@ const Game = {
     this.ended = true;
     const m = this.match, d = Save.data;
     Replay.offer = null; Replay.hideOffer();
+    if (m.cfg.tutorial) { // the tutorial: a small reward the first time, then off to a real match
+      if (forfeit) { this.toLobby(); return; }
+      const first = !d.tutorial; d.tutorial = true; if (first) d.emeralds += TUT_REWARD;
+      Save.save();
+      this.state = 'results'; m.paused = true; this.lastMode = 'quick';
+      Input.releaseLock();
+      UI.showTutorialDone(first);
+      Sfx.setCrowd(0.3);
+      return;
+    }
     if (m.cfg.practice) { // free kick practice: your score and your best, no rewards
       if (forfeit) { this.toLobby(); return; }
       const P = m.result.practice, best = d.fkBest || 0;
@@ -222,7 +232,7 @@ window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS,
-  EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, CODES, codeHash, redeemCode,
+  EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, TUT_STEPS, TutHud, CODES, codeHash, redeemCode,
   CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

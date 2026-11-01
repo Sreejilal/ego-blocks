@@ -461,6 +461,22 @@ body.touch #hud .awakebar .track { height: 6px; }
 .stamina { display: flex; gap: 2px; }
 .stamina img { width: 22px; height: 22px; }
 .hotbar { display: flex; gap: 8px; align-items: flex-end; padding-bottom: 12px; }
+/* the tutorial's instructions, under the scoreboard */
+.tutbox { position: absolute; left: 50%; top: calc(84px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 14px 12px; display: grid; gap: 2px; text-align: center; z-index: 6; }
+.tutbox b { font-family: var(--font-display); font-weight: 400; font-size: 32px; line-height: 1; color: #ffcb3d; }
+.tutbox p { margin: 0; font-size: 18px; color: var(--text); }
+.tutbox.pop { animation: tutpop .35s ease-out; }
+@keyframes tutpop { 0% { transform: translateX(-50%) scale(.92); } 60% { transform: translateX(-50%) scale(1.04); } 100% { transform: translateX(-50%) scale(1); } }
+#hud:has(.tutbox:not([hidden])) #hint { display: none; } /* the box says what to do */
+body.touch .tutbox { width: min(340px, calc(100vw - 150px)); padding: 6px 10px 8px; }
+body.touch .tutbox b { font-size: 22px; } body.touch .tutbox p { font-size: 14px; }
+@media (orientation: portrait) { body.touch .tutbox { top: calc(176px + env(safe-area-inset-top, 0px)); width: calc(100vw - 32px); } }
+@media (max-height: 520px) and (orientation: landscape) { body.touch .tutbox { top: calc(64px + env(safe-area-inset-top, 0px)); } }
+.tut-btn { justify-self: start; margin-bottom: 12px; }
+.topbar .left { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
+@media (max-height: 520px) and (orientation: landscape) { #go-tut .tut-long { display: none; } #go-tut { padding: 3px 8px 5px; } }
+@media (max-height: 520px) and (max-width: 800px) and (orientation: landscape) { .topbar .left:has(#go-tut:not([hidden])) .chip { display: none; } } /* a small phone on its side: the tutorial button takes the season label's place */ /* a phone on its side: just TUTORIAL, so the top bar stays one row */
+
 /* free kicks: the type, curve and power panel takes the place of the Flow bar and hotbar */
 #hud.fk .dock > :not(.fkpanel) { display: none !important; }
 .fkpanel { display: grid; gap: 6px; padding: 10px 12px; width: 420px; max-width: calc(100vw - 32px); box-sizing: border-box; margin-bottom: 12px; }
