@@ -42,12 +42,12 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
 
   const stands = await page.evaluate(() => {
     const G = EGO.Game; G.startMatch('quick');
-    const b = G.match.ball, bad = [], rest = [];
+    const b = G.match.ball, bad = [], rest = [], P = EGO.PITCH;
     let n = 0;
     // 120 kicks: every direction, low and high, slow and fast, from near the boards
     for (let i = 0; i < 120; i++) {
       const a = i / 120 * Math.PI * 2, sp = 14 + (i % 5) * 7, up = [2, 6, 10, 15][i % 4];
-      b.reset(Math.sin(a) * 26, Math.cos(a) * 40);
+      b.reset(Math.sin(a) * (P.W - 1), Math.cos(a) * (P.L - 2)); // near the touchlines and goal lines
       b.vel.set(Math.sin(a) * sp, up, Math.cos(a) * sp);
       let inside = false, went = false;
       for (let f = 0; f < 360; f++) {
@@ -62,7 +62,8 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     // 400 more: dropped or rolled onto the steps from anywhere in the stands, at random speeds (balls bouncing at the fronts of steps)
     let seed = 99; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
     for (let i = 0; i < 400; i++) {
-      const side = rnd() < 0.5, s1 = rnd() < 0.5 ? -1 : 1, x = side ? s1 * (32.6 + rnd() * 11) : (rnd() - 0.5) * 64, z = side ? (rnd() - 0.5) * 94 : s1 * (50.1 + rnd() * 11);
+      const SX = P.BOARD_X + 2, SZ = P.BOARD_Z + 3; // where the stands start
+      const side = rnd() < 0.5, s1 = rnd() < 0.5 ? -1 : 1, x = side ? s1 * (SX + 0.1 + rnd() * 11) : (rnd() - 0.5) * SX * 2, z = side ? (rnd() - 0.5) * (P.BOARD_Z + 0.5) * 2 : s1 * (SZ + 0.1 + rnd() * 11);
       b.reset(x, z, EGO.standTop(x, z) + 0.31 + rnd() * 3);
       b.vel.set((rnd() - 0.5) * 30, (rnd() - 0.6) * 12, (rnd() - 0.5) * 30);
       for (let f = 0; f < 240; f++) {

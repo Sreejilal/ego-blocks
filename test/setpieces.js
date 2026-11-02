@@ -28,12 +28,12 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
     for (const p of m.players) if (p !== h && !p.isGK) p.pos.set(p.pos.x * 0.3, 0, p.pos.z * 0.5);
     h.pos.set(spot.x, 0, spot.z);
     for (let i = 0; i < 80 && m.phase !== 'play'; i++) EGO.Game.stepManual(2, false);
-    EGO.Game.stepManual(2, true);
+    EGO.Game.stepManual(8, true); // the ball rises to the hands over a few frames
     return { type: m.setPieceBy && m.setPieceBy.setPiece && m.setPieceBy.setPiece.type, mine: m.setPieceBy === h, ballY: +b.pos.y.toFixed(2), toast: document.getElementById('toasts').textContent };
   }, where);
 
   const pitch = await A.evaluate(() => ({ W: EGO.PITCH.W, L: EGO.PITCH.L, GW: EGO.PITCH.GW, GH: EGO.PITCH.GH }));
-  check('the pitch is 27 x 42 and the goal 9 x 3', pitch.W === 27 && pitch.L === 42 && pitch.GW === 4.5 && pitch.GH === 3, pitch);
+  check('the pitch is 35 x 55 and the goal 9 x 3', pitch.W === 35 && pitch.L === 55 && pitch.GW === 4.5 && pitch.GH === 3, pitch);
 
   const t = await restart('side');
   check('a throw-in: it is yours, with the ball over your head', t.type === 'throw' && t.mine && t.ballY > 1.9, t);

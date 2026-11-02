@@ -118,7 +118,8 @@ const World = {
     sun.position.set(-58, 72, -34);
     sun.target.position.set(0, 0, 0);
     sun.castShadow = true;
-    const sc = sun.shadow.camera; sc.left = -58; sc.right = 58; sc.top = 58; sc.bottom = -58; sc.near = 20; sc.far = 240;
+    const SR = Math.max(F.BOARD_X, F.BOARD_Z) + 12; // the shadows cover the whole pitch and the front of the stands
+    const sc = sun.shadow.camera; sc.left = -SR; sc.right = SR; sc.top = SR; sc.bottom = -SR; sc.near = 20; sc.far = 240;
     sun.shadow.mapSize.set(1024, 1024);
     sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
     s.add(sun); s.add(sun.target);
@@ -452,7 +453,7 @@ const World = {
     let placed = 0, tries = 0;
     while (placed < 46 && tries < 500) {
       tries++;
-      const a = R() * TAU, r = 88 + R() * 110;
+      const a = R() * TAU, r = Math.hypot(this.stand.outerX, this.stand.outerZ) + 13 + R() * 110; // outside the stadium
       const x = Math.round(Math.cos(a) * r), z = Math.round(Math.sin(a) * r);
       if (Math.hypot(x - TOWER_POS.x, z - TOWER_POS.z) < 34) continue;
       const h = 4 + Math.floor(R() * 4);
