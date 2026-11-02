@@ -55,7 +55,7 @@ file in file-name order into ONE function scope. There are no imports or exports
 - Online rank gap: two or more tiers above every real player on the other team means no rewards for a win or draw (`nm.result.noReward`). Test: `node test/rankgap.js`.
 - The `kit` skin slot: skins with `pattern` and `trim`, drawn on the team's colours (`makePlayerSkin`), so sides stay readable. Keepers keep their kit.
 - Spin prices are `SPIN_COST` (07_data.js): style 200, Flow 150, skin 100. A duplicate gives 50 back.
-- Style spins set `Save.data.spunStyle` (yours until the next style spin replaces it); `d.styles` are kept for good. Blueprints (`d.bp`) come from `GOALS` steps (`Goals.check` after each match, from `d.stats`) and `Goals.unlock` keeps a style (`BP_COST` by rarity). GOALS-only skins have `obj: true` and never come from spins. Test: `node test/blueprints.js`.
+- Style spins set `Save.data.spunStyle` (yours until the next style spin replaces it); `d.styles` are kept for good. Blueprints (`d.bp`) are on the start screen's BLUEPRINTS button (`go-goals`, shows the count; the screen lists the GOALS and has a button to the Locker). They come from `GOALS` steps (`Goals.check` after each match, from `d.stats`) and `Goals.unlock` keeps a style (`BP_COST` by rarity). GOALS-only skins have `obj: true` and never come from spins. Test: `node test/blueprints.js`.
 - `Daily` (07_data.js): `Save.data.daily`, a gift once per local day and one challenge from `DAILY_CHALLENGES`. No streaks on purpose. Test: `node test/extras.js`.
 
 ## Free kick practice

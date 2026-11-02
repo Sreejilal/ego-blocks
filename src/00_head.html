@@ -334,6 +334,7 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 
 /* GOALS and blueprints */
 .btn.ghost.goals { color: var(--emerald); }
+.btn.ghost.goals .bp-n { font-weight: 400; color: var(--gold); }
 .gl-top { padding: 16px; display: grid; gap: 8px; }
 .gl-bp { font-family: var(--font-display); font-weight: 400; font-size: 54px; line-height: .9; color: var(--gold); }
 .gl-bp small { font-size: 24px; color: var(--muted); }
@@ -744,7 +745,8 @@ body.touch .howto .touchsec { order: -1; }
   .menu { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 560px; gap: 6px; }
   .menu .btn { font-size: 22px; padding: 4px 10px 7px; gap: 8px; }
   .menu .btn .sub { font-size: 9px; }
-  .menu .btn.ghost { font-size: 18px; }
+  .menu .btn.ghost { font-size: 18px; padding: 2px 3px; }
+  .menu .btn.ghost.daily { padding-right: 13px; }
   .menu .ghosts, .menu .meta-row { grid-column: 1 / -1; }
   .menu .ghosts { gap: 4px 8px; }
   .menu .ghosts .ph-x { display: none; } /* PROFILE & HISTORY fits as PROFILE */
