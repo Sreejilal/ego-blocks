@@ -346,6 +346,7 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 
 /* GOALS and blueprints */
 .btn.ghost.goals { color: var(--emerald); }
+.btn.ghost.goals .bp-n { font-weight: 400; color: var(--gold); }
 .gl-top { padding: 16px; display: grid; gap: 8px; }
 .gl-bp { font-family: var(--font-display); font-weight: 400; font-size: 54px; line-height: .9; color: var(--gold); }
 .gl-bp small { font-size: 24px; color: var(--muted); }
@@ -756,7 +757,8 @@ body.touch .howto .touchsec { order: -1; }
   .menu { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 560px; gap: 6px; }
   .menu .btn { font-size: 22px; padding: 4px 10px 7px; gap: 8px; }
   .menu .btn .sub { font-size: 9px; }
-  .menu .btn.ghost { font-size: 18px; }
+  .menu .btn.ghost { font-size: 18px; padding: 2px 3px; }
+  .menu .btn.ghost.daily { padding-right: 13px; }
   .menu .ghosts, .menu .meta-row { grid-column: 1 / -1; }
   .menu .ghosts { gap: 4px 8px; }
   .menu .ghosts .ph-x { display: none; } /* PROFILE & HISTORY fits as PROFILE */
@@ -867,6 +869,16 @@ const F = {
 };
 // bot positions were tuned on the first, smaller pitch (20.5 x 32.5); they are scaled by these to fit this one
 const PITCH_KX = F.W / 20.5, PITCH_KZ = F.L / 32.5;
+// the stands: rows of steps behind the boards, a corner block in each corner and a wall at the back (World.buildStands draws them)
+const STAND = { ROWS: 7, DEP: 1.6, RISE: 1.0, BASE: 1.3, SIDE: F.BOARD_X + 2, END: F.BOARD_Z + 3, SIDE_LEN: F.BOARD_Z + 0.5 };
+STAND.WALL = STAND.BASE + STAND.ROWS * STAND.RISE + 1.4;
+/** how high the stands are at a point (0 over the pitch and the walkway in front of them) */
+function standTop(x, z) {
+  const S = STAND, ax = Math.abs(x), az = Math.abs(z);
+  if (ax >= S.SIDE && az >= S.SIDE_LEN) return S.WALL - 0.6; // a corner block
+  const row = (d) => { const i = Math.floor(d / S.DEP); return i >= S.ROWS ? S.WALL : S.BASE + i * S.RISE; };
+  return Math.max(ax >= S.SIDE ? row(ax - S.SIDE) : 0, az >= S.END ? row(az - S.END) : 0);
+}
 const BALL_R = 0.3;
 const BALL_G = 16;
 const P_R = 0.42;
@@ -1830,7 +1842,7 @@ const QUALITY = {
 };
 
 const World = {
-  renderer: null, scene: null, camera: null, T: null, quality: 'med', time: 0,
+  renderer: null, scene: null, camera: null, T: null, quality: 'med', scale: 1, time: 0,
   excite: [0, 0], netBulge: [0, 0], fanMat: null,
   init(canvas) {
     const q = Save.data.settings.quality;
@@ -1859,18 +1871,20 @@ const World = {
     this.setQuality(q === 'auto' ? 'med' : q);
     this.resize();
   },
-  setQuality(q) {
+  /** scale: the auto setting draws fewer pixels (0.7 to 1) before it gives up anything else */
+  setQuality(q, scale = 1) {
     if (!QUALITY[q]) q = 'med';
-    this.quality = q;
-    const Q = QUALITY[q];
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.pr));
+    const Q = QUALITY[q], shadowsChange = this.renderer.shadowMap.enabled !== Q.shadows;
+    this.quality = q; this.scale = scale;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.pr) * scale);
     this.renderer.shadowMap.enabled = Q.shadows;
     this.sun.castShadow = Q.shadows;
     if (this.sun.shadow.mapSize.x !== Q.map) {
       this.sun.shadow.mapSize.set(Q.map, Q.map);
       if (this.sun.shadow.map) { this.sun.shadow.map.dispose(); this.sun.shadow.map = null; }
     }
-    this.scene.traverse((o) => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { m.needsUpdate = true; }); } });
+    // rebuilding every shader freezes the game for a moment, so only when shadows go on or off (the only change that needs it)
+    if (shadowsChange) this.scene.traverse((o) => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { m.needsUpdate = true; }); } });
     this.resize();
   },
   resize() {
@@ -2011,10 +2025,10 @@ const World = {
   },
   buildStands() {
     const T = this.T;
-    const ROWS = 7, DEP = 1.6, RISE = 1.0, BASE = 1.3;
+    const { ROWS, DEP, RISE, BASE } = STAND; // the ball bounces off these (standTop)
     this.standRows = { ROWS, DEP, RISE, BASE };
     const blue = new VoxBuilder(true), orange = new VoxBuilder(true);
-    const sideIn = F.BOARD_X + 2, endIn = F.BOARD_Z + 3, sideLen = F.BOARD_Z + 0.5, endLen = F.BOARD_X + 2;
+    const sideIn = STAND.SIDE, endIn = STAND.END, sideLen = STAND.SIDE_LEN, endLen = STAND.SIDE;
     for (let i = 0; i < ROWS; i++) {
       const top = BASE + i * RISE;
       // west (x<0) blue, east orange
@@ -2025,7 +2039,7 @@ const World = {
       orange.box(-endLen, 0, endIn + i * DEP, endLen, top, endIn + (i + 1) * DEP, '#ffffff', { uv: 1, ao: 0.62 });
     }
     // back walls and corner blocks
-    const outerX = sideIn + ROWS * DEP, outerZ = endIn + ROWS * DEP, wallTop = BASE + ROWS * RISE + 1.4;
+    const outerX = sideIn + ROWS * DEP, outerZ = endIn + ROWS * DEP, wallTop = STAND.WALL;
     const grey = new VoxBuilder();
     grey.box(-outerX - 1, 0, -sideLen - 1, -outerX, wallTop, sideLen + 1, '#ffffff', { uv: 1 });
     grey.box(outerX, 0, -sideLen - 1, outerX + 1, wallTop, sideLen + 1, '#ffffff', { uv: 1 });
@@ -3147,6 +3161,7 @@ class Ball {
         if (this.curveDecay > 0) { const k = Math.exp(-h / this.curveDecay); this.curve.x *= k; this.curve.z *= k; }
       }
       if (this.pos.y > BALL_R + 0.02 && this.straightT <= 0) { const k = 1 - 0.05 * h; this.vel.x *= k; this.vel.z *= k; this.vel.y *= k; }
+      const ox = this.pos.x, oy = this.pos.y, oz = this.pos.z;
       this.pos.x += this.vel.x * h; this.pos.y += this.vel.y * h; this.pos.z += this.vel.z * h;
       if (this.pos.y < BALL_R) {
         this.pos.y = BALL_R;
@@ -3164,6 +3179,7 @@ class Ball {
       }
       this.collideGoal();
       this.collideBoards();
+      this.collideStands(ox, oy, oz);
     }
     // stop simulating a ball that left the stadium
     if (Math.abs(this.pos.x) > 70 || Math.abs(this.pos.z) > 80) { this.vel.set(0, 0, 0); this.pos.y = Math.max(this.pos.y, BALL_R); }
@@ -3210,6 +3226,29 @@ class Ball {
         v.x *= 0.85; v.z *= 0.85;
       }
     }
+  }
+  /** a ball in the crowd lands on the steps or bounces off them (and off the corner blocks and back walls) */
+  collideStands(ox, oy, oz) {
+    const p = this.pos, v = this.vel, r = BALL_R;
+    if (Math.abs(p.x) < STAND.SIDE - r && Math.abs(p.z) < STAND.END - r) return;
+    const at = (x, z) => standTop(x + sgn(x) * r, z + sgn(z) * r); // the edge of the ball nearest the stand
+    const top = at(p.x, p.z);
+    if (p.y - r >= top) return;
+    if (oy - r < top - 1e-3) { // hit the front of a step or a wall: back out and bounce
+      const hitX = at(p.x, oz) > oy - r, hitZ = at(ox, p.z) > oy - r;
+      p.x = ox; p.z = oz;
+      if (hitX || !hitZ) v.x *= -0.4;
+      if (hitZ || !hitX) v.z *= -0.4;
+      if (Math.hypot(v.x, v.z) > 4) Sfx.thud(0.5);
+    }
+    // on a step (also after backing out, so a falling ball never sinks into the step it came from)
+    const floor = at(p.x, p.z);
+    if (p.y - r < floor) {
+      p.y = floor + r;
+      if (v.y < -2.2) { if (v.y < -6) Sfx.thud(clamp(-v.y / 16, 0.2, 0.8)); v.y = -v.y * 0.45; } else if (v.y < 0) v.y = 0;
+      v.x *= 0.8; v.z *= 0.8;
+    }
+    this.curve.set(0, 0, 0);
   }
   collideBoards() {
     const p = this.pos, v = this.vel, r = BALL_R;
@@ -3943,6 +3982,7 @@ function redeemCode(d, text) {
   if (c.emeralds) d.emeralds += c.emeralds;
   return { ok: true, msg: c.name + ' UNLOCKED' + (c.give === 'all' ? ': EVERY STYLE, FLOW AND SKIN, +99999 EMERALDS, +999 BLUEPRINTS' : '') };
 }
+const SPIN_COST = { style: 200, flow: 150, skin: 100 }; // emeralds per spin
 const BP_COST = { Rare: 2, Epic: 4, Legendary: 7, Mythic: 12, Generational: 20 };
 const GOALS = [
   { id: 'goals', name: 'SCORE GOALS', stat: 'goals', steps: [5, 15, 40, 100, 250], bp: [2, 3, 5, 8, 12] },
@@ -4330,6 +4370,7 @@ class Match {
   /* ---------- human control ---------- */
   updateHuman(dt, c, p = this.human) {
     if (!p || !c) return;
+    if (p.passHold > 0 && c.passHeld === false && !c.passUp) p.passHold = 0; // let go while it was not listening (knocked down, a restart): no pass stuck down
     // an online player sends their own camera direction and aim point
     if (c.camYaw != null) p.camYaw = c.camYaw;
     if (c.aim) p.aimV = c.aim;
@@ -6574,6 +6615,7 @@ const Input = {
       jump: e.has('Space') || e.has('PadA') || e.has('T_jump'), jumpHeld: k.has('Space') || this.padHeld(PAD.A) || th.has('jump'),
       shootDown: e.has('Mouse0') || e.has('PadRT') || e.has('T_shoot'), shootHeld: this.mouseL || this.padHeld(PAD.RT) || th.has('shoot'), shootUp: u.has('Mouse0') || u.has('PadRT') || u.has('T_shoot'),
       passDown: e.has('Mouse2') || e.has('PadLT') || e.has('PadRB') || e.has('T_pass'), passUp: u.has('Mouse2') || u.has('PadLT') || u.has('PadRB') || u.has('T_pass'),
+      passHeld: this.mouseR || this.padHeld(PAD.LT) || this.padHeld(PAD.RB) || th.has('pass'),
       dodge: e.has('KeyC') || e.has('PadB') || e.has('T_dodge'),
       tackle: e.has('KeyF') || e.has('PadX') || e.has('T_tackle'),
       ab: [e.has('KeyQ') || (e.has('PadLeft') && !chatPad) || e.has('T_ab0'), e.has('KeyE') || (e.has('PadUp') && !chatPad) || e.has('T_ab1'), e.has('KeyR') || (e.has('PadRight') && !chatPad) || e.has('T_ab2')],
@@ -7401,7 +7443,8 @@ const TutHud = {
 const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken', 'emote'];
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
 const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
-const NET_DELAY = 0.12; // seconds the picture runs behind the server
+const NET_DELAY = 0.12; // the least the picture runs behind the server (more on a jittery connection: Net.delay)
+const NET_COAST = 0.1; // a late snapshot: everything keeps moving the way it was going for up to this long instead of freezing
 const CHAT_SHOW = [['all', 'ALL'], ['quick', 'QUICK'], ['off', 'OFF']];
 
 /** the match as this screen knows it: models moved by snapshots, with what the HUD needs */
@@ -7697,17 +7740,23 @@ const Net = {
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(2); World.setSun(SUN_MATCH);
     const nm = this.nm = new NetMatch(msg, this.id);
     Game.match = nm; Game.lastMode = 'online'; Game.ended = false;
-    this.snaps = []; this.rt = -1; this.pend = {}; this.paused = false; this.lastBall = null; this.lastPhase = '';
+    this.snaps = []; this.rt = -1; this.delay = NET_DELAY; this.jit = 0; this.offMin = null; this.lastNow = 0; this.pend = {}; this.paused = false; this.lastBall = null; this.lastPhase = '';
     const me = nm.human;
     Cam.reset(me && me.team === 1 ? Math.PI : 0);
     Game.state = 'online';
     UI.show('hud'); UI.buildHud(nm); $('chatfeed').replaceChildren(); this.idleWarn(null);
     Sfx.init(); Sfx.setCrowd(0.55);
     Input.consumeEdges(); Input.requestLock();
+    Game.matchReady();
   },
   onSnap(m) {
     const nm = this.nm; if (!nm) return;
     this.snaps.push(m); if (this.snaps.length > 30) this.snaps.shift();
+    // how late this one came compared with the quickest lately: on a jittery connection the picture waits a little longer,
+    // and the quickest gives a steady guess of the server's clock (real time, so a slow computer's frames do not matter)
+    const off = performance.now() / 1000 - m.n / 60;
+    this.offMin = this.offMin == null ? off : Math.min(off, this.offMin + 0.0005);
+    this.jit = Math.max(off - this.offMin, this.jit * 0.993); // remembers a bad patch for a few seconds, so the wait stays steady
     // things that happened: banners, labels, goals, your toasts and cut-ins
     for (const e of m.ev || []) this.event(e);
     if (m.me && nm.human) {
@@ -7751,19 +7800,24 @@ const Net = {
     $('idle-big').textContent = big; $('idle-small').textContent = small;
     if (beep) Sfx.deny();
   },
-  /** move every model to where it was NET_DELAY seconds ago on the server, blending two snapshots */
+  /** move every model to where it was a moment ago on the server (Net.delay), blending two snapshots */
   applySnapshots(rdt) {
     const S = this.snaps, nm = this.nm;
     if (!S.length) return;
-    const newest = S[S.length - 1].n / 60, target = newest - NET_DELAY;
-    if (this.rt < 0 || Math.abs(this.rt - target) > 0.5) this.rt = target; else this.rt += rdt + (target - this.rt) * 0.08;
+    const now = performance.now() / 1000, real = clamp(now - (this.lastNow || now), 0, 0.25); this.lastNow = now;
+    const want = clamp(0.07 + this.jit, NET_DELAY, 0.3);
+    this.delay += (want - this.delay) * Math.min(1, real * (want > this.delay ? 2 : 0.25)); // waits longer soon, goes back slowly
+    // the picture follows a steady guess of the server's clock, so late snapshots and bunches do not speed it up or slow it down
+    const target = now - this.offMin - this.delay;
+    if (this.rt < 0 || Math.abs(this.rt - target) > 0.5) this.rt = target; else this.rt += real + (target - this.rt) * Math.min(1, real * 3);
     let a = S[0], b = S[S.length - 1];
     for (let i = 0; i < S.length - 1; i++) if (S[i].n / 60 <= this.rt && S[i + 1].n / 60 >= this.rt) { a = S[i]; b = S[i + 1]; break; }
     const ta = a.n / 60, tb = b.n / 60, k = tb > ta ? clamp((this.rt - ta) / (tb - ta), 0, 1) : 1, since = Math.max(0, this.rt - tb);
+    const coast = Math.min(since, NET_COAST); // past the newest snapshot: keep going along the way things were moving
     nm.time = this.rt; nm.phase = b.ph; nm.phaseT = b.pt + since; nm.clock = b.c; nm.golden = b.g >= 0; nm.goldenClock = Math.max(0, b.g); nm.score = b.s;
     nm.players.forEach((p, i) => {
       const A = a.pl[i], B = b.pl[i]; if (!A || !B) return;
-      p.pos.set(lerp(A[0], B[0], k), lerp(A[1], B[1], k), lerp(A[2], B[2], k));
+      p.pos.set(lerp(A[0], B[0], k) + B[3] * coast, lerp(A[1], B[1], k), lerp(A[2], B[2], k) + B[4] * coast);
       p.vel.set(B[3], 0, B[4]);
       p.yaw = A[5] + wrapA(B[5] - A[5]) * k;
       const st = NET_STATES[B[6]] || 'free';
@@ -7789,6 +7843,11 @@ const Net = {
     ball.last.copy(ball.pos);
     ball.pos.set(lerp(pa[0], pb[0], k), lerp(pa[1], pb[1], k), lerp(pa[2], pb[2], k));
     ball.owner = pb[3] >= 0 ? nm.players[pb[3]] : null;
+    if (coast > 0) { // with its holder, or along its last flight
+      const O = pb[3] >= 0 && b.pl[pb[3]], q = S.length > 1 && S[S.length - 2].b, dtb = S.length > 1 ? (b.n - S[S.length - 2].n) / 60 : 0;
+      if (O) { ball.pos.x += O[3] * coast; ball.pos.z += O[4] * coast; }
+      else if (q && dtb > 0) { ball.pos.x += (pb[0] - q[0]) / dtb * coast; ball.pos.y = Math.max(BALL_R, ball.pos.y + (pb[1] - q[1]) / dtb * coast); ball.pos.z += (pb[2] - q[2]) / dtb * coast; }
+    }
     const dx = ball.pos.x - ball.last.x, dz = ball.pos.z - ball.last.z, dl = len2D(dx, dz);
     if (dl > 1e-4) { ball.spinAxis.set(dz / dl, 0, -dx / dl); _q1.setFromAxisAngle(ball.spinAxis, dl / BALL_R); ball.quat.premultiply(_q1); }
     ball.mesh.position.copy(ball.pos); ball.mesh.quaternion.copy(ball.quat);
@@ -7807,7 +7866,7 @@ const Net = {
   },
   sendInput() {
     const c = this.paused ? null : this.held, P = this.pend, nm = this.nm;
-    const msg = Object.assign({ t: 'input', mx: c ? +c.moveX.toFixed(2) : 0, my: c ? +c.moveY.toFixed(2) : 0, sp: !!(c && c.sprint), sl: !!(c && c.shiftLock), jh: !!(c && c.jumpHeld), sh: !!(c && c.shootHeld), cy: +nm.camYaw.toFixed(3), aim: [+nm.aim.x.toFixed(2), +nm.aim.y.toFixed(2), +nm.aim.z.toFixed(2)] }, P);
+    const msg = Object.assign({ t: 'input', mx: c ? +c.moveX.toFixed(2) : 0, my: c ? +c.moveY.toFixed(2) : 0, sp: !!(c && c.sprint), sl: !!(c && c.shiftLock), jh: !!(c && c.jumpHeld), sh: !!(c && c.shootHeld), ps: !!(c && c.passHeld), cy: +nm.camYaw.toFixed(3), aim: [+nm.aim.x.toFixed(2), +nm.aim.y.toFixed(2), +nm.aim.z.toFixed(2)] }, P);
     this.send(msg);
     this.pend = {};
   },
@@ -8400,8 +8459,8 @@ const UI = {
           <button class="btn friends" id="go-online" type="button">PLAY WITH FRIENDS <span class="sub">ONLINE ROOM</span></button>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
           <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
-          <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">200 EACH</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
-          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">GOALS</button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
+          <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
+          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
       </div>
       <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
@@ -8509,8 +8568,8 @@ const UI = {
             <li><b>Awakening</b> is your style's own power-up. It comes by itself at random moments, and goals, assists, shots on target, tackles and tricks make it come sooner. For 20 seconds your cooldowns reset and recharge twice as fast, your abilities last longer, you get your style's own boost, and Z does its signature move once.</li>
             <li><b>Flow</b> fills from completed passes, feints, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
             <li><b>Emeralds:</b> win 150, draw 80, loss 50, plus 20 a goal and 10 an assist.</li>
-            <li><b>Style spins</b> give you a style to play with until your next style spin replaces it. <b>Blueprints</b> keep a style for good: earn them from GOALS (on the start screen) and spend them in the Locker.</li>
-            <li><b>Spins</b> cost 200. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
+            <li><b>Style spins</b> give you a style to play with until your next style spin replaces it. <b>Blueprints</b> keep a style for good: earn them from GOALS on the BLUEPRINTS screen (start screen) and spend them in the Locker.</li>
+            <li><b>Spins</b>: styles cost 200, Flows 150 and skins 100. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
@@ -8586,7 +8645,7 @@ const UI = {
   tplGoals() {
     return `<section id="scr-goals" class="screen sub-screen" hidden>
       <div class="sub-wrap">
-        <div class="sub-head"><h2>GOALS</h2><button class="btn small" id="goals-back" type="button">BACK</button></div>
+        <div class="sub-head"><h2>BLUEPRINTS</h2><button class="btn small" id="goals-back" type="button">BACK</button></div>
         <section class="panel gl-top" id="gl-top"></section>
         <section class="panel"><div class="gp-ch" id="gl-list"></div></section>
       </div>
@@ -8594,7 +8653,8 @@ const UI = {
   },
   renderGoals() {
     const d = Save.data;
-    $('gl-top').innerHTML = `<b class="gl-bp">${d.bp} <small>BLUEPRINTS</small></b><p class="gp-note">A style you spin is yours until your next style spin. Blueprints keep a style for good: open it in the Locker and press KEEP. Rare costs ${BP_COST.Rare}, Epic ${BP_COST.Epic}, Legendary ${BP_COST.Legendary}, Mythic ${BP_COST.Mythic}, Generational ${BP_COST.Generational}. Every goal below pays blueprints at each step, and some pay a skin you cannot spin.</p>`;
+    $('gl-top').innerHTML = `<b class="gl-bp">${d.bp} <small>BLUEPRINTS</small></b><p class="gp-note">A style you spin is yours until your next style spin. Earn blueprints by finishing the GOALS below. Spend them in the LOCKER: open a style and press KEEP, and it is yours for good. Rare costs ${BP_COST.Rare}, Epic ${BP_COST.Epic}, Legendary ${BP_COST.Legendary}, Mythic ${BP_COST.Mythic}, Generational ${BP_COST.Generational}. Every goal below pays blueprints at each step, and some pay a skin you cannot spin.</p><button class="btn small emerald" id="gl-locker" type="button">SPEND THEM IN THE LOCKER</button>`;
+    $('gl-locker').addEventListener('click', () => { Sfx.click(); this.openLocker(); });
     $('gl-list').innerHTML = GOALS.map((g) => {
       const step = d.goalSteps[g.id] || 0, have = d.stats[g.stat] || 0, done = step >= g.steps.length;
       const next = done ? g.steps[g.steps.length - 1] : g.steps[step], prev = step > 0 ? g.steps[step - 1] : 0;
@@ -8863,6 +8923,7 @@ const UI = {
     const sz = teamSizeFor('ranked', d.rp);
     $('rank-sub').textContent = TIER_NAMES[tier] + ' · ' + sz + 'V' + sz;
     $('locker-sub').textContent = STYLES[d.style].name + (d.flow ? ' · ' + FLOWS[d.flow].name : '');
+    $('bp-n').textContent = d.bp; // blueprints: earned on this screen's GOALS, spent in the Locker
     Daily.sync(d); $('go-daily').classList.toggle('ready', Daily.giftReady(d));
     $('go-tut').hidden = d.tutorial || d.stats.played >= 3; // new players: a way into the tutorial
     $('pro-badge').src = badgeURL(tier);
@@ -8951,7 +9012,8 @@ const UI = {
     this.setText('hud-em', String(Save.data.emeralds));
     p.abil.forEach((a, i) => {
       const s = this.slots[i], frac = a.cd > 0 ? a.cd / (a.def.cd) : 0;
-      const key = Math.round(frac * 60);
+      const key = a.cd > 0 ? Math.ceil(frac * 60) + '|' + Math.ceil(a.cd) : 'ready'; // never 'ready' while any cooldown is left, so the last moment always redraws
+
       if (s.last !== key) { s.last = key; s.cd.style.setProperty('--p', (frac * 360).toFixed(1) + 'deg'); s.num.textContent = a.cd > 0 ? Math.ceil(a.cd) : ''; s.el.classList.toggle('ready', a.cd <= 0); }
     });
     const FXOF = { burst: 'burst', turbo: 'turbo', undeadShuffle: 'shuffle', lockdown: 'lockdown', skyTrap: 'skyTrap', vision: 'vision', scent: 'scent', loaded: 'loaded' };
@@ -9191,8 +9253,9 @@ const UI = {
     const left = 30 - d.pity[kind];
     $('spin-pity').textContent = 'LEGENDARY OR BETTER GUARANTEED IN ' + left + (left === 1 ? ' SPIN' : ' SPINS');
     $('spin-odds').innerHTML = RARITIES.map((r, i) => `<span class="rar" data-r="${r}">${r.toUpperCase()} ${RARITY_ODDS[i]}%</span>`).join('');
-    $('spin-go').disabled = this.spinning || d.emeralds < 200;
-    $('spin-go').innerHTML = d.emeralds < 200 ? 'SPIN <span class="sub">NEED 200 EMERALDS</span>' : 'SPIN <span class="sub">200 EMERALDS</span>';
+    const cost = SPIN_COST[kind];
+    $('spin-go').disabled = this.spinning || d.emeralds < cost;
+    $('spin-go').innerHTML = d.emeralds < cost ? 'SPIN <span class="sub">NEED ' + cost + ' EMERALDS</span>' : 'SPIN <span class="sub">' + cost + ' EMERALDS</span>';
     const owned = kind === 'style' ? d.styles.length + ' / ' + STYLE_IDS.length + ' STYLES OWNED' : kind === 'flow' ? d.flows.length + ' / ' + FLOW_IDS.length + ' FLOWS OWNED' : d.skins.filter((k) => !SKINS[k].pass).length + ' / ' + SKIN_IDS.length + ' SKINS OWNED (LOOKS ONLY)';
     $('spin-owned').textContent = owned + '. WIN MATCHES TO EARN MORE EMERALDS.';
     if (resetReel) { $('spin-result').innerHTML = ''; $('spin-result').classList.remove('show'); Reveal.ready(); }
@@ -9200,10 +9263,11 @@ const UI = {
   spin() {
     if (this.spinning) return;
     const d = Save.data, kind = this.spinKind;
-    if (d.emeralds < 200) { Sfx.deny(); return; }
+    const cost = SPIN_COST[kind];
+    if (d.emeralds < cost) { Sfx.deny(); return; }
     Sfx.init();
     // the roll: same odds and 30-spin guarantee as always; the 3D reveal only shows the result
-    d.emeralds -= 200;
+    d.emeralds -= cost;
     const pity = d.pity[kind];
     const r = rollRarity(pity);
     d.pity[kind] = r >= 2 ? 0 : pity + 1;
@@ -9334,9 +9398,11 @@ const UI = {
 /* =====================================================================
    Game: state machine, main loop, rewards, auto quality
    ===================================================================== */
+// the auto graphics ladder: [quality, pixel scale]
+const AUTO_STEPS = [['med', 1], ['med', 0.85], ['low', 1], ['low', 0.8]];
 const Game = {
-  state: 'boot', match: null, lastMode: null, last: 0, time: 0, ended: false, autoQ: 'med', pausedAt: 0,
-  perf: { t: 0, frames: 0 }, crowdT: 0,
+  state: 'boot', match: null, lastMode: null, last: 0, time: 0, ended: false, pausedAt: 0,
+  perf: { t: 0, frames: 0, long: 0, min: 1, skip: 0, told: false }, autoStep: 0, crowdT: 0,
   /** a match is being played here, offline or online */
   playing() { return this.state === 'match' || this.state === 'online'; },
   start() {
@@ -9362,7 +9428,7 @@ const Game = {
     const tick = (t) => { requestAnimationFrame(tick); if (!this.manual) this.loop(t); };
     requestAnimationFrame(tick);
   },
-  applyQuality() { const q = Save.data.settings.quality; World.setQuality(q === 'auto' ? this.autoQ : q); },
+  applyQuality() { const q = Save.data.settings.quality; if (q === 'auto') World.setQuality(...AUTO_STEPS[this.autoStep]); else World.setQuality(q); },
   toLobby() {
     Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false); UI.toggleEmotes(false); FKHud.hide();
     if (this.match) { this.match.dispose(); this.match = null; }
@@ -9396,6 +9462,13 @@ const Game = {
     Input.requestLock();
     Input.consumeEdges();
     Cam.look(0); Cam.follow(1, this.match);
+    this.matchReady();
+  },
+  /** a match (offline or online) is set up: build every shader now, not mid-match the first time something shows,
+      and give the auto graphics a fresh start that skips the loading moments */
+  matchReady() {
+    try { World.renderer.compile(World.scene, World.camera); } catch (e) {}
+    const P = this.perf; P.skip = 2.5; P.t = P.frames = P.long = 0; P.min = 1;
   },
   pause() {
     if (this.state === 'online') { Net.paused = true; this.pausedAt = performance.now(); Input.releaseLock(); UI.showPause(true); return; } // the server keeps playing
@@ -9485,16 +9558,21 @@ const Game = {
     Portal.midgame();
     Sfx.setCrowd(0.3);
   },
+  /** auto graphics: watch for dropped frames (a frame much longer than the screen's own), which look like stutter even at a
+      decent average, and step down a notch at a time: fewer pixels first, then no shadows */
   perfCheck(rdt) {
-    if (Save.data.settings.quality !== 'auto') return;
-    const P = this.perf; P.t += rdt; P.frames++;
-    if (P.t >= 4) {
-      const fps = P.frames / P.t; P.t = 0; P.frames = 0;
-      if (fps < 45 && World.quality !== 'low') {
-        this.autoQ = World.quality === 'high' ? 'med' : 'low';
-        World.setQuality(this.autoQ);
-        UI.toast('GRAPHICS LOWERED TO KEEP IT SMOOTH', 'gold');
-      }
+    const P = this.perf;
+    if (Save.data.settings.quality !== 'auto' || this.autoStep >= AUTO_STEPS.length - 1) return;
+    if (P.skip > 0) { P.skip -= rdt; return; } // the first moments of a match load things; do not judge them
+    P.t += rdt; P.frames++; P.min = Math.min(P.min, rdt);
+    if (rdt > Math.max(P.min * 1.5, 0.021)) P.long++;
+    if (P.t < 3) return;
+    const fps = P.frames / P.t, dropped = P.long / P.frames;
+    P.t = 0; P.frames = 0; P.long = 0; P.min = 1;
+    if (fps < 40 || dropped > 0.1) {
+      this.autoStep++; World.setQuality(...AUTO_STEPS[this.autoStep]);
+      P.skip = 1.5; // let it settle before judging again
+      if (!P.told) { P.told = true; UI.toast('GRAPHICS LOWERED TO KEEP IT SMOOTH', 'gold'); }
     }
   },
   loop(now, doRender = true) {
@@ -9544,6 +9622,7 @@ const Game = {
       } else { Shake.update(rdt); }
     } else if (this.state === 'online' && Net.nm) {
       Net.frame(rdt);
+      this.perfCheck(rdt);
     } else {
       Reveal.update(rdt);
       Showcase.update(rdt);
@@ -9566,7 +9645,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, TUT_STEPS, TutHud, CODES, codeHash, redeemCode,
-  CLUB_IDS, sideFor, matchSides, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {
