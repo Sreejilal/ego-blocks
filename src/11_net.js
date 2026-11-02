@@ -125,6 +125,8 @@ const Net = {
     if (location.protocol === 'file:' || !location.host) return 'ws://localhost:8787/ws';
     return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
   },
+  /** the game on GitHub Pages with no server built in (SCORZ_SERVER): there is nothing there to connect to */
+  noServerHere() { return !BUILD.server && !this.urlOverride && !(Save.data.settings && Save.data.settings.server) && /\.github\.io$/.test(location.hostname); },
   /** what to say when the server cannot be reached: opened as a file, nothing is running yet */
   noServerText() { return location.protocol === 'file:' ? 'NO SERVER IS RUNNING. IN THE VS CODE TERMINAL TYPE NPM RUN SERVER, THEN OPEN LOCALHOST:8787' : 'CANNOT REACH THE SCORZ SERVER RIGHT NOW. TRY AGAIN IN A LITTLE WHILE.'; },
   cleanName(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12); },
@@ -136,6 +138,7 @@ const Net = {
     if (this.ws && this.ws.readyState === 1) { then(); return; }
     if ((this.ws && this.ws.readyState === 0) || this.waking) { this.onOpen = then; return; }
     this.url = this.serverUrl();
+    if (this.noServerHere()) { this.setStatus('PLAYING WITH FRIENDS IS NOT SWITCHED ON FOR THIS WEBSITE YET. IT NEEDS THE ONLINE SERVER.'); return; }
     this.setStatus('CONNECTING...');
     // a free online server goes to sleep when nobody plays: wake it with a normal visit first (it can take a minute)
     if (/^wss:/.test(this.url) && !/localhost|127\.0\.0\.1/.test(this.url) && !this.awake) {
