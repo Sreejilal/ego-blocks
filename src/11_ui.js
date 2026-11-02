@@ -598,7 +598,8 @@ const UI = {
     this.setText('hud-em', String(Save.data.emeralds));
     p.abil.forEach((a, i) => {
       const s = this.slots[i], frac = a.cd > 0 ? a.cd / (a.def.cd) : 0;
-      const key = Math.round(frac * 60);
+      const key = a.cd > 0 ? Math.ceil(frac * 60) + '|' + Math.ceil(a.cd) : 'ready'; // never 'ready' while any cooldown is left, so the last moment always redraws
+
       if (s.last !== key) { s.last = key; s.cd.style.setProperty('--p', (frac * 360).toFixed(1) + 'deg'); s.num.textContent = a.cd > 0 ? Math.ceil(a.cd) : ''; s.el.classList.toggle('ready', a.cd <= 0); }
     });
     const FXOF = { burst: 'burst', turbo: 'turbo', undeadShuffle: 'shuffle', lockdown: 'lockdown', skyTrap: 'skyTrap', vision: 'vision', scent: 'scent', loaded: 'loaded' };
