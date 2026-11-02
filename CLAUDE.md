@@ -41,7 +41,7 @@ file in file-name order into ONE function scope. There are no imports or exports
 | `11_reveal.js` | `Reveal`: the 3D spin (block drops, shakes in the rarity colour, cracks open). The roll happens in `UI.spin()` first |
 | `11_showcase.js` | `Showcase`: your player on a lit spot on the start screen. The camera fits the player into the `#lob-stage` box |
 | `11_ui.js` | `UI`: all menus and the HUD (lobby, pause, results, spins, locker, how to play) |
-| `12_main.js` | `Game`: state machine, main loop, rewards, auto graphics, `window.EGO` test hooks |
+| `12_main.js` | `Game`: state machine, main loop, rewards, auto graphics (`perfCheck` watches for dropped frames and steps down `AUTO_STEPS`: fewer pixels via `World.scale` first, then no shadows; `matchReady` builds all shaders when a match starts), `window.EGO` test hooks |
 
 ## Restarts
 

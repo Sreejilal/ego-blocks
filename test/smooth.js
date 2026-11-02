@@ -2,6 +2,7 @@
 // 1. An ability slot shows READY the moment its cooldown ends (it used to stay on "1" with a sliver left).
 // 2. Spin prices: styles 200, Flows 150, skins 100.
 // 3. A ball kicked into the crowd lands on the steps or bounces off them; it never flies through the stands.
+// 4. Auto graphics steps down when frames get dropped (stutter), pixels first with no shader rebuild; smooth 60 or 144 fps is left alone.
 const { open } = require('./harness');
 const results = [];
 const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name + (info !== undefined ? '  ' + JSON.stringify(info) : ''));
@@ -60,6 +61,25 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     return { kicks: n, through: bad.slice(0, 4), throughN: bad.length, inCrowd: rest.length };
   });
   check('a ball in the crowd stays on top of the stands, never inside them', stands.throughN === 0 && stands.inCrowd > 30, stands);
+
+  const auto = await page.evaluate(() => {
+    const G = EGO.Game, W = EGO.World, d = EGO.Save.data; d.settings.quality = 'auto';
+    G.startMatch('quick'); G.autoStep = 0; G.applyQuality(); G.matchReady();
+    const pr0 = W.renderer.getPixelRatio(), mat = G.match.ball.mesh.material, v0 = mat.version;
+    const run = (pattern, secs) => { let t = 0, i = 0; while (t < secs) { const ms = pattern[i++ % pattern.length]; G.loop(G.last + ms, false); t += ms / 1000; } };
+    run([16.7], 7); const smooth60 = G.autoStep;
+    G.matchReady(); run([16.7, 16.7, 33.4], 7); const judder = G.autoStep, pr1 = W.renderer.getPixelRatio(), toast = document.getElementById('toasts').textContent, rebuilt = mat.version !== v0;
+    G.autoStep = 0; G.applyQuality(); G.matchReady();
+    run([6.9, 13.9], 7); const hz144 = G.autoStep;
+    G.autoStep = 0; G.applyQuality(); G.matchReady();
+    run([16.7, 16.7, 33.4], 30); const worst = { step: G.autoStep, quality: W.quality, shadows: W.renderer.shadowMap.enabled };
+    d.settings.quality = 'med'; G.autoStep = 0; G.applyQuality(); G.matchReady();
+    run([16.7, 33.4], 8); const manual = { step: G.autoStep, quality: W.quality };
+    G.forfeit(); d.settings.quality = 'auto'; G.applyQuality();
+    return { pr0, smooth60, judder, pr1, toast: /GRAPHICS LOWERED/.test(toast), rebuilt, hz144, worst, manual };
+  });
+  check('auto graphics: smooth 60 and 144 fps stay, stutter lowers the pixels first (no shader rebuild), then shadows; a picked setting stays',
+    auto.smooth60 === 0 && auto.judder === 1 && Math.abs(auto.pr1 - auto.pr0 * 0.85) < 0.01 && auto.toast && !auto.rebuilt && auto.hz144 === 0 && auto.worst.step === 3 && auto.worst.quality === 'low' && !auto.worst.shadows && auto.manual.step === 0 && auto.manual.quality === 'med', auto);
 
   check('no page errors', !logs.some((l) => l.startsWith('PAGEERROR')), logs.slice(0, 6));
   await browser.close();

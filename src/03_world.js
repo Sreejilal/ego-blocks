@@ -55,7 +55,7 @@ const QUALITY = {
 };
 
 const World = {
-  renderer: null, scene: null, camera: null, T: null, quality: 'med', time: 0,
+  renderer: null, scene: null, camera: null, T: null, quality: 'med', scale: 1, time: 0,
   excite: [0, 0], netBulge: [0, 0], fanMat: null,
   init(canvas) {
     const q = Save.data.settings.quality;
@@ -84,18 +84,20 @@ const World = {
     this.setQuality(q === 'auto' ? 'med' : q);
     this.resize();
   },
-  setQuality(q) {
+  /** scale: the auto setting draws fewer pixels (0.7 to 1) before it gives up anything else */
+  setQuality(q, scale = 1) {
     if (!QUALITY[q]) q = 'med';
-    this.quality = q;
-    const Q = QUALITY[q];
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.pr));
+    const Q = QUALITY[q], shadowsChange = this.renderer.shadowMap.enabled !== Q.shadows;
+    this.quality = q; this.scale = scale;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.pr) * scale);
     this.renderer.shadowMap.enabled = Q.shadows;
     this.sun.castShadow = Q.shadows;
     if (this.sun.shadow.mapSize.x !== Q.map) {
       this.sun.shadow.mapSize.set(Q.map, Q.map);
       if (this.sun.shadow.map) { this.sun.shadow.map.dispose(); this.sun.shadow.map = null; }
     }
-    this.scene.traverse((o) => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { m.needsUpdate = true; }); } });
+    // rebuilding every shader freezes the game for a moment, so only when shadows go on or off (the only change that needs it)
+    if (shadowsChange) this.scene.traverse((o) => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { m.needsUpdate = true; }); } });
     this.resize();
   },
   resize() {

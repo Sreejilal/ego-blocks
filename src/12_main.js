@@ -1,9 +1,11 @@
 /* =====================================================================
    Game: state machine, main loop, rewards, auto quality
    ===================================================================== */
+// the auto graphics ladder: [quality, pixel scale]
+const AUTO_STEPS = [['med', 1], ['med', 0.85], ['low', 1], ['low', 0.8]];
 const Game = {
-  state: 'boot', match: null, lastMode: null, last: 0, time: 0, ended: false, autoQ: 'med', pausedAt: 0,
-  perf: { t: 0, frames: 0 }, crowdT: 0,
+  state: 'boot', match: null, lastMode: null, last: 0, time: 0, ended: false, pausedAt: 0,
+  perf: { t: 0, frames: 0, long: 0, min: 1, skip: 0, told: false }, autoStep: 0, crowdT: 0,
   /** a match is being played here, offline or online */
   playing() { return this.state === 'match' || this.state === 'online'; },
   start() {
@@ -29,7 +31,7 @@ const Game = {
     const tick = (t) => { requestAnimationFrame(tick); if (!this.manual) this.loop(t); };
     requestAnimationFrame(tick);
   },
-  applyQuality() { const q = Save.data.settings.quality; World.setQuality(q === 'auto' ? this.autoQ : q); },
+  applyQuality() { const q = Save.data.settings.quality; if (q === 'auto') World.setQuality(...AUTO_STEPS[this.autoStep]); else World.setQuality(q); },
   toLobby() {
     Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false); UI.toggleEmotes(false); FKHud.hide();
     if (this.match) { this.match.dispose(); this.match = null; }
@@ -63,6 +65,13 @@ const Game = {
     Input.requestLock();
     Input.consumeEdges();
     Cam.look(0); Cam.follow(1, this.match);
+    this.matchReady();
+  },
+  /** a match (offline or online) is set up: build every shader now, not mid-match the first time something shows,
+      and give the auto graphics a fresh start that skips the loading moments */
+  matchReady() {
+    try { World.renderer.compile(World.scene, World.camera); } catch (e) {}
+    const P = this.perf; P.skip = 2.5; P.t = P.frames = P.long = 0; P.min = 1;
   },
   pause() {
     if (this.state === 'online') { Net.paused = true; this.pausedAt = performance.now(); Input.releaseLock(); UI.showPause(true); return; } // the server keeps playing
@@ -152,16 +161,21 @@ const Game = {
     Portal.midgame();
     Sfx.setCrowd(0.3);
   },
+  /** auto graphics: watch for dropped frames (a frame much longer than the screen's own), which look like stutter even at a
+      decent average, and step down a notch at a time: fewer pixels first, then no shadows */
   perfCheck(rdt) {
-    if (Save.data.settings.quality !== 'auto') return;
-    const P = this.perf; P.t += rdt; P.frames++;
-    if (P.t >= 4) {
-      const fps = P.frames / P.t; P.t = 0; P.frames = 0;
-      if (fps < 45 && World.quality !== 'low') {
-        this.autoQ = World.quality === 'high' ? 'med' : 'low';
-        World.setQuality(this.autoQ);
-        UI.toast('GRAPHICS LOWERED TO KEEP IT SMOOTH', 'gold');
-      }
+    const P = this.perf;
+    if (Save.data.settings.quality !== 'auto' || this.autoStep >= AUTO_STEPS.length - 1) return;
+    if (P.skip > 0) { P.skip -= rdt; return; } // the first moments of a match load things; do not judge them
+    P.t += rdt; P.frames++; P.min = Math.min(P.min, rdt);
+    if (rdt > Math.max(P.min * 1.5, 0.021)) P.long++;
+    if (P.t < 3) return;
+    const fps = P.frames / P.t, dropped = P.long / P.frames;
+    P.t = 0; P.frames = 0; P.long = 0; P.min = 1;
+    if (fps < 40 || dropped > 0.1) {
+      this.autoStep++; World.setQuality(...AUTO_STEPS[this.autoStep]);
+      P.skip = 1.5; // let it settle before judging again
+      if (!P.told) { P.told = true; UI.toast('GRAPHICS LOWERED TO KEEP IT SMOOTH', 'gold'); }
     }
   },
   loop(now, doRender = true) {
@@ -211,6 +225,7 @@ const Game = {
       } else { Shake.update(rdt); }
     } else if (this.state === 'online' && Net.nm) {
       Net.frame(rdt);
+      this.perfCheck(rdt);
     } else {
       Reveal.update(rdt);
       Showcase.update(rdt);

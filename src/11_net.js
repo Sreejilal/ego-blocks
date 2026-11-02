@@ -311,6 +311,7 @@ const Net = {
     UI.show('hud'); UI.buildHud(nm); $('chatfeed').replaceChildren(); this.idleWarn(null);
     Sfx.init(); Sfx.setCrowd(0.55);
     Input.consumeEdges(); Input.requestLock();
+    Game.matchReady();
   },
   onSnap(m) {
     const nm = this.nm; if (!nm) return;
