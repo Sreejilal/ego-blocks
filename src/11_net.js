@@ -8,7 +8,8 @@
 const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken', 'emote'];
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
 const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
-const NET_DELAY = 0.12; // seconds the picture runs behind the server
+const NET_DELAY = 0.12; // the least the picture runs behind the server (more on a jittery connection: Net.delay)
+const NET_COAST = 0.1; // a late snapshot: everything keeps moving the way it was going for up to this long instead of freezing
 const CHAT_SHOW = [['all', 'ALL'], ['quick', 'QUICK'], ['off', 'OFF']];
 
 /** the match as this screen knows it: models moved by snapshots, with what the HUD needs */
@@ -304,7 +305,7 @@ const Net = {
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(2); World.setSun(SUN_MATCH);
     const nm = this.nm = new NetMatch(msg, this.id);
     Game.match = nm; Game.lastMode = 'online'; Game.ended = false;
-    this.snaps = []; this.rt = -1; this.pend = {}; this.paused = false; this.lastBall = null; this.lastPhase = '';
+    this.snaps = []; this.rt = -1; this.delay = NET_DELAY; this.jit = 0; this.offMin = null; this.lastNow = 0; this.pend = {}; this.paused = false; this.lastBall = null; this.lastPhase = '';
     const me = nm.human;
     Cam.reset(me && me.team === 1 ? Math.PI : 0);
     Game.state = 'online';
@@ -316,6 +317,11 @@ const Net = {
   onSnap(m) {
     const nm = this.nm; if (!nm) return;
     this.snaps.push(m); if (this.snaps.length > 30) this.snaps.shift();
+    // how late this one came compared with the quickest lately: on a jittery connection the picture waits a little longer,
+    // and the quickest gives a steady guess of the server's clock (real time, so a slow computer's frames do not matter)
+    const off = performance.now() / 1000 - m.n / 60;
+    this.offMin = this.offMin == null ? off : Math.min(off, this.offMin + 0.0005);
+    this.jit = Math.max(off - this.offMin, this.jit * 0.993); // remembers a bad patch for a few seconds, so the wait stays steady
     // things that happened: banners, labels, goals, your toasts and cut-ins
     for (const e of m.ev || []) this.event(e);
     if (m.me && nm.human) {
@@ -359,19 +365,24 @@ const Net = {
     $('idle-big').textContent = big; $('idle-small').textContent = small;
     if (beep) Sfx.deny();
   },
-  /** move every model to where it was NET_DELAY seconds ago on the server, blending two snapshots */
+  /** move every model to where it was a moment ago on the server (Net.delay), blending two snapshots */
   applySnapshots(rdt) {
     const S = this.snaps, nm = this.nm;
     if (!S.length) return;
-    const newest = S[S.length - 1].n / 60, target = newest - NET_DELAY;
-    if (this.rt < 0 || Math.abs(this.rt - target) > 0.5) this.rt = target; else this.rt += rdt + (target - this.rt) * 0.08;
+    const now = performance.now() / 1000, real = clamp(now - (this.lastNow || now), 0, 0.25); this.lastNow = now;
+    const want = clamp(0.07 + this.jit, NET_DELAY, 0.3);
+    this.delay += (want - this.delay) * Math.min(1, real * (want > this.delay ? 2 : 0.25)); // waits longer soon, goes back slowly
+    // the picture follows a steady guess of the server's clock, so late snapshots and bunches do not speed it up or slow it down
+    const target = now - this.offMin - this.delay;
+    if (this.rt < 0 || Math.abs(this.rt - target) > 0.5) this.rt = target; else this.rt += real + (target - this.rt) * Math.min(1, real * 3);
     let a = S[0], b = S[S.length - 1];
     for (let i = 0; i < S.length - 1; i++) if (S[i].n / 60 <= this.rt && S[i + 1].n / 60 >= this.rt) { a = S[i]; b = S[i + 1]; break; }
     const ta = a.n / 60, tb = b.n / 60, k = tb > ta ? clamp((this.rt - ta) / (tb - ta), 0, 1) : 1, since = Math.max(0, this.rt - tb);
+    const coast = Math.min(since, NET_COAST); // past the newest snapshot: keep going along the way things were moving
     nm.time = this.rt; nm.phase = b.ph; nm.phaseT = b.pt + since; nm.clock = b.c; nm.golden = b.g >= 0; nm.goldenClock = Math.max(0, b.g); nm.score = b.s;
     nm.players.forEach((p, i) => {
       const A = a.pl[i], B = b.pl[i]; if (!A || !B) return;
-      p.pos.set(lerp(A[0], B[0], k), lerp(A[1], B[1], k), lerp(A[2], B[2], k));
+      p.pos.set(lerp(A[0], B[0], k) + B[3] * coast, lerp(A[1], B[1], k), lerp(A[2], B[2], k) + B[4] * coast);
       p.vel.set(B[3], 0, B[4]);
       p.yaw = A[5] + wrapA(B[5] - A[5]) * k;
       const st = NET_STATES[B[6]] || 'free';
@@ -397,6 +408,11 @@ const Net = {
     ball.last.copy(ball.pos);
     ball.pos.set(lerp(pa[0], pb[0], k), lerp(pa[1], pb[1], k), lerp(pa[2], pb[2], k));
     ball.owner = pb[3] >= 0 ? nm.players[pb[3]] : null;
+    if (coast > 0) { // with its holder, or along its last flight
+      const O = pb[3] >= 0 && b.pl[pb[3]], q = S.length > 1 && S[S.length - 2].b, dtb = S.length > 1 ? (b.n - S[S.length - 2].n) / 60 : 0;
+      if (O) { ball.pos.x += O[3] * coast; ball.pos.z += O[4] * coast; }
+      else if (q && dtb > 0) { ball.pos.x += (pb[0] - q[0]) / dtb * coast; ball.pos.y = Math.max(BALL_R, ball.pos.y + (pb[1] - q[1]) / dtb * coast); ball.pos.z += (pb[2] - q[2]) / dtb * coast; }
+    }
     const dx = ball.pos.x - ball.last.x, dz = ball.pos.z - ball.last.z, dl = len2D(dx, dz);
     if (dl > 1e-4) { ball.spinAxis.set(dz / dl, 0, -dx / dl); _q1.setFromAxisAngle(ball.spinAxis, dl / BALL_R); ball.quat.premultiply(_q1); }
     ball.mesh.position.copy(ball.pos); ball.mesh.quaternion.copy(ball.quat);
