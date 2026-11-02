@@ -162,18 +162,20 @@ class Ball {
     const at = (x, z) => standTop(x + sgn(x) * r, z + sgn(z) * r); // the edge of the ball nearest the stand
     const top = at(p.x, p.z);
     if (p.y - r >= top) return;
-    if (oy - r >= top - 1e-3) { // came down onto a step
-      p.y = top + r;
-      if (v.y < -2.2) { if (v.y < -6) Sfx.thud(clamp(-v.y / 16, 0.2, 0.8)); v.y = -v.y * 0.45; } else v.y = 0;
-      v.x *= 0.8; v.z *= 0.8; this.curve.set(0, 0, 0);
-      return;
+    if (oy - r < top - 1e-3) { // hit the front of a step or a wall: back out and bounce
+      const hitX = at(p.x, oz) > oy - r, hitZ = at(ox, p.z) > oy - r;
+      p.x = ox; p.z = oz;
+      if (hitX || !hitZ) v.x *= -0.4;
+      if (hitZ || !hitX) v.z *= -0.4;
+      if (Math.hypot(v.x, v.z) > 4) Sfx.thud(0.5);
     }
-    // hit the front of a step or a wall: back out and bounce
-    const hitX = at(p.x, oz) > oy - r, hitZ = at(ox, p.z) > oy - r;
-    p.x = ox; p.z = oz;
-    if (hitX || !hitZ) v.x *= -0.4;
-    if (hitZ || !hitX) v.z *= -0.4;
-    if (Math.hypot(v.x, v.z) > 4) Sfx.thud(0.5);
+    // on a step (also after backing out, so a falling ball never sinks into the step it came from)
+    const floor = at(p.x, p.z);
+    if (p.y - r < floor) {
+      p.y = floor + r;
+      if (v.y < -2.2) { if (v.y < -6) Sfx.thud(clamp(-v.y / 16, 0.2, 0.8)); v.y = -v.y * 0.45; } else if (v.y < 0) v.y = 0;
+      v.x *= 0.8; v.z *= 0.8;
+    }
     this.curve.set(0, 0, 0);
   }
   collideBoards() {

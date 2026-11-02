@@ -3,6 +3,7 @@
 // 2. Spin prices: styles 200, Flows 150, skins 100.
 // 3. A ball kicked into the crowd lands on the steps or bounces off them; it never flies through the stands.
 // 4. Auto graphics steps down when frames get dropped (stutter), pixels first with no shader rebuild; smooth 60 or 144 fps is left alone.
+// 5. PASS let go while knocked over (or during a restart) is not stuck down: no endless LOB bar, the next pass is normal.
 const { open } = require('./harness');
 const results = [];
 const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name + (info !== undefined ? '  ' + JSON.stringify(info) : ''));
@@ -57,6 +58,18 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
       if (inside) bad.push({ i, pos: [b.pos.x, b.pos.y, b.pos.z].map((v) => +v.toFixed(1)) });
       else if (went) rest.push(+b.pos.y.toFixed(1));
     }
+    // 400 more: dropped or rolled onto the steps from anywhere in the stands, at random speeds (balls bouncing at the fronts of steps)
+    let seed = 99; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    for (let i = 0; i < 400; i++) {
+      const side = rnd() < 0.5, s1 = rnd() < 0.5 ? -1 : 1, x = side ? s1 * (32.6 + rnd() * 11) : (rnd() - 0.5) * 64, z = side ? (rnd() - 0.5) * 94 : s1 * (50.1 + rnd() * 11);
+      b.reset(x, z, EGO.standTop(x, z) + 0.31 + rnd() * 3);
+      b.vel.set((rnd() - 0.5) * 30, (rnd() - 0.6) * 12, (rnd() - 0.5) * 30);
+      for (let f = 0; f < 240; f++) {
+        b.update(1 / 60);
+        if (b.pos.y - 0.3 < EGO.standTop(b.pos.x, b.pos.z) - 0.05) { bad.push({ drop: i, pos: [b.pos.x, b.pos.y, b.pos.z].map((v) => +v.toFixed(2)) }); break; }
+      }
+      n++;
+    }
     G.forfeit();
     return { kicks: n, through: bad.slice(0, 4), throughN: bad.length, inCrowd: rest.length };
   });
@@ -80,6 +93,19 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   });
   check('auto graphics: smooth 60 and 144 fps stay, stutter lowers the pixels first (no shader rebuild), then shadows; a picked setting stays',
     auto.smooth60 === 0 && auto.judder === 1 && Math.abs(auto.pr1 - auto.pr0 * 0.85) < 0.01 && auto.toast && !auto.rebuilt && auto.hz144 === 0 && auto.worst.step === 3 && auto.worst.quality === 'low' && !auto.worst.shadows && auto.manual.step === 0 && auto.manual.quality === 'med', auto);
+
+  const pass = await page.evaluate(() => {
+    const G = EGO.Game, I = EGO.Input; G.startMatch('quick'); const m = G.match, h = m.human;
+    for (let i = 0; i < 400 && m.phase !== 'play'; i++) G.stepManual(1, false);
+    I.edges.add('Mouse2'); I.mouseR = true; G.stepManual(10, false);
+    const held = h.passHold > 0;
+    m.stun(h, 1.0); G.stepManual(2, false);
+    I.mouseR = false; I.up.add('Mouse2'); G.stepManual(2, false); // let go while knocked over: the game is not listening then
+    G.stepManual(90, false);
+    const r = { held, after: h.passHold, bar: !document.getElementById('charge').hidden };
+    G.forfeit(); return r;
+  });
+  check('PASS let go while knocked over does not stay held (no LOB bar left on screen)', pass.held && pass.after === 0 && !pass.bar, pass);
 
   check('no page errors', !logs.some((l) => l.startsWith('PAGEERROR')), logs.slice(0, 6));
   await browser.close();
