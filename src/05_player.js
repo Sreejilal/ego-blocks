@@ -189,14 +189,15 @@ class Player {
     }
     const fx = this.fx;
     if (fx.burst > 0) m.speed *= 1.45;
-    if (fx.turbo > 0) { m.speed *= 1.75; m.stamDrain = 0; }
+    if (fx.turbo > 0) { m.speed *= 1.4; m.stamDrain = 0; }
     if (fx.shuffle > 0) m.speed *= 0.95;
     if (fx.supercharge > 0) { m.speed *= 1.5; m.stamDrain = 0; }
     if (fx.jetpack > 0) m.speed *= 1.25;
     if (fx.lockdown > 0) m.tackleRange *= 2.3;
     if (fx.slimed > 0) m.speed *= 0.55;
     if (fx.tempo > 0) m.speed *= 1.2; // MAESTRO's TEMPO
-    if (fx.hunt > 0 && this.m.ball.owner !== this) { m.speed *= 1.5; m.stamDrain = 0; } // BLITZ's HUNT
+    if (fx.loaded > 0) m.speed *= 1.15; // THUNDER's LOADED
+    if (fx.hunt > 0 && this.m.ball.owner !== this) { m.speed *= 1.3; m.stamDrain = 0; } // BLITZ's HUNT
     if (fx.scent > 0 && !this.m.ball.owner) m.speed *= 1.2;
     if (fx.loaded > 0) m.shot *= 1.2;
   }

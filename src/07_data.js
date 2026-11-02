@@ -8,7 +8,7 @@ const NEED_BALL = 'NEED THE BALL';
 
 const STYLES = {
   ROOKIE: { name: 'ROOKIE', rarity: 'Rare', hair: '#3b2a22', hairShape: 'short', aura: '#3fd6ff', blurb: 'Reads the whole pitch. The free starter, and it can still win games.', abilities: ['vision', 'quickShot', 'burst'], awaken: { move: { name: 'PERFECT VISION', kind: 'vision', desc: 'See every passing lane for 8s and burst away.' }, name: 'FIRST LIGHT', desc: '+12% speed and shot power.', mods: { speed: 1.12, shot: 1.12 } } },
-  SPRINTER: { name: 'SPRINTER', rarity: 'Rare', hair: '#c8323e', hairShape: 'long', aura: '#ff5a3c', blurb: 'Raw pace. Burns past the back line, then bends it in.', abilities: ['turbo', 'cutInside', 'curler'], awaken: { move: { name: 'LIGHT SPEED', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'RED LINE', desc: '+25% speed, and sprinting costs no stamina.', mods: { speed: 1.25, stamDrain: 0 } } },
+  SPRINTER: { name: 'SPRINTER', rarity: 'Rare', hair: '#c8323e', hairShape: 'long', aura: '#ff5a3c', blurb: 'Raw pace. Burns past the back line, then bends it in.', abilities: ['turbo', 'cutInside', 'curler'], awaken: { move: { name: 'LIGHT SPEED', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'RED LINE', desc: '+18% speed, and sprinting costs no stamina.', mods: { speed: 1.18, stamDrain: 0 } } },
   PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'snapPass'], awaken: { move: { name: 'SHADOW STEP', kind: 'shadow', desc: 'Flash forward and freeze every defender near you.' }, name: 'NIGHTFALL', desc: 'Your feint recharges three times as fast, and you are 10% faster.', perk: 'dodge', mods: { speed: 1.1 } } },
   TRICKSTER: { name: 'TRICKSTER', rarity: 'Epic', hair: '#ff5fb0', hairShape: 'messy', aura: '#ff5fb0', blurb: 'Flicks, nutmegs and snap feints. Makes defenders look silly.', abilities: ['rainbow', 'nutmeg', 'whiplash'], awaken: { move: { name: 'ANKLE STORM', kind: 'storm', desc: 'Every opponent near you loses their footing.' }, name: 'SHOWTIME', desc: 'Your feint recharges three times as fast and tricks recharge even faster.', perk: 'dodge', mods: { cdRate: 1.5 } } },
   ENFORCER: { name: 'ENFORCER', rarity: 'Epic', hair: '#8a1f33', hairShape: 'swept', aura: '#ffb02e', blurb: 'Midfield general. Flattens attackers and threads perfect through balls.', abilities: ['armSwipe', 'pinpointPass', 'lockdown'], awaken: { move: { name: 'SHOCKWAVE', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'IRON WALL', desc: 'Tackles reach 60% further and come back twice as fast, and nobody can tackle you.', perk: 'tank', mods: { tackleRange: 1.6, tackleCd: 0.5 } } },
@@ -41,7 +41,8 @@ function nearBall(p, m, r = 1.9) {
   if (b.owner) return false;
   return dist2D(b.pos, p.pos) < r && b.pos.y - p.pos.y < 2.4;
 }
-function aimFor(p, m) { return p.isHuman ? (p.aimV || m.aim).clone() : AI.shotTarget(p, m); }
+/** where an ability shot goes: your aim, or a bot's pick. corner: a power shot that bots place into a corner, like a real player would */
+function aimFor(p, m, corner = false) { return p.isHuman ? (p.aimV || m.aim).clone() : AI.shotTarget(p, m, null, corner); }
 
 const ABILITIES = {
   vision: {
@@ -63,13 +64,13 @@ const ABILITIES = {
     ai(p, m, c) { return (c.hasBall && c.spaceAhead && c.dGoal > 12) || (c.chasing && c.chaseDist > 9) || (c.defending && c.carrierDist > 9 && c.carrierDist < 20); },
   },
   turbo: {
-    name: 'TURBO', cd: 12, icon: 'dash',
-    desc: '3 seconds of +75% speed with a dust trail. Sprinting costs no stamina while it lasts.',
-    use(p) { p.fx.turbo = 3; return true; },
+    name: 'TURBO', cd: 14, icon: 'dash',
+    desc: '2.5 seconds of +40% speed with a dust trail. Sprinting costs no stamina while it lasts.',
+    use(p) { p.fx.turbo = 2.5; return true; },
     ai(p, m, c) { return (c.hasBall && c.spaceAhead && c.dGoal > 14) || (c.chasing && c.chaseDist > 10) || (c.defending && c.carrierDist > 10 && c.carrierDist < 24); },
   },
   cutInside: {
-    name: 'CUT INSIDE', cd: 10, icon: 'dash',
+    name: 'CUT INSIDE', cd: 16, icon: 'dash',
     desc: 'A sharp dash with the ball toward the middle. Beats one tackle.',
     use(p, m) {
       if (m.ball.owner !== p) return NEED_BALL;
@@ -78,17 +79,17 @@ const ABILITIES = {
       const side = p.pos.x > 0 ? -1 : 1;
       let dx = fx * 0.55 + side * 0.85, dz = fz * 0.55 + s * 0.35;
       const l = len2D(dx, dz); dx /= l; dz /= l;
-      m.dashP(p, dx, dz, 17, 0.32); p.tackleProof = 0.6;
+      m.dashP(p, dx, dz, 13, 0.28); p.tackleProof = 0.35; // just long enough to get past the one tackle
       FX.dust(p.pos.x, p.pos.z, 6); Sfx.dodge();
       return true;
     },
-    ai(p, m, c) { return c.hasBall && c.nearOpp < 3.4 && c.oppInFront; },
+    ai(p, m, c) { return c.hasBall && c.nearOpp < 3.4 && c.oppInFront && c.dGoal < 28; }, // bots: to get a shot away, not to escape anywhere
   },
   curler: {
-    name: 'CURLER', cd: 14, icon: 'shot', big: true,
+    name: 'CURLER', cd: 18, icon: 'shot', big: true,
     desc: 'A shot that starts wide and bends hard back in around the keeper.',
     use(p, m) { if (!nearBall(p, m)) return NEED_BALL; m.curlShot(p, aimFor(p, m)); return true; },
-    ai(p, m, c) { return c.hasBall && c.dGoal < 26 && c.dGoal > 8; },
+    ai(p, m, c) { return c.hasBall && c.dGoal < 21 && c.dGoal > 8; },
   },
   zigzag: {
     name: 'ZIGZAG', cd: 10, icon: 'dash', big: true,
@@ -119,7 +120,7 @@ const ABILITIES = {
     ai(p, m, c) { return c.hasBall && c.goodPass && c.pressure < 3.5; },
   },
   armSwipe: {
-    name: 'ARM SWIPE', cd: 12, icon: 'grab',
+    name: 'ARM SWIPE', cd: 14, icon: 'grab',
     desc: 'Off the ball only. Shove the opponent in front to the floor for 1.5s, so they are easy to rob.',
     use(p, m) {
       if (m.ball.owner === p) return 'ONLY OFF THE BALL';
@@ -185,40 +186,40 @@ const ABILITIES = {
     ai(p, m, c) { return c.carrierOpp && c.carrierDist > 4 && c.carrierDist < 18; },
   },
   skyTrap: {
-    name: 'SKY TRAP', cd: 8, icon: 'trap',
+    name: 'SKY TRAP', cd: 6, icon: 'trap',
     desc: 'For 5s, the next high ball you touch dies dead on your boot, even mid-air.',
     use(p) { p.fx.skyTrap = 5; FX.ring(p.pos.x, 0.3, p.pos.z, p.aura, 1.4, 20); return true; },
     ai(p, m, c) { return c.highBallNear; },
   },
   volley: {
-    name: 'VOLLEY', cd: 12, icon: 'shot', big: true,
+    name: 'VOLLEY', cd: 9, icon: 'shot', big: true,
     desc: 'A huge volley while airborne. On the ground it flicks the ball up and volleys it for you.',
     use(p, m) { return m.volley(p); },
-    ai(p, m, c) { return (c.hasBall && c.dGoal < 23 && c.angleOK) || (c.highBallNear && c.dGoal < 24); },
+    ai(p, m, c) { return (c.hasBall && c.dGoal < 17 && c.angleOK) || (c.highBallNear && c.dGoal < 24); },
   },
   fakeVolley: {
-    name: 'FAKE VOLLEY', cd: 14, icon: 'fake',
+    name: 'FAKE VOLLEY', cd: 8, icon: 'fake',
     desc: 'Fake the volley, freeze defenders around you, then cut the ball the other way.',
     use(p, m) { return m.fakeVolley(p); },
     ai(p, m, c) { return c.hasBall && c.nearOpp < 4; },
   },
   impactShot: {
-    name: 'IMPACT SHOT', cd: 20, icon: 'beam', big: true,
+    name: 'IMPACT SHOT', cd: 12, icon: 'beam', big: true,
     desc: 'Infinite range, max power, zero arc. The ball flies dead straight as a glowing beam.',
-    use(p, m) { if (!nearBall(p, m, 2.1)) return NEED_BALL; m.impactShot(p, aimFor(p, m)); return true; },
+    use(p, m) { if (!nearBall(p, m, 2.1)) return NEED_BALL; m.impactShot(p, aimFor(p, m, true)); return true; },
     ai(p, m, c) { return c.hasBall && c.dGoal < 46 && c.angleOK && (c.dGoal < 30 || chance(0.4)); },
   },
   call: {
-    name: 'CALL', cd: 14, icon: 'call',
+    name: 'CALL', cd: 10, icon: 'call',
     desc: 'Demand the ball. Teammates instantly pass to you if you are open.',
     use(p, m) { if (m.ball.owner === p) return 'YOU HAVE THE BALL'; p.fx.call = 3; m.callNow(p); return true; },
     ai(p, m, c) { return c.mateHasBall && c.open > 4.5 && c.progAhead > 2; },
   },
   overhead: {
-    name: 'OVERHEAD', cd: 16, icon: 'flip', big: true,
+    name: 'OVERHEAD', cd: 11, icon: 'flip', big: true,
     desc: 'A bicycle kick off any high ball. On the ground it pops the ball up and flips into it.',
     use(p, m) { return m.overhead(p); },
-    ai(p, m, c) { return (c.hasBall && c.dGoal < 17 && c.angleOK) || (c.highBallNear && c.dGoal < 20); },
+    ai(p, m, c) { return (c.hasBall && c.dGoal < 14 && c.angleOK) || (c.highBallNear && c.dGoal < 20); },
   },
   /* WARDEN */
   bodyBlock: {
@@ -255,12 +256,12 @@ const ABILITIES = {
   /* BLITZ */
   hunt: {
     name: 'HUNT', cd: 12, icon: 'dash',
-    desc: '3s of +50% speed while you do not have the ball, and sprinting costs nothing.',
+    desc: '3s of +30% speed while you do not have the ball, and sprinting costs nothing.',
     use(p) { p.fx.hunt = 3; return true; },
     ai(p, m, c) { return c.defending && c.carrierDist > 4 && c.carrierDist < 18; },
   },
   poke: {
-    name: 'POKE', cd: 7, icon: 'grab',
+    name: 'POKE', cd: 9, icon: 'grab',
     desc: 'Flick the ball off a carrier up to 2.2 blocks away without sliding. You stay on your feet.',
     use(p, m) {
       const b = m.ball, o = b.owner;
@@ -275,7 +276,7 @@ const ABILITIES = {
   },
   /* COMET */
   rocketJump: {
-    name: 'ROCKET JUMP', cd: 10, icon: 'jump',
+    name: 'ROCKET JUMP', cd: 8, icon: 'jump',
     desc: 'A huge leap, almost twice as high as a jump, to win any high ball.',
     use(p) { if (!p.onGround || p.state !== 'free') return 'ON THE GROUND ONLY'; p.vel.y = 13; p.onGround = false; FX.dust(p.pos.x, p.pos.z, 8); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.2, 16); return true; },
     ai(p, m, c) { return c.highBallNear; },
@@ -343,27 +344,27 @@ const ABILITIES = {
   },
   /* THUNDER */
   longBomb: {
-    name: 'LONG BOMB', cd: 14, icon: 'beam', big: true,
+    name: 'LONG BOMB', cd: 12, icon: 'beam', big: true,
     desc: 'A full-power strike that dips late. Best from 20 to 40 blocks out.',
     use(p, m) {
       if (!nearBall(p, m)) return NEED_BALL;
-      const t = aimFor(p, m); t.y = Math.min(t.y + 0.8, 3.6);
+      const t = aimFor(p, m, true); t.y = Math.min(t.y + 0.8, 3.6);
       m.shootAt(p, t, 1, { mult: 1.3, trail: p.aura, special: 'bomb' });
       if (m.involvesHuman(p)) Shake.add(0.35);
       return true;
     },
-    ai(p, m, c) { return c.hasBall && c.dGoal > 16 && c.dGoal < 40 && c.angleOK; },
+    ai(p, m, c) { return c.hasBall && c.dGoal > 16 && c.dGoal < 30 && c.angleOK; }, // bots: not from so far that it just gives the ball away
   },
   loaded: {
-    name: 'LOADED', cd: 16, icon: 'buff',
-    desc: 'For 5s every shot leaves at full power the moment you shoot, and 20% harder.',
-    use(p) { p.fx.loaded = 5; FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 1.2, 18); return true; },
+    name: 'LOADED', cd: 12, icon: 'buff',
+    desc: 'For 7s you run 15% faster, and every shot leaves at full power the moment you shoot, 20% harder.',
+    use(p) { p.fx.loaded = 7; FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 1.2, 18); return true; },
     ai(p, m, c) { return c.hasBall && c.dGoal < 30; },
   },
   knuckle: {
-    name: 'KNUCKLEBALL', cd: 14, icon: 'shot', big: true,
+    name: 'KNUCKLEBALL', cd: 10, icon: 'shot', big: true,
     desc: 'A spinless shot that wobbles in the air. Keepers misread it.',
-    use(p, m) { if (!nearBall(p, m)) return NEED_BALL; m.shootAt(p, aimFor(p, m), 0.9, { trail: p.aura, special: 'knuckle' }); return true; },
+    use(p, m) { if (!nearBall(p, m)) return NEED_BALL; m.shootAt(p, aimFor(p, m, true), 0.9, { trail: p.aura, special: 'knuckle' }); return true; },
     ai(p, m, c) { return c.hasBall && c.dGoal < 28 && c.angleOK; },
   },
 };

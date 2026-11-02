@@ -69,7 +69,7 @@ class Match {
         const human = opts.humans ? !!net : team === 0 && role === lead && !opts.noHuman; // you play the most attacking spot
         let num = role === 'GK' ? 1 : human && !net ? 10 : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
-        const style = net ? net.style : human ? (opts.style || Save.data.style) : botStyle();
+        const style = net ? net.style : human ? (opts.style || Save.data.style) : opts.teamStyle ? opts.teamStyle[team] : botStyle(); // teamStyle: [home, away] for balance tests
         const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
         const look = net ? net.look : human ? (opts.look || Save.data.look) : botLook();
         const tone = net ? net.tone : Save.data.tone;
@@ -669,7 +669,7 @@ class Match {
     const b = this.ball;
     const near = !b.owner && dist2D(b.pos, p.pos) < 2.5 && b.pos.y - p.pos.y < 3;
     if ((!p.onGround || b.pos.y > 1.1) && (b.owner === p || near)) {
-      this.shootAt(p, aimFor(p, this), 1, { mult: 1.32, trail: p.aura, special: 'volley', keepPos: !(b.owner === p) });
+      this.shootAt(p, aimFor(p, this, true), 1, { mult: 1.32, trail: p.aura, special: 'volley', keepPos: !(b.owner === p) });
       FX.sparks(b.pos.x, b.pos.y, b.pos.z, p.aura, 22, 7);
       if (this.involvesHuman(p)) Shake.add(0.35);
       return true;
@@ -678,7 +678,7 @@ class Match {
       this.jump(p);
       p.pickBlock = 0.6;
       b.vel.set(Math.sin(p.yaw) * 1.2, 7.8, Math.cos(p.yaw) * 1.2);
-      p.pending = { t: 0.36, fn: () => { if (dist2D(b.pos, p.pos) < 2.8 && !b.owner) { this.shootAt(p, aimFor(p, this), 1, { mult: 1.32, trail: p.aura, special: 'volley', keepPos: true }); FX.sparks(b.pos.x, b.pos.y, b.pos.z, p.aura, 22, 7); if (this.involvesHuman(p)) Shake.add(0.35); } } };
+      p.pending = { t: 0.36, fn: () => { if (dist2D(b.pos, p.pos) < 2.8 && !b.owner) { this.shootAt(p, aimFor(p, this, true), 1, { mult: 1.32, trail: p.aura, special: 'volley', keepPos: true }); FX.sparks(b.pos.x, b.pos.y, b.pos.z, p.aura, 22, 7); if (this.involvesHuman(p)) Shake.add(0.35); } } };
       return true;
     }
     return NEED_BALL;
@@ -688,7 +688,7 @@ class Match {
     const near = !b.owner && dist2D(b.pos, p.pos) < 2.8 && b.pos.y > 0.9 && b.pos.y - p.pos.y < 3.2;
     const strike = () => {
       p.flipT = 0; p.vel.y = Math.max(p.vel.y, 3); p.onGround = false;
-      this.shootAt(p, aimFor(p, this), 1, { mult: 1.2, trail: p.aura, special: 'overhead', keepPos: true, keepYaw: true });
+      this.shootAt(p, aimFor(p, this, true), 1, { mult: 1.2, trail: p.aura, special: 'overhead', keepPos: true, keepYaw: true });
       FX.sparks(b.pos.x, b.pos.y, b.pos.z, p.aura, 26, 8);
       if (this.involvesHuman(p)) { Shake.add(0.4); TimeCtl.slowMo(0.4, 0.4); }
     };

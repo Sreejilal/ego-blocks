@@ -318,11 +318,11 @@ const AI = {
     p.ai.wantShot = { t, power, at: rand(0.1, 0.24) + (1 - sk) * 0.12 };
     p.charging = true; p.charge = 0;
   },
-  shotTarget(p, m, sk) {
+  shotTarget(p, m, sk, corner = false) {
     if (sk == null) sk = m.skill(p);
     const gz = m.oppGoalZ(p.team), gk = m.teams[1 - p.team][0];
     const side = gk.pos.x > 0.5 ? -1 : gk.pos.x < -0.5 ? 1 : (chance(0.5) ? 1 : -1);
-    let x = side * rand(2.0, F.GW - 0.55), y = rand(0.45, 2.3);
+    let x = side * (corner ? rand(3.3, F.GW - 0.45) : rand(2.0, F.GW - 0.55)), y = corner ? rand(0.4, 2.6) : rand(0.45, 2.3);
     const err = (1 - sk) * 2.1 + 0.4;
     x += rand(-err, err); y += rand(-err * 0.45, err * 0.45);
     return V3(x, clamp(y, 0.3, 3.8), gz);
@@ -502,25 +502,23 @@ const AI = {
     }
     if (p.state !== 'free') { p.mx = 0; p.mz = 0; return; }
     // 1) shots coming at goal
-    if (!b.owner && b.vel.z * s < -5) {
-      const t = (gz - b.pos.z) / b.vel.z;
-      if (t > 0 && t < 1.8) {
-        const px = b.pos.x + b.vel.x * t + 0.5 * b.curve.x * t * t;
-        const g = BALL_G * (b.gMul || 1);
-        let py = b.straightT > 0 ? b.pos.y + b.vel.y * t : b.pos.y + b.vel.y * t - 0.5 * g * t * t;
-        if (py < BALL_R) py = BALL_R + Math.min(1.2, Math.abs(py) * 0.4);
+    if (!b.owner && b.vel.z * s < -0.5 && b.vel.lengthSq() > 64) { // any fast ball coming this way: a curler from wide starts out almost sideways
+      const X = this.crossAt(b, gz); // where it crosses the goal line, following its real path (curling shots too)
+      if (X) {
+        const px = X.x, py = X.y;
         // a free kick: the wall hides it, so the keeper only picks it up once it is past the wall
         const screened = m.fk && b.kick && Math.hypot(b.pos.x - b.kick.fx, b.pos.z - b.kick.fz) < 7.6;
         if (Math.abs(px) < F.GW + 1.0 && py < F.GH + 0.9 && !screened) {
-          if (a.react == null) a.react = lerp(0.4, 0.08, Math.min(1, sk)) * rand(0.8, 1.2) * (m.fk && b.kick && b.kick.special === 'knuckle' ? 1.8 : 1); // a free kick knuckleball is hard to read
+          // hard to read: volleys and bicycle kicks come off the foot at odd angles, a knuckleball wobbles, a long bomb dips late
+          const sp = b.kick && b.kick.special, tricky = sp === 'volley' || sp === 'overhead' || sp === 'knuckle' || sp === 'bomb';
+          if (a.react == null) a.react = lerp(0.55, 0.16, Math.min(1, sk)) * rand(0.8, 1.2) * (m.fk && sp === 'knuckle' ? 1.8 : m.fk && b.kick.curved ? 1.5 : tricky ? 1.4 : 1); // free kicks: a knuckleball is the hardest, a curler round the wall is hard too
           a.react -= dt;
           if (a.react <= 0) {
-            const tk = Math.max(0.06, (p.pos.z - b.pos.z) / b.vel.z);
-            const kx = b.pos.x + b.vel.x * tk + 0.5 * b.curve.x * tk * tk;
-            let ky = b.straightT > 0 ? b.pos.y + b.vel.y * tk : b.pos.y + b.vel.y * tk - 0.5 * g * tk * tk;
-            if (ky < BALL_R) ky = BALL_R;
+            const K = this.crossAt(b, p.pos.z) || X; // where it passes the keeper
+            const tk = Math.max(0.06, K.t), kx = K.x, ky = K.y;
             const dx = kx - p.pos.x;
-            if (Math.abs(dx) > 0.75 || ky > 2.1) { this.dive(m, p, dx, ky, tk, sk); a.react = null; return; }
+            // a slow or far shot: step across first and dive late, so the keeper is still in the air when it arrives
+            if ((Math.abs(dx) > 0.75 || ky > 2.1) && (tk < 0.5 || m.fk)) { this.dive(m, p, dx, ky, tk, sk); a.react = null; return; }
             a.target.set(kx, 0, p.pos.z); a.sprint = true; this.steer(m, p, dt); p.faceYaw = s > 0 ? 0 : Math.PI;
             return;
           }
@@ -549,8 +547,24 @@ const AI = {
     this.steer(m, p, dt);
     p.faceYaw = yawTo(p.pos, b.pos);
   },
+  /** where a flying ball crosses the line z = zp within 1.8s: steps its path like Ball.simulate (gravity, curve, air, bounces) */
+  crossAt(b, zp) {
+    let x = b.pos.x, y = b.pos.y, z = b.pos.z, vx = b.vel.x, vy = b.vel.y, vz = b.vel.z, cx = b.curve.x, cz = b.curve.z, st = b.straightT || 0;
+    const h = 1 / 60, g = BALL_G * (b.gMul || 1), dec = b.curveDecay > 0 ? Math.exp(-h / b.curveDecay) : 1, side = Math.sign(zp - z);
+    if (!side) return null;
+    for (let t = 0; t < 1.8; t += h) {
+      if (st > 0) st -= h; else vy -= g * h;
+      vx += cx * h; vz += cz * h; cx *= dec; cz *= dec;
+      if (y > BALL_R + 0.02 && st <= 0) { const k = 1 - 0.05 * h; vx *= k; vz *= k; vy *= k; }
+      const nz = z + vz * h;
+      if ((zp - nz) * side <= 0) { const f = (zp - z) / ((nz - z) || 1e-6); return { t: t + h * f, x: x + vx * h * f, y: Math.max(BALL_R, y + vy * h * f) }; }
+      x += vx * h; y += vy * h; z = nz;
+      if (y < BALL_R) { y = BALL_R; vy = vy < -2.2 ? -vy * 0.52 : 0; }
+    }
+    return null;
+  },
   dive(m, p, dx, ky, tk, sk) {
-    const side = sgn(dx), dur = 0.4, rs = 12 + 7.5 * sk; // a 9-wide goal: keepers dive further and faster
+    const side = sgn(dx), dur = 0.4, rs = 10 + 5 * sk; // a 9-wide goal: keepers dive far (they also step across first and dive late)
     const vx = clamp(dx / Math.max(0.16, Math.min(tk, dur)), -rs, rs);
     const s = m.dir(p.team);
     p.yaw = s > 0 ? 0 : Math.PI;
