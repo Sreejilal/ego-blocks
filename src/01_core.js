@@ -62,6 +62,16 @@ const F = {
 };
 // bot positions were tuned on the first, smaller pitch (20.5 x 32.5); they are scaled by these to fit this one
 const PITCH_KX = F.W / 20.5, PITCH_KZ = F.L / 32.5;
+// the stands: rows of steps behind the boards, a corner block in each corner and a wall at the back (World.buildStands draws them)
+const STAND = { ROWS: 7, DEP: 1.6, RISE: 1.0, BASE: 1.3, SIDE: F.BOARD_X + 2, END: F.BOARD_Z + 3, SIDE_LEN: F.BOARD_Z + 0.5 };
+STAND.WALL = STAND.BASE + STAND.ROWS * STAND.RISE + 1.4;
+/** how high the stands are at a point (0 over the pitch and the walkway in front of them) */
+function standTop(x, z) {
+  const S = STAND, ax = Math.abs(x), az = Math.abs(z);
+  if (ax >= S.SIDE && az >= S.SIDE_LEN) return S.WALL - 0.6; // a corner block
+  const row = (d) => { const i = Math.floor(d / S.DEP); return i >= S.ROWS ? S.WALL : S.BASE + i * S.RISE; };
+  return Math.max(ax >= S.SIDE ? row(ax - S.SIDE) : 0, az >= S.END ? row(az - S.END) : 0);
+}
 const BALL_R = 0.3;
 const BALL_G = 16;
 const P_R = 0.42;

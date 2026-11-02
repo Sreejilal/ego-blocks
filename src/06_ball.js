@@ -89,6 +89,7 @@ class Ball {
         if (this.curveDecay > 0) { const k = Math.exp(-h / this.curveDecay); this.curve.x *= k; this.curve.z *= k; }
       }
       if (this.pos.y > BALL_R + 0.02 && this.straightT <= 0) { const k = 1 - 0.05 * h; this.vel.x *= k; this.vel.z *= k; this.vel.y *= k; }
+      const ox = this.pos.x, oy = this.pos.y, oz = this.pos.z;
       this.pos.x += this.vel.x * h; this.pos.y += this.vel.y * h; this.pos.z += this.vel.z * h;
       if (this.pos.y < BALL_R) {
         this.pos.y = BALL_R;
@@ -106,6 +107,7 @@ class Ball {
       }
       this.collideGoal();
       this.collideBoards();
+      this.collideStands(ox, oy, oz);
     }
     // stop simulating a ball that left the stadium
     if (Math.abs(this.pos.x) > 70 || Math.abs(this.pos.z) > 80) { this.vel.set(0, 0, 0); this.pos.y = Math.max(this.pos.y, BALL_R); }
@@ -152,6 +154,27 @@ class Ball {
         v.x *= 0.85; v.z *= 0.85;
       }
     }
+  }
+  /** a ball in the crowd lands on the steps or bounces off them (and off the corner blocks and back walls) */
+  collideStands(ox, oy, oz) {
+    const p = this.pos, v = this.vel, r = BALL_R;
+    if (Math.abs(p.x) < STAND.SIDE - r && Math.abs(p.z) < STAND.END - r) return;
+    const at = (x, z) => standTop(x + sgn(x) * r, z + sgn(z) * r); // the edge of the ball nearest the stand
+    const top = at(p.x, p.z);
+    if (p.y - r >= top) return;
+    if (oy - r >= top - 1e-3) { // came down onto a step
+      p.y = top + r;
+      if (v.y < -2.2) { if (v.y < -6) Sfx.thud(clamp(-v.y / 16, 0.2, 0.8)); v.y = -v.y * 0.45; } else v.y = 0;
+      v.x *= 0.8; v.z *= 0.8; this.curve.set(0, 0, 0);
+      return;
+    }
+    // hit the front of a step or a wall: back out and bounce
+    const hitX = at(p.x, oz) > oy - r, hitZ = at(ox, p.z) > oy - r;
+    p.x = ox; p.z = oz;
+    if (hitX || !hitZ) v.x *= -0.4;
+    if (hitZ || !hitX) v.z *= -0.4;
+    if (Math.hypot(v.x, v.z) > 4) Sfx.thud(0.5);
+    this.curve.set(0, 0, 0);
   }
   collideBoards() {
     const p = this.pos, v = this.vel, r = BALL_R;

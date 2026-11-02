@@ -236,10 +236,10 @@ const World = {
   },
   buildStands() {
     const T = this.T;
-    const ROWS = 7, DEP = 1.6, RISE = 1.0, BASE = 1.3;
+    const { ROWS, DEP, RISE, BASE } = STAND; // the ball bounces off these (standTop)
     this.standRows = { ROWS, DEP, RISE, BASE };
     const blue = new VoxBuilder(true), orange = new VoxBuilder(true);
-    const sideIn = F.BOARD_X + 2, endIn = F.BOARD_Z + 3, sideLen = F.BOARD_Z + 0.5, endLen = F.BOARD_X + 2;
+    const sideIn = STAND.SIDE, endIn = STAND.END, sideLen = STAND.SIDE_LEN, endLen = STAND.SIDE;
     for (let i = 0; i < ROWS; i++) {
       const top = BASE + i * RISE;
       // west (x<0) blue, east orange
@@ -250,7 +250,7 @@ const World = {
       orange.box(-endLen, 0, endIn + i * DEP, endLen, top, endIn + (i + 1) * DEP, '#ffffff', { uv: 1, ao: 0.62 });
     }
     // back walls and corner blocks
-    const outerX = sideIn + ROWS * DEP, outerZ = endIn + ROWS * DEP, wallTop = BASE + ROWS * RISE + 1.4;
+    const outerX = sideIn + ROWS * DEP, outerZ = endIn + ROWS * DEP, wallTop = STAND.WALL;
     const grey = new VoxBuilder();
     grey.box(-outerX - 1, 0, -sideLen - 1, -outerX, wallTop, sideLen + 1, '#ffffff', { uv: 1 });
     grey.box(outerX, 0, -sideLen - 1, outerX + 1, wallTop, sideLen + 1, '#ffffff', { uv: 1 });

@@ -111,6 +111,8 @@ file in file-name order into ONE function scope. There are no imports or exports
 - `test/tiers.js` plays its bot matches on the server's copy of the game (`server/headless.js`) before opening the browser: much faster, and 16 games per pair of tiers so it is not luck.
 - `node test/balance.js [matches] [sizes] [skills]` runs those matches for every team size and a few bot skill levels and prints the averages. Results swing a lot from match to match, so use 4 or more matches per setting.
 - Bot positions are tuned on the first, smaller pitch and scaled by `PITCH_KX` / `PITCH_KZ` (01_core.js), so changing `F` keeps the AI shape.
+- `node test/soak.js` plays every mode start to finish with a button masher at uneven frame rates and checks every frame (NaN, players outside, the ball inside the stands, long stops, the match ending). `SOAK_MODES=quick,duel` and `SOAK_SECS` pick modes and length. `test/smooth.js` holds the checks for bugs found that way.
+- The ball lands on and bounces off the stands (`standTop`, `STAND` in 01_core.js, `Ball.collideStands`); `World.buildStands` uses the same numbers.
 - Screenshots from tests are saved in `test/shots/`. Look at them after UI changes.
 
 ## Working with the owner
