@@ -19,11 +19,12 @@ const SECS = +(process.env.SOAK_SECS || 300); // game seconds per mode
       const note = (k, info) => { if (!seen[k]) { seen[k] = 1; bad.push(k + ' ' + JSON.stringify(info)); } };
       const fin = (v) => Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.z);
       const keys = ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft'], taps = ['Space', 'KeyC', 'KeyF', 'KeyQ', 'KeyE', 'KeyR', 'KeyG', 'KeyX', 'KeyZ', 'Mouse2'];
-      const trace = []; let t = 0, frames = 0, stop = 0, stopPhase = '', worst = 0, shootT = 0, dts = [];
+      const trace = []; let passT = 0, t = 0, frames = 0, stop = 0, stopPhase = '', worst = 0, shootT = 0, dts = [];
       while (G.state === 'match' && t < SECS + 400) {
         // the masher: hold some keys, tap others, turn the mouse, charge and fire
         if (rnd() < 0.05) { const k = keys[(rnd() * keys.length) | 0]; if (I.down.has(k)) I.down.delete(k); else I.down.add(k); }
-        if (rnd() < 0.04) { const k = taps[(rnd() * taps.length) | 0]; I.edges.add(k); if (k === 'Mouse2' && rnd() < 0.7) I.up.add(k); }
+        if (rnd() < 0.04) { const k = taps[(rnd() * taps.length) | 0]; I.edges.add(k); if (k === 'Mouse2') { if (rnd() < 0.7) I.up.add(k); else { I.mouseR = true; passT = 5 + ((rnd() * 40) | 0); } } }
+        if (passT > 0 && !--passT) { I.mouseR = false; I.up.add('Mouse2'); }
         if (rnd() < 0.3) { I.mdx += (rnd() - 0.5) * 60; I.mdy += (rnd() - 0.5) * 20; }
         if (shootT > 0) { shootT--; if (!shootT) { I.mouseL = false; I.up.add('Mouse0'); } }
         else if (rnd() < 0.02) { I.edges.add('Mouse0'); I.mouseL = true; shootT = 5 + ((rnd() * 60) | 0); }
@@ -46,7 +47,7 @@ const SECS = +(process.env.SOAK_SECS || 300); // game seconds per mode
         if (m.fk && m.fk.state && m.fk.t > 25) note('free kick stuck in ' + m.fk.state, { mode, t: +t.toFixed(1), fk: m.fk.state });
         if (m.tut && t > 200) break; // the masher will not finish the tutorial; it only has to stay sane
       }
-      ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft'].forEach((k) => I.down.delete(k)); I.mouseL = false;
+      ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft'].forEach((k) => I.down.delete(k)); I.mouseL = false; I.mouseR = false;
       const out = { mode, state: G.state, phase: m.phase, score: m.score.slice(), frames, mins: +(t / 60).toFixed(1), worstStop: +worst.toFixed(1), bad };
       if (G.state === 'match') G.forfeit();
       G.toLobby && G.state !== 'lobby' && G.toLobby();

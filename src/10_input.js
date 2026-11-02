@@ -97,6 +97,7 @@ const Input = {
       jump: e.has('Space') || e.has('PadA') || e.has('T_jump'), jumpHeld: k.has('Space') || this.padHeld(PAD.A) || th.has('jump'),
       shootDown: e.has('Mouse0') || e.has('PadRT') || e.has('T_shoot'), shootHeld: this.mouseL || this.padHeld(PAD.RT) || th.has('shoot'), shootUp: u.has('Mouse0') || u.has('PadRT') || u.has('T_shoot'),
       passDown: e.has('Mouse2') || e.has('PadLT') || e.has('PadRB') || e.has('T_pass'), passUp: u.has('Mouse2') || u.has('PadLT') || u.has('PadRB') || u.has('T_pass'),
+      passHeld: this.mouseR || this.padHeld(PAD.LT) || this.padHeld(PAD.RB) || th.has('pass'),
       dodge: e.has('KeyC') || e.has('PadB') || e.has('T_dodge'),
       tackle: e.has('KeyF') || e.has('PadX') || e.has('T_tackle'),
       ab: [e.has('KeyQ') || (e.has('PadLeft') && !chatPad) || e.has('T_ab0'), e.has('KeyE') || (e.has('PadUp') && !chatPad) || e.has('T_ab1'), e.has('KeyR') || (e.has('PadRight') && !chatPad) || e.has('T_ab2')],

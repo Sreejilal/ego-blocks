@@ -34,7 +34,7 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
     ok.look = until(() => { I.down.add('ArrowLeft'); EGO.Game.stepManual(4, false); }); I.down.delete('ArrowLeft');
     ok.sprint = until(() => { I.down.add('KeyW'); I.down.add('ShiftLeft'); EGO.Game.stepManual(4, false); }); I.down.delete('KeyW'); I.down.delete('ShiftLeft');
     ok.ball = until(() => { face(m.ball.pos.x, m.ball.pos.z); I.down.add('KeyW'); EGO.Game.stepManual(3, false); }); I.down.delete('KeyW');
-    ok.pass = until(() => { I.edges.add('Mouse2'); EGO.Game.stepManual(1, false); I.up.add('Mouse2'); EGO.Game.stepManual(6, false); }, 40);
+    ok.pass = until(() => { I.edges.add('Mouse2'); I.mouseR = true; EGO.Game.stepManual(1, false); I.mouseR = false; I.up.add('Mouse2'); EGO.Game.stepManual(6, false); }, 40);
     ok.back = until(() => { if (m.ball.owner !== h) { face(m.ball.pos.x, m.ball.pos.z); I.down.add('KeyW'); } EGO.Game.stepManual(3, false); }, 600); I.down.delete('KeyW');
     seen.push(document.getElementById('tut-title').textContent);
     ok.shoot = until(() => { face(0, m.oppGoalZ(0)); I.edges.add('Mouse0'); I.mouseL = true; EGO.Game.stepManual(24, false); I.mouseL = false; I.up.add('Mouse0'); EGO.Game.stepManual(60, false); if (m.ball.owner !== h && m.phase === 'play') { m.ball.reset(h.pos.x, h.pos.z); m.possess(h, true); } }, 12);

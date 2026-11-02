@@ -431,7 +431,7 @@ const Net = {
   },
   sendInput() {
     const c = this.paused ? null : this.held, P = this.pend, nm = this.nm;
-    const msg = Object.assign({ t: 'input', mx: c ? +c.moveX.toFixed(2) : 0, my: c ? +c.moveY.toFixed(2) : 0, sp: !!(c && c.sprint), sl: !!(c && c.shiftLock), jh: !!(c && c.jumpHeld), sh: !!(c && c.shootHeld), cy: +nm.camYaw.toFixed(3), aim: [+nm.aim.x.toFixed(2), +nm.aim.y.toFixed(2), +nm.aim.z.toFixed(2)] }, P);
+    const msg = Object.assign({ t: 'input', mx: c ? +c.moveX.toFixed(2) : 0, my: c ? +c.moveY.toFixed(2) : 0, sp: !!(c && c.sprint), sl: !!(c && c.shiftLock), jh: !!(c && c.jumpHeld), sh: !!(c && c.shootHeld), ps: !!(c && c.passHeld), cy: +nm.camYaw.toFixed(3), aim: [+nm.aim.x.toFixed(2), +nm.aim.y.toFixed(2), +nm.aim.z.toFixed(2)] }, P);
     this.send(msg);
     this.pend = {};
   },

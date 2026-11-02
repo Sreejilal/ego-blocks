@@ -216,6 +216,7 @@ class Match {
   /* ---------- human control ---------- */
   updateHuman(dt, c, p = this.human) {
     if (!p || !c) return;
+    if (p.passHold > 0 && c.passHeld === false && !c.passUp) p.passHold = 0; // let go while it was not listening (knocked down, a restart): no pass stuck down
     // an online player sends their own camera direction and aim point
     if (c.camYaw != null) p.camYaw = c.camYaw;
     if (c.aim) p.aimV = c.aim;

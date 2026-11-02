@@ -94,7 +94,7 @@ async function inspect(page, where) {
             if (how === 'keys') {
               I.down.clear(); I.down.add(['KeyW', 'KeyA', 'KeyD', 'KeyS'][Math.floor(t / 1.3) % 4]); if (t % 3 < 1.5) I.down.add('ShiftLeft');
               if (f % 50 === 0) { I.mouseL = true; I.edges.add('Mouse0'); } if (f % 50 === 30) { I.mouseL = false; I.up.add('Mouse0'); }
-              if (f % 90 === 45) I.edges.add('Mouse2'); if (f % 90 === 47) I.up.add('Mouse2');
+              if (f % 90 === 45) { I.edges.add('Mouse2'); I.mouseR = true; } if (f % 90 === 47) { I.mouseR = false; I.up.add('Mouse2'); }
               if (f % 120 === 10) I.edges.add(['KeyQ', 'KeyE', 'KeyR', 'KeyC', 'KeyF', 'Space', 'KeyG', 'KeyX'][(f / 120 | 0) % 8]);
               I.mdx = Math.sin(t) * 4;
             } else if (how === 'pad') {

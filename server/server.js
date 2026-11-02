@@ -110,7 +110,7 @@ function toCtl(m, prev) {
   const aim = m && Array.isArray(m.aim) ? new THREE.Vector3(+m.aim[0] || 0, +m.aim[1] || 0, +m.aim[2] || 0) : (prev && prev.aim) || null;
   return {
     moveX: Math.max(-1, Math.min(1, +m.mx || 0)), moveY: Math.max(-1, Math.min(1, +m.my || 0)), sprint: b('sp'),
-    jump: b('jump'), jumpHeld: b('jh'), shootDown: b('sd'), shootHeld: b('sh'), shootUp: b('su'), passDown: b('pd'), passUp: b('pu'),
+    jump: b('jump'), jumpHeld: b('jh'), shootDown: b('sd'), shootHeld: b('sh'), shootUp: b('su'), passDown: b('pd'), passUp: b('pu'), passHeld: m && 'ps' in m ? b('ps') : undefined,
     dodge: b('dodge'), tackle: b('tackle'), ab: [b('a0'), b('a1'), b('a2')], flow: b('flow'), awaken: b('aw'), shiftLock: b('sl'), emote: Number.isInteger(m && m.em) && m.em >= 0 && m.em < G.EMOTES.length ? m.em : -1, item: false, board: false,
     camYaw: Number.isFinite(+m.cy) ? +m.cy : 0, aim,
   };
