@@ -91,8 +91,9 @@ ${safeScript(code)}</script>
 `;
 const page = pageFor(game, '');
 fs.mkdirSync(path.join(ROOT, 'docs'), { recursive: true });
-fs.writeFileSync(path.join(ROOT, 'docs', 'index.html'), page);
-console.log('built docs/index.html', (page.length / 1024).toFixed(0) + ' KB,', modules.length, 'modules,', inlined.length ? 'inlined: ' + inlined.join(' + ') : 'using CDN (run npm install to inline)');
+// a test build into a temp folder (SCORZ_CG_OUT) leaves the public page alone, so its test server address never ends up on the website
+if (!process.env.SCORZ_CG_OUT) fs.writeFileSync(path.join(ROOT, 'docs', 'index.html'), page);
+if (!process.env.SCORZ_CG_OUT) console.log('built docs/index.html', (page.length / 1024).toFixed(0) + ' KB,', modules.length, 'modules,', inlined.length ? 'inlined: ' + inlined.join(' + ') : 'using CDN (run npm install to inline)');
 
 // ---- 6. the CrazyGames page: their SDK in <head>, nothing else changes ------
 if (process.argv.includes('--crazygames')) {
