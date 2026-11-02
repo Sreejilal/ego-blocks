@@ -5,6 +5,7 @@
 // 4. Auto graphics steps down when frames get dropped (stutter), pixels first with no shader rebuild; smooth 60 or 144 fps is left alone.
 // 5. PASS let go while knocked over (or during a restart) is not stuck down: no endless LOB bar, the next pass is normal.
 // 6. The game on GitHub Pages plays online on the server built into the page (Render); a page the server sends uses that server.
+// 7. The sky: a bright day by default, SUNSET in the pause menu brings back the evening look; it is saved and bad saves are fixed.
 const { open } = require('./harness');
 const results = [];
 const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name + (info !== undefined ? '  ' + JSON.stringify(info) : ''));
@@ -121,6 +122,36 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   const ghMsg = await G2.evaluate(() => { document.getElementById('go-online').click(); document.getElementById('on-create').click(); return { url: EGO.Net.serverUrl(), status: document.getElementById('on-status').textContent }; });
   check('on GitHub Pages PLAY WITH FRIENDS goes to the Render server', ghMsg.url === 'wss://ego-blocks.onrender.com/ws' && !/NOT SWITCHED ON/.test(ghMsg.status), ghMsg);
   await gh.close();
+
+  const sky = await page.evaluate(() => {
+    const W = EGO.World, G = EGO.Game, d = EGO.Save.data;
+    const look = () => ({ look: W.look, stars: W.stars.visible, fog: '#' + W.scene.fog.color.clone().convertLinearToSRGB().getHexString(), sunY: +W.sky.material.uniforms.sunDir.value.y.toFixed(2) });
+    const first = Object.assign(look(), { setting: d.settings.sky });
+    G.startMatch('quick'); G.pause();
+    document.querySelector('#set-sky [data-v="sunset"]').click();
+    const sunset = Object.assign(look(), { setting: d.settings.sky, pressed: document.querySelector('#set-sky [data-v="sunset"]').getAttribute('aria-pressed') });
+    document.querySelector('#set-sky [data-v="day"]').click();
+    const back = look();
+    G.resume(); G.forfeit();
+    localStorage.setItem(EGO.Save.key, JSON.stringify(Object.assign({}, d, { settings: Object.assign({}, d.settings, { sky: 'purple' }) })));
+    EGO.Save.load(); const fixed = EGO.Save.data.settings.sky;
+    return { first, sunset, back, fixed };
+  });
+  check('the sky is a bright day; SUNSET in the pause menu switches to the evening and back; a bad save becomes day',
+    sky.first.look === 'day' && sky.first.setting === 'day' && !sky.first.stars && sky.first.sunY > 0.5 && sky.sunset.look === 'sunset' && sky.sunset.stars && sky.sunset.sunY < 0.3 && sky.sunset.setting === 'sunset' && sky.sunset.pressed === 'true' && sky.back.look === 'day' && sky.fixed === 'day', sky);
+  for (const [w, h] of [[844, 390], [390, 844]]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+    const P = await ctx.newPage(); P.setDefaultTimeout(120000);
+    await P.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
+    await P.goto('file://' + require('path').join(__dirname, '..', 'docs', 'index.html')); await P.waitForFunction(() => window.EGO && EGO.Game.state === 'lobby', null, { timeout: 120000 });
+    const lay = await P.evaluate(() => {
+      EGO.Save.data.settings.autoFs = false; EGO.Game.startMatch('quick'); EGO.Game.pause();
+      const row = document.getElementById('set-sky'); row.scrollIntoView(); const r = row.getBoundingClientRect();
+      return { l: Math.round(r.left), r: Math.round(r.right), w: innerWidth, side: document.documentElement.scrollWidth > innerWidth, shown: r.width > 0 && r.height > 0 };
+    });
+    check('phone ' + w + 'x' + h + ': the Sky setting fits in the pause menu', lay.shown && lay.l >= 0 && lay.r <= lay.w && !lay.side, lay);
+    await ctx.close();
+  }
 
   check('no page errors', !logs.some((l) => l.startsWith('PAGEERROR')), logs.slice(0, 6));
   await browser.close();

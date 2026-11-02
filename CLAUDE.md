@@ -25,7 +25,7 @@ file in file-name order into ONE function scope. There are no imports or exports
 | --- | --- |
 | `01_core.js` | math helpers, pitch size `F`, physics constants, `Save` (localStorage), `Sfx` (synth sounds) |
 | `02_textures.js` | everything drawn on canvas: pixel font, block textures, pitch lines, player skins, icons (`ICON_MAPS`), rank badges, portraits |
-| `03_world.js` | Three.js renderer, scene, camera, stadium, crowd, lights, sky, `QUALITY` presets |
+| `03_world.js` | Three.js renderer, scene, camera, stadium, crowd, lights, sky, `QUALITY` presets, `LOOKS` (the bright `day` look by default, or `sunset`: `World.setLook`, saved as `settings.sky`, Sky in the pause menu) |
 | `04_fx.js` | particles, beams, screen shake (`Shake`), hit stop and slow motion (`TimeCtl`) |
 | `05_player.js` | `Player`: voxel model, animations, movement physics, states (free, dash, slide, down...) |
 | `06_ball.js` | `Ball` physics, `solveLaunch` for aimed shots |

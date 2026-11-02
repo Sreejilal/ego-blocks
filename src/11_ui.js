@@ -380,6 +380,7 @@ const UI = {
         <h2>PAUSED</h2>
         <div class="set">
           <span>Graphics</span><div class="seg" id="set-q"><button type="button" data-q="auto">AUTO</button><button type="button" data-q="low">LOW</button><button type="button" data-q="med">MED</button><button type="button" data-q="high">HIGH</button></div>
+          <span>Sky</span><div class="seg" id="set-sky"><button type="button" data-v="day">DAY</button><button type="button" data-v="sunset">SUNSET</button></div>
           <label for="set-sens">Look sensitivity</label><input type="range" id="set-sens" min="0.3" max="2.5" step="0.05">
           <span>Shift lock</span><div class="seg" id="set-sl"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Camera</span><div class="seg" id="set-cam"><button type="button" data-v="third">3RD PERSON</button><button type="button" data-v="first">1ST PERSON</button></div>
@@ -473,6 +474,7 @@ const UI = {
     $('set-sens').addEventListener('input', (e) => { Save.data.settings.sens = parseFloat(e.target.value) || 1; Save.save(); });
     $('set-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.invertY = v === '1'; Save.save(); this.renderPause(); });
     $('set-chat').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Net.setChatShow(v); this.renderPause(); });
+    $('set-sky').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v) return; Save.data.settings.sky = v; World.setLook(v); Save.save(); this.renderPause(); });
     $('set-cut').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.cutins = v === '1'; Save.save(); this.renderPause(); });
     $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Portal.applyMute(); Save.save(); this.renderPause(); });
     $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
@@ -759,6 +761,7 @@ const UI = {
     $('set-inv').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !!s.invertY));
     $('set-snd').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !s.mute));
     $('set-cut').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.cutins !== false)));
+    $('set-sky').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.sky));
     $('set-chat').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.chat));
     $('set-cam').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.cam));
     $('set-sl').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !!s.shiftLock));

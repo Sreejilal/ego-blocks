@@ -901,7 +901,7 @@ const Save = {
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
       spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false,
-      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true, shiftLock: false },
+      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true, shiftLock: false, sky: 'day' },
       howto: false,
     };
   },
@@ -953,6 +953,7 @@ const Save = {
     st.btn = [0.85, 1, 1.15].includes(Number(st.btn)) ? Number(st.btn) : 1;
     st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false; st.server = typeof st.server === 'string' ? st.server.slice(0, 200) : '';
     st.chat = ['all', 'quick', 'off'].includes(st.chat) ? st.chat : 'all';
+    st.sky = st.sky === 'sunset' ? 'sunset' : 'day';
     st.camPicked = !!st.camPicked; st.cam = !st.camPicked ? 'first' : st.cam === 'third' ? 'third' : 'first'; st.autoFs = st.autoFs !== false; st.shiftLock = !!st.shiftLock; // first person until you pick
     out.account = out.account && typeof out.account === 'object' && typeof out.account.token === 'string' && typeof out.account.user === 'string' ? { user: out.account.user.slice(0, 12), token: out.account.token.slice(0, 128) } : null;
     out.name = String(out.name || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12);
@@ -1841,6 +1842,20 @@ const QUALITY = {
   high: { pr: 1.5, shadows: true, map: 2048 },
 };
 
+// the sky and the light: a bright day (the default) or the evening sunset. World.setLook switches them (settings.sky)
+const LOOKS = {
+  day: {
+    sky: ['#2f7fe0', '#5aa6f0', '#9fd0fa', '#e4f4ff', '#a9c7dc', '#fff1c8'], sun: '#fffbe6', halo: ['#fff0b8', 0.4], stars: false,
+    fog: ['#cfe5f6', 170, 640], hemi: ['#d6e8ff', '#5f7f3e', 0.7], amb: ['#a7b8d8', 0.24], light: ['#fff1dc', 1.6, [-40, 100, -30]], fill: ['#e2ecff', 0.45],
+    exposure: 0.98, cloud: ['#b9d4ee', 0.45], fans: [1, 1, 1], tower: 0.55, lamps: 0.4, sunMatch: [-0.42, 0.62, 0.66], sunLobby: [0.3, 0.55, 0.78],
+  },
+  sunset: {
+    sky: ['#141844', '#46307a', '#c4527a', '#ff9a5c', '#3a2a3e', '#ffd08a'], sun: '#ffe39a', halo: ['#ff9a50', 0.55], stars: true,
+    fog: ['#b27a86', 95, 470], hemi: ['#8d96e6', '#5a4630', 0.62], amb: ['#2c3466', 0.35], light: ['#ffb27a', 1.35, [-58, 72, -34]], fill: ['#dfe7ff', 0.62],
+    exposure: 1.18, cloud: ['#c86c7a', 0.55], fans: [0.82, 0.74, 0.8], tower: 1.25, lamps: 1, sunMatch: [-0.42, 0.24, 0.87], sunLobby: [0.3, 0.2, 0.93],
+  },
+};
+
 const World = {
   renderer: null, scene: null, camera: null, T: null, quality: 'med', scale: 1, time: 0,
   excite: [0, 0], netBulge: [0, 0], fanMat: null,
@@ -1868,6 +1883,7 @@ const World = {
     this.buildTower();
     this.buildTrees();
     this.buildClouds();
+    this.setLook(Save.data.settings.sky);
     this.setQuality(q === 'auto' ? 'med' : q);
     this.resize();
   },
@@ -1900,7 +1916,7 @@ const World = {
     const s = this.scene;
     this.hemi = new THREE.HemisphereLight(lin('#8d96e6'), lin('#5a4630'), 0.62);
     s.add(this.hemi);
-    const amb = new THREE.AmbientLight(lin('#2c3466'), 0.35); s.add(amb);
+    const amb = new THREE.AmbientLight(lin('#2c3466'), 0.35); s.add(amb); this.amb = amb;
     const sun = new THREE.DirectionalLight(lin('#ffb27a'), 1.35);
     sun.position.set(-58, 72, -34);
     sun.target.position.set(0, 0, 0);
@@ -2208,7 +2224,7 @@ const World = {
   buildTower() {
     const T = this.T;
     const g = new THREE.Group(); g.position.copy(TOWER_POS);
-    const glass = new THREE.MeshLambertMaterial({ map: T.towerGlass, emissiveMap: T.towerGlow, emissive: lin('#ffffff'), emissiveIntensity: 1.25, vertexColors: true });
+    const glass = this.towerGlass = new THREE.MeshLambertMaterial({ map: T.towerGlass, emissiveMap: T.towerGlow, emissive: lin('#ffffff'), emissiveIntensity: 1.25, vertexColors: true });
     const base = new THREE.MeshLambertMaterial({ map: T.towerStone, vertexColors: true });
     const vb = new VoxBuilder(), vs = new VoxBuilder();
     vs.box(-17, 0, -17, 17, 10, 17, '#ffffff', { uv: 1 });
@@ -2274,7 +2290,7 @@ const World = {
       const nb = 5 + Math.floor(R() * 8);
       for (let b = 0; b < nb; b++) boxes.push([cx + (R() - 0.5) * 34, y + (R() < 0.3 ? 4 : 0), cz + (R() - 0.5) * 22, 10 + R() * 12, 4 + R() * 3, 8 + R() * 10]);
     }
-    const mat = new THREE.MeshLambertMaterial({ color: lin('#ffffff'), emissive: lin('#c86c7a'), emissiveIntensity: 0.55 });
+    const mat = this.cloudMat = new THREE.MeshLambertMaterial({ color: lin('#ffffff'), emissive: lin('#c86c7a'), emissiveIntensity: 0.55 });
     const im = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, boxes.length);
     const m = new THREE.Matrix4();
     boxes.forEach((b, i) => { m.makeScale(b[3], b[4], b[5]); m.setPosition(b[0], b[1], b[2]); im.setMatrixAt(i, m); });
@@ -2309,7 +2325,7 @@ const World = {
       }
       this.orbit.instanceMatrix.needsUpdate = true;
     }
-    if (this.lampSprites.length) this.lampSprites[0].material.opacity = 0.36 + Math.sin(this.time * 1.7) * 0.03;
+    if (this.lampSprites.length) this.lampSprites[0].material.opacity = (0.36 + Math.sin(this.time * 1.7) * 0.03) * (this.lampGlow == null ? 1 : this.lampGlow); // floodlights glow less by day
   },
   /** dress the stands for a match: seats in each club's crest colour, fans in their club's home shirts */
   paintCrowd(a, b) {
@@ -2332,7 +2348,27 @@ const World = {
     if (!this.upper.visible) this.fans.count = Math.min(n, this.lowerFans);
     Sfx.setLoud(TIER_LOUD[tier]);
   },
-  setSun(dir) { SUN_DIR.copy(dir); if (this.sky) this.sky.material.uniforms.sunDir.value.copy(dir); },
+  setSun(dir) { this.sunRef = dir; SUN_DIR.copy(dir); if (this.sky) this.sky.material.uniforms.sunDir.value.copy(dir); },
+  /** day or sunset: sky, sun, fog, lights, clouds, crowd, tower and floodlights */
+  setLook(id) {
+    const L = LOOKS[id] || LOOKS.day; this.look = LOOKS[id] ? id : 'day';
+    const u = this.sky.material.uniforms;
+    ['cTop', 'cMid', 'cLow', 'cHor', 'cBot', 'sunCol'].forEach((k, i) => u[k].value.copy(lin(L.sky[i])));
+    this.sunMesh.material.color.copy(lin(L.sun)); this.sunHalo.material.color.copy(lin(L.halo[0])); this.sunHalo.material.opacity = L.halo[1];
+    this.stars.visible = L.stars;
+    const f = this.scene.fog; f.color.copy(lin(L.fog[0])); f.near = L.fog[1]; f.far = L.fog[2];
+    this.hemi.color.copy(lin(L.hemi[0])); this.hemi.groundColor.copy(lin(L.hemi[1])); this.hemi.intensity = L.hemi[2];
+    this.amb.color.copy(lin(L.amb[0])); this.amb.intensity = L.amb[1];
+    this.sun.color.copy(lin(L.light[0])); this.sun.intensity = L.light[1]; this.sun.position.set(L.light[2][0], L.light[2][1], L.light[2][2]);
+    this.fill.color.copy(lin(L.fill[0])); this.fill.intensity = L.fill[1];
+    this.renderer.toneMappingExposure = L.exposure;
+    this.cloudMat.emissive.copy(lin(L.cloud[0])); this.cloudMat.emissiveIntensity = L.cloud[1];
+    this.fanMat.uniforms.uLight.value.set(L.fans[0], L.fans[1], L.fans[2]);
+    this.towerGlass.emissiveIntensity = L.tower;
+    this.lampGlow = L.lamps;
+    SUN_MATCH.set(L.sunMatch[0], L.sunMatch[1], L.sunMatch[2]).normalize(); SUN_LOBBY.set(L.sunLobby[0], L.sunLobby[1], L.sunLobby[2]).normalize();
+    this.setSun(this.sunRef || SUN_MATCH);
+  },
   render() { this.renderer.render(this.scene, this.camera); },
 };
 
@@ -8820,6 +8856,7 @@ const UI = {
         <h2>PAUSED</h2>
         <div class="set">
           <span>Graphics</span><div class="seg" id="set-q"><button type="button" data-q="auto">AUTO</button><button type="button" data-q="low">LOW</button><button type="button" data-q="med">MED</button><button type="button" data-q="high">HIGH</button></div>
+          <span>Sky</span><div class="seg" id="set-sky"><button type="button" data-v="day">DAY</button><button type="button" data-v="sunset">SUNSET</button></div>
           <label for="set-sens">Look sensitivity</label><input type="range" id="set-sens" min="0.3" max="2.5" step="0.05">
           <span>Shift lock</span><div class="seg" id="set-sl"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Camera</span><div class="seg" id="set-cam"><button type="button" data-v="third">3RD PERSON</button><button type="button" data-v="first">1ST PERSON</button></div>
@@ -8913,6 +8950,7 @@ const UI = {
     $('set-sens').addEventListener('input', (e) => { Save.data.settings.sens = parseFloat(e.target.value) || 1; Save.save(); });
     $('set-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.invertY = v === '1'; Save.save(); this.renderPause(); });
     $('set-chat').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Net.setChatShow(v); this.renderPause(); });
+    $('set-sky').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v) return; Save.data.settings.sky = v; World.setLook(v); Save.save(); this.renderPause(); });
     $('set-cut').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.cutins = v === '1'; Save.save(); this.renderPause(); });
     $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Portal.applyMute(); Save.save(); this.renderPause(); });
     $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
@@ -9199,6 +9237,7 @@ const UI = {
     $('set-inv').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !!s.invertY));
     $('set-snd').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !s.mute));
     $('set-cut').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.cutins !== false)));
+    $('set-sky').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.sky));
     $('set-chat').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.chat));
     $('set-cam').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.cam));
     $('set-sl').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !!s.shiftLock));
