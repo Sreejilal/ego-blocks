@@ -4,7 +4,7 @@
 // 3. A ball kicked into the crowd lands on the steps or bounces off them; it never flies through the stands.
 // 4. Auto graphics steps down when frames get dropped (stutter), pixels first with no shader rebuild; smooth 60 or 144 fps is left alone.
 // 5. PASS let go while knocked over (or during a restart) is not stuck down: no endless LOB bar, the next pass is normal.
-// 6. The game on GitHub Pages with no online server says so, instead of "try again in a little while".
+// 6. The game on GitHub Pages plays online on the server built into the page (Render); a page the server sends uses that server.
 const { open } = require('./harness');
 const results = [];
 const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name + (info !== undefined ? '  ' + JSON.stringify(info) : ''));
@@ -114,10 +114,11 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   const file = require('path').join(__dirname, '..', 'docs', 'index.html');
   await G2.route('https://sreejilal.github.io/**', (r) => r.fulfill({ path: file, contentType: 'text/html' })); // the page as GitHub Pages serves it
   await G2.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
+  await G2.route('https://ego-blocks.onrender.com/**', (r) => r.abort()); // the test stays off the internet
   await G2.goto('https://sreejilal.github.io/ego-blocks/', { timeout: 120000 });
   await G2.waitForFunction(() => window.EGO && EGO.Game.state === 'lobby', null, { timeout: 120000 });
-  const ghMsg = await G2.evaluate(() => { document.getElementById('go-online').click(); document.getElementById('on-create').click(); return { status: document.getElementById('on-status').textContent, ws: !!EGO.Net.ws }; });
-  check('on GitHub Pages with no server: it says online is not switched on yet, and does not try to connect', /NOT SWITCHED ON FOR THIS WEBSITE YET/.test(ghMsg.status) && !ghMsg.ws, ghMsg);
+  const ghMsg = await G2.evaluate(() => { document.getElementById('go-online').click(); document.getElementById('on-create').click(); return { url: EGO.Net.serverUrl(), status: document.getElementById('on-status').textContent }; });
+  check('on GitHub Pages PLAY WITH FRIENDS goes to the Render server', ghMsg.url === 'wss://ego-blocks.onrender.com/ws' && !/NOT SWITCHED ON/.test(ghMsg.status), ghMsg);
   await gh.close();
 
   check('no page errors', !logs.some((l) => l.startsWith('PAGEERROR')), logs.slice(0, 6));

@@ -120,15 +120,23 @@ const Net = {
   },
   /** where the server is: your saved address, the invite link's, or the server that sent you this page */
   serverUrl() {
-    const s = (!BUILD.portal && Save.data.settings && Save.data.settings.server) || this.urlOverride || BUILD.server;
+    const s = (!BUILD.portal && Save.data.settings && Save.data.settings.server) || this.urlOverride;
     if (s) return s;
+    const here = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+    if (this.servedByServer()) return here; // the server sent this page: play on that server
+    if (BUILD.server) return BUILD.server; // GitHub Pages, CrazyGames, a file: the server built in
     if (location.protocol === 'file:' || !location.host) return 'ws://localhost:8787/ws';
-    return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+    return here;
+  },
+  /** this page came from a SCORZ server itself: on this computer, the home network or Render */
+  servedByServer() {
+    const h = location.hostname;
+    return /^https?:$/.test(location.protocol) && (h === 'localhost' || h === '127.0.0.1' || /^(10|192\.168|172\.(1[6-9]|2\d|3[01]))\./.test(h) || /\.onrender\.com$/.test(h));
   },
   /** the game on GitHub Pages with no server built in (SCORZ_SERVER): there is nothing there to connect to */
   noServerHere() { return !BUILD.server && !this.urlOverride && !(Save.data.settings && Save.data.settings.server) && /\.github\.io$/.test(location.hostname); },
   /** what to say when the server cannot be reached: opened as a file, nothing is running yet */
-  noServerText() { return location.protocol === 'file:' ? 'NO SERVER IS RUNNING. IN THE VS CODE TERMINAL TYPE NPM RUN SERVER, THEN OPEN LOCALHOST:8787' : 'CANNOT REACH THE SCORZ SERVER RIGHT NOW. TRY AGAIN IN A LITTLE WHILE.'; },
+  noServerText() { return location.protocol === 'file:' && /localhost/.test(this.url || '') ? 'NO SERVER IS RUNNING. IN THE VS CODE TERMINAL TYPE NPM RUN SERVER, THEN OPEN LOCALHOST:8787' : 'CANNOT REACH THE SCORZ SERVER RIGHT NOW. TRY AGAIN IN A LITTLE WHILE.'; },
   cleanName(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12); },
   setStatus(t) { this.status = t; const el = $('on-status'); if (el) el.textContent = t; },
   open() { Touch.autoFs(); UI.show('online'); this.renderRoom(); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },

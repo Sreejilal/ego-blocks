@@ -6,8 +6,9 @@
  *   node build.js --artifact   -> also dist/ego-blocks.html (body-only version for a claude.ai artifact)
  *   node build.js --crazygames -> also dist/crazygames/index.html (with the CrazyGames SDK, for their portal)
  *
- * SCORZ_SERVER=wss://your-server/ws bakes an online server address into the builds
- * (needed on CrazyGames and on GitHub Pages, which cannot run the server themselves).
+ * The online server address baked into the builds (needed on CrazyGames and on GitHub Pages, which cannot run the
+ * server themselves) is the one on Render, ego-blocks.onrender.com. SCORZ_SERVER=wss://other-server/ws changes it,
+ * SCORZ_SERVER= (empty) leaves it out. A page the server sends itself (localhost, Render) always uses that server.
  *
  * docs/index.html is fully self-contained when `npm install` has been run:
  * Three.js and the three pixel fonts are inlined, so it works offline, on
@@ -36,7 +37,8 @@ const js = modules.map((f) => `/* ---- ${f} ---- */\n` + fs.readFileSync(path.jo
 
 // every module shares one scope inside this wrapper, in file-name order
 const guard = "if (typeof THREE === 'undefined') { var bt = document.getElementById('boot'); if (bt) bt.textContent = 'COULD NOT LOAD THE 3D ENGINE. CHECK YOUR CONNECTION AND RELOAD.'; return; }";
-const SERVER = String(process.env.SCORZ_SERVER || '').trim();
+const DEFAULT_SERVER = 'wss://ego-blocks.onrender.com/ws'; // the free Render server (render.yaml)
+const SERVER = String(process.env.SCORZ_SERVER != null ? process.env.SCORZ_SERVER : DEFAULT_SERVER).trim();
 if (SERVER && !/^wss?:\/\/[^\s'"<>]+$/.test(SERVER)) { console.error('SCORZ_SERVER must look like wss://your-server/ws'); process.exit(1); }
 const gameFor = (cfg) => "(function () {\n'use strict';\n" + guard + '\nconst BUILD = ' + JSON.stringify(cfg) + ';\n' + js + '\n})();\n';
 const game = gameFor({ portal: null, server: SERVER });
