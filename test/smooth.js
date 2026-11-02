@@ -1,5 +1,6 @@
 // Smooth and bug-free: the small things that made the game feel broken.
 // 1. An ability slot shows READY the moment its cooldown ends (it used to stay on "1" with a sliver left).
+// 2. Spin prices: styles 200, Flows 150, skins 100.
 const { open } = require('./harness');
 const results = [];
 const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name + (info !== undefined ? '  ' + JSON.stringify(info) : ''));
@@ -22,6 +23,18 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     return { mid, sliver, done };
   });
   check('an ability slot counts down, then shows READY as soon as you can use it', !slot.mid.ready && slot.mid.num !== '' && slot.done.cd === 0 && slot.done.ready && slot.done.num === '', slot);
+
+  const spins = await page.evaluate(() => {
+    const d = EGO.Save.data, U = EGO.UI, out = {};
+    U.openSpins();
+    for (const k of ['style', 'flow', 'skin']) { U.spinKind = k; d.emeralds = 1000; U.renderSpins(true); out[k] = { btn: document.getElementById('spin-go').textContent }; }
+    U.spinKind = 'flow'; d.emeralds = 140; U.renderSpins(true); out.flowShort = document.getElementById('spin-go').disabled;
+    U.spinKind = 'skin'; U.renderSpins(true); out.skinOk = !document.getElementById('spin-go').disabled;
+    U.spin(); out.paid = 140 - d.emeralds; // 100, or 50 when it was a duplicate (50 back)
+    out.lobby = document.getElementById('go-spins').textContent;
+    return out;
+  });
+  check('spins cost 200 for a style, 150 for a Flow and 100 for a skin', /200 EMERALDS/.test(spins.style.btn) && /150 EMERALDS/.test(spins.flow.btn) && /100 EMERALDS/.test(spins.skin.btn) && spins.flowShort && spins.skinOk && (spins.paid === 100 || spins.paid === 50) && /FROM 100/.test(spins.lobby), spins);
 
   check('no page errors', !logs.some((l) => l.startsWith('PAGEERROR')), logs.slice(0, 6));
   await browser.close();

@@ -699,6 +699,7 @@ function redeemCode(d, text) {
   if (c.emeralds) d.emeralds += c.emeralds;
   return { ok: true, msg: c.name + ' UNLOCKED' + (c.give === 'all' ? ': EVERY STYLE, FLOW AND SKIN, +99999 EMERALDS, +999 BLUEPRINTS' : '') };
 }
+const SPIN_COST = { style: 200, flow: 150, skin: 100 }; // emeralds per spin
 const BP_COST = { Rare: 2, Epic: 4, Legendary: 7, Mythic: 12, Generational: 20 };
 const GOALS = [
   { id: 'goals', name: 'SCORE GOALS', stat: 'goals', steps: [5, 15, 40, 100, 250], bp: [2, 3, 5, 8, 12] },

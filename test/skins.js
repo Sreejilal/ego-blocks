@@ -59,13 +59,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   });
   check('match player wears the skins and stats are unchanged', m.shape === 'mohawk' && m.acc === 'band' && m.celeb === 'flip' && m.speed === 1 && m.shot === 1, m);
 
-  // a skin spin pays 200 and adds a skin
+  // a skin spin pays 100 and adds a skin
   // the match above locked the mouse, which confuses Playwright's clicks for a while, so drive the spin screen directly
   await page.evaluate(() => { EGO.UI.openSpins(); EGO.UI.spinKind = 'skin'; EGO.UI.renderSpins(true); });
   const before = await page.evaluate(() => ({ em: EGO.Save.data.emeralds, n: EGO.Save.data.skins.length, pity: EGO.Save.data.pity.skin }));
   await page.evaluate(() => EGO.UI.spin()); await sleep(6500);
   const after = await page.evaluate(() => ({ em: EGO.Save.data.emeralds, n: EGO.Save.data.skins.length, pity: EGO.Save.data.pity.skin, result: document.getElementById('spin-result').textContent }));
-  check('skin spin costs 200 and gives a skin (or a refund)', (after.n === before.n + 1 && after.em === before.em - 200) || (after.n === before.n && after.em === before.em - 150), { before, after });
+  check('skin spin costs 100 and gives a skin (or a refund)', (after.n === before.n + 1 && after.em === before.em - 100) || (after.n === before.n && after.em === before.em - 50), { before, after });
   await page.screenshot({ path: __dirname + '/shots/sk3_skin_spin.png' });
 
   // broken or hacked saves fall back to the free skins
