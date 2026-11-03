@@ -92,9 +92,10 @@ const clean = (s, n) => String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '')
 const send = (ws, msg) => { if (ws.readyState === 1) ws.send(JSON.stringify(msg)); };
 const r2 = (v) => Math.round(v * 100) / 100;
 function newCode() { let c; do { c = ''; for (let i = 0; i < 4; i++) c += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]; } while (rooms.has(c)); return c; }
-function maxPerTeam(room) { return room.size - 1; } // keepers are always bots
+function maxPerTeam(room) { return room.size - 1; } // the keeper's spot is never a player's (a computer keeper, or none with bots off)
+const BOTS_OK = ['fill', 'keepers', 'none']; // fill: bots in the empty spots; keepers: only computer keepers; none: only the friends
 function summary(room) {
-  return { t: 'room', code: room.code, host: room.host, mode: room.mode, size: room.size, state: room.match ? 'match' : 'room',
+  return { t: 'room', code: room.code, host: room.host, mode: room.mode, size: room.size, bots: room.bots, state: room.match ? 'match' : 'room',
     players: room.players.map((p) => ({ id: p.id, name: p.name, team: p.team, rp: p.rp || 0 })) };
 }
 function broadcast(room, msg) { const s = JSON.stringify(msg); for (const p of room.players) if (p.ws.readyState === 1) p.ws.send(s); }
@@ -174,7 +175,7 @@ function startMatch(room) {
   const humans = room.players.map((p) => ({ id: p.id, team: p.team, name: p.name, style: p.style, flow: p.flow, look: p.look, tone: p.tone }));
   // the host's club at home against another club
   const home = G.CLUBS[room.hostClub] ? room.hostClub : 'ROVERS', away = G.CLUB_IDS.filter((c) => c !== home)[Math.floor(Math.random() * (G.CLUB_IDS.length - 1))];
-  const m = new G.Match(room.mode, 0.5, { humans, size: room.size, home, away, length: Number(process.env.MATCH_SECONDS) || undefined, goldenLength: Number(process.env.GOLDEN_SECONDS) || undefined });
+  const m = new G.Match(room.mode, 0.5, { humans, size: room.size, bots: room.bots, home, away, length: Number(process.env.MATCH_SECONDS) || undefined, goldenLength: Number(process.env.GOLDEN_SECONDS) || undefined });
   room.match = m; room.events = []; room.steps = 0; room.acc = 0; room.last = Date.now();
   for (const h of m.humans) h.ctl = toCtl({}, null);
   const rpOf = (id) => { const rp = room.players.find((x) => x.id === id); return rp ? rp.rp || 0 : 0; };
@@ -265,7 +266,7 @@ wss.on('connection', (ws) => {
       }
       case 'create': {
         leave(me);
-        const r = { code: newCode(), host: me.id, hostClub: me.club, mode: 'quick', size: 3, players: [], match: null, events: [], log: [], reports: new Set(), silenced: new Set() };
+        const r = { code: newCode(), host: me.id, hostClub: me.club, mode: 'quick', size: 3, bots: 'fill', players: [], match: null, events: [], log: [], reports: new Set(), silenced: new Set() };
         rooms.set(r.code, r); join(me, r);
         break;
       }
@@ -282,6 +283,7 @@ wss.on('connection', (ws) => {
       case 'settings':
         if (room && room.host === me.id && !room.match) {
           if (MODES_OK.includes(m.mode)) room.mode = m.mode;
+          if (BOTS_OK.includes(m.bots)) room.bots = m.bots;
           room.size = room.mode === 'duel' ? 2 : Math.max(3, Math.min(5, Math.round(+m.size) || room.size));
           if (room.mode !== 'duel' && room.size < 3) room.size = 3;
           // players who no longer fit sit out the next match
@@ -292,6 +294,7 @@ wss.on('connection', (ws) => {
       case 'start':
         if (room && room.host === me.id && !room.match) {
           for (const t of [0, 1]) if (room.players.filter((p) => p.team === t).length > maxPerTeam(room)) { send(ws, { t: 'error', text: 'TOO MANY PLAYERS ON ONE TEAM' }); return; }
+          if (room.bots !== 'fill' && [0, 1].some((t) => !room.players.some((p) => p.team === t))) { send(ws, { t: 'error', text: 'WITH NO BOTS, EACH TEAM NEEDS A PLAYER' }); return; }
           startMatch(room);
         }
         break;

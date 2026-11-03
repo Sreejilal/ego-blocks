@@ -66,6 +66,8 @@ class Match {
       const roles = this.rolesFor(team), lead = leadRole(roles);
       for (const role of roles) {
         const net = opts.humans ? seat[team + role] : null;
+        // online with bots off: only the friends play ('keepers': computer keepers stay, 'none': no keepers either)
+        if (opts.humans && !net && opts.bots && opts.bots !== 'fill' && !(role === 'GK' && opts.bots === 'keepers')) continue;
         const human = opts.humans ? !!net : team === 0 && role === lead && !opts.noHuman; // you play the most attacking spot
         let num = role === 'GK' ? 1 : human && !net ? 10 : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
@@ -104,6 +106,8 @@ class Match {
   ownGoalZ(team) { return -this.dir(team) * F.L; }
   prog(team, pos) { return pos.z * this.dir(team); }
   skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.gkSize()) * 0.11 + Math.max(0, s - 0.6) * 0.8, 0.45, 1.5) : s; }
+  /** a team's keeper (null when an online match is played with no keepers) */
+  keeperOf(team) { return this.teams[team].find((p) => p.isGK) || null; }
   gkSize() { return this.fk ? 5 : this.size; } // free kicks: no small-team keeper boost (one shot at a time) // keepers get a boost in small teams (they face more shots) and against very good bots (who shoot from far)
   opponents(p) { return this.teams[1 - p.team]; }
   inOwnBox(p, pos = p.pos) {
@@ -141,7 +145,7 @@ class Match {
   startPlay() {
     this.phase = 'play'; this.phaseT = 0;
     for (const p of this.players) p.setState('free');
-    const st = this.teams[this.kickTeam].find((p) => p.role === leadRole(this.rolesFor(this.kickTeam)));
+    const T = this.teams[this.kickTeam], st = T.find((p) => p.role === leadRole(this.rolesFor(this.kickTeam))) || T.find((p) => !p.isGK) || T[0];
     this.possess(st, true);
     st.protect = 0.5;
     Sfx.whistle(1);
@@ -639,8 +643,8 @@ class Match {
       if (o.isGK) continue;
       if (dist2D(o.pos, p.pos) < radius && this.stun(o, dur)) { n++; FX.sparks(o.pos.x, 2.1, o.pos.z, '#ffffff', 6, 2, 0.12, 0.5); }
     }
-    const gk = this.teams[1 - p.team][0];
-    if (gk.state === 'free' && dist2D(gk.pos, p.pos) < 24 && chance(0.75 - 0.35 * this.skill(gk))) AI.keeperBite(this, gk);
+    const gk = this.keeperOf(1 - p.team);
+    if (gk && gk.state === 'free' && dist2D(gk.pos, p.pos) < 24 && chance(0.75 - 0.35 * this.skill(gk))) AI.keeperBite(this, gk);
     Sfx.swoosh();
     if (p.isHuman && n) this.toast('FROZE ' + n, 'good', p);
   }
@@ -1273,7 +1277,7 @@ class Match {
   ballContacts() {
     const b = this.ball;
     if (b.owner) return;
-    for (const gk of [this.teams[0][0], this.teams[1][0]]) { this.keeperContact(gk); if (b.owner) return; }
+    for (const gk of [this.keeperOf(0), this.keeperOf(1)]) { if (!gk) continue; this.keeperContact(gk); if (b.owner) return; }
     let best = null, bd = 1e9;
     for (const p of this.players) {
       if (!this.canPick(p) || p === b.ignore) continue;
@@ -1443,8 +1447,8 @@ class Match {
     const b = this.ball;
     b.reset(rs.x, rs.z);
     this.phase = 'play'; this.phaseT = 0;
-    if (rs.type === 'GOAL KICK') {
-      const gk = this.teams[rs.team][0];
+    const gk = rs.type === 'GOAL KICK' && this.keeperOf(rs.team);
+    if (gk) {
       gk.pos.set(0, 0, rs.z - sgn(rs.z) * 0.3); gk.vel.set(0, 0, 0); gk.setState('free'); gk.dive = null;
       gk.yaw = sgn(rs.z) > 0 ? Math.PI : 0;
       this.possess(gk, true);
@@ -1452,15 +1456,16 @@ class Match {
     } else {
       let taker = null, bd = 1e9;
       for (const p of this.teams[rs.team]) { if (p.isGK) continue; const d = Math.hypot(p.pos.x - rs.x, p.pos.z - rs.z); if (d < bd) { bd = d; taker = p; } }
-      const inX = -sgn(rs.x) * (Math.abs(rs.x) > F.W - 2 ? 1 : 0), inZ = rs.type === 'CORNER' ? -sgn(rs.z) : 0;
+      const inX = -sgn(rs.x) * (Math.abs(rs.x) > F.W - 2 ? 1 : 0), inZ = rs.type === 'THROW-IN' ? 0 : -sgn(rs.z); // a goal kick with no keeper: someone else takes it
       const il = len2D(inX, inZ) || 1;
       taker.pos.set(rs.x - inX / il * 0.6, 0, rs.z - inZ / il * 0.6); taker.vel.set(0, 0, 0);
       taker.dash = taker.slide = null; taker.setState('free');
       taker.yaw = Math.atan2(-rs.x * 0.6, -rs.z * 0.25 + (rs.type === 'CORNER' ? -sgn(rs.z) * 4 : this.dir(taker.team) * 2));
       this.possess(taker, true);
       taker.protect = 1.0;
-      taker.setPiece = { type: rs.type === 'CORNER' ? 'corner' : 'throw', t: 0, wait: rand(0.7, 1.4) }; this.setPieceBy = taker;
+      taker.setPiece = { type: rs.type === 'CORNER' ? 'corner' : rs.type === 'GOAL KICK' ? 'goalkick' : 'throw', t: 0, wait: rand(0.7, 1.4) }; this.setPieceBy = taker;
       if (taker.isHuman) this.toast(rs.type === 'CORNER' ? (Touch.on ? 'CORNER: PASS TO CROSS IT, SHOOT TO AIM' : 'CORNER: RIGHT CLICK TO CROSS, LEFT CLICK TO AIM')
+        : rs.type === 'GOAL KICK' ? (Touch.on ? 'GOAL KICK: PASS TO A TEAMMATE, SHOOT TO AIM' : 'GOAL KICK: RIGHT CLICK TO A TEAMMATE, LEFT CLICK TO AIM')
         : (Touch.on ? 'THROW-IN: PASS TO A TEAMMATE, SHOOT TO AIM' : 'THROW-IN: RIGHT CLICK TO A TEAMMATE, LEFT CLICK TO AIM'), 'gold', taker);
       for (const o of this.teams[1 - rs.team]) {
         const dx = o.pos.x - rs.x, dz = o.pos.z - rs.z, d = Math.hypot(dx, dz);

@@ -320,16 +320,16 @@ const AI = {
   },
   shotTarget(p, m, sk, corner = false) {
     if (sk == null) sk = m.skill(p);
-    const gz = m.oppGoalZ(p.team), gk = m.teams[1 - p.team][0];
-    const side = gk.pos.x > 0.5 ? -1 : gk.pos.x < -0.5 ? 1 : (chance(0.5) ? 1 : -1);
+    const gz = m.oppGoalZ(p.team), gk = m.keeperOf(1 - p.team);
+    const side = gk && gk.pos.x > 0.5 ? -1 : gk && gk.pos.x < -0.5 ? 1 : (chance(0.5) ? 1 : -1);
     let x = side * (corner ? rand(3.3, F.GW - 0.45) : rand(2.0, F.GW - 0.55)), y = corner ? rand(0.4, 2.6) : rand(0.45, 2.3);
     const err = (1 - sk) * 2.1 + 0.4;
     x += rand(-err, err); y += rand(-err * 0.45, err * 0.45);
     return V3(x, clamp(y, 0.3, 3.8), gz);
   },
   bestShotPoint(m, p) {
-    const gz = m.oppGoalZ(p.team), gk = m.teams[1 - p.team][0];
-    const side = gk.pos.x > 0 ? -1 : 1;
+    const gz = m.oppGoalZ(p.team), gk = m.keeperOf(1 - p.team);
+    const side = gk ? (gk.pos.x > 0 ? -1 : 1) : (p.pos.x > 0 ? -1 : 1);
     return V3(side * (F.GW - 0.85), 0.9, gz);
   },
   bestPass(m, p, sk) {

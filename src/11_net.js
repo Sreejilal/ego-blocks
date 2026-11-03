@@ -62,7 +62,8 @@ const Net = {
           <div class="on-host" id="on-host">
             <span class="label">MODE</span><div class="seg" id="on-mode">${NET_MODES.map(([k, n]) => `<button type="button" data-m="${k}">${n}</button>`).join('')}</div>
             <span class="label">TEAM SIZE</span><div class="seg" id="on-size">${[3, 4, 5].map((n) => `<button type="button" data-s="${n}">${n}V${n}</button>`).join('')}</div>
-            <button class="btn blue" id="on-go" type="button">START MATCH <span class="sub">BOTS FILL EMPTY SPOTS</span></button>
+            <span class="label">BOTS</span><div class="seg" id="on-bots"><button type="button" data-b="fill">FILL</button><button type="button" data-b="keepers">KEEPERS ONLY</button><button type="button" data-b="none">NONE</button></div>
+            <button class="btn blue" id="on-go" type="button">START MATCH <span class="sub" id="on-go-sub">BOTS FILL EMPTY SPOTS</span></button>
           </div>
           <p class="on-status" id="on-wait"></p>
           <button class="btn ghost" id="on-leave" type="button">LEAVE ROOM</button>
@@ -113,8 +114,9 @@ const Net = {
       else if (r) { Sfx.click(); if (!r.dataset.armed) { r.dataset.armed = '1'; r.textContent = 'SURE?'; } else this.send({ t: 'report', id: r.dataset.report }); }
     };
     $('on-room').addEventListener('click', people); $('p-people').addEventListener('click', people);
-    $('on-mode').addEventListener('click', (e) => { const m = e.target.closest('[data-m]'); if (m && this.room) { Sfx.click(); this.send({ t: 'settings', mode: m.dataset.m, size: this.room.size }); } });
-    $('on-size').addEventListener('click', (e) => { const s = e.target.closest('[data-s]'); if (s && this.room) { Sfx.click(); this.send({ t: 'settings', mode: this.room.mode, size: +s.dataset.s }); } });
+    $('on-mode').addEventListener('click', (e) => { const m = e.target.closest('[data-m]'); if (m && this.room) { Sfx.click(); this.send({ t: 'settings', mode: m.dataset.m, size: this.room.size, bots: this.room.bots }); } });
+    $('on-size').addEventListener('click', (e) => { const s = e.target.closest('[data-s]'); if (s && this.room) { Sfx.click(); this.send({ t: 'settings', mode: this.room.mode, size: +s.dataset.s, bots: this.room.bots }); } });
+    $('on-bots').addEventListener('click', (e) => { const b = e.target.closest('[data-b]'); if (b && this.room) { Sfx.click(); this.send({ t: 'settings', mode: this.room.mode, size: this.room.size, bots: b.dataset.b }); } });
     // an invite link opens straight into the room
     try { const q = new URLSearchParams(location.search); this.joinCode = q.get('room'); if (q.get('server')) this.urlOverride = q.get('server'); } catch (e) {}
   },
@@ -204,6 +206,9 @@ const Net = {
     $('on-host').hidden = !host;
     $('on-mode').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === R.mode));
     $('on-size').querySelectorAll('button').forEach((b) => { b.setAttribute('aria-pressed', +b.dataset.s === R.size); b.disabled = R.mode === 'duel'; });
+    const bots = R.bots || 'fill';
+    $('on-bots').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.b === bots));
+    $('on-go-sub').textContent = bots === 'fill' ? 'BOTS FILL EMPTY SPOTS' : bots === 'keepers' ? 'JUST YOU AND YOUR FRIENDS, WITH COMPUTER KEEPERS' : 'JUST YOU AND YOUR FRIENDS, NO KEEPERS';
     $('on-wait').textContent = R.state === 'match' ? 'A MATCH IS ON. YOU PLAY IN THE NEXT ONE.' : host ? 'SHARE THE CODE, THEN PRESS START.' : 'WAITING FOR THE HOST TO START.';
     // a big rank gap between the teams: say so before the match
     const tiers = [0, 1].map((t) => R.players.filter((p) => p.team === t).map((p) => tierOf(p.rp || 0)));
