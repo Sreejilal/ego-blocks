@@ -458,6 +458,18 @@ class Match {
     this.kick(p, vx, vy, vz, { type: 'shot', cx: -nx * acc, cz: -nz * acc, curveDecay: 0, trail: p.aura, special: 'curl' });
     FX.sparks(from.x, from.y, from.z, p.aura, 14, 5);
   }
+  /** CHIP SHOT: a high, soft lob that drops in under the bar where you aim (best over a keeper off his line) */
+  chipShot(p, target) {
+    const b = this.ball;
+    const from = b.owner === p ? V3(p.pos.x + Math.sin(p.yaw) * 0.6, b.pos.y, p.pos.z + Math.cos(p.yaw) * 0.6) : b.pos.clone();
+    const tx = clamp(target.x, -F.GW + 0.7, F.GW - 0.7), ty = clamp(target.y + 0.6, 2.2, F.GH - 0.3); // drops in near the bar
+    const dx = tx - from.x, dz = target.z - from.z, D = Math.hypot(dx, dz) || 1;
+    const T = clamp(0.7 + D * 0.035, 0.9, 1.6); // it hangs in the air
+    if (b.owner === p) b.pos.copy(from);
+    p.stats.shots++;
+    this.kick(p, dx / T, (ty - from.y + 0.5 * BALL_G * T * T) / T, dz / T, { type: 'shot', trail: p.aura, special: 'chip', keepPos: true, kickDur: 0.3 });
+    FX.sparks(from.x, from.y, from.z, p.aura, 12, 4);
+  }
   impactShot(p, target) {
     const b = this.ball;
     const from = b.owner === p ? V3(p.pos.x + Math.sin(p.yaw) * 0.6, Math.max(b.pos.y, 0.5), p.pos.z + Math.cos(p.yaw) * 0.6) : b.pos.clone();
@@ -1335,7 +1347,7 @@ class Match {
     const sk = this.skill(gk);
     const catchMax = 19 + 9 * sk;
     if (shooter && !k.counted) { k.counted = true; shooter.stats.onTarget++; this.flowAdd(shooter, 15); }
-    if (speed < catchMax && !(k && k.special === 'impact')) {
+    if (speed < catchMax && !(k && (k.special === 'impact' || k.special === 'bomb'))) { // an impact shot or a long bomb can only be punched away
       this.possess(gk);
       if (shooter) { gk.stats.saves++; this.label(gk, 'SAVE', TEAM[gk.team].hex); if (shooter.isHuman) this.toast('SAVED', 'bad', shooter); Sfx.save(); Sfx.ooh(); }
     } else {

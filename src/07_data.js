@@ -25,6 +25,16 @@ const STYLES = {
   COMET: { name: 'COMET', rarity: 'Mythic', hair: '#bde8ff', hairShape: 'afro', aura: '#7cf2ff', blurb: 'Lives in the air. Rocket jumps, overheads and volleys from anywhere.', abilities: ['rocketJump', 'overhead', 'volley'],
     awaken: { move: { name: 'STARFALL', kind: 'starfall', desc: 'Leap sky high and crash down, knocking over everyone near you.' }, name: 'ORBIT', desc: '+20% shot power and 10% faster.', mods: { shot: 1.2, speed: 1.1 } } },
   RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'], awaken: { move: { name: 'RAILSHOT', kind: 'bolt', desc: 'Dead straight, top power, from anywhere.' }, name: 'OVERDRIVE', desc: '+25% shot power and 10% faster.', mods: { shot: 1.25, speed: 1.1 } } },
+  KESTREL: { name: 'KESTREL', rarity: 'Rare', hair: '#d9a53a', hairShape: 'spiky', aura: '#7fe0ff', blurb: 'Never stops running. Fresh legs, quick passes and quick shots.', abilities: ['secondWind', 'snapPass', 'quickShot'],
+    awaken: { move: { name: 'SLIPSTREAM', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'TAILWIND', desc: '+12% speed, and sprinting costs half the stamina.', mods: { speed: 1.12, stamDrain: 0.5 } } },
+  ANCHOR: { name: 'ANCHOR', rarity: 'Rare', hair: '#2d2a28', hairShape: 'crop', aura: '#4fd0a0', blurb: 'A tidy defender. Wins the ball back, clears it long and never runs out of legs.', abilities: ['lurch', 'clearance', 'secondWind'],
+    awaken: { move: { name: 'DEEP WATER', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'BEDROCK', desc: 'Tackles come back faster, and nobody can tackle you.', perk: 'tank', mods: { tackleCd: 0.6 } } },
+  FEATHER: { name: 'FEATHER', rarity: 'Epic', hair: '#f4f0e6', hairShape: 'bob', aura: '#ffb8e6', blurb: 'A soft touch. Chips the keeper and floats the ball over tackles.', abilities: ['chipShot', 'rainbow', 'feint'],
+    awaken: { move: { name: 'UPDRAFT', kind: 'skycannon', desc: 'Pop the ball up and volley it at full power.' }, name: 'WEIGHTLESS', desc: '+12% speed and +15% shot power.', mods: { speed: 1.12, shot: 1.15 } } },
+  CAPTAIN: { name: 'CAPTAIN', rarity: 'Legendary', hair: '#7a4a24', hairShape: 'swept', aura: '#ff7043', blurb: 'Leads from the front. Shields the team, keeps everyone running and threads the killer ball.', abilities: ['rally', 'pinpointPass', 'secondWind'],
+    awaken: { move: { name: 'ARMBAND', kind: 'symphony', desc: 'Your whole team bursts away, and you see every passing lane.' }, name: 'LEADER', desc: 'Abilities recharge faster and you are 10% quicker.', mods: { cdRate: 1.25, speed: 1.1 } } },
+  GLACIER: { name: 'GLACIER', rarity: 'Mythic', hair: '#cfefff', hairShape: 'long', aura: '#9fe8ff', blurb: 'Freezes the game around the ball, then picks the corner with a wobbling shot.', abilities: ['frost', 'bodyBlock', 'knuckle'],
+    awaken: { move: { name: 'WHITEOUT', kind: 'shadow', desc: 'Flash forward and freeze every defender near you.' }, name: 'DEEP FREEZE', desc: '+18% shot power, and tackles reach 30% further.', mods: { shot: 1.18, tackleRange: 1.3 } } },
 };
 const STYLE_IDS = Object.keys(STYLES);
 /** a bot's style: common styles most of the time, the rare ones now and then (like the spins) */
@@ -83,10 +93,10 @@ const ABILITIES = {
       FX.dust(p.pos.x, p.pos.z, 6); Sfx.dodge();
       return true;
     },
-    ai(p, m, c) { return c.hasBall && c.nearOpp < 3.4 && c.oppInFront && c.dGoal < 28; }, // bots: to get a shot away, not to escape anywhere
+    ai(p, m, c) { return c.hasBall && c.nearOpp < 3.4 && c.oppInFront && c.dGoal < 24 && c.dGoal > 10; }, // bots: to get a shot away, not to escape anywhere
   },
   curler: {
-    name: 'CURLER', cd: 18, icon: 'shot', big: true,
+    name: 'CURLER', cd: 20, icon: 'shot', big: true,
     desc: 'A shot that starts wide and bends hard back in around the keeper.',
     use(p, m) { if (!nearBall(p, m)) return NEED_BALL; m.curlShot(p, aimFor(p, m)); return true; },
     ai(p, m, c) { return c.hasBall && c.dGoal < 21 && c.dGoal > 8; },
@@ -345,7 +355,7 @@ const ABILITIES = {
   /* THUNDER */
   longBomb: {
     name: 'LONG BOMB', cd: 12, icon: 'beam', big: true,
-    desc: 'A full-power strike that dips late. Best from 20 to 40 blocks out.',
+    desc: 'A full-power strike that dips late. Keepers can only punch it away. Best from 20 to 30 blocks out.',
     use(p, m) {
       if (!nearBall(p, m)) return NEED_BALL;
       const t = aimFor(p, m, true); t.y = Math.min(t.y + 0.8, 3.6);
@@ -366,6 +376,34 @@ const ABILITIES = {
     desc: 'A spinless shot that wobbles in the air. Keepers misread it.',
     use(p, m) { if (!nearBall(p, m)) return NEED_BALL; m.shootAt(p, aimFor(p, m, true), 0.9, { trail: p.aura, special: 'knuckle' }); return true; },
     ai(p, m, c) { return c.hasBall && c.dGoal < 28 && c.angleOK; },
+  },
+  secondWind: {
+    name: 'SECOND WIND', cd: 16, icon: 'buff',
+    desc: 'Your stamina fills up at once, and for 6s sprinting costs half as much.',
+    use(p) { p.stamina = 100; p.exhausted = false; p.fx.wind = 6; FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 1.2, 18); return true; },
+    ai(p, m, c) { return p.stamina < 35; },
+  },
+  chipShot: {
+    name: 'CHIP SHOT', cd: 12, icon: 'shot', big: true,
+    desc: 'A soft lob that floats over the keeper and drops in under the bar.',
+    use(p, m) { if (!nearBall(p, m)) return NEED_BALL; m.chipShot(p, aimFor(p, m)); return true; },
+    ai(p, m, c) { if (!(c.hasBall && c.dGoal > 8 && c.dGoal < 24)) return false; const gk = m.keeperOf(1 - p.team); return !gk || Math.abs(gk.pos.z - m.oppGoalZ(p.team)) > 1.6; }, // bots chip a keeper who has come out
+  },
+  rally: {
+    name: 'RALLY', cd: 16, icon: 'shield',
+    desc: 'You and every teammate within 10 blocks cannot be tackled for 2.5s.',
+    use(p, m) { for (const t of m.teams[p.team]) if (dist2D(t.pos, p.pos) < 10) { t.tackleProof = Math.max(t.tackleProof, 2.5); FX.ring(t.pos.x, 0.25, t.pos.z, p.aura, 1, 12); } return true; },
+    ai(p, m, c) { return (c.hasBall && c.pressure < 4) || (c.mateHasBall && chance(0.3)); },
+  },
+  frost: {
+    name: 'FROST', cd: 14, icon: 'snow',
+    desc: 'A blast of cold: opponents within 6 blocks slow right down for 2.5s.',
+    use(p, m) {
+      for (const o of m.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 6) o.fx.slimed = Math.max(o.fx.slimed || 0, 2.5);
+      FX.ring(p.pos.x, 0.3, p.pos.z, '#bfe9ff', 6, 40); FX.sparks(p.pos.x, 1, p.pos.z, '#e8f8ff', 24, 6);
+      return true;
+    },
+    ai(p, m, c) { return (c.hasBall && c.nearOpp < 4) || (c.defending && c.carrierDist < 5); },
   },
 };
 
