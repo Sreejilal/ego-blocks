@@ -197,7 +197,7 @@ function snapshot(room) {
   room.events = [];
   for (const rp of room.players) {
     const p = m.humans.find((h) => h.netId === rp.id);
-    const me = p ? { i: idx(p), cd: p.abil.map((a) => r2(a.cd)), fl: r2(p.flow), ft: r2(p.flowT), aw: r2(p.awake), awt: r2(p.awakeT), amu: p.awakeMoveUsed ? 1 : 0, st: r2(p.stamina), dc: p.dodgeCharges, dr: r2(p.dodgeRe), tc: r2(p.tackleCd), tk: r2(p.mods.tackleCd), ph: r2(p.passHold || 0),
+    const me = p ? { i: idx(p), cd: p.abil.map((a) => r2(a.cd)), fl: r2(p.flow), ft: r2(p.flowT), aw: r2(p.awake), awt: r2(p.awakeT), amu: p.awakeMoveUsed ? 1 : 0, st: r2(p.stamina), ex: p.exhausted ? 1 : 0, dc: p.dodgeCharges, dr: r2(p.dodgeRe), tc: r2(p.tackleCd), tk: r2(p.mods.tackleCd), ph: r2(p.passHold || 0),
       fx: FX_SENT.reduce((o, k) => (p.fx[k] > 0 ? (o[k] = r2(p.fx[k]), o) : o), {}) } : null;
     send(rp.ws, Object.assign({ me }, base));
   }

@@ -119,7 +119,7 @@ const UI = {
           <section class="panel"><h3>KEYBOARD + MOUSE</h3><div class="ctrl">
             ${row(key('W') + key('A') + key('S') + key('D'), 'Move')}
             ${row(key('MOUSE'), 'Aim the camera. Click the pitch to lock the mouse')}
-            ${row(key('SHIFT'), 'Sprint (uses stamina)')}
+            ${row(key('SHIFT'), 'Sprint. It uses stamina. Run it empty and you are out of breath (the bar flashes red): no sprint and a slower jog until it is a third full. Stand still to get it back faster')}
             ${row(key('HOLD LMB'), 'Charge a shot, release to shoot where you aim')}
             ${row(key('RMB'), 'Pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for a pass: your teammate looks up, then picks one. Sprint into space for a through ball')}
             ${row(key('SPACE'), 'Jump. With the ball it flicks it over defenders')}
@@ -628,6 +628,7 @@ const UI = {
       this.setText('awake-txt', p.awakeT > 0 ? (Touch.on ? '' : 'AWAKENED ') + Math.ceil(p.awakeT) + 's' : ar ? (Touch.on ? 'READY' : 'READY [Z]') : Math.floor(p.awake) + '%');
       $('awakebar').classList.toggle('ready', ar); $('awakebar').classList.toggle('active', p.awakeT > 0);
     }
+    $('stamina').classList.toggle('tired', !!p.exhausted); // out of breath: the drums flash red
     for (let i = 0; i < 10; i++) {
       const v = p.stamina - i * 10, want = v >= 7.5 ? 'full' : v >= 2.5 ? 'half' : 'empty';
       if (this.drums[i].v !== want) { this.drums[i].v = want; this.drums[i].el.src = this.drumURL[want]; }

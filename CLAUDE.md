@@ -27,7 +27,7 @@ file in file-name order into ONE function scope. There are no imports or exports
 | `02_textures.js` | everything drawn on canvas: pixel font, block textures, pitch lines, player skins, icons (`ICON_MAPS`), rank badges, portraits |
 | `03_world.js` | Three.js renderer, scene, camera, stadium, crowd, lights, sky, `QUALITY` presets, `LOOKS` (the bright `day` look by default, or `sunset`: `World.setLook`, saved as `settings.sky`, Sky in the pause menu) |
 | `04_fx.js` | particles, beams, screen shake (`Shake`), hit stop and slow motion (`TimeCtl`) |
-| `05_player.js` | `Player`: voxel model, animations, movement physics, states (free, dash, slide, down...) |
+| `05_player.js` | `Player`: voxel model, animations, movement physics, states (free, dash, slide, down...), stamina (`STAM_*`: about 6s of sprint; run it empty and `exhausted` means no sprint and an `OUT_OF_BREATH` jog until `STAM_BACK`; the HUD drums flash, online sends `ex`) |
 | `06_ball.js` | `Ball` physics, `solveLaunch` for aimed shots |
 | `07_data.js` | `STYLES`, `ABILITIES`, `FLOWS`, `ITEMS`, ranks, spin odds. Most balance numbers live here |
 | `08_match.js` | `Match`: rules, kicks, passes, tackles, abilities, goals, restarts, Flow, Lawless items |

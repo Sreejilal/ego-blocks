@@ -473,6 +473,8 @@ body.touch #hud .awakebar .track { height: 6px; }
 @keyframes blink { 50% { opacity: .2; } }
 .stamina { display: flex; gap: 2px; }
 .stamina img { width: 22px; height: 22px; }
+.stamina.tired img { animation: tired .5s steps(2) infinite; }
+@keyframes tired { 50% { filter: sepia(1) saturate(6) hue-rotate(-40deg) brightness(.9); } }
 .hotbar { display: flex; gap: 8px; align-items: flex-end; padding-bottom: 12px; }
 /* the tutorial's instructions, under the scoreboard */
 .tutbox { position: absolute; left: 50%; top: calc(84px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 14px 12px; display: grid; gap: 2px; text-align: center; z-index: 6; }
@@ -2660,6 +2662,9 @@ const TEAM = [null, null];
 const SKIN_TONES = ['#f1c7a0', '#e0ac85', '#c48b62', '#9a6643', '#6e4a32', '#f6d6b8', '#b07a52', '#4e3424']; // you pick yours in the Locker (Save.data.tone)
 const EYE_COLS = ['#2b1d14', '#1d2b4a', '#2a3a1c', '#3a2a14'];
 const RUN_SPEED = 7.6, SPRINT_SPEED = 11.4; // 10% up with the 35 x 55 pitch, so it never feels empty
+// stamina: sprinting drains it (about 6s of full sprint), it comes back after a short wait (faster standing still), and running
+// out leaves you out of breath: no sprint until it is back to STAM_BACK, and you jog a little slower until then
+const STAM_DRAIN = 16, STAM_REGEN = 9, STAM_WAIT = 1.0, STAM_BACK = 35, OUT_OF_BREATH = 0.85;
 
 const PlayerGeo = {
   g: null,
@@ -2888,16 +2893,17 @@ class Player {
     const ownsBall = this.m.ball.owner === this;
     if (st === 'free' || st === 'hold') {
       const moving = this.mx * this.mx + this.mz * this.mz > 0.01;
-      if (this.exhausted && this.stamina > 25) this.exhausted = false;
+      if (this.exhausted && this.stamina >= STAM_BACK) this.exhausted = false;
       const sprinting = this.sprint && moving && !this.exhausted && this.stamina > 0 && !this.charging;
       let base = sprinting ? SPRINT_SPEED : RUN_SPEED;
       if (this.isGK) base *= 0.96;
+      if (this.exhausted) base *= OUT_OF_BREATH;
       if (ownsBall) base *= 0.94;
       if (this.charging) base *= 0.62;
       if (st === 'hold') base *= 0.6;
       maxSpeed = this.setPiece || this.fkHold || this.inWall ? 0 : base * m.speed; // a throw-in, corner or free kick taker stands still
       if (sprinting && m.stamDrain > 0) {
-        this.stamina -= 13 * dt * m.stamDrain; this.stamDelay = 0.7; // about 7.5s of sprint: the whole pitch
+        this.stamina -= STAM_DRAIN * dt * m.stamDrain; this.stamDelay = STAM_WAIT;
         if (this.stamina <= 0) { this.stamina = 0; this.exhausted = true; }
       }
     } else if (st === 'dash') {
@@ -2937,7 +2943,7 @@ class Player {
     }
     // stamina regen
     if (this.stamDelay > 0) this.stamDelay -= dt;
-    else this.stamina = Math.min(100, this.stamina + 15 * dt * m.stamRegen);
+    else this.stamina = Math.min(100, this.stamina + STAM_REGEN * dt * m.stamRegen * (this.mx * this.mx + this.mz * this.mz < 0.01 ? 1.6 : 1)); // catch your breath standing still
     // vertical
     if (this.fx.jetpack > 0 && this.jetThrust) { this.vel.y = Math.min(this.vel.y + 30 * dt, 6); this.onGround = false; }
     if (!this.onGround) {
@@ -6290,7 +6296,7 @@ const AI = {
     if (pz > F.L - 5) { az -= m.dir(p.team) * 1.2; ax += -sgn(p.pos.x) * 0.8; }
     l = len2D(ax, az) || 1; ax /= l; az /= l;
     a.target.set(p.pos.x + ax * 6, 0, p.pos.z + az * 6);
-    a.sprint = c.spaceAhead && p.stamina > 25;
+    a.sprint = c.spaceAhead && p.stamina > 30; // bots save some breath too
   },
   /** a teammate (you) called for the ball and we are not about to score */
   calledFor(m, p, c) {
@@ -7898,7 +7904,7 @@ const Net = {
     if (m.me && nm.human) {
       const p = nm.human, me = m.me;
       p.abil.forEach((a, i) => { a.cd = me.cd[i] || 0; });
-      p.flow = me.fl; p.flowT = me.ft; p.awake = me.aw || 0; p.awakeT = me.awt || 0; p.awakeMoveUsed = !!me.amu; p.stamina = me.st; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
+      p.flow = me.fl; p.flowT = me.ft; p.awake = me.aw || 0; p.awakeT = me.awt || 0; p.awakeMoveUsed = !!me.amu; p.stamina = me.st; p.exhausted = !!me.ex; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
       for (const k in p.fx) p.fx[k] = 0;
       Object.assign(p.fx, me.fx || {});
     }
@@ -8667,7 +8673,7 @@ const UI = {
           <section class="panel"><h3>KEYBOARD + MOUSE</h3><div class="ctrl">
             ${row(key('W') + key('A') + key('S') + key('D'), 'Move')}
             ${row(key('MOUSE'), 'Aim the camera. Click the pitch to lock the mouse')}
-            ${row(key('SHIFT'), 'Sprint (uses stamina)')}
+            ${row(key('SHIFT'), 'Sprint. It uses stamina. Run it empty and you are out of breath (the bar flashes red): no sprint and a slower jog until it is a third full. Stand still to get it back faster')}
             ${row(key('HOLD LMB'), 'Charge a shot, release to shoot where you aim')}
             ${row(key('RMB'), 'Pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for a pass: your teammate looks up, then picks one. Sprint into space for a through ball')}
             ${row(key('SPACE'), 'Jump. With the ball it flicks it over defenders')}
@@ -9176,6 +9182,7 @@ const UI = {
       this.setText('awake-txt', p.awakeT > 0 ? (Touch.on ? '' : 'AWAKENED ') + Math.ceil(p.awakeT) + 's' : ar ? (Touch.on ? 'READY' : 'READY [Z]') : Math.floor(p.awake) + '%');
       $('awakebar').classList.toggle('ready', ar); $('awakebar').classList.toggle('active', p.awakeT > 0);
     }
+    $('stamina').classList.toggle('tired', !!p.exhausted); // out of breath: the drums flash red
     for (let i = 0; i < 10; i++) {
       const v = p.stamina - i * 10, want = v >= 7.5 ? 'full' : v >= 2.5 ? 'half' : 'empty';
       if (this.drums[i].v !== want) { this.drums[i].v = want; this.drums[i].el.src = this.drumURL[want]; }

@@ -6,6 +6,7 @@
 // 5. PASS let go while knocked over (or during a restart) is not stuck down: no endless LOB bar, the next pass is normal.
 // 6. The game on GitHub Pages plays online on the server built into the page (Render); a page the server sends uses that server.
 // 7. The sky: a bright day by default, SUNSET in the pause menu brings back the evening look; it is saved and bad saves are fixed.
+// 8. Stamina matters: about 6s of sprint, then you are out of breath (no sprint, a slower jog, the drums flash) until it is a third back.
 const { open } = require('./harness');
 const results = [];
 const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name + (info !== undefined ? '  ' + JSON.stringify(info) : ''));
@@ -137,6 +138,26 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     EGO.Save.load(); const fixed = EGO.Save.data.settings.sky;
     return { first, sunset, back, fixed };
   });
+  const stam = await page.evaluate(() => {
+    const G = EGO.Game, I = EGO.Input; G.startMatch('quick'); const m = G.match, h = m.human;
+    for (let i = 0; i < 400 && m.phase !== 'play'; i++) G.stepManual(1, false);
+    EGO.AI.update = ((u) => { window._aiU = u; return () => {}; })(EGO.AI.update); // nobody else moves: just you running
+    m.ball.reset(30, 40); h.pos.set(-25, 0, -45); h.stamina = 100; h.exhausted = false;
+    const sp = () => Math.hypot(h.vel.x, h.vel.z);
+    I.down.add('KeyW'); I.down.add('ShiftLeft'); EGO.Cam.yaw = 0;
+    let t = 0, fast = 0; while (!h.exhausted && t < 15) { G.stepManual(1, false); t += 1 / 60; fast = Math.max(fast, sp()); if (h.pos.z > 40) h.pos.z = -45; }
+    const empty = +t.toFixed(1);
+    G.stepManual(30, false); if (h.pos.z > 40) h.pos.z = -45;
+    const tired = { speed: +sp().toFixed(2), flashing: document.getElementById('stamina').classList.contains('tired') };
+    let back = 0; while (h.exhausted && back < 15) { G.stepManual(1, false); back += 1 / 60; if (h.pos.z > 40) h.pos.z = -45; }
+    G.stepManual(30, false);
+    const again = { speed: +sp().toFixed(2), flashing: document.getElementById('stamina').classList.contains('tired') };
+    I.down.delete('KeyW'); I.down.delete('ShiftLeft'); EGO.AI.update = window._aiU; G.forfeit();
+    return { sprint: +fast.toFixed(2), empty, tired, back: +back.toFixed(1), again };
+  });
+  check('stamina: about 6s of sprint, then out of breath (slower, drums flash) until it comes back, then you sprint again',
+    stam.empty > 5 && stam.empty < 7.5 && stam.tired.speed < stam.sprint * 0.62 && stam.tired.flashing && stam.back > 3 && stam.back < 8 && !stam.again.flashing && stam.again.speed > stam.sprint * 0.9, stam);
+
   check('the sky is a bright day; SUNSET in the pause menu switches to the evening and back; a bad save becomes day',
     sky.first.look === 'day' && sky.first.setting === 'day' && !sky.first.stars && sky.first.sunY > 0.5 && sky.sunset.look === 'sunset' && sky.sunset.stars && sky.sunset.sunY < 0.3 && sky.sunset.setting === 'sunset' && sky.sunset.pressed === 'true' && sky.back.look === 'day' && sky.fixed === 'day', sky);
   for (const [w, h] of [[844, 390], [390, 844]]) {

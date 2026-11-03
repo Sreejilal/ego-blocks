@@ -6,6 +6,9 @@ const TEAM = [null, null];
 const SKIN_TONES = ['#f1c7a0', '#e0ac85', '#c48b62', '#9a6643', '#6e4a32', '#f6d6b8', '#b07a52', '#4e3424']; // you pick yours in the Locker (Save.data.tone)
 const EYE_COLS = ['#2b1d14', '#1d2b4a', '#2a3a1c', '#3a2a14'];
 const RUN_SPEED = 7.6, SPRINT_SPEED = 11.4; // 10% up with the 35 x 55 pitch, so it never feels empty
+// stamina: sprinting drains it (about 6s of full sprint), it comes back after a short wait (faster standing still), and running
+// out leaves you out of breath: no sprint until it is back to STAM_BACK, and you jog a little slower until then
+const STAM_DRAIN = 16, STAM_REGEN = 9, STAM_WAIT = 1.0, STAM_BACK = 35, OUT_OF_BREATH = 0.85;
 
 const PlayerGeo = {
   g: null,
@@ -234,16 +237,17 @@ class Player {
     const ownsBall = this.m.ball.owner === this;
     if (st === 'free' || st === 'hold') {
       const moving = this.mx * this.mx + this.mz * this.mz > 0.01;
-      if (this.exhausted && this.stamina > 25) this.exhausted = false;
+      if (this.exhausted && this.stamina >= STAM_BACK) this.exhausted = false;
       const sprinting = this.sprint && moving && !this.exhausted && this.stamina > 0 && !this.charging;
       let base = sprinting ? SPRINT_SPEED : RUN_SPEED;
       if (this.isGK) base *= 0.96;
+      if (this.exhausted) base *= OUT_OF_BREATH;
       if (ownsBall) base *= 0.94;
       if (this.charging) base *= 0.62;
       if (st === 'hold') base *= 0.6;
       maxSpeed = this.setPiece || this.fkHold || this.inWall ? 0 : base * m.speed; // a throw-in, corner or free kick taker stands still
       if (sprinting && m.stamDrain > 0) {
-        this.stamina -= 13 * dt * m.stamDrain; this.stamDelay = 0.7; // about 7.5s of sprint: the whole pitch
+        this.stamina -= STAM_DRAIN * dt * m.stamDrain; this.stamDelay = STAM_WAIT;
         if (this.stamina <= 0) { this.stamina = 0; this.exhausted = true; }
       }
     } else if (st === 'dash') {
@@ -283,7 +287,7 @@ class Player {
     }
     // stamina regen
     if (this.stamDelay > 0) this.stamDelay -= dt;
-    else this.stamina = Math.min(100, this.stamina + 15 * dt * m.stamRegen);
+    else this.stamina = Math.min(100, this.stamina + STAM_REGEN * dt * m.stamRegen * (this.mx * this.mx + this.mz * this.mz < 0.01 ? 1.6 : 1)); // catch your breath standing still
     // vertical
     if (this.fx.jetpack > 0 && this.jetThrust) { this.vel.y = Math.min(this.vel.y + 30 * dt, 6); this.onGround = false; }
     if (!this.onGround) {

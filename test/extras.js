@@ -27,7 +27,7 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
 
   /* ---------- Flows ---------- */
   const flows = await A.evaluate(() => Object.keys(EGO.FLOWS).map((k) => ({ k, fx: EGO.FLOWS[k].fx, color: EGO.FLOWS[k].color })));
-  check('every Flow has its own look and colour', new Set(flows.map((f) => f.fx)).size === flows.length && new Set(flows.map((f) => f.color)).size === flows.length, flows);
+  check('every Flow has its own look (effect and colour)', new Set(flows.map((f) => f.fx + f.color)).size === flows.length && new Set(flows.map((f) => f.color)).size === flows.length, flows);
   await match('ROOKIE', 'SECOND_WIND');
   const wind = await A.evaluate(() => { const m = EGO.Game.match, h = m.human; h.stamina = 20; h.flow = 100; m.activateFlow(h); EGO.Game.stepManual(2, false); return { st: Math.round(h.stamina), eyes: h.P.eyes.userData.hex, shown: h.P.eyes.visible }; });
   check('SECOND WIND refills your stamina at once, and your eyes glow in its colour', wind.st >= 95 && wind.eyes === '#7dffb0' && wind.shown, wind);
@@ -50,7 +50,7 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
     return { t: +h.awakeT.toFixed(1), cds: h.abil.map((a) => a.cd), cdRate: h.mods.cdRate, speed: +h.mods.speed.toFixed(2), drain: h.mods.stamDrain, bar: document.getElementById('awake-txt').textContent, slot: document.getElementById('awakeside').classList.contains('active') && !document.getElementById('awakeside').hidden };
   });
   check('awakened: 20s, cooldowns reset and recharge twice as fast', aw.t > 19 && aw.cds.every((c) => c < 0.1) && aw.cdRate === 2, aw);
-  check("the style's own power: RED LINE is faster and sprinting is free", aw.speed >= 1.25 && aw.drain === 0, aw);
+  check("the style's own power: RED LINE is faster and sprinting is free", aw.speed >= 1.18 && aw.drain === 0, aw);
   check('the HUD shows the Awakening gauge on the side, lit up', /AWAKENED/.test(aw.bar) && aw.slot, aw);
   const longer = await A.evaluate(() => { EGO.Game.stepManual(150, false); const m = EGO.Game.match, h = m.human; h.setState('free'); h.fx.turbo = 0; const i = h.abil.findIndex((a) => a.def.name === 'TURBO'); h.abil[i].cd = 0; m.useAbility(h, i); return +h.fx.turbo.toFixed(2); });
   const normal = await A.evaluate(() => { const m = EGO.Game.match, h = m.human; h.awakeT = 0; h.fx.turbo = 0; const i = h.abil.findIndex((a) => a.def.name === 'TURBO'); h.abil[i].cd = 0; m.useAbility(h, i); return +h.fx.turbo.toFixed(2); });

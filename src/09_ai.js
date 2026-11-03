@@ -252,7 +252,7 @@ const AI = {
     if (pz > F.L - 5) { az -= m.dir(p.team) * 1.2; ax += -sgn(p.pos.x) * 0.8; }
     l = len2D(ax, az) || 1; ax /= l; az /= l;
     a.target.set(p.pos.x + ax * 6, 0, p.pos.z + az * 6);
-    a.sprint = c.spaceAhead && p.stamina > 25;
+    a.sprint = c.spaceAhead && p.stamina > 30; // bots save some breath too
   },
   /** a teammate (you) called for the ball and we are not about to score */
   calledFor(m, p, c) {
