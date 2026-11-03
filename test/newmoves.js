@@ -46,5 +46,22 @@ function setup(style) {
   const bad = ids.filter((k) => { const s = G.STYLES[k]; return !s || s.abilities.length !== 3 || s.abilities.some((a) => !G.ABILITIES[a]) || !s.awaken || !s.awaken.move || !s.awaken.name; });
   check('the five newest styles each have three moves and an Awakening', !bad.length, bad);
 }
+{ // three new Flows
+  const f = ['IRON_NERVE', 'WILDFIRE', 'FROSTBITE'].map((k) => G.FLOWS[k]);
+  const { p } = setup('ROOKIE');
+  p.flowId = 'WILDFIRE'; p.flowT = 5; p.computeMods();
+  check('three new Flows, with their boosts', f.every((x) => x && x.mods && x.color && x.desc) && p.mods.speed > 1.14 * p.speedMul && p.mods.stamDrain > 1.2, { speed: +p.mods.speed.toFixed(2), drain: p.mods.stamDrain });
+}
+{ // four new celebrations move the arms
+  const { p } = setup('ROOKIE');
+  const arms = {};
+  for (const [id, want] of [['WAVE', 'wave'], ['APPLAUSE', 'clap'], ['FLEX', 'flex'], ['SKY_POINT', 'point']]) {
+    if (G.SKINS[id].celeb !== want) { arms[id] = 'wrong'; continue; }
+    p.look.celeb = want; p.setState('celebrate', 3);
+    for (let i = 0; i < 30; i++) p.animate(1 / 60);
+    arms[id] = +Math.min(p.P.armL.rotation.x, p.P.armR.rotation.x).toFixed(2);
+  }
+  check('four new goal celebrations, each with its own moves', Object.values(arms).every((v) => typeof v === 'number' && v < -1), arms);
+}
 console.log(results.join('\n'));
 process.exitCode = results.some((r) => r.startsWith('FAIL')) ? 1 : 0;

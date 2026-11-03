@@ -413,6 +413,9 @@ const FLOWS = {
   VIPER: { name: 'VIPER', rarity: 'Epic', color: '#5dff7a', fx: 'venom', desc: 'Tackles reach 60% further (a green ring shows how far) and come back twice as fast.', mods: { tackleRange: 1.6, tackleCd: 0.5 } },
   GAMBLE: { name: 'GAMBLE', rarity: 'Legendary', color: '#ffcb3d', fx: 'coins', desc: 'A random boost: +25% speed, +25% shot power or huge stamina. 10% chance of all three. Gold coins spin over your head.', gamble: true, mods: {} },
   BLUE_FLAME: { name: 'BLUE FLAME', rarity: 'Mythic', color: '#3d8bff', fx: 'flame', desc: 'All your ability cooldowns reset at once, then run 25% faster. Blue fire burns on your head.', start: { resetCd: true }, mods: { cdRate: 1 / 0.75 } },
+  IRON_NERVE: { name: 'IRON NERVE', rarity: 'Rare', color: '#c9d3e6', fx: 'aura', desc: '+12% shot power, and tackles come back 30% faster. A cool silver glow.', mods: { shot: 1.12, tackleCd: 0.7 } },
+  WILDFIRE: { name: 'WILDFIRE', rarity: 'Epic', color: '#ff7a2e', fx: 'flame', desc: '+15% speed and +10% shot power, but sprinting costs 30% more. Orange fire on your head.', mods: { speed: 1.15, shot: 1.1, stamDrain: 1.3 } },
+  FROSTBITE: { name: 'FROSTBITE', rarity: 'Legendary', color: '#9fe8ff', fx: 'venom', desc: 'Cooldowns 20% shorter, and tackles reach 30% further. Icy drops fall off you.', mods: { cdRate: 1 / 0.8, tackleRange: 1.3 } },
   MONARCH: { name: 'MONARCH', rarity: 'Generational', color: '#ffffff', fx: 'crown', desc: '+20% shot power, +12% speed and cooldowns 15% shorter. A crown of light floats over your head.', mods: { shot: 1.2, speed: 1.12, cdRate: 1 / 0.85 } },
 };
 const FLOW_IDS = Object.keys(FLOWS);
@@ -500,6 +503,10 @@ const SKINS = {
   BLUE_GLOVES: { slot: 'gloves', name: 'COBALT GLOVES', rarity: 'Rare', hex: '#2f6bff' },
   LIME_GLOVES: { slot: 'gloves', name: 'LIME GLOVES', rarity: 'Epic', hex: '#a6ff2e' },
   VOID_GLOVES: { slot: 'gloves', name: 'VOID GLOVES', rarity: 'Mythic', hex: '#2a1748' },
+  ORANGE_GLOVES: { slot: 'gloves', name: 'TANGERINE GLOVES', rarity: 'Rare', hex: '#ff8a1f' },
+  PINK_GLOVES: { slot: 'gloves', name: 'PINK GLOVES', rarity: 'Epic', hex: '#ff5fb0' },
+  ICE_GLOVES: { slot: 'gloves', name: 'FROST GLOVES', rarity: 'Legendary', hex: '#9fe8ff' },
+  EMERALD_GLOVES: { slot: 'gloves', name: 'EMERALD GLOVES', rarity: 'Mythic', hex: '#2ee38f' },
   NO_ACC: { slot: 'acc', name: 'NOTHING', rarity: 'Rare', base: true, desc: 'No extra.' },
   ANKLE_BAND: { slot: 'acc', name: 'ANKLE TAKER', rarity: 'Legendary', acc: 'band', hex: '#9a6bff', glow: 0.5, obj: true, desc: 'From GOALS: break 75 ankles.' },
   RED_BAND: { slot: 'acc', name: 'RED HEADBAND', rarity: 'Rare', acc: 'band', hex: '#e0302a' },
@@ -535,6 +542,10 @@ const SKINS = {
   KNEE_SLIDE: { slot: 'celeb', name: 'KNEE SLIDE', rarity: 'Legendary', celeb: 'knees', desc: 'Drop to the knees, lean back and soak it in.' },
   BACKFLIP: { slot: 'celeb', name: 'BACKFLIP', rarity: 'Mythic', celeb: 'flip', desc: 'Backflip after backflip.' },
   METEOR: { slot: 'celeb', name: 'METEOR', rarity: 'Generational', celeb: 'meteor', desc: 'Leap sky high, then slam down in a ring of light.' },
+  WAVE: { slot: 'celeb', name: 'FAN WAVE', rarity: 'Rare', celeb: 'wave', desc: 'A big wave to the crowd.' },
+  APPLAUSE: { slot: 'celeb', name: 'APPLAUSE', rarity: 'Rare', celeb: 'clap', desc: 'Clap for the fans, and for yourself.' },
+  FLEX: { slot: 'celeb', name: 'FLEX', rarity: 'Epic', celeb: 'flex', desc: 'Show off the muscles.' },
+  SKY_POINT: { slot: 'celeb', name: 'SKY POINT', rarity: 'Legendary', celeb: 'point', desc: 'Point to the sky and hold it.' },
   // game pass only: never in spins
   SEASON_GOLD: { slot: 'color', name: 'SEASON GOLD', rarity: 'Legendary', hex: '#e9c14a', pass: true },
   CHAMP_BOOTS: { slot: 'boots', name: 'CHAMPION BOOTS', rarity: 'Legendary', hex: '#f6f2e6', sparkle: true, pass: true },
