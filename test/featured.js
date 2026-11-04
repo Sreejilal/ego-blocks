@@ -64,6 +64,23 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   });
   check('1v1 Duel: one player and a keeper each, first to 3 ends it', duel.sizes.join() === '2,2' && duel.score[0] === 3 && duel.phase === 'end' && duel.chip === '1V1 DUEL', duel);
 
+  // rewards: offline, only full-time matches (Quick Match, Ranked, Lawless) give them; the others are just for fun
+  const rew = await page.evaluate(() => {
+    const G = EGO.Game, d = EGO.Save.data;
+    const run = (mode) => {
+      G.toLobby(); G.startMatch(mode); G.manual = true; G.stepManual(170, false);
+      const e0 = d.emeralds, p0 = d.stats.played, x0 = d.xp;
+      G.match.endMatch(); G.stepManual(240, false);
+      return { state: G.state, em: d.emeralds - e0, played: d.stats.played - p0, xp: d.xp - x0, fun: /JUST FOR FUN/.test(document.getElementById('r-earn').textContent) };
+    };
+    const out = {}; for (const mode of ['duel', 'koth', 'volleys', 'quick', 'lawless']) out[mode] = run(mode);
+    G.toLobby(); G.stepManual(2, true);
+    return out;
+  });
+  check('King of the Hill, Volleys and Duels offline: no emeralds, XP or GOALS progress, and it says why', ['duel', 'koth', 'volleys'].every((k) => rew[k].state === 'results' && rew[k].em === 0 && rew[k].xp === 0 && rew[k].played === 0 && rew[k].fun), rew);
+  check('Quick Match and Lawless still give rewards', ['quick', 'lawless'].every((k) => rew[k].state === 'results' && rew[k].em > 0 && rew[k].xp > 0 && rew[k].played === 1 && !rew[k].fun), rew);
+  await page.screenshot({ path: __dirname + '/shots/f3_lobby_rewards.png' });
+
   // bots play every featured mode to the end
   const sims = await page.evaluate(() => ['koth', 'volleys', 'duel'].map((mode) => { const r = EGO.simulate(mode, 0.6, 120, mode === 'duel' ? 2 : 3); return { mode, score: r.score, shots: r.shots }; }));
   check('bot matches run in every featured mode', sims.every((s) => Array.isArray(s.score)) && sims[0].score[0] + sims[0].score[1] > 5, sims);

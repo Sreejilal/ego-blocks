@@ -4269,9 +4269,10 @@ function poolFor(kind, rarityIdx) {
 const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {} }; // filled in by the UI
 const BOT_NAMES = ['BLOK', 'CUBO', 'PIXL', 'VOXX', 'CHUNK', 'BRIK', 'TILE', 'STAK', 'OBBY', 'GRAV', 'LOAM', 'SLAB', 'COBB', 'FLINT', 'QUARTZ', 'MOSS', 'DUSK', 'EMBR', 'RUNE', 'KRYS', 'BYTE', 'NOVA', 'REDS', 'TUFF'];
 const MODES = {
-  ranked: { name: 'RANKED', ranked: true, items: false },
-  quick: { name: 'QUICK MATCH', ranked: false, items: false },
-  lawless: { name: 'LAWLESS', ranked: false, items: true },
+  // rewards: offline, only these full-time matches give rewards (online with friends, every mode does)
+  ranked: { name: 'RANKED', ranked: true, items: false, rewards: true },
+  quick: { name: 'QUICK MATCH', ranked: false, items: false, rewards: true },
+  lawless: { name: 'LAWLESS', ranked: false, items: true, rewards: true },
   koth: { name: 'KING OF THE HILL', ranked: false, items: false, hill: true, tip: 'HOLD THE BALL IN THE RING FOR POINTS \u00b7 GOALS ARE WORTH 3' },
   volleys: { name: 'VOLLEYS ONLY', ranked: false, items: false, aerialOnly: true, tip: 'ONLY VOLLEYS AND HEADERS COUNT' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
@@ -8736,6 +8737,7 @@ const UI = {
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
             <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
             <li><b>Featured mode</b> changes every 3 hours, the same for everyone: King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3) and Lawless.</li>
+            <li><b>Rewards</b> (emeralds, XP, pass, GOALS) come from full-time matches: Quick Match, Ranked and Lawless. King of the Hill, Volleys and Duels are just for fun, unless you play them with friends: every friends match gives rewards. Leaving early gives nothing.</li>
             <li><b>Team size:</b> Quick Match and Lawless are 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
@@ -9111,7 +9113,7 @@ const UI = {
     this._featSec = sec; this._featMode = f.mode;
     const hms = Math.floor(sec / 3600) + ':' + String(Math.floor(sec / 60) % 60).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
     $('feat-name').textContent = MODES[f.mode].name;
-    $('feat-sub').textContent = 'FEATURED · NEXT IN ' + hms;
+    $('feat-sub').textContent = (MODES[f.mode].rewards ? 'FEATURED' : 'FOR FUN, NO REWARDS') + ' · NEXT IN ' + hms;
   },
   /* ---------- HUD ---------- */
   buildHud(m) {
@@ -9361,7 +9363,7 @@ const UI = {
     $('r-score').innerHTML = `<span style="color:${TEAM[0].hex}">${TEAM[0].short} ${r.score[0]}</span><span>:</span><span style="color:${TEAM[1].hex}">${r.score[1]} ${TEAM[1].short}</span><span class="chip">${esc(r.modeName)}</span>`;
     const s = r.human || { goals: 0, assists: 0, shots: 0, tackles: 0 };
     $('r-stats').innerHTML = [['GOALS', s.goals], ['ASSISTS', s.assists], ['SHOTS', s.shots], ['TACKLES', s.tackles]].map(([k, v]) => `<div><span class="label">${k}</span><b>${v}</b></div>`).join('');
-    $('r-earn').innerHTML = (r.idle ? `<div class="idle-note"><span>${r.noReward === 'rank' ? 'THEY WERE FAR BELOW YOUR RANK, SO THIS MATCH GIVES NO REWARDS' : 'A BOT PLAYED FOR YOU, SO THIS MATCH GIVES NO REWARDS'}</span></div>` : '') + r.earn.map(([k, v]) => `<div><span>${esc(k)}</span><span>+${v}</span></div>`).join('') + `<div class="tot"><span>EMERALDS EARNED</span><span>+${r.emeralds}</span></div>`;
+    $('r-earn').innerHTML = (r.idle ? `<div class="idle-note"><span>${r.noReward === 'rank' ? 'THEY WERE FAR BELOW YOUR RANK, SO THIS MATCH GIVES NO REWARDS' : r.noReward === 'fun' ? 'THIS MODE IS JUST FOR FUN, SO IT GIVES NO REWARDS. QUICK MATCH, RANKED AND LAWLESS DO, AND SO DOES EVERY MODE WITH FRIENDS' : 'A BOT PLAYED FOR YOU, SO THIS MATCH GIVES NO REWARDS'}</span></div>` : '') + r.earn.map(([k, v]) => `<div><span>${esc(k)}</span><span>+${v}</span></div>`).join('') + `<div class="tot"><span>EMERALDS EARNED</span><span>+${r.emeralds}</span></div>`;
     if (r.ranked) {
       const tier = tierOf(r.rpAfter), moved = tierOf(r.rpBefore) !== tier;
       const delta = r.rpAfter - r.rpBefore;
@@ -9683,7 +9685,8 @@ const Game = {
     }
     const res = forfeit ? 'forfeit' : m.result.res;
     const hs = forfeit ? (m.human ? Object.assign({}, m.human.stats) : { goals: 0, assists: 0, shots: 0, tackles: 0 }) : (m.result.human || { goals: 0, assists: 0, shots: 0, tackles: 0 });
-    const idle = !forfeit && !!(m.result.idle || m.result.noReward); // online: a bot played for you, or they were far below your rank: nothing
+    const fun = !forfeit && !m.online && !m.cfg.rewards; // offline King of the Hill, Volleys and Duels are just for fun
+    const idle = !forfeit && !!(m.result.idle || m.result.noReward || fun); // online: a bot played for you, or they were far below your rank: nothing
     const earned = idle ? 'forfeit' : res; // what rewards are worked out from
     const earn = [];
     if (!forfeit && !idle) {
@@ -9695,11 +9698,13 @@ const Game = {
     d.emeralds += emeralds;
     const rpBefore = d.rp;
     if (m.cfg.ranked) d.rp = Math.max(0, d.rp + Math.min(idle ? 0 : 99, res === 'win' ? 25 : res === 'draw' ? 5 : -15));
-    d.stats.played++;
-    if (res === 'win') d.stats.wins++; else if (res === 'draw') d.stats.draws++; else d.stats.losses++;
-    d.stats.goals += hs.goals || 0; d.stats.assists += hs.assists || 0;
-    const ft = m.feats || {}; d.stats.tackles += hs.tackles || 0; d.stats.ankles += ft.ankles || 0; d.stats.awakens += ft.awakens || 0;
-    const goalsDone = Goals.check(d);
+    if (!fun) { // just-for-fun matches do not count toward GOALS (their blueprints are rewards too)
+      d.stats.played++;
+      if (res === 'win') d.stats.wins++; else if (res === 'draw') d.stats.draws++; else d.stats.losses++;
+      d.stats.goals += hs.goals || 0; d.stats.assists += hs.assists || 0;
+      const ft = m.feats || {}; d.stats.tackles += hs.tackles || 0; d.stats.ankles += ft.ankles || 0; d.stats.awakens += ft.awakens || 0;
+    }
+    const goalsDone = fun ? [] : Goals.check(d);
     // XP, the match history (last 20) and best stats
     const xp = matchXp(earned, hs), lvBefore = levelOf(d.xp).level;
     d.xp += xp;
@@ -9713,7 +9718,7 @@ const Game = {
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name + (!forfeit && m.result.battle ? ' · FREE KICK BATTLE ' + m.result.battle.join('-') : ''), xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && m.result.noReward, daily, goalsDone });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name + (!forfeit && m.result.battle ? ' · FREE KICK BATTLE ' + m.result.battle.join('-') : ''), xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && (fun ? 'fun' : m.result.noReward), daily, goalsDone });
     if (res === 'win') Sfx.fanfare(2);
     if (res === 'win' && !idle) Portal.happy();
     Portal.midgame();

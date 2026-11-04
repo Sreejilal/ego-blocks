@@ -125,7 +125,8 @@ const Game = {
     }
     const res = forfeit ? 'forfeit' : m.result.res;
     const hs = forfeit ? (m.human ? Object.assign({}, m.human.stats) : { goals: 0, assists: 0, shots: 0, tackles: 0 }) : (m.result.human || { goals: 0, assists: 0, shots: 0, tackles: 0 });
-    const idle = !forfeit && !!(m.result.idle || m.result.noReward); // online: a bot played for you, or they were far below your rank: nothing
+    const fun = !forfeit && !m.online && !m.cfg.rewards; // offline King of the Hill, Volleys and Duels are just for fun
+    const idle = !forfeit && !!(m.result.idle || m.result.noReward || fun); // online: a bot played for you, or they were far below your rank: nothing
     const earned = idle ? 'forfeit' : res; // what rewards are worked out from
     const earn = [];
     if (!forfeit && !idle) {
@@ -137,11 +138,13 @@ const Game = {
     d.emeralds += emeralds;
     const rpBefore = d.rp;
     if (m.cfg.ranked) d.rp = Math.max(0, d.rp + Math.min(idle ? 0 : 99, res === 'win' ? 25 : res === 'draw' ? 5 : -15));
-    d.stats.played++;
-    if (res === 'win') d.stats.wins++; else if (res === 'draw') d.stats.draws++; else d.stats.losses++;
-    d.stats.goals += hs.goals || 0; d.stats.assists += hs.assists || 0;
-    const ft = m.feats || {}; d.stats.tackles += hs.tackles || 0; d.stats.ankles += ft.ankles || 0; d.stats.awakens += ft.awakens || 0;
-    const goalsDone = Goals.check(d);
+    if (!fun) { // just-for-fun matches do not count toward GOALS (their blueprints are rewards too)
+      d.stats.played++;
+      if (res === 'win') d.stats.wins++; else if (res === 'draw') d.stats.draws++; else d.stats.losses++;
+      d.stats.goals += hs.goals || 0; d.stats.assists += hs.assists || 0;
+      const ft = m.feats || {}; d.stats.tackles += hs.tackles || 0; d.stats.ankles += ft.ankles || 0; d.stats.awakens += ft.awakens || 0;
+    }
+    const goalsDone = fun ? [] : Goals.check(d);
     // XP, the match history (last 20) and best stats
     const xp = matchXp(earned, hs), lvBefore = levelOf(d.xp).level;
     d.xp += xp;
@@ -155,7 +158,7 @@ const Game = {
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name + (!forfeit && m.result.battle ? ' · FREE KICK BATTLE ' + m.result.battle.join('-') : ''), xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && m.result.noReward, daily, goalsDone });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name + (!forfeit && m.result.battle ? ' · FREE KICK BATTLE ' + m.result.battle.join('-') : ''), xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && (fun ? 'fun' : m.result.noReward), daily, goalsDone });
     if (res === 'win') Sfx.fanfare(2);
     if (res === 'win' && !idle) Portal.happy();
     Portal.midgame();
