@@ -123,6 +123,21 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   const ghMsg = await G2.evaluate(() => { document.getElementById('go-online').click(); document.getElementById('on-create').click(); return { url: EGO.Net.serverUrl(), status: document.getElementById('on-status').textContent }; });
   check('on GitHub Pages PLAY WITH FRIENDS goes to the Render server', ghMsg.url === 'wss://ego-blocks.onrender.com/ws' && !/NOT SWITCHED ON/.test(ghMsg.status), ghMsg);
   await gh.close();
+  // the page on the scorz.onrender.com static site (no server there) plays on the built-in server; the server's own page plays on itself
+  const hosts = {};
+  for (const host of ['scorz.onrender.com', 'ego-blocks.onrender.com']) {
+    const c = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const P = await c.newPage(); P.setDefaultTimeout(120000);
+    P.on('pageerror', (e) => logs.push('PAGEERROR: ' + e.message));
+    await P.route('https://' + host + '/', (r) => r.fulfill({ path: file, contentType: 'text/html' }));
+    await P.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
+    await P.goto('https://' + host + '/', { timeout: 120000 });
+    await P.waitForFunction(() => window.EGO && EGO.Game.state === 'lobby', null, { timeout: 120000 });
+    hosts[host] = await P.evaluate(() => ({ url: EGO.Net.serverUrl(), served: EGO.Net.servedByServer() }));
+    await c.close();
+  }
+  const S = hosts['scorz.onrender.com'], E = hosts['ego-blocks.onrender.com'];
+  check('on scorz.onrender.com (only the page) PLAY WITH FRIENDS goes to the server; the server page uses itself', S.url === 'wss://ego-blocks.onrender.com/ws' && !S.served && E.url === 'wss://ego-blocks.onrender.com/ws' && E.served, hosts);
 
   const sky = await page.evaluate(() => {
     const W = EGO.World, G = EGO.Game, d = EGO.Save.data;

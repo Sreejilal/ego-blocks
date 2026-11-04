@@ -7711,10 +7711,12 @@ const Net = {
     if (location.protocol === 'file:' || !location.host) return 'ws://localhost:8787/ws';
     return here;
   },
-  /** this page came from a SCORZ server itself: on this computer, the home network or Render */
+  /** this page came from a SCORZ server itself: on this computer, the home network or Render. A Render static site
+      (scorz.onrender.com: only the page, no server) is not the built-in server's address, so it plays on that one */
   servedByServer() {
     const h = location.hostname;
-    return /^https?:$/.test(location.protocol) && (h === 'localhost' || h === '127.0.0.1' || /^(10|192\.168|172\.(1[6-9]|2\d|3[01]))\./.test(h) || /\.onrender\.com$/.test(h));
+    const render = /\.onrender\.com$/.test(h) && (!BUILD.server || BUILD.server.indexOf('//' + location.host + '/') > 0);
+    return /^https?:$/.test(location.protocol) && (h === 'localhost' || h === '127.0.0.1' || /^(10|192\.168|172\.(1[6-9]|2\d|3[01]))\./.test(h) || render);
   },
   /** the game on GitHub Pages with no server built in (SCORZ_SERVER): there is nothing there to connect to */
   noServerHere() { return !BUILD.server && !this.urlOverride && !(Save.data.settings && Save.data.settings.server) && /\.github\.io$/.test(location.hostname); },
