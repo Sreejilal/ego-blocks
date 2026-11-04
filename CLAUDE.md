@@ -74,7 +74,7 @@ file in file-name order into ONE function scope. There are no imports or exports
 
 ## Codes
 
-- The CODES box on the Profile screen: `CODES` in 07_data.js is keyed by `codeHash(text)` (spaces, case and symbols ignored), so the codes themselves never appear in the project. Never write a code in plain text in `src/`, tests, commits or docs (the repo is public). `redeemCode(d, text)` gives the reward once per save (`Save.data.codes`). `give: 'all'` is the owner's tester pack: every style, Flow and skin, +99999 emeralds, +999 blueprints (not rank or level). Test: `node test/codes.js` (set `SCORZ_TESTER_CODE` to check the real code).
+- The CODES box on the Profile screen: `CODES` in 07_data.js is keyed by `codeHash(text)` (spaces, case and symbols ignored), so the codes themselves never appear in the project. Never write a code in plain text in `src/`, tests, commits or docs (the repo is public). `redeemCode(d, text)` gives the reward once per save (`Save.data.codes`). `give: 'all'` is the owner's tester pack: every style, Flow and skin, +99999 emeralds, +999 blueprints (not rank or level). It keeps up with updates: `Save.validate` runs `codeTopUp`, so a save that used it gets every style, Flow and skin added later (`unlockAll`), and typing it again unlocks anything new (no more emeralds). New unlockables must live in `STYLE_IDS`, `FLOW_IDS` or `SKINS`, or extend `unlockAll`. Test: `node test/codes.js` (set `SCORZ_TESTER_CODE` to check the real code).
 
 ## Builds
 

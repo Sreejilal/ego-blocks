@@ -31,11 +31,21 @@ const REAL = process.env.SCORZ_TESTER_CODE || '';
   check('the code works with any spaces, case or symbols', /TESTER PACK UNLOCKED/.test(msg), msg);
   check('you get every style, Flow and skin, emeralds and blueprints (not rank)', after.styles === after.allStyles && after.flows === after.allFlows && after.skins === after.allSkins && after.em === before.em + 99999 && after.bp >= 999 && after.rp === 0, after);
   await A.screenshot({ path: __dirname + '/shots/code1_profile.png', timeout: 120000 });
-  check('a second time: YOU ALREADY USED THAT CODE', /ALREADY USED/.test(await redeem(code)));
-  // it is kept after a reload, and you can equip anything
+  check('a second time with nothing new: YOU ALREADY HAVE EVERYTHING', /ALREADY HAVE EVERYTHING/.test(await redeem(code)));
+  // a save from before an update is missing the newest things: the code again gives them, but no more emeralds
+  const forget = () => A.evaluate(() => { const d = EGO.Save.data; d.styles = d.styles.filter((s) => s !== 'GLACIER' && s !== 'KESTREL'); d.flows = d.flows.filter((f) => f !== 'WILDFIRE'); d.skins = d.skins.filter((s) => s !== 'SKY_POINT'); EGO.Save.save(); return d.emeralds; });
+  const em0 = await forget();
+  const again = await redeem(code), em1 = await A.evaluate(() => EGO.Save.data.emeralds);
+  check('a second time after an update: the new things unlock, no extra emeralds', /4 NEW ITEMS UNLOCKED/.test(again) && em1 === em0, { again, em0, em1 });
+  // and just opening the game gives them too
+  await forget();
   await A.reload(); await A.waitForFunction(() => window.EGO && EGO.Game.state === 'lobby', null, { timeout: 120000 });
-  const kept = await A.evaluate(() => ({ styles: EGO.Save.data.styles.length, all: EGO.STYLE_IDS.length, codes: EGO.Save.data.codes.length }));
-  check('kept after closing the game', kept.styles === kept.all && kept.codes === 1, kept);
+  if (!REAL) await A.evaluate(() => { EGO.CODES[EGO.codeHash('STANDINTESTER42')] = { name: 'TESTER PACK', give: 'all' }; EGO.Save.validate(); });
+  const kept = await A.evaluate(() => { const d = EGO.Save.data; return { styles: d.styles.length, all: EGO.STYLE_IDS.length, flows: d.flows.length, allFlows: Object.keys(EGO.FLOWS).length, skins: d.skins.length, allSkins: Object.keys(EGO.SKINS).filter((k) => !EGO.SKINS[k].base).length, codes: d.codes.length }; });
+  check('kept after closing the game, and new things from updates unlock by themselves', kept.styles === kept.all && kept.flows === kept.allFlows && kept.skins === kept.allSkins && kept.codes === 1, kept);
+  // a save that never used the code gets nothing
+  const plain = await A.evaluate(() => { const d = EGO.Save.defaults(); return EGO.codeTopUp(d) === 0 && d.styles.length === 1 && d.flows.length === 0 && d.skins.length === 0; });
+  check('no code used: nothing unlocks', plain);
   // phones: the box fits
   for (const [w, h] of [[390, 844], [844, 390]]) {
     const P = await (await browser.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true })).newPage(); P.setDefaultTimeout(120000);

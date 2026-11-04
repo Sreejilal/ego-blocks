@@ -734,16 +734,30 @@ function codeHash(s, seed = 1405) {
 const CODES = {
   yszaepofxo: { name: 'TESTER PACK', give: 'all' }, // the owner's tester code: every style, Flow and skin, emeralds and blueprints
 };
+/** every style, Flow and skin you can own. Returns how many were new */
+function unlockAll(d) {
+  const n = d.styles.length + d.flows.length + d.skins.length;
+  const add = (have, all) => { for (const k of all) if (!have.includes(k)) have.push(k); };
+  add(d.styles, STYLE_IDS); add(d.flows, FLOW_IDS); add(d.skins, Object.keys(SKINS).filter((k) => !SKINS[k].base));
+  return d.styles.length + d.flows.length + d.skins.length - n;
+}
+/** a save that used a 'give all' code also gets everything added in later updates (Save.validate runs this on load) */
+function codeTopUp(d) {
+  return d.codes.some((h) => CODES[h] && CODES[h].give === 'all') ? unlockAll(d) : 0;
+}
 /** try a code: returns the message to show. 'all' unlocks everything you can own (not rank or level) */
 function redeemCode(d, text) {
   if (!codeNorm(text)) return { ok: false, msg: 'TYPE A CODE FIRST' };
   const h = codeHash(text), c = CODES[h];
   if (!c) return { ok: false, msg: 'THAT CODE DOES NOT WORK' };
-  if (d.codes.includes(h)) return { ok: false, msg: 'YOU ALREADY USED THAT CODE' };
+  if (d.codes.includes(h)) {
+    if (c.give !== 'all') return { ok: false, msg: 'YOU ALREADY USED THAT CODE' };
+    const n = unlockAll(d); // used before: it still gives anything new from updates, but no more emeralds
+    return n ? { ok: true, msg: c.name + ': ' + n + ' NEW ITEM' + (n > 1 ? 'S' : '') + ' UNLOCKED' } : { ok: false, msg: 'YOU ALREADY HAVE EVERYTHING' };
+  }
   d.codes.push(h);
   if (c.give === 'all') {
-    d.styles = STYLE_IDS.slice(); d.flows = FLOW_IDS.slice();
-    d.skins = Object.keys(SKINS).filter((k) => !SKINS[k].base);
+    unlockAll(d);
     d.emeralds += 99999; d.bp += 999;
   }
   if (c.emeralds) d.emeralds += c.emeralds;

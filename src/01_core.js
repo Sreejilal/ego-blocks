@@ -162,6 +162,7 @@ const Save = {
   },
   validate() {
     const d = this.data;
+    codeTopUp(d); // the tester pack keeps up with new styles, Flows and skins
     d.styles = d.styles.filter((s) => STYLES[s]);
     if (!d.styles.includes('ROOKIE')) d.styles.unshift('ROOKIE');
     d.flows = d.flows.filter((f) => FLOWS[f]);
