@@ -6,9 +6,9 @@ const TEAM = [null, null];
 const SKIN_TONES = ['#f1c7a0', '#e0ac85', '#c48b62', '#9a6643', '#6e4a32', '#f6d6b8', '#b07a52', '#4e3424']; // you pick yours in the Locker (Save.data.tone)
 const EYE_COLS = ['#2b1d14', '#1d2b4a', '#2a3a1c', '#3a2a14'];
 const RUN_SPEED = 7.6, SPRINT_SPEED = 11.4; // 10% up with the 35 x 55 pitch, so it never feels empty
-// stamina: sprinting drains it (about 6s of full sprint), it comes back after a short wait (faster standing still), and running
+// stamina: sprinting drains it (about 5s of full sprint), it comes back after a short wait (faster standing still), and running
 // out leaves you out of breath: no sprint until it is back to STAM_BACK, and you jog a little slower until then
-const STAM_DRAIN = 16, STAM_REGEN = 9, STAM_WAIT = 1.0, STAM_BACK = 35, OUT_OF_BREATH = 0.85;
+const STAM_DRAIN = 20, STAM_REGEN = 11, STAM_WAIT = 1.0, STAM_BACK = 35, OUT_OF_BREATH = 0.85;
 
 const PlayerGeo = {
   g: null,

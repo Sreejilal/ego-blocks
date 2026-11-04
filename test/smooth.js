@@ -155,8 +155,8 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     I.down.delete('KeyW'); I.down.delete('ShiftLeft'); EGO.AI.update = window._aiU; G.forfeit();
     return { sprint: +fast.toFixed(2), empty, tired, back: +back.toFixed(1), again };
   });
-  check('stamina: about 6s of sprint, then out of breath (slower, drums flash) until it comes back, then you sprint again',
-    stam.empty > 5 && stam.empty < 7.5 && stam.tired.speed < stam.sprint * 0.62 && stam.tired.flashing && stam.back > 3 && stam.back < 8 && !stam.again.flashing && stam.again.speed > stam.sprint * 0.9, stam);
+  check('stamina: about 5s of sprint, then out of breath (slower, drums flash) until it comes back, then you sprint again',
+    stam.empty > 4.2 && stam.empty < 5.8 && stam.tired.speed < stam.sprint * 0.62 && stam.tired.flashing && stam.back > 3 && stam.back < 8 && !stam.again.flashing && stam.again.speed > stam.sprint * 0.9, stam);
 
   check('the sky is a bright day; SUNSET in the pause menu switches to the evening and back; a bad save becomes day',
     sky.first.look === 'day' && sky.first.setting === 'day' && !sky.first.stars && sky.first.sunY > 0.5 && sky.sunset.look === 'sunset' && sky.sunset.stars && sky.sunset.sunY < 0.3 && sky.sunset.setting === 'sunset' && sky.sunset.pressed === 'true' && sky.back.look === 'day' && sky.fixed === 'day', sky);
