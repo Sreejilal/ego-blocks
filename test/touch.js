@@ -109,13 +109,13 @@ const check = (name, ok, info) => { results.push((ok ? 'PASS ' : 'FAIL ') + name
   check('looking at grass still shoots at goal', assist.down.on && assist.down.z > 30, assist.down);
 
   // ---- pass tap and lob hold ----
-  await page.evaluate(() => { const m = EGO.Game.match, h = m.human; m.ball.owner = null; h.pos.set(0, 0, 0); h.vel.set(0, 0, 0); h.setState('free'); m.possess(h); const mate = m.teams[0].find((p) => p.role === 'MID'); mate.pos.set(0, 0, 10); EGO.Cam.yaw = 0; EGO.Cam.pitch = -0.13; });
+  const mateRole = await page.evaluate(() => { const m = EGO.Game.match, h = m.human; m.ball.owner = null; h.pos.set(0, 0, 0); h.vel.set(0, 0, 0); h.setState('free'); m.possess(h); const mate = m.teams[0].find((p) => !p.isGK && p !== h); mate.pos.set(0, 0, 10); EGO.Cam.yaw = 0; EGO.Cam.pitch = -0.13; return mate.role; });
   await step(2);
   const pa = await center('#touch [data-act="pass"]');
   await tStart(4, pa.x, pa.y); await step(2); await tEnd(4); await step(2);
   ball = await page.evaluate(() => { const b = EGO.Game.match.ball; return { type: b.kick && b.kick.type, to: b.kick && b.kick.to && b.kick.to.role, vy: +b.vel.y.toFixed(1) }; });
-  check('pass tap passes to teammate in aim', ball.type === 'pass' && ball.to === 'MID' && ball.vy < 2, ball);
-  await page.evaluate(() => { const m = EGO.Game.match, h = m.human; m.ball.owner = null; m.ball.kick = null; h.pickBlock = 0; h.setState('free'); m.possess(h); const mate = m.teams[0].find((p) => p.role === 'MID'); mate.pos.set(0, 0, 14); });
+  check('pass tap passes to teammate in aim', ball.type === 'pass' && ball.to === mateRole && ball.vy < 2, ball);
+  await page.evaluate(() => { const m = EGO.Game.match, h = m.human; m.ball.owner = null; m.ball.kick = null; h.pickBlock = 0; h.setState('free'); m.possess(h); const mate = m.teams[0].find((p) => !p.isGK && p !== h); mate.pos.set(0, 0, 14); });
   await step(2);
   await tStart(5, pa.x, pa.y); await step(26);
   const lobLabel = await page.evaluate(() => document.querySelector('#touch [data-act="pass"] .lb').textContent);
@@ -131,7 +131,7 @@ const check = (name, ok, info) => { results.push((ok ? 'PASS ' : 'FAIL ') + name
   await tStart(6, dt.x, dt.y); await step(2); s = await state(); await tEnd(6);
   check('context button feints with the ball', s.ps === 'dash' && dtLabel1 === 'FEINT', { ps: s.ps, dtLabel1 });
   await step(30);
-  await page.evaluate(() => { const m = EGO.Game.match, h = m.human; const o = m.teams[1].find((p) => p.role === 'ST'); m.ball.owner = null; h.setState('free'); h.tackleCd = 0; h.pos.set(0, 0, 0); o.pos.set(0, 0, 2.5); o.setState('free'); m.possess(o); EGO.Cam.yaw = 0; });
+  await page.evaluate(() => { const m = EGO.Game.match, h = m.human; const o = m.teams[1].find((p) => !p.isGK); m.ball.owner = null; h.setState('free'); h.tackleCd = 0; h.pos.set(0, 0, 0); o.pos.set(0, 0, 2.5); o.setState('free'); m.possess(o); EGO.Cam.yaw = 0; });
   await step(2, true);
   const dtLabel2 = await page.evaluate(() => document.querySelector('#touch [data-act="dt"] .lb').textContent);
   await tStart(7, dt.x, dt.y); await step(2); s = await state(); await tEnd(7);
@@ -170,7 +170,7 @@ const check = (name, ok, info) => { results.push((ok ? 'PASS ' : 'FAIL ') + name
   await tStart(11, W * 0.66, H * 0.3); await tEnd(11); await sleep(60);
   await tStart(12, W * 0.66, H * 0.3); await tEnd(12);
   await step(40);
-  const yawGoal = await page.evaluate(() => { const h = EGO.Game.match.human; return { yaw: +EGO.Cam.yaw.toFixed(2), want: +Math.atan2(-h.pos.x, 32.5 - h.pos.z).toFixed(2) }; });
+  const yawGoal = await page.evaluate(() => { const m = EGO.Game.match, h = m.human; return { yaw: +EGO.Cam.yaw.toFixed(2), want: +Math.atan2(-h.pos.x, m.oppGoalZ(h.team) - h.pos.z).toFixed(2) }; });
   check('double tap faces the goal', Math.abs(yawGoal.yaw - yawGoal.want) < 0.08, yawGoal);
 
   // ---- scoreboard tap ----

@@ -2760,7 +2760,7 @@ class Player {
     this.abil = this.style.abilities.map((id) => ({ id, def: ABILITIES[id], cd: 0 }));
     this.flow = 0; this.flowT = 0; this.gamble = null; this.awake = 0; this.awakeT = 0;
     this.fx = {}; this.item = null; this.callT = 0;
-    this.speedMul = 1;
+    this.speedMul = 1; this.fit = 1; // fit: sprint drain (bots: fitter with skill)
     this.mods = { speed: 1, shot: 1, stamRegen: 1, stamDrain: 1, cdRate: 1, tackleRange: 1, tackleCd: 1 };
     this.stats = { goals: 0, assists: 0, shots: 0, onTarget: 0, tackles: 0, saves: 0, passes: 0, steals: 0 };
     this.ai = { think: rand(0, 0.3), target: V3(), wantShot: null, runT: 0, runTarget: null, offU: rand(-2, 2), offV: rand(-2, 2), offT: 0, dodgeIn: -1, abilIn: rand(1, 3), mark: null, task: 'pos' };
@@ -2904,7 +2904,7 @@ class Player {
       if (st === 'hold') base *= 0.6;
       maxSpeed = this.setPiece || this.fkHold || this.inWall ? 0 : base * m.speed; // a throw-in, corner or free kick taker stands still
       if (sprinting && m.stamDrain > 0) {
-        this.stamina -= STAM_DRAIN * dt * m.stamDrain; this.stamDelay = STAM_WAIT;
+        this.stamina -= STAM_DRAIN * dt * m.stamDrain * this.fit; this.stamDelay = STAM_WAIT;
         if (this.stamina <= 0) { this.stamina = 0; this.exhausted = true; }
       }
     } else if (st === 'dash') {
@@ -4341,7 +4341,10 @@ class Match {
         const look = net ? net.look : human ? (opts.look || Save.data.look) : botLook();
         const tone = net ? net.tone : Save.data.tone;
         const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[Number.isInteger(tone) ? tone : 1] || SKIN_TONES[1] : null, number: num, name: net ? net.name : human ? 'YOU' : names.pop() });
-        if (!human && (team === 1 || opts.teamD)) p.speedMul = 1 + 0.045 * (opts.teamD ? opts.teamD[team] : this.d); // bots are a little quicker with skill (both teams when each has its own skill)
+        if (!human && (team === 1 || opts.teamD)) { // bots are a little quicker and fitter with skill (both teams when each has its own skill)
+          const sk = opts.teamD ? opts.teamD[team] : this.d;
+          p.speedMul = 1 + 0.045 * sk; p.fit = 1.1 - 0.25 * sk;
+        }
         this.players.push(p); this.teams[team].push(p);
         if (net) { p.netId = net.id; this.humans.push(p); } else if (human) this.human = p;
       }
@@ -6459,13 +6462,13 @@ const AI = {
   },
   decideOff(m, p, c, sk) {
     const a = p.ai, b = m.ball, s = m.dir(p.team);
-    let tgt = null, sprint = false;
+    let tgt = null, sprint = false, urgent = false; // urgent: a sprint for the ball itself, never saved
     const k = b.kick;
-    if (!b.owner && k && k.type === 'pass' && k.to === p) { tgt = k.passPoint && a.runT > 0 ? k.passPoint : this.interceptPoint(m, p); sprint = true; }
+    if (!b.owner && k && k.type === 'pass' && k.to === p) { tgt = k.passPoint && a.runT > 0 ? k.passPoint : this.interceptPoint(m, p); sprint = urgent = true; }
     else if (a.runT > 0 && a.runTo) { tgt = a.runTo; sprint = true; }
     else {
       switch (a.task) {
-        case 'chase': tgt = this.interceptPoint(m, p, p.fx.skyTrap > 0 ? 3.3 : 1.6); sprint = true; break;
+        case 'chase': tgt = this.interceptPoint(m, p, p.fx.skyTrap > 0 ? 3.3 : 1.6); sprint = urgent = true; break;
         case 'press': {
           const o = b.owner;
           if (o) {
@@ -6507,15 +6510,16 @@ const AI = {
     // interceptions: step into a passing lane we can reach
     if (!b.owner && k && k.type === 'pass' && k.to && k.to.team !== p.team && a.task !== 'chase') {
       const it = this.interceptTime(m, p);
-      if (it < 0.9 + sk * 0.5) { tgt = this.interceptPoint(m, p); sprint = true; }
+      if (it < 0.9 + sk * 0.5) { tgt = this.interceptPoint(m, p); sprint = urgent = true; }
     }
-    if (!b.owner && c.ballDist < 4.5 && b.pos.y < 1.6 && !(k && k.type === 'pass' && k.to && k.to.team === p.team && k.to !== p)) { tgt = this.interceptPoint(m, p); sprint = true; }
+    if (!b.owner && c.ballDist < 4.5 && b.pos.y < 1.6 && !(k && k.type === 'pass' && k.to && k.to.team === p.team && k.to !== p)) { tgt = this.interceptPoint(m, p); sprint = urgent = true; }
     if (p === m.caller && c.mateHasBall && p.callT <= 0 && chance(0.05)) p.callT = 1.6; // test caller: calls like a human, open or not
     if (c.mateHasBall && c.open > 5 && c.progAhead > 3 && p.callT <= 0 && chance(0.12)) {
       p.callT = 1.2;
       if (m.human && p.team === m.human.team) m.label(p, '!', '#2ee38f');
     }
-    a.target.set(tgt.x, 0, tgt.z); a.sprint = sprint && p.stamina > 12;
+    // smart bots save their breath: they jog back into shape and keep a reserve for the ball; weak bots sprint everywhere
+    a.target.set(tgt.x, 0, tgt.z); a.sprint = sprint && p.stamina > (urgent ? 12 : 12 + 48 * sk);
   },
   tryTackle(m, p, dt) {
     const c = m.ball.owner;
@@ -9113,7 +9117,7 @@ const UI = {
     this._featSec = sec; this._featMode = f.mode;
     const hms = Math.floor(sec / 3600) + ':' + String(Math.floor(sec / 60) % 60).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
     $('feat-name').textContent = MODES[f.mode].name;
-    $('feat-sub').textContent = (MODES[f.mode].rewards ? 'FEATURED' : 'FOR FUN, NO REWARDS') + ' · NEXT IN ' + hms;
+    $('feat-sub').textContent = (MODES[f.mode].rewards ? 'FEATURED' : 'NO REWARDS') + ' · NEXT IN ' + hms;
   },
   /* ---------- HUD ---------- */
   buildHud(m) {

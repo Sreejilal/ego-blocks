@@ -103,7 +103,7 @@ class Player {
     this.abil = this.style.abilities.map((id) => ({ id, def: ABILITIES[id], cd: 0 }));
     this.flow = 0; this.flowT = 0; this.gamble = null; this.awake = 0; this.awakeT = 0;
     this.fx = {}; this.item = null; this.callT = 0;
-    this.speedMul = 1;
+    this.speedMul = 1; this.fit = 1; // fit: sprint drain (bots: fitter with skill)
     this.mods = { speed: 1, shot: 1, stamRegen: 1, stamDrain: 1, cdRate: 1, tackleRange: 1, tackleCd: 1 };
     this.stats = { goals: 0, assists: 0, shots: 0, onTarget: 0, tackles: 0, saves: 0, passes: 0, steals: 0 };
     this.ai = { think: rand(0, 0.3), target: V3(), wantShot: null, runT: 0, runTarget: null, offU: rand(-2, 2), offV: rand(-2, 2), offT: 0, dodgeIn: -1, abilIn: rand(1, 3), mark: null, task: 'pos' };
@@ -247,7 +247,7 @@ class Player {
       if (st === 'hold') base *= 0.6;
       maxSpeed = this.setPiece || this.fkHold || this.inWall ? 0 : base * m.speed; // a throw-in, corner or free kick taker stands still
       if (sprinting && m.stamDrain > 0) {
-        this.stamina -= STAM_DRAIN * dt * m.stamDrain; this.stamDelay = STAM_WAIT;
+        this.stamina -= STAM_DRAIN * dt * m.stamDrain * this.fit; this.stamDelay = STAM_WAIT;
         if (this.stamina <= 0) { this.stamina = 0; this.exhausted = true; }
       }
     } else if (st === 'dash') {

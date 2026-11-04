@@ -543,7 +543,7 @@ const UI = {
     this._featSec = sec; this._featMode = f.mode;
     const hms = Math.floor(sec / 3600) + ':' + String(Math.floor(sec / 60) % 60).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
     $('feat-name').textContent = MODES[f.mode].name;
-    $('feat-sub').textContent = (MODES[f.mode].rewards ? 'FEATURED' : 'FOR FUN, NO REWARDS') + ' · NEXT IN ' + hms;
+    $('feat-sub').textContent = (MODES[f.mode].rewards ? 'FEATURED' : 'NO REWARDS') + ' · NEXT IN ' + hms;
   },
   /* ---------- HUD ---------- */
   buildHud(m) {

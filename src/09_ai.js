@@ -399,13 +399,13 @@ const AI = {
   },
   decideOff(m, p, c, sk) {
     const a = p.ai, b = m.ball, s = m.dir(p.team);
-    let tgt = null, sprint = false;
+    let tgt = null, sprint = false, urgent = false; // urgent: a sprint for the ball itself, never saved
     const k = b.kick;
-    if (!b.owner && k && k.type === 'pass' && k.to === p) { tgt = k.passPoint && a.runT > 0 ? k.passPoint : this.interceptPoint(m, p); sprint = true; }
+    if (!b.owner && k && k.type === 'pass' && k.to === p) { tgt = k.passPoint && a.runT > 0 ? k.passPoint : this.interceptPoint(m, p); sprint = urgent = true; }
     else if (a.runT > 0 && a.runTo) { tgt = a.runTo; sprint = true; }
     else {
       switch (a.task) {
-        case 'chase': tgt = this.interceptPoint(m, p, p.fx.skyTrap > 0 ? 3.3 : 1.6); sprint = true; break;
+        case 'chase': tgt = this.interceptPoint(m, p, p.fx.skyTrap > 0 ? 3.3 : 1.6); sprint = urgent = true; break;
         case 'press': {
           const o = b.owner;
           if (o) {
@@ -447,15 +447,16 @@ const AI = {
     // interceptions: step into a passing lane we can reach
     if (!b.owner && k && k.type === 'pass' && k.to && k.to.team !== p.team && a.task !== 'chase') {
       const it = this.interceptTime(m, p);
-      if (it < 0.9 + sk * 0.5) { tgt = this.interceptPoint(m, p); sprint = true; }
+      if (it < 0.9 + sk * 0.5) { tgt = this.interceptPoint(m, p); sprint = urgent = true; }
     }
-    if (!b.owner && c.ballDist < 4.5 && b.pos.y < 1.6 && !(k && k.type === 'pass' && k.to && k.to.team === p.team && k.to !== p)) { tgt = this.interceptPoint(m, p); sprint = true; }
+    if (!b.owner && c.ballDist < 4.5 && b.pos.y < 1.6 && !(k && k.type === 'pass' && k.to && k.to.team === p.team && k.to !== p)) { tgt = this.interceptPoint(m, p); sprint = urgent = true; }
     if (p === m.caller && c.mateHasBall && p.callT <= 0 && chance(0.05)) p.callT = 1.6; // test caller: calls like a human, open or not
     if (c.mateHasBall && c.open > 5 && c.progAhead > 3 && p.callT <= 0 && chance(0.12)) {
       p.callT = 1.2;
       if (m.human && p.team === m.human.team) m.label(p, '!', '#2ee38f');
     }
-    a.target.set(tgt.x, 0, tgt.z); a.sprint = sprint && p.stamina > 12;
+    // smart bots save their breath: they jog back into shape and keep a reserve for the ball; weak bots sprint everywhere
+    a.target.set(tgt.x, 0, tgt.z); a.sprint = sprint && p.stamina > (urgent ? 12 : 12 + 48 * sk);
   },
   tryTackle(m, p, dt) {
     const c = m.ball.owner;
