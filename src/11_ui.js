@@ -335,7 +335,7 @@ const UI = {
     if (!this.emoteOpen) return;
     for (let i = 0; i < EMOTES.length; i++) if (E.has('Digit' + (i + 1)) || E.has('Numpad' + (i + 1))) { E.delete('Digit' + (i + 1)); E.delete('Numpad' + (i + 1)); this.pickEmote(i); return; }
     const mv = { PadLeft: -1, PadRight: 1, PadUp: -3, PadDown: 3 };
-    for (const k in mv) if (E.has(k)) { E.delete(k); this.markEmote(this.emoteSel + mv[k]); }
+    for (const k in mv) if (E.has(k)) { E.delete(k); this.markEmote(this.emoteSel + mv[k]); Sfx.hover(); }
     if (E.has('PadA')) { E.delete('PadA'); this.pickEmote(this.emoteSel); return; }
     if (E.has('PadB')) this.toggleEmotes(false);
   },
@@ -420,7 +420,31 @@ const UI = {
     </section>`;
   },
   /* ---------- wiring ---------- */
+  /** menu sounds for every button: a soft tick on mouse hover, a tock on press (lower for BACK and CLOSE, a blip for tabs),
+      a whoosh when a screen or pop-up opens or closes. Touch controls are not buttons, so they stay quiet */
+  bindSounds() {
+    const BTN = 'button, .tab, [role=button]';
+    let hov = null;
+    document.addEventListener('pointerdown', () => Sfx.init(), true);
+    document.addEventListener('pointerover', (e) => {
+      const b = e.target.closest ? e.target.closest(BTN) : null;
+      if (b === hov) return;
+      hov = b;
+      if (b && e.pointerType === 'mouse' && !b.disabled) Sfx.hover();
+    });
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest ? e.target.closest(BTN) : null;
+      if (!b || b.disabled) return;
+      if (b.dataset.sfx === 'equip') { Sfx.equip(); return; }
+      const t = b.textContent.trim();
+      Sfx.press(/-(back|close)$/.test(b.id) || t === 'BACK' || t === 'CLOSE' ? 'back' : b.classList.contains('tab') ? 'tab' : 'go');
+    }, true);
+    const pops = ['friend-card', 'scr-daily', 'scr-pause', 'emote-pop'].map((id) => $(id)).filter(Boolean);
+    const mo = new MutationObserver((list) => { for (const r of list) { const was = r.oldValue !== null, now = r.target.hidden; if (was !== now) { if (now) Sfx.close(); else Sfx.open(); } } });
+    for (const el of pops) mo.observe(el, { attributes: true, attributeFilter: ['hidden'], attributeOldValue: true });
+  },
   bind() {
+    this.bindSounds();
     const click = (id, fn) => $(id).addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); });
     click('go-ranked', () => Game.startMatch('ranked'));
     click('go-quick', () => Game.startMatch('quick'));
@@ -497,7 +521,9 @@ const UI = {
     });
   },
   show(name) {
+    const was = this.cur;
     this.cur = name;
+    if (was && was !== name && was !== 'hud' && name !== 'hud') { if (name === 'lobby') Sfx.close(); else Sfx.open(); } // menus whoosh in and out (matches have their own sounds)
     const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
@@ -979,13 +1005,12 @@ const UI = {
     // name, rarity and the equip button sit under the 3D preview
     const cap = $('lk-cap');
     cap.innerHTML = `${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<b>${esc(it.name)}</b>`
-      + (it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`)
+      + (it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" data-sfx="equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`)
       + (tab === 'style' && (it.spun || !it.owned) ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
     const kp = $('lk-keep');
     if (kp) kp.addEventListener('click', () => { if (Goals.unlock(d, id)) { d.style = id; Save.save(); Sfx.coin(); this.renderLocker(); this.renderLobby(); } });
     const eq = $('lk-equip');
     if (eq) eq.addEventListener('click', () => {
-      Sfx.click();
       if (tab === 'style') d.style = id; else if (tab === 'club') d.club = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else if (id.startsWith('TONE')) d.tone = +id.slice(4); else d.look[SKINS[id].slot] = id;
       Save.save(); this.renderLocker();
     });

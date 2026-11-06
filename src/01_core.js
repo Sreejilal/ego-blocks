@@ -192,8 +192,17 @@ const Save = {
 /* ---------- WebAudio retro sound ---------- */
 const Sfx = (() => {
   let ctx = null, master = null, bus = null, noiseBuf = null, crowdGain = null, crowdFilter = null;
-  let muted = false, crowdBase = 0, loud = 1;
+  let muted = false, crowdBase = 0, loud = 1, lastPress = -1, lastHover = -1;
   const now = () => ctx.currentTime;
+  /** a menu press: a soft wooden tock, lower for BACK and CLOSE, a light two-note blip for tabs.
+      A second ask in the same moment is skipped (the page and a button's own handler can both ask) */
+  function press(kind = 'go') {
+    if (!ctx || now() - lastPress < 0.06) return;
+    lastPress = now();
+    if (kind === 'back') { tone(340, 0.06, { type: 'sine', vol: 0.1, slide: 210 }); tone(1100, 0.012, { type: 'triangle', vol: 0.02 }); }
+    else if (kind === 'tab') { tone(780, 0.03, { type: 'sine', vol: 0.06 }); tone(1040, 0.045, { type: 'sine', vol: 0.05, delay: 0.035 }); }
+    else { tone(460, 0.05, { type: 'sine', vol: 0.11, slide: 280 }); tone(1500, 0.014, { type: 'triangle', vol: 0.024 }); noise(0.012, { vol: 0.03, type: 'highpass', freq: 3800 }); }
+  }
   function init() {
     if (ctx) { if (ctx.state !== 'running') ctx.resume().catch(() => {}); return; } // iPhones can leave it 'interrupted'
     try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; return; }
@@ -342,7 +351,13 @@ const Sfx = (() => {
       noise(0.9, { vol: 0.1, type: 'bandpass', freq: 420, slide: 280, q: 1.2, attack: 0.1 });
     },
     tick() { tone(1500 + Math.random() * 300, 0.018, { type: 'square', vol: 0.06 }); },
-    click() { tone(660, 0.035, { type: 'square', vol: 0.05 }); },
+    click() { press(); },
+    press,
+    /** menu sounds: quiet and short, felt more than heard */
+    hover() { if (!ctx || now() - lastHover < 0.04) return; lastHover = now(); tone(2000, 0.012, { type: 'sine', vol: 0.025, slide: 1600 }); },
+    open() { noise(0.16, { vol: 0.035, type: 'bandpass', freq: 480, slide: 1700, q: 1.2 }); tone(380, 0.1, { type: 'sine', vol: 0.035, slide: 600, delay: 0.01 }); },
+    close() { noise(0.14, { vol: 0.03, type: 'bandpass', freq: 1600, slide: 450, q: 1.2 }); tone(560, 0.09, { type: 'sine', vol: 0.03, slide: 340 }); },
+    equip() { lastPress = ctx ? now() : -1; tone(150, 0.06, { type: 'sine', vol: 0.12, slide: 90 }); tone(660, 0.05, { type: 'sine', vol: 0.06, delay: 0.02 }); tone(990, 0.14, { type: 'triangle', vol: 0.05, delay: 0.07 }); },
     deny() { tone(180, 0.09, { type: 'square', vol: 0.07 }); tone(140, 0.12, { type: 'square', vol: 0.07, delay: 0.08 }); },
     fanfare(r) {
       const n = [3, 4, 5, 6, 8][r] || 3;

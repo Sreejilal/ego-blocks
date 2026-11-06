@@ -100,6 +100,7 @@ file in file-name order into ONE function scope. There are no imports or exports
 
 - Three.js is **r128**, loaded as the global `THREE`. Do not use newer APIs (no `outputColorSpace`, no ES module imports from three).
 - No image, model or sound files. Textures and icons are drawn on `<canvas>` with `NearestFilter`. Sounds are synthesized in `Sfx`.
+- Menu sounds come from one place, `UI.bindSounds`: every `button`, `.tab` or `[role=button]` ticks on mouse hover (`Sfx.hover`) and tocks on press (`Sfx.press`: `back` for ids ending `-back`/`-close` or text BACK/CLOSE, `tab` for tabs). A button with `data-sfx="equip"` plays `Sfx.equip` instead. `UI.show` and the pop-ups in `bindSounds` whoosh (`Sfx.open`/`Sfx.close`). `Sfx.click()` is the same tock and skips a repeat in the same moment, so old handlers that still call it do not double up. Keep touch controls as `div`s so they never tock. Test: `node test/uisounds.js`.
 - Original names and art only. No names, logos or music from Blue Lock, Minecraft, Roblox or any other brand.
 - All three control schemes must keep working: keyboard and mouse, controller, and touch. When you add a player action, wire it into `Input.controls()` (10_input.js), give it a touch button in `10_touch.js`, and list it on the How to Play screen.
 - Saved data goes through `Save`. New fields need a default in `Save.defaults()` and sanitizing in `Save.load()`, so old saves keep working.
