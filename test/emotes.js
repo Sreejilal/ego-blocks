@@ -1,4 +1,4 @@
-// The emote wheel: B (or the EMOTE button, or D-pad down) opens it, 1 to 6 / a click / the D-pad picks, your player does
+// The emote wheel: B (or the EMOTE button, or D-pad down) opens it, 1 to 9 / a click / the D-pad and A pick, your player does
 // it for a moment with its name over your head. Not with the ball, once every 3 seconds. Online, everyone sees it.
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
@@ -34,7 +34,7 @@ const PORT = 18793;
     const h = EGO.Game.match.human;
     return { open, n, closed: document.getElementById('emote-pop').hidden, state: h.state, emote: h.emote, label: [...document.querySelectorAll('.flabel')].some((l) => !l.hidden && /WAVE/.test(l.textContent)) };
   });
-  check('B opens the wheel with 6 emotes, 1 picks WAVE and the wheel closes', kb.open && kb.n === 6 && kb.closed && kb.state === 'emote' && kb.emote === 'wave', kb);
+  check('B opens the wheel with 9 emotes, 1 picks WAVE and the wheel closes', kb.open && kb.n === 9 && kb.closed && kb.state === 'emote' && kb.emote === 'wave', kb);
   check('the emote name shows over your head', kb.label, kb);
   await A.screenshot({ path: __dirname + '/shots/em1_wave.png', timeout: 120000 });
   const done = await A.evaluate(() => { EGO.Game.stepManual(110, false); return EGO.Game.match.human.state; });
@@ -47,10 +47,14 @@ const PORT = 18793;
     const m = EGO.Game.match, h = m.human; m.ball.release(); m.ball.pos.x += 8; h.emoteCd = 0; EGO.Game.stepManual(2, false);
     EGO.Input.edges.add('PadDown'); EGO.Game.stepManual(1, false); const open = EGO.UI.emoteOpen;
     const cd0 = h.abil.map((a) => a.cd);
-    EGO.Input.edges.add('PadUp'); EGO.Game.stepManual(2, false);
-    return { open, emote: h.emote, state: h.state, abilityFired: h.abil.some((a, i) => a.cd > cd0[i]) };
+    EGO.Input.edges.add('PadRight'); EGO.Game.stepManual(1, false);
+    EGO.Input.edges.add('PadDown'); EGO.Game.stepManual(1, false);
+    EGO.Input.edges.add('PadDown'); EGO.Game.stepManual(1, false);
+    const sel = document.querySelector('#emote-pop .sel'), y0 = h.pos.y;
+    EGO.Input.edges.add('PadA'); EGO.Game.stepManual(2, false);
+    return { open, picked: sel && sel.dataset.em, emote: h.emote, state: h.state, jumped: h.pos.y > y0 + 0.2, abilityFired: h.abil.some((a, i) => a.cd > cd0[i]) };
   });
-  check('controller: D-pad down opens it, the D-pad picks (and does not fire an ability)', pad.open && pad.state === 'emote' && pad.emote === 'clap' && !pad.abilityFired, pad);
+  check('controller: D-pad down opens it, the D-pad moves to any emote (even the last row) and A plays it (no jump, no ability)', pad.open && pad.picked === '7' && pad.state === 'emote' && pad.emote === 'bow' && !pad.jumped && !pad.abilityFired, pad);
   // phone: the EMOTE button
   const P = await mk({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   await P.evaluate(() => { EGO.Save.data.settings.autoFs = false; EGO.Game.startMatch('quick'); for (let i = 0; i < 80 && EGO.Game.match.phase !== 'play'; i++) EGO.Game.stepManual(10, false); const m = EGO.Game.match, h = m.human; if (m.ball.owner === h) { m.ball.release(); m.ball.pos.x += 6; } EGO.Game.stepManual(2, true); });

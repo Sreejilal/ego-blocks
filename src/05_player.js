@@ -68,7 +68,12 @@ function accGeo() {
   const chain = new VoxBuilder(), c = 0.022;
   for (let i = 0; i <= 6; i++) { const t = i / 6, x = 0.14 * (1 - t), y = 0.71 - 0.19 * t; for (const s of [1, -1]) chain.box(s * x - c, y - c, 0.128, s * x + c, y + c, 0.155, '#ffffff', { ao: 0.9 }); }
   chain.box(-0.045, 0.43, 0.128, 0.045, 0.52, 0.17, '#ffffff', { ao: 0.9 });
-  return (_accGeo = { mask: mask.geometry(), chain: chain.geometry() });
+  // shades: two lenses on a bar across the eyes, with arms back to the ears
+  const shades = new VoxBuilder();
+  shades.box(-0.23, 0.17, 0.25, -0.02, 0.26, 0.285, '#ffffff', { ao: 0.9 }); shades.box(0.02, 0.17, 0.25, 0.23, 0.26, 0.285, '#ffffff', { ao: 0.9 });
+  shades.box(-0.24, 0.24, 0.25, 0.24, 0.27, 0.29, '#9a9fb0', { ao: 1 });
+  for (const s of [1, -1]) shades.box(s > 0 ? 0.25 : -0.265, 0.22, 0.0, s > 0 ? 0.265 : -0.25, 0.25, 0.27, '#9a9fb0', { ao: 1 });
+  return (_accGeo = { mask: mask.geometry(), chain: chain.geometry(), shades: shades.geometry() });
 }
 const _hairGeoCache = {}, _hairMatCache = {}, _eyeMatCache = {};
 function hairGeo(shape) {
@@ -139,8 +144,10 @@ class Player {
       const am = this.accMat = new THREE.MeshLambertMaterial({ color: lin(L.acc.hex), vertexColors: true, emissive: lin(L.acc.hex), emissiveIntensity: L.acc.glow || 0.08 });
       if (L.acc.kind === 'band') mk(bandGeo(L.hairShape), am, headP, 0, 0, 0);
       else if (L.acc.kind === 'mask') mk(accGeo().mask, am, headP, 0, 0, 0);
+      else if (L.acc.kind === 'shades') mk(accGeo().shades, am, headP, 0, 0, 0);
     }
-    const eyes = new THREE.Mesh(G.eyes, eyeMat(this.flowId && FLOWS[this.flowId] ? FLOWS[this.flowId].color : this.style.aura)); // in Flow your eyes glow in its colour eyes.position.set(0, 0.21, 0.236); eyes.visible = false; headP.add(eyes);
+    const eyes = new THREE.Mesh(G.eyes, eyeMat(this.flowId && FLOWS[this.flowId] ? FLOWS[this.flowId].color : this.style.aura)); // in Flow your eyes glow in its colour
+    eyes.position.set(0, 0.21, 0.236); eyes.visible = false; headP.add(eyes);
     const armL = new THREE.Group(); armL.position.set(0.35, 0.68, 0); body.add(armL); mk(G.arm, this.mat, armL, 0, -0.3, 0);
     const armR = new THREE.Group(); armR.position.set(-0.35, 0.68, 0); body.add(armR); mk(G.arm, this.mat, armR, 0, -0.3, 0);
     const legL = new THREE.Group(); legL.position.set(0.12, 0, 0); body.add(legL); mk(G.leg, this.mat, legL, 0, -0.36, 0);
@@ -192,16 +199,16 @@ class Player {
     }
     const fx = this.fx;
     if (fx.burst > 0) m.speed *= 1.45;
-    if (fx.turbo > 0) { m.speed *= 1.4; m.stamDrain = 0; }
+    if (fx.turbo > 0) m.speed *= 1.3;
     if (fx.shuffle > 0) m.speed *= 0.95;
     if (fx.supercharge > 0) { m.speed *= 1.5; m.stamDrain = 0; }
     if (fx.jetpack > 0) m.speed *= 1.25;
     if (fx.lockdown > 0) m.tackleRange *= 2.3;
     if (fx.slimed > 0) m.speed *= 0.55;
     if (fx.tempo > 0) m.speed *= 1.2; // MAESTRO's TEMPO
-    if (fx.loaded > 0) m.speed *= 1.15; // THUNDER's LOADED
+    if (fx.loaded > 0) m.speed *= 1.25; // THUNDER's LOADED
     if (fx.wind > 0) m.stamDrain *= 0.5; // SECOND WIND
-    if (fx.hunt > 0 && this.m.ball.owner !== this) { m.speed *= 1.3; m.stamDrain = 0; } // BLITZ's HUNT
+    if (fx.hunt > 0 && this.m.ball.owner !== this) { m.speed *= 1.2; m.stamDrain = 0; } // BLITZ's HUNT
     if (fx.scent > 0 && !this.m.ball.owner) m.speed *= 1.2;
     if (fx.loaded > 0) m.shot *= 1.2;
   }
@@ -258,6 +265,7 @@ class Player {
       if (d.home && d.home.state !== undefined) { const hx = d.home.pos.x - this.pos.x, hz = d.home.pos.z - this.pos.z, hl = len2D(hx, hz); if (hl > 0.1) { dx = hx / hl; dz = hz / hl; } if (hl < 1.3) d.t = d.dur; }
       this.vel.x = dx * d.speed; this.vel.z = dz * d.speed;
       this.yaw = Math.atan2(dx, dz);
+      if (d.ram) this.m.ramHits(this);
       if (d.t >= d.dur) { this.dash = null; this.setState('free'); if (d.onEnd) d.onEnd(); }
     } else if (st === 'slide') {
       const s = this.slide;
@@ -406,6 +414,15 @@ class Player {
         } else if (c === 'clap') { const cl = Math.abs(Math.sin(t * 9)); aL = aR = -1.35; aLz = 0.15 + cl * 0.45; aRz = -aLz; by = 0.72 + cl * 0.02;
         } else if (c === 'flex') { aL = aR = -1.55; aLz = 1.45 + Math.sin(t * 5) * 0.08; aRz = -aLz; by = 0.72 - 0.04 * Math.abs(Math.sin(t * 5)); hx = 0.06;
         } else if (c === 'point') { aR = -3.0; aRz = -0.15; aL = 0.2; aLz = 0.3; hx = -0.4;
+        } else if (c === 'salute') { aR = -2.2; aRz = 1.15; aL = 0; aLz = 0.05; hx = -0.05; by = 0.72 + Math.min(1, t / 0.2) * 0.03;
+        } else if (c === 'bow') { const k = Math.min(1, t / 0.5) * (0.75 + 0.25 * Math.cos(t * 2)); bx = 0.85 * k; aR = -0.4 * k; aRz = 0.5 * k; aL = 0.6 * k; aLz = 0.6 * k; hx = 0.2 * k;
+        } else if (c === 'drums') { const a = Math.sin(t * 16), b2 = Math.sin(t * 16 + Math.PI); aL = -1.2 + a * 0.45; aR = -1.2 + b2 * 0.45; aLz = 0.3; aRz = -0.3; hx = 0.15 + Math.abs(Math.sin(t * 8)) * 0.15; lL = Math.max(0, Math.sin(t * 8)) * -0.3;
+        } else if (c === 'pump') { const u = Math.max(0, Math.sin(t * 7)); aR = -1.6 - u * 1.3; aRz = -0.1; aL = 0.2; aLz = 0.35; by = 0.72 + u * 0.08; hx = -0.15 * u;
+        } else if (c === 'chill') { const k = Math.min(1, t / 0.35); by = 0.72 - 0.5 * k; bx = -0.3 * k; lL = lR = -1.45 * k; aL = aR = 0.9 * k; aLz = 0.3 * k; aRz = -0.3 * k; hx = -0.15 * k + Math.sin(t * 1.5) * 0.04;
+        } else if (c === 'fireworks') {
+          const u = Math.abs(Math.sin(t * 4)); aL = aR = -2.8 + u * 0.25; aLz = 0.35; aRz = -0.35; by = 0.72 + u * 0.06; hx = -0.3;
+          const k = Math.floor(t / 0.6);
+          if (this._fw !== k) { this._fw = k; const hex = ['#ff4d5e', '#ffd54a', '#4aa8ff', '#7dff6a', '#ff5fb0'][k % 5]; FX.sparks(this.pos.x + rand(-1.5, 1.5), 4.5 + rand(0, 1.5), this.pos.z + rand(-1.5, 1.5), hex, 22, 5, 0.18, 0.8); }
         } else { const j = Math.abs(Math.sin(t * 9)); by = 0.72 + j * 0.25; aLz = 2.6 + Math.sin(t * 14) * 0.3; aRz = -2.6 - Math.sin(t * 14) * 0.3; }
         break;
       }
@@ -414,7 +431,8 @@ class Player {
     const k = st === 'frozen' ? 0 : 1 - Math.exp(-22 * dt);
     const r = (o, prop, v) => { o.rotation[prop] += (v - o.rotation[prop]) * k; };
     r(P.body, 'x', bx); r(P.body, 'z', bz);
-    if (snapX) P.body.rotation.x = bx; // full flips are set directly, easing would unwind them P.body.position.y += (by - P.body.position.y) * k;
+    if (snapX) P.body.rotation.x = bx; // full flips are set directly, easing would unwind them
+    P.body.position.y += (by - P.body.position.y) * k;
     r(P.legL, 'x', lL); r(P.legR, 'x', lR); r(P.legR, 'z', lRz); r(P.headP, 'y', hy);
     r(P.armL, 'x', aL); r(P.armR, 'x', aR); r(P.armL, 'z', aLz); r(P.armR, 'z', aRz);
     r(P.headP, 'x', hx);

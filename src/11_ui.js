@@ -136,13 +136,13 @@ const UI = {
             ${row(key('ENTER'), 'Watch the replay after a goal, a nutmeg or an ankle breaker. SAVE CLIP downloads it as a video')}
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
             ${row(key('V'), 'Switch camera: third person (behind you) or first person (your eyes)')}
-            ${row(key('B'), 'Emote wheel: wave, clap, robot, shush, flex, point up. Pick with 1 to 6. Not while you have the ball')}
+            ${row(key('B'), 'Emote wheel: wave, clap, robot, shush, flex, point up, salute, bow, air drums. Pick with 1 to 9. Not while you have the ball')}
             ${row(key('L'), 'Shift lock: your player always faces where you look, so A and D step sideways with the ball in front. The camera sits over your shoulder')}
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}
             ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Feint')}${row(key('X'), 'Slide tackle')}
-            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('D-PAD DOWN'), 'Emote wheel (not in Lawless), then the D-pad picks')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
+            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('D-PAD DOWN'), 'Emote wheel (not in Lawless), then the D-pad chooses and A plays it')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
           </div></section>
           <section class="panel"><h3>WINNING THE BALL</h3><ul>
             <li><b>Run into a loose ball</b> to dribble it. You cannot run through a carrier, you have to tackle.</li>
@@ -315,23 +315,28 @@ const UI = {
   tplEmotes() {
     return `<div id="emote-pop" class="panel" hidden><div class="cp-head"><span class="label">EMOTES</span><button class="btn ghost" id="em-close" type="button">CLOSE</button></div>
       <div class="em-grid">${EMOTES.map((e, i) => `<button class="btn small" type="button" data-em="${i}"><span class="key">${i + 1}</span> ${e.name}</button>`).join('')}</div>
-      <p class="label em-pad">CONTROLLER: D-PAD LEFT, UP, RIGHT, DOWN</p></div>`;
+      <p class="label em-pad">CONTROLLER: D-PAD TO CHOOSE, A TO PLAY</p></div>`;
   },
-  emoteOpen: false,
+  emoteOpen: false, emoteSel: 0,
   /** open or close the emote wheel (B, the EMOTE button, D-pad down) */
   toggleEmotes(on = !this.emoteOpen) {
     if (on && !Game.playing()) return;
     this.emoteOpen = on; $('emote-pop').hidden = !on;
+    if (on) this.markEmote(0);
     if (on) Input.releaseLock(); else if (Game.playing() && !Net.paused && !Touch.on) Input.requestLock();
   },
   pickEmote(i) { Input.emotePick = i; Sfx.click(); this.toggleEmotes(false); },
-  /** in a match: B opens the wheel; while it is open 1 to 6 (or the D-pad) pick */
+  /** the controller's choice in the wheel (3 across) */
+  markEmote(i) { const n = EMOTES.length; this.emoteSel = ((i % n) + n) % n; document.querySelectorAll('#emote-pop [data-em]').forEach((b, k) => b.classList.toggle('sel', k === this.emoteSel)); },
+  /** in a match: B opens the wheel; while it is open 1 to 9 pick, or the D-pad moves and A picks */
   emoteKeys() {
     const E = Input.edges;
     if (E.has('KeyB') || (E.has('PadDown') && !this.emoteOpen && !(Game.match && Game.match.cfg && Game.match.cfg.items))) { E.delete('KeyB'); E.delete('PadDown'); this.toggleEmotes(); return; }
     if (!this.emoteOpen) return;
     for (let i = 0; i < EMOTES.length; i++) if (E.has('Digit' + (i + 1)) || E.has('Numpad' + (i + 1))) { E.delete('Digit' + (i + 1)); E.delete('Numpad' + (i + 1)); this.pickEmote(i); return; }
-    ['PadLeft', 'PadUp', 'PadRight', 'PadDown'].forEach((k, i) => { if (E.has(k)) { E.delete(k); this.pickEmote(i); } });
+    const mv = { PadLeft: -1, PadRight: 1, PadUp: -3, PadDown: 3 };
+    for (const k in mv) if (E.has(k)) { E.delete(k); this.markEmote(this.emoteSel + mv[k]); }
+    if (E.has('PadA')) { E.delete('PadA'); this.pickEmote(this.emoteSel); return; }
     if (E.has('PadB')) this.toggleEmotes(false);
   },
   tplDaily() {

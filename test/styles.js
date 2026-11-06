@@ -97,7 +97,7 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   });
   check('bots play the new styles', sims.every((s) => s.used > 3), sims);
   const styles = await page.evaluate(() => EGO.STYLE_IDS.map((k) => k + ':' + EGO.STYLES[k].rarity));
-  check('19 styles, new ones in the spin pools', styles.length === 19 && ['PROWLER:Legendary', 'TRICKSTER:Epic', 'THUNDER:Mythic', 'WARDEN:Epic', 'MAESTRO:Legendary', 'BLITZ:Legendary', 'COMET:Mythic', 'KESTREL:Rare', 'ANCHOR:Rare', 'FEATHER:Epic', 'CAPTAIN:Legendary', 'GLACIER:Mythic'].every((x) => styles.includes(x)), styles);
+  check('21 styles, new ones in the spin pools', styles.length === 21 && ['SPARK:Rare', 'TITAN:Legendary', 'PROWLER:Legendary', 'TRICKSTER:Epic', 'THUNDER:Mythic', 'WARDEN:Epic', 'MAESTRO:Legendary', 'BLITZ:Legendary', 'COMET:Mythic', 'KESTREL:Rare', 'ANCHOR:Rare', 'FEATHER:Epic', 'CAPTAIN:Legendary', 'GLACIER:Mythic'].every((x) => styles.includes(x)), styles);
   const pools = await page.evaluate(() => [['WARDEN', 1], ['MAESTRO', 2], ['BLITZ', 2], ['COMET', 3]].map(([id, r]) => EGO.poolFor('style', r).includes(id)));
   check('the four newest can be spun', pools.every(Boolean), pools);
   const fresh = await page.evaluate(() => ['WARDEN', 'MAESTRO', 'BLITZ', 'COMET'].map((id) => { const st = EGO.STYLES[id]; return st.abilities.every((a) => EGO.ABILITIES[a]) && !!st.awaken && !!st.awaken.move; }));

@@ -424,6 +424,7 @@ const ICON_MAPS = {
   glove: ['............', '....k.k.k...', '...kAkAkAk..', '...kAkAkAk..', '.k.kAAAAAk..', 'kAkkAAAAAk..', 'kAAAAAAAAk..', '.kAAAAAAAk..', '..kAAAAAk...', '..kwwwwwk...', '..kkkkkkk...', '............'],
   band: ['............', '...kkkkkk...', '..kHHHHHHk..', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kSSSSSSSSk.', '.kSwkSSkwSk.', '.kSSSSSSSSk.', '.kSSSSSSSSk.', '..kSSSSSSk..', '...kkkkkk...', '............'],
   mask: ['............', '...kkkkkk...', '..kHHHHHHk..', '.kHHHHHHHHk.', '.kSSSSSSSSk.', '.kSwkSSkwSk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '.kAAAAAAAAk.', '..kAAAAAAk..', '...kkkkkk...', '............'],
+  shades: ['............', '...kkkkkk...', '..kHHHHHHk..', '.kHHHHHHHHk.', '.kSSSSSSSSk.', 'kAAAAAAAAAAk', '.kAAkSSkAAk.', '.kSSSSSSSSk.', '.kSSSSSSSSk.', '..kSSSSSSk..', '...kkkkkk...', '............'],
   chain: ['............', '.A........A.', '.A........A.', '..A......A..', '..A......A..', '...A....A...', '...A....A...', '....A..A....', '.....AA.....', '....kAAk....', '....kAAk....', '.....kk.....'],
   celeb: ['............', '..A......A..', '..A..kk..A..', '...A.kk.A...', '....AAAA....', '.....AA.....', '.....AA.....', '....A..A....', '...A....A...', '..A......A..', '............', '............'],
   pause: ['............', '............', '.kkkk..kkkk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kkkk..kkkk.', '............', '............'],
@@ -569,7 +570,7 @@ function kitCanvas(k, size = 48) {
   return out;
 }
 /** card art for a skin: a portrait for hair and colours, a pixel icon for the rest */
-const SKIN_ICON = { boots: 'boot', gloves: 'glove', band: 'band', mask: 'mask', chain: 'chain', celeb: 'celeb' };
+const SKIN_ICON = { boots: 'boot', gloves: 'glove', band: 'band', mask: 'mask', shades: 'shades', chain: 'chain', celeb: 'celeb' };
 function skinCanvas(id, size = 96) {
   const sk = SKINS[id];
   if (sk.slot === 'hair') return portraitCanvas('ROOKIE', size, { hairShape: sk.shape || 'short', hair: '#6b3e22' });

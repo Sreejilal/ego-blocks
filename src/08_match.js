@@ -35,7 +35,8 @@ class Match {
     this.aim = V3(0, 1, F.L); this.camYaw = 0; this.aimOnTarget = false;
     this.ctl = null; this.autopilot = !!opts.autopilot; this.thinkPass = opts.thinkPass !== false;
     this.online = !!opts.humans; this.humans = []; // online: every remote player, each with their own controls (p.ctl)
-    this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, awakens: 0, trailed: false }; // your moments, for the weekly challenges this.lastGoal = null; this.pendingEnd = false;
+    this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, awakens: 0, trailed: false }; // your moments, for the weekly challenges
+    this.lastGoal = null; this.pendingEnd = false;
     // your club at home against a random other club; the away side changes kit if the colours clash
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
     const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
@@ -523,8 +524,17 @@ class Match {
   }
   dashP(p, dx, dz, speed, dur, o = {}) {
     p.charging = false; p.charge = 0;
-    p.dash = { dx, dz, speed, dur, t: 0, zig: !!o.zig, home: o.home || null, onEnd: o.onEnd || null };
+    p.dash = { dx, dz, speed, dur, t: 0, zig: !!o.zig, ram: !!o.ram, home: o.home || null, onEnd: o.onEnd || null };
     p.setState('dash');
+  }
+  /** TITAN's RAM: anyone in the way goes flying (a carrier drops the ball) */
+  ramHits(p) {
+    for (const o of this.opponents(p)) {
+      if (o.isGK || o.state === 'down' || dist2D(o.pos, p.pos) > 1.4) continue;
+      if (!this.knockDown(o, 0.8, p.dash.dx, p.dash.dz, 5, p)) continue;
+      FX.ring(o.pos.x, 0.3, o.pos.z, p.aura, 1.4, 16); Sfx.tackle();
+      if (this.involvesHuman(p, o)) Shake.add(0.2);
+    }
   }
   tackle(p, dx, dz) {
     if (p.tackleCd > 0 || p.state !== 'free' || this.ball.owner === p) return false;
@@ -1356,9 +1366,10 @@ class Match {
       if (shooter) { gk.stats.saves++; this.label(gk, 'SAVE', TEAM[gk.team].hex); if (shooter.isHuman) this.toast('SAVED', 'bad', shooter); Sfx.save(); Sfx.ooh(); }
     } else {
       const s = this.dir(gk.team);
-      const out = Math.max(6, speed * 0.32);
+      const rocket = k && (k.special === 'impact' || k.special === 'bomb'); // too hard to hold: the punch only knocks it loose in the box
+      const out = rocket ? rand(2.5, 5) : Math.max(6, speed * 0.32);
       const side = gk.state === 'dive' && gk.dive ? sgn(gk.dive.ux || rand(-1, 1)) : (b.pos.x >= gk.pos.x ? 1 : -1);
-      b.vel.set(side * rand(4, 9), rand(3.5, 7), s * out);
+      b.vel.set(side * (rocket ? rand(2, 6) : rand(4, 9)), rand(3.5, 7), s * out);
       b.curve.set(0, 0, 0); b.straightT = 0;
       b.touch(gk); b.kick = { by: gk, type: 'clear', t: this.time };
       gk.pickBlock = 0.5;

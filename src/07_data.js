@@ -35,6 +35,10 @@ const STYLES = {
     awaken: { move: { name: 'ARMBAND', kind: 'symphony', desc: 'Your whole team bursts away, and you see every passing lane.' }, name: 'LEADER', desc: 'Abilities recharge faster and you are 10% quicker.', mods: { cdRate: 1.25, speed: 1.1 } } },
   GLACIER: { name: 'GLACIER', rarity: 'Mythic', hair: '#cfefff', hairShape: 'long', aura: '#9fe8ff', blurb: 'Freezes the game around the ball, then picks the corner with a wobbling shot.', abilities: ['frost', 'bodyBlock', 'knuckle'],
     awaken: { move: { name: 'WHITEOUT', kind: 'shadow', desc: 'Flash forward and freeze every defender near you.' }, name: 'DEEP FREEZE', desc: '+18% shot power, and tackles reach 30% further.', mods: { shot: 1.18, tackleRange: 1.3 } } },
+  SPARK: { name: 'SPARK', rarity: 'Rare', hair: '#e8ff5a', hairShape: 'bun', aura: '#c6ff3d', blurb: 'Quick feet and a short fuse. Zaps the nearest defender, then snaps a pass or a shot.', abilities: ['zap', 'snapPass', 'quickShot'],
+    awaken: { move: { name: 'LIGHTNING STEP', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'OVERLOAD', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
+  TITAN: { name: 'TITAN', rarity: 'Legendary', hair: '#4a2c1a', hairShape: 'mohawk', aura: '#ff8a2a', blurb: 'A battering ram at the back. Charges through anyone in the way, blocks shots and boots the ball clear.', abilities: ['ram', 'bodyBlock', 'clearance'],
+    awaken: { move: { name: 'EARTHQUAKE', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'JUGGERNAUT', desc: 'Nobody can tackle you, abilities recharge faster and you are 10% faster.', perk: 'tank', mods: { speed: 1.1, cdRate: 1.3 } } },
 };
 const STYLE_IDS = Object.keys(STYLES);
 /** a bot's style: common styles most of the time, the rare ones now and then (like the spins) */
@@ -74,8 +78,8 @@ const ABILITIES = {
     ai(p, m, c) { return (c.hasBall && c.spaceAhead && c.dGoal > 12) || (c.chasing && c.chaseDist > 9) || (c.defending && c.carrierDist > 9 && c.carrierDist < 20); },
   },
   turbo: {
-    name: 'TURBO', cd: 14, icon: 'dash',
-    desc: '2.5 seconds of +40% speed with a dust trail. Sprinting costs no stamina while it lasts.',
+    name: 'TURBO', cd: 16, icon: 'dash',
+    desc: '2.5 seconds of +30% speed with a dust trail.',
     use(p) { p.fx.turbo = 2.5; return true; },
     ai(p, m, c) { return (c.hasBall && c.spaceAhead && c.dGoal > 14) || (c.chasing && c.chaseDist > 10) || (c.defending && c.carrierDist > 10 && c.carrierDist < 24); },
   },
@@ -202,7 +206,7 @@ const ABILITIES = {
     ai(p, m, c) { return c.highBallNear; },
   },
   volley: {
-    name: 'VOLLEY', cd: 9, icon: 'shot', big: true,
+    name: 'VOLLEY', cd: 7, icon: 'shot', big: true,
     desc: 'A huge volley while airborne. On the ground it flicks the ball up and volleys it for you.',
     use(p, m) { return m.volley(p); },
     ai(p, m, c) { return (c.hasBall && c.dGoal < 17 && c.angleOK) || (c.highBallNear && c.dGoal < 24); },
@@ -214,10 +218,10 @@ const ABILITIES = {
     ai(p, m, c) { return c.hasBall && c.nearOpp < 4; },
   },
   impactShot: {
-    name: 'IMPACT SHOT', cd: 12, icon: 'beam', big: true,
+    name: 'IMPACT SHOT', cd: 9, icon: 'beam', big: true,
     desc: 'Infinite range, max power, zero arc. The ball flies dead straight as a glowing beam.',
     use(p, m) { if (!nearBall(p, m, 2.1)) return NEED_BALL; m.impactShot(p, aimFor(p, m, true)); return true; },
-    ai(p, m, c) { return c.hasBall && c.dGoal < 46 && c.angleOK && (c.dGoal < 30 || chance(0.4)); },
+    ai(p, m, c) { return c.hasBall && c.dGoal < 38 && c.angleOK && (c.dGoal < 30 || chance(0.4)); },
   },
   call: {
     name: 'CALL', cd: 10, icon: 'call',
@@ -226,7 +230,7 @@ const ABILITIES = {
     ai(p, m, c) { return c.mateHasBall && c.open > 4.5 && c.progAhead > 2; },
   },
   overhead: {
-    name: 'OVERHEAD', cd: 11, icon: 'flip', big: true,
+    name: 'OVERHEAD', cd: 9, icon: 'flip', big: true,
     desc: 'A bicycle kick off any high ball. On the ground it pops the ball up and flips into it.',
     use(p, m) { return m.overhead(p); },
     ai(p, m, c) { return (c.hasBall && c.dGoal < 14 && c.angleOK) || (c.highBallNear && c.dGoal < 20); },
@@ -265,31 +269,31 @@ const ABILITIES = {
   },
   /* BLITZ */
   hunt: {
-    name: 'HUNT', cd: 12, icon: 'dash',
-    desc: '3s of +30% speed while you do not have the ball, and sprinting costs nothing.',
+    name: 'HUNT', cd: 14, icon: 'dash',
+    desc: '3s of +20% speed while you do not have the ball, and sprinting costs nothing.',
     use(p) { p.fx.hunt = 3; return true; },
     ai(p, m, c) { return c.defending && c.carrierDist > 4 && c.carrierDist < 18; },
   },
   poke: {
-    name: 'POKE', cd: 9, icon: 'grab',
-    desc: 'Flick the ball off a carrier up to 2.2 blocks away without sliding. You stay on your feet.',
+    name: 'POKE', cd: 12, icon: 'grab',
+    desc: 'Flick the ball off a carrier up to 2 blocks away without sliding. You stay on your feet.',
     use(p, m) {
       const b = m.ball, o = b.owner;
       if (!o || o.team === p.team) return 'NO CARRIER NEAR';
       if (o.isGK) return 'THE KEEPER HAS IT';
-      if (dist2D(o.pos, p.pos) > 2.2) return 'TOO FAR';
+      if (dist2D(o.pos, p.pos) > 2) return 'TOO FAR';
       if (o.tackleProof > 0 || o.iframes > 0 || o.protect > 0 || o.fx.bubble > 0) return 'THEY KEPT IT';
       b.release(); o.pickBlock = 0.5; m.possess(p); m.label(p, 'POKED', p.aura); Sfx.touch();
       return true;
     },
-    ai(p, m, c) { return c.defending && c.carrierDist < 2.2; },
+    ai(p, m, c) { return c.defending && c.carrierDist < 2; },
   },
   /* COMET */
   rocketJump: {
     name: 'ROCKET JUMP', cd: 8, icon: 'jump',
-    desc: 'A huge leap, almost twice as high as a jump, to win any high ball.',
-    use(p) { if (!p.onGround || p.state !== 'free') return 'ON THE GROUND ONLY'; p.vel.y = 13; p.onGround = false; FX.dust(p.pos.x, p.pos.z, 8); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.2, 16); return true; },
-    ai(p, m, c) { return c.highBallNear; },
+    desc: 'A huge leap, almost twice as high as a jump, to win any high ball. You land running, 45% faster.',
+    use(p) { if (!p.onGround || p.state !== 'free') return 'ON THE GROUND ONLY'; p.vel.y = 13; p.onGround = false; p.fx.burst = Math.max(p.fx.burst || 0, 2.6); FX.dust(p.pos.x, p.pos.z, 8); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.2, 16); return true; },
+    ai(p, m, c) { return c.highBallNear && c.ballDist < 3.5; }, // bots: only right under the ball, or they are up in the air while the other team attacks
   },
   /* PROWLER */
   scent: {
@@ -354,7 +358,7 @@ const ABILITIES = {
   },
   /* THUNDER */
   longBomb: {
-    name: 'LONG BOMB', cd: 12, icon: 'beam', big: true,
+    name: 'LONG BOMB', cd: 10, icon: 'beam', big: true,
     desc: 'A full-power strike that dips late. Keepers can only punch it away. Best from 20 to 30 blocks out.',
     use(p, m) {
       if (!nearBall(p, m)) return NEED_BALL;
@@ -367,12 +371,12 @@ const ABILITIES = {
   },
   loaded: {
     name: 'LOADED', cd: 12, icon: 'buff',
-    desc: 'For 7s you run 15% faster, and every shot leaves at full power the moment you shoot, 20% harder.',
-    use(p) { p.fx.loaded = 7; FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 1.2, 18); return true; },
-    ai(p, m, c) { return c.hasBall && c.dGoal < 30; },
+    desc: 'For 9s you run 25% faster, and every shot leaves at full power the moment you shoot, 20% harder.',
+    use(p) { p.fx.loaded = 9; FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 1.2, 18); return true; },
+    ai(p, m, c) { return (c.hasBall && c.dGoal < 30) || (c.defending && c.carrierDist > 6 && c.carrierDist < 20); },
   },
   knuckle: {
-    name: 'KNUCKLEBALL', cd: 10, icon: 'shot', big: true,
+    name: 'KNUCKLEBALL', cd: 8, icon: 'shot', big: true,
     desc: 'A spinless shot that wobbles in the air. Keepers misread it.',
     use(p, m) { if (!nearBall(p, m)) return NEED_BALL; m.shootAt(p, aimFor(p, m, true), 0.9, { trail: p.aura, special: 'knuckle' }); return true; },
     ai(p, m, c) { return c.hasBall && c.dGoal < 28 && c.angleOK; },
@@ -404,6 +408,37 @@ const ABILITIES = {
       return true;
     },
     ai(p, m, c) { return (c.hasBall && c.nearOpp < 4) || (c.defending && c.carrierDist < 5); },
+  },
+  /* SPARK */
+  zap: {
+    name: 'ZAP', cd: 18, icon: 'bolt',
+    desc: 'A spark jumps to the nearest opponent within 4 blocks and stuns them for half a second.',
+    use(p, m) {
+      let o = null, best = 4;
+      for (const q of m.opponents(p)) { const d = dist2D(q.pos, p.pos); if (!q.isGK && q.state !== 'down' && d < best) { best = d; o = q; } }
+      if (!o) return 'NOBODY CLOSE';
+      if (o.iframes > 0 || o.tackleProof > 0 || o.fx.bubble > 0) return 'THEY DODGED IT';
+      if (!m.stun(o, 0.5)) return 'THEY DODGED IT';
+      for (let k = 1; k <= 4; k++) FX.sparks(lerp(p.pos.x, o.pos.x, k / 4), 1.1, lerp(p.pos.z, o.pos.z, k / 4), p.aura, 5, 3, 0.12, 0.3);
+      FX.ring(o.pos.x, 0.3, o.pos.z, p.aura, 1.2, 16); m.label(o, 'ZAPPED', p.aura); Sfx.touch();
+      return true;
+    },
+    ai(p, m, c) { return (c.defending && c.carrierDist < 3.5) || (c.hasBall && c.nearOpp < 2.6); },
+  },
+  /* TITAN */
+  ram: {
+    name: 'RAM', cd: 17, icon: 'dash',
+    desc: 'Charge 6 blocks straight ahead. Anyone in the way gets knocked over, and nobody can tackle you while you charge.',
+    use(p, m) {
+      let dx = Math.sin(p.yaw), dz = Math.cos(p.yaw);
+      const c = m.ball.owner;
+      if (!p.isHuman && c && c.team !== p.team) { const d = dist2D(c.pos, p.pos) || 1; dx = (c.pos.x - p.pos.x) / d; dz = (c.pos.z - p.pos.z) / d; } // bots charge at the carrier
+      m.dashP(p, dx, dz, 17, 0.36, { ram: true });
+      p.tackleProof = Math.max(p.tackleProof, 0.5);
+      FX.dust(p.pos.x, p.pos.z, 8); Sfx.dodge();
+      return true;
+    },
+    ai(p, m, c) { return (c.hasBall && c.nearOpp < 3.5 && c.oppInFront && c.dGoal > 6) || (c.carrierOpp && c.carrierDist > 2 && c.carrierDist < 6); },
   },
 };
 
@@ -478,6 +513,8 @@ const SKINS = {
   GINGER: { slot: 'color', name: 'GINGER', rarity: 'Rare', hex: '#d9682b' },
   TEAL: { slot: 'color', name: 'TEAL', rarity: 'Legendary', hex: '#2ec4b6' },
   BUBBLEGUM: { slot: 'color', name: 'BUBBLEGUM', rarity: 'Epic', hex: '#ff8fc8' },
+  LEMON: { slot: 'color', name: 'LEMON', rarity: 'Rare', hex: '#ffe45c' },
+  LILAC: { slot: 'color', name: 'LILAC', rarity: 'Epic', hex: '#c9a0ff' },
   TEAM_BOOTS: { slot: 'boots', name: 'TEAM BOOTS', rarity: 'Rare', base: true, desc: 'Plain boots in your team colours.' },
   GRIND_BOOTS: { slot: 'boots', name: 'GRINDER', rarity: 'Legendary', hex: '#ff7a1a', sparkle: true, obj: true, desc: 'From GOALS: win 25 matches.' },
   CHALK: { slot: 'boots', name: 'CHALK', rarity: 'Rare', hex: '#f4efe0' },
@@ -494,6 +531,8 @@ const SKINS = {
   FROST: { slot: 'boots', name: 'FROST', rarity: 'Legendary', hex: '#d6f4ff', sparkle: true },
   SUNFIRE: { slot: 'boots', name: 'SUNFIRE', rarity: 'Legendary', hex: '#ff8a3d', sparkle: true },
   VOID: { slot: 'boots', name: 'VOID', rarity: 'Mythic', hex: '#1a0f2e', sparkle: true },
+  BUMBLEBEE: { slot: 'boots', name: 'BUMBLEBEE', rarity: 'Epic', hex: '#ffd21f' },
+  GALAXY: { slot: 'boots', name: 'GALAXY', rarity: 'Mythic', hex: '#3a1f7a', sparkle: true },
   NO_GLOVES: { slot: 'gloves', name: 'BARE HANDS', rarity: 'Rare', base: true, desc: 'No gloves.' },
   AWAKE_GLOVES: { slot: 'gloves', name: 'AWAKENED', rarity: 'Mythic', hex: '#c9b8ff', obj: true, desc: 'From GOALS: awaken 10 times.' },
   BLACK_GLOVES: { slot: 'gloves', name: 'NIGHT GLOVES', rarity: 'Rare', hex: '#1a1a22' },
@@ -507,6 +546,8 @@ const SKINS = {
   PINK_GLOVES: { slot: 'gloves', name: 'PINK GLOVES', rarity: 'Epic', hex: '#ff5fb0' },
   ICE_GLOVES: { slot: 'gloves', name: 'FROST GLOVES', rarity: 'Legendary', hex: '#9fe8ff' },
   EMERALD_GLOVES: { slot: 'gloves', name: 'EMERALD GLOVES', rarity: 'Mythic', hex: '#2ee38f' },
+  SKY_GLOVES: { slot: 'gloves', name: 'SKY GLOVES', rarity: 'Rare', hex: '#7cc8ff' },
+  GALAXY_GLOVES: { slot: 'gloves', name: 'GALAXY GLOVES', rarity: 'Mythic', hex: '#3a1f7a' },
   NO_ACC: { slot: 'acc', name: 'NOTHING', rarity: 'Rare', base: true, desc: 'No extra.' },
   ANKLE_BAND: { slot: 'acc', name: 'ANKLE TAKER', rarity: 'Legendary', acc: 'band', hex: '#9a6bff', glow: 0.5, obj: true, desc: 'From GOALS: break 75 ankles.' },
   RED_BAND: { slot: 'acc', name: 'RED HEADBAND', rarity: 'Rare', acc: 'band', hex: '#e0302a' },
@@ -520,6 +561,9 @@ const SKINS = {
   BLUE_BAND: { slot: 'acc', name: 'BLUE HEADBAND', rarity: 'Rare', acc: 'band', hex: '#2f6bff' },
   GOLD_BAND: { slot: 'acc', name: 'GOLD HEADBAND', rarity: 'Legendary', acc: 'band', hex: '#ffd54a', glow: 0.3 },
   NEON_MASK: { slot: 'acc', name: 'NEON MASK', rarity: 'Legendary', acc: 'mask', hex: '#3dffb0', glow: 0.5 },
+  SHADES: { slot: 'acc', name: 'SHADES', rarity: 'Rare', acc: 'shades', hex: '#17171f' },
+  GOLD_SHADES: { slot: 'acc', name: 'GOLD SHADES', rarity: 'Legendary', acc: 'shades', hex: '#ffcc33', glow: 0.3 },
+  NEON_SHADES: { slot: 'acc', name: 'NEON SHADES', rarity: 'Mythic', acc: 'shades', hex: '#3dffe0', glow: 0.6 },
   // kits: a pattern (and trim) on your team's colours, so teammates can still tell the sides apart
   TEAM_KIT: { slot: 'kit', name: 'CLUB KIT', rarity: 'Rare', base: true, desc: 'Your club kit, just as it is.' },
   PINSTRIPE: { slot: 'kit', name: 'PINSTRIPE', rarity: 'Rare', pattern: 'pinstripe', desc: 'Thin stripes in your team colours.' },
@@ -546,6 +590,12 @@ const SKINS = {
   APPLAUSE: { slot: 'celeb', name: 'APPLAUSE', rarity: 'Rare', celeb: 'clap', desc: 'Clap for the fans, and for yourself.' },
   FLEX: { slot: 'celeb', name: 'FLEX', rarity: 'Epic', celeb: 'flex', desc: 'Show off the muscles.' },
   SKY_POINT: { slot: 'celeb', name: 'SKY POINT', rarity: 'Legendary', celeb: 'point', desc: 'Point to the sky and hold it.' },
+  SALUTE: { slot: 'celeb', name: 'SALUTE', rarity: 'Rare', celeb: 'salute', desc: 'Stand tall and salute the fans.' },
+  BOW: { slot: 'celeb', name: 'TAKE A BOW', rarity: 'Rare', celeb: 'bow', desc: 'A deep bow, like the end of a show.' },
+  AIR_DRUMS: { slot: 'celeb', name: 'AIR DRUMS', rarity: 'Epic', celeb: 'drums', desc: 'Play a wild drum solo on nothing at all.' },
+  FIST_PUMP: { slot: 'celeb', name: 'FIST PUMP', rarity: 'Epic', celeb: 'pump', desc: 'Punch the air again and again.' },
+  CHILL: { slot: 'celeb', name: 'CHILL', rarity: 'Legendary', celeb: 'chill', desc: 'Sit down, lean back and relax. Easy.' },
+  FIREWORKS: { slot: 'celeb', name: 'FIREWORKS', rarity: 'Mythic', celeb: 'fireworks', desc: 'Arms up while fireworks burst over your head.' },
   // game pass only: never in spins
   SEASON_GOLD: { slot: 'color', name: 'SEASON GOLD', rarity: 'Legendary', hex: '#e9c14a', pass: true },
   CHAMP_BOOTS: { slot: 'boots', name: 'CHAMPION BOOTS', rarity: 'Legendary', hex: '#f6f2e6', sparkle: true, pass: true },
@@ -912,7 +962,7 @@ const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /* each tier is a clear step: bot skill (reactions, passing, tackles, keepers) and how full and loud the stadium is */
 /** quick-chat phrases, the same list on the server and in the game. The first four have keys 1 to 4 */
 /** emotes from the wheel (B, the EMOTE button, D-pad down): you stand and do it for a moment, everyone sees it */
-const EMOTES = [{ id: 'wave', name: 'WAVE' }, { id: 'clap', name: 'CLAP' }, { id: 'robot', name: 'ROBOT' }, { id: 'shush', name: 'SHUSH' }, { id: 'flex', name: 'FLEX' }, { id: 'point', name: 'POINT UP' }];
+const EMOTES = [{ id: 'wave', name: 'WAVE' }, { id: 'clap', name: 'CLAP' }, { id: 'robot', name: 'ROBOT' }, { id: 'shush', name: 'SHUSH' }, { id: 'flex', name: 'FLEX' }, { id: 'point', name: 'POINT UP' }, { id: 'salute', name: 'SALUTE' }, { id: 'bow', name: 'BOW' }, { id: 'drums', name: 'AIR DRUMS' }];
 const QUICK_CHAT = ['PASS!', 'NICE!', 'GG', 'ON ME', 'SHOOT!', 'DEFEND!', 'THANKS', 'SORRY'];
 const TIER_SKILL = [0.15, 0.33, 0.5, 0.65, 0.8, 1.0];
 const TIER_FANS = [0.25, 0.36, 0.48, 0.62, 0.8, 1];
