@@ -190,6 +190,9 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .equip-row b { font-family: var(--font-display); font-size: 24px; font-weight: 400; }
 .notice { max-width: 400px; font-size: 18px; color: var(--text); text-shadow: 2px 2px 0 var(--ink); margin: 0; text-align: right; }
 .notice:empty { display: none; }
+.gift { font: inherit; font-size: 17px; color: #ffe066; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-shadow: 2px 2px 0 var(--ink); text-align: right; }
+.gift b { color: #fff; font-weight: inherit; }
+@media (hover: hover) { .gift:hover { color: #fff; } }
 /* narrow screens: one column, the player stands between the title and the buttons */
 @media (max-width: 860px) {
   #scr-lobby {
@@ -201,7 +204,7 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
   #scr-lobby > *, .lobby-main > * { grid-column: 1; grid-row: auto; }
   .title { order: 1; } .tagline { order: 2; } .lob-stage { order: 3; height: clamp(230px, 36vh, 440px); } .menu { order: 4; } .lobby-foot { order: 5; }
   .lobby-foot { justify-self: stretch; justify-items: stretch; }
-  .notice { text-align: left; }
+  .notice, .gift { text-align: left; }
 }
 
 /* sub screens */
@@ -776,6 +779,7 @@ body.touch .howto .touchsec { order: -1; }
   .equip-row { padding-top: 4px; margin-top: 1px; gap: 5px; }
   .equip-row b { font-size: 18px; }
   .notice { font-size: 14px; text-align: left; max-width: none; }
+  .gift { font-size: 14px; text-align: left; }
   .notice .n-touch { display: none; }
   .menu .btn.hazard { text-shadow: 2px 2px 0 var(--ink); }
   #scr-pause .dialog { width: min(800px, 100%); }
@@ -2021,6 +2025,12 @@ const World = {
     mkBoard(BZ * 2, BX - 0.16, 0, -Math.PI / 2, 0.37);
     mkBoard(BX * 2, 0, -BZ + 0.16, 0, 0.62);
     mkBoard(BX * 2, 0, BZ - 0.16, Math.PI, 0.12);
+    // the easter egg: one board near a corner carries a gift code (CODES: HIDDEN GIFT)
+    const eg = mkCanvas(128, 16), egc = eg.getContext('2d'), eggTxt = 'SECRET CODE TOPBINS';
+    egc.fillStyle = '#2b0f45'; egc.fillRect(0, 0, 128, 16); egc.fillStyle = 'rgba(0,0,0,.25)'; egc.fillRect(0, 14, 128, 2);
+    pfDraw(egc, eggTxt, Math.floor((128 - pfWidth(eggTxt, 1)) / 2), 4, 1, '#ffe066');
+    const egg = new THREE.Mesh(new THREE.PlaneGeometry(8, 1), new THREE.MeshLambertMaterial({ map: Tex.fromCanvas(eg, { mip: true }) }));
+    egg.position.set(-BX + 0.19, 0.5, BZ - 7); egg.rotation.y = Math.PI / 2; this.scene.add(egg);
     vb.box(-BX - 0.15, 0, -BZ, -BX + 0.15, 1, BZ, '#ffffff', { uv: 1 });
     vb.box(BX - 0.15, 0, -BZ, BX + 0.15, 1, BZ, '#ffffff', { uv: 1 });
     vb.box(-BX, 0, -BZ - 0.15, BX, 1, -BZ + 0.15, '#ffffff', { uv: 1 });
@@ -4147,8 +4157,12 @@ function codeHash(s, seed = 1405) {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 const CODES = {
-  yszaepofxo: { name: 'TESTER PACK', give: 'all' }, // the owner's tester code: every style, Flow and skin, emeralds and blueprints
+  '17g64u9rm49': { name: 'TESTER PACK', give: 'all' }, // the owner's tester code (secret, never shown): every style, Flow and skin, emeralds and blueprints
+  yszaepofxo: { name: 'TESTER PACK', give: 'all', retired: true }, // the old tester code: no new uses, but saves that used it keep getting new things
+  wnof5bzx9y: { name: 'KICKOFF GIFT', emeralds: 500 }, // the public gift code, shown at the bottom of the lobby (GIFT_CODE)
+  '298x98i7fpe': { name: 'HIDDEN GIFT', emeralds: 1000, bp: 10 }, // the easter egg: written on one advert board in a corner of the stadium
 };
+const GIFT_CODE = 'KICKOFF';
 /** every style, Flow and skin you can own. Returns how many were new */
 function unlockAll(d) {
   const n = d.styles.length + d.flows.length + d.skins.length;
@@ -4164,7 +4178,7 @@ function codeTopUp(d) {
 function redeemCode(d, text) {
   if (!codeNorm(text)) return { ok: false, msg: 'TYPE A CODE FIRST' };
   const h = codeHash(text), c = CODES[h];
-  if (!c) return { ok: false, msg: 'THAT CODE DOES NOT WORK' };
+  if (!c || (c.retired && !d.codes.includes(h))) return { ok: false, msg: 'THAT CODE DOES NOT WORK' };
   if (d.codes.includes(h)) {
     if (c.give !== 'all') return { ok: false, msg: 'YOU ALREADY USED THAT CODE' };
     const n = unlockAll(d); // used before: it still gives anything new from updates, but no more emeralds
@@ -4176,7 +4190,9 @@ function redeemCode(d, text) {
     d.emeralds += 99999; d.bp += 999;
   }
   if (c.emeralds) d.emeralds += c.emeralds;
-  return { ok: true, msg: c.name + ' UNLOCKED' + (c.give === 'all' ? ': EVERY STYLE, FLOW AND SKIN, +99999 EMERALDS, +999 BLUEPRINTS' : '') };
+  if (c.bp) d.bp += c.bp;
+  const gift = [c.emeralds && '+' + c.emeralds + ' EMERALDS', c.bp && '+' + c.bp + ' BLUEPRINTS'].filter(Boolean).join(', ');
+  return { ok: true, msg: c.name + (c.give === 'all' ? ' UNLOCKED: EVERY STYLE, FLOW AND SKIN, +99999 EMERALDS, +999 BLUEPRINTS' : gift ? ': ' + gift : ' UNLOCKED') };
 }
 const SPIN_COST = { style: 200, flow: 150, skin: 100 }; // emeralds per spin
 const BP_COST = { Rare: 2, Epic: 4, Legendary: 7, Mythic: 12, Generational: 20 };
@@ -8734,6 +8750,7 @@ const UI = {
           <div class="label" id="pro-rec" style="grid-column:1/-1">0 W &middot; 0 D &middot; 0 L</div>
         </div>
         <p class="notice" id="lob-notice"></p>
+        <button class="gift" id="lob-gift" type="button" hidden>FREE GIFT: CODE <b>${GIFT_CODE}</b> IN PROFILE</button>
       </div>
     </section>`;
   },
@@ -9142,6 +9159,7 @@ const UI = {
     click('lob-profile', () => this.show('profile'));
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
     click('profile-back', () => this.show('lobby'));
+    click('lob-gift', () => { this.show('profile'); $('pf-code').value = GIFT_CODE; $('pf-code').focus(); });
     $('pf-code-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const r = redeemCode(Save.data, $('pf-code').value);
@@ -9236,6 +9254,7 @@ const UI = {
     if (!Save.ok) notes.push('<span>This browser is blocking storage, so progress will not be saved after you close the page.</span>');
     if (Touch.on) notes.push('<span class="n-touch">' + (window.innerHeight > window.innerWidth ? 'Touch controls are on. Turn your phone sideways for a much wider view of the pitch.' : 'Touch controls are on. Left thumb moves, right thumb aims and shoots.') + '</span>');
     $('lob-notice').innerHTML = notes.join(' ');
+    $('lob-gift').hidden = Save.data.codes.includes(codeHash(GIFT_CODE)); // gone once you used it
     const fsb = $('btn-fs');
     fsb.hidden = !(Touch.on && Touch.fsAvailable());
     fsb.textContent = Touch.isFs() ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
@@ -9628,7 +9647,8 @@ const UI = {
     const slots = $('lk-slots');
     slots.hidden = tab !== 'skin';
     if (tab === 'skin') slots.innerHTML = `<button class="tab" type="button" role="tab" data-slot="tone" aria-selected="${this.skinSlot === 'tone'}">SKIN</button>` + SKIN_SLOTS.map((sl) => `<button class="tab" type="button" role="tab" data-slot="${sl.id}" aria-selected="${this.skinSlot === sl.id}">${sl.name}</button>`).join('');
-    const ids = tab === 'club' ? CLUB_IDS : tab === 'style' ? STYLE_IDS : tab === 'flow' ? ['NONE'].concat(FLOW_IDS)
+    const byRar = (M) => (a, b) => RARITIES.indexOf(M[a].rarity) - RARITIES.indexOf(M[b].rarity); // Rare first, Generational last
+    const ids = tab === 'club' ? CLUB_IDS : tab === 'style' ? STYLE_IDS.slice().sort(byRar(STYLES)) : tab === 'flow' ? ['NONE'].concat(FLOW_IDS.slice().sort(byRar(FLOWS)))
       : this.skinSlot === 'tone' ? SKIN_TONES.map((t, i) => 'TONE' + i)
       : [SKIN_SLOTS.find((sl) => sl.id === this.skinSlot).base].concat(LOCKER_SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
     const grid = $('locker-grid');
@@ -9806,7 +9826,7 @@ const Game = {
     }
     if (m.cfg.practice) { // free kick practice: your score and your best, no rewards
       if (forfeit) { this.toLobby(); return; }
-      const P = m.result.practice, best = d.fkBest || 0;
+      const P = m.result.practice || { goals: 0, total: 0, log: [] }, best = d.fkBest || 0;
       if (P.goals > best) d.fkBest = P.goals;
       Save.save();
       this.state = 'results'; m.paused = true;
@@ -9943,7 +9963,7 @@ window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS,
-  EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, TUT_STEPS, TutHud, CODES, codeHash, redeemCode, codeTopUp,
+  EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
   CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

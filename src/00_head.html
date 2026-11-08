@@ -178,6 +178,9 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .equip-row b { font-family: var(--font-display); font-size: 24px; font-weight: 400; }
 .notice { max-width: 400px; font-size: 18px; color: var(--text); text-shadow: 2px 2px 0 var(--ink); margin: 0; text-align: right; }
 .notice:empty { display: none; }
+.gift { font: inherit; font-size: 17px; color: #ffe066; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-shadow: 2px 2px 0 var(--ink); text-align: right; }
+.gift b { color: #fff; font-weight: inherit; }
+@media (hover: hover) { .gift:hover { color: #fff; } }
 /* narrow screens: one column, the player stands between the title and the buttons */
 @media (max-width: 860px) {
   #scr-lobby {
@@ -189,7 +192,7 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
   #scr-lobby > *, .lobby-main > * { grid-column: 1; grid-row: auto; }
   .title { order: 1; } .tagline { order: 2; } .lob-stage { order: 3; height: clamp(230px, 36vh, 440px); } .menu { order: 4; } .lobby-foot { order: 5; }
   .lobby-foot { justify-self: stretch; justify-items: stretch; }
-  .notice { text-align: left; }
+  .notice, .gift { text-align: left; }
 }
 
 /* sub screens */
@@ -764,6 +767,7 @@ body.touch .howto .touchsec { order: -1; }
   .equip-row { padding-top: 4px; margin-top: 1px; gap: 5px; }
   .equip-row b { font-size: 18px; }
   .notice { font-size: 14px; text-align: left; max-width: none; }
+  .gift { font-size: 14px; text-align: left; }
   .notice .n-touch { display: none; }
   .menu .btn.hazard { text-shadow: 2px 2px 0 var(--ink); }
   #scr-pause .dialog { width: min(800px, 100%); }

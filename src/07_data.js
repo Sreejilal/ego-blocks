@@ -782,8 +782,12 @@ function codeHash(s, seed = 1405) {
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 const CODES = {
-  yszaepofxo: { name: 'TESTER PACK', give: 'all' }, // the owner's tester code: every style, Flow and skin, emeralds and blueprints
+  '17g64u9rm49': { name: 'TESTER PACK', give: 'all' }, // the owner's tester code (secret, never shown): every style, Flow and skin, emeralds and blueprints
+  yszaepofxo: { name: 'TESTER PACK', give: 'all', retired: true }, // the old tester code: no new uses, but saves that used it keep getting new things
+  wnof5bzx9y: { name: 'KICKOFF GIFT', emeralds: 500 }, // the public gift code, shown at the bottom of the lobby (GIFT_CODE)
+  '298x98i7fpe': { name: 'HIDDEN GIFT', emeralds: 1000, bp: 10 }, // the easter egg: written on one advert board in a corner of the stadium
 };
+const GIFT_CODE = 'KICKOFF';
 /** every style, Flow and skin you can own. Returns how many were new */
 function unlockAll(d) {
   const n = d.styles.length + d.flows.length + d.skins.length;
@@ -799,7 +803,7 @@ function codeTopUp(d) {
 function redeemCode(d, text) {
   if (!codeNorm(text)) return { ok: false, msg: 'TYPE A CODE FIRST' };
   const h = codeHash(text), c = CODES[h];
-  if (!c) return { ok: false, msg: 'THAT CODE DOES NOT WORK' };
+  if (!c || (c.retired && !d.codes.includes(h))) return { ok: false, msg: 'THAT CODE DOES NOT WORK' };
   if (d.codes.includes(h)) {
     if (c.give !== 'all') return { ok: false, msg: 'YOU ALREADY USED THAT CODE' };
     const n = unlockAll(d); // used before: it still gives anything new from updates, but no more emeralds
@@ -811,7 +815,9 @@ function redeemCode(d, text) {
     d.emeralds += 99999; d.bp += 999;
   }
   if (c.emeralds) d.emeralds += c.emeralds;
-  return { ok: true, msg: c.name + ' UNLOCKED' + (c.give === 'all' ? ': EVERY STYLE, FLOW AND SKIN, +99999 EMERALDS, +999 BLUEPRINTS' : '') };
+  if (c.bp) d.bp += c.bp;
+  const gift = [c.emeralds && '+' + c.emeralds + ' EMERALDS', c.bp && '+' + c.bp + ' BLUEPRINTS'].filter(Boolean).join(', ');
+  return { ok: true, msg: c.name + (c.give === 'all' ? ' UNLOCKED: EVERY STYLE, FLOW AND SKIN, +99999 EMERALDS, +999 BLUEPRINTS' : gift ? ': ' + gift : ' UNLOCKED') };
 }
 const SPIN_COST = { style: 200, flow: 150, skin: 100 }; // emeralds per spin
 const BP_COST = { Rare: 2, Epic: 4, Legendary: 7, Mythic: 12, Generational: 20 };

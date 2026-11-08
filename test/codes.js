@@ -46,6 +46,44 @@ const REAL = process.env.SCORZ_TESTER_CODE || '';
   // a save that never used the code gets nothing
   const plain = await A.evaluate(() => { const d = EGO.Save.defaults(); return EGO.codeTopUp(d) === 0 && d.styles.length === 1 && d.flows.length === 0 && d.skins.length === 0; });
   check('no code used: nothing unlocks', plain);
+  // the old tester code is retired: it cannot be used any more, but saves that used it keep getting new things
+  const old = await A.evaluate(() => {
+    const d = EGO.Save.defaults(); d.codes.push('yszaepofxo');
+    EGO.CODES[EGO.codeHash('OLDSTANDIN')] = { name: 'TESTER PACK', give: 'all', retired: true };
+    const fresh = EGO.Save.defaults(), r = EGO.redeemCode(fresh, 'old stand in');
+    return { known: !!EGO.CODES.yszaepofxo && EGO.CODES.yszaepofxo.retired, topUp: EGO.codeTopUp(d) > 0, refused: !r.ok && /DOES NOT WORK/.test(r.msg) && fresh.styles.length === 1 };
+  });
+  check('the old tester code is retired (no new uses), saves that used it still get new things', old.known && old.topUp && old.refused, old);
+  // the two gift codes: the lobby one (500 emeralds) and the hidden one (1000 emeralds, 10 blueprints), once each
+  await A.evaluate(() => { const d = EGO.Save.data; d.codes = d.codes.filter((h) => h !== EGO.codeHash(EGO.GIFT_CODE) && h !== EGO.codeHash('TOPBINS')); EGO.Save.save(); EGO.UI.show('lobby'); });
+  const giftShown = await A.evaluate(() => !document.getElementById('lob-gift').hidden && document.getElementById('lob-gift').textContent.includes(EGO.GIFT_CODE));
+  await A.click('#lob-gift');
+  const filled = await A.evaluate(() => ({ screen: EGO.UI.cur, code: document.getElementById('pf-code').value }));
+  const g0 = await A.evaluate(() => ({ em: EGO.Save.data.emeralds, bp: EGO.Save.data.bp }));
+  await A.click('#pf-code-form button');
+  const giftMsg = await A.evaluate(() => document.getElementById('pf-code-msg').textContent);
+  const g1 = await A.evaluate(() => ({ em: EGO.Save.data.emeralds, bp: EGO.Save.data.bp }));
+  const twice = await redeem(await A.evaluate(() => EGO.GIFT_CODE));
+  const hidden = await redeem('top bins');
+  const g2 = await A.evaluate(() => ({ em: EGO.Save.data.emeralds, bp: EGO.Save.data.bp }));
+  await A.evaluate(() => EGO.UI.show('lobby'));
+  const giftGone = await A.evaluate(() => document.getElementById('lob-gift').hidden);
+  check('the lobby shows the gift code; a click opens Profile with it typed in', giftShown && filled.screen === 'profile' && filled.code === 'KICKOFF', filled);
+  check('the gift code gives 500 emeralds once, then the lobby line goes away', /\+500 EMERALDS/.test(giftMsg) && g1.em === g0.em + 500 && /ALREADY USED/.test(twice) && giftGone, { giftMsg, twice, giftGone });
+  check('the hidden code gives 1000 emeralds and 10 blueprints', /HIDDEN GIFT/.test(hidden) && g2.em === g1.em + 1000 && g2.bp === g1.bp + 10, { hidden, g1, g2 });
+  // the Locker lists styles and Flows from Rare up to Generational
+  const order = await A.evaluate(() => {
+    const R = ['Rare', 'Epic', 'Legendary', 'Mythic', 'Generational'], out = {};
+    for (const tab of ['style', 'flow']) {
+      EGO.UI.openLocker(); EGO.UI.lockerTab = tab; EGO.UI.renderLocker();
+      const ids = [...document.querySelectorAll('#locker-grid .lcard')].map((b) => b.dataset.id).filter((id) => id !== 'NONE');
+      const M = tab === 'style' ? EGO.STYLES : EGO.FLOWS, r = ids.map((id) => R.indexOf(M[id].rarity));
+      out[tab] = { sorted: r.every((v, i) => i === 0 || v >= r[i - 1]), first: ids[0], n: ids.length };
+    }
+    EGO.UI.show('lobby');
+    return out;
+  });
+  check('the Locker lists styles and Flows from Rare up to Generational (ROOKIE first)', order.style.sorted && order.flow.sorted && order.style.first === 'ROOKIE', order);
   // phones: the box fits
   for (const [w, h] of [[390, 844], [844, 390]]) {
     const P = await (await browser.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true })).newPage(); P.setDefaultTimeout(120000);

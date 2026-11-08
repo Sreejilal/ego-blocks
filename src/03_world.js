@@ -212,6 +212,12 @@ const World = {
     mkBoard(BZ * 2, BX - 0.16, 0, -Math.PI / 2, 0.37);
     mkBoard(BX * 2, 0, -BZ + 0.16, 0, 0.62);
     mkBoard(BX * 2, 0, BZ - 0.16, Math.PI, 0.12);
+    // the easter egg: one board near a corner carries a gift code (CODES: HIDDEN GIFT)
+    const eg = mkCanvas(128, 16), egc = eg.getContext('2d'), eggTxt = 'SECRET CODE TOPBINS';
+    egc.fillStyle = '#2b0f45'; egc.fillRect(0, 0, 128, 16); egc.fillStyle = 'rgba(0,0,0,.25)'; egc.fillRect(0, 14, 128, 2);
+    pfDraw(egc, eggTxt, Math.floor((128 - pfWidth(eggTxt, 1)) / 2), 4, 1, '#ffe066');
+    const egg = new THREE.Mesh(new THREE.PlaneGeometry(8, 1), new THREE.MeshLambertMaterial({ map: Tex.fromCanvas(eg, { mip: true }) }));
+    egg.position.set(-BX + 0.19, 0.5, BZ - 7); egg.rotation.y = Math.PI / 2; this.scene.add(egg);
     vb.box(-BX - 0.15, 0, -BZ, -BX + 0.15, 1, BZ, '#ffffff', { uv: 1 });
     vb.box(BX - 0.15, 0, -BZ, BX + 0.15, 1, BZ, '#ffffff', { uv: 1 });
     vb.box(-BX, 0, -BZ - 0.15, BX, 1, -BZ + 0.15, '#ffffff', { uv: 1 });
