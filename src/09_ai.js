@@ -444,10 +444,10 @@ const AI = {
         }
       }
     }
-    // interceptions: step into a passing lane we can reach
-    if (!b.owner && k && k.type === 'pass' && k.to && k.to.team !== p.team && a.task !== 'chase') {
+    // interceptions: step into a passing lane we can reach, a moment after the pass is played (nobody reads it instantly)
+    if (!b.owner && k && k.type === 'pass' && k.to && k.to.team !== p.team && a.task !== 'chase' && m.time - k.t > lerp(0.32, 0.12, sk)) {
       const it = this.interceptTime(m, p);
-      if (it < 0.9 + sk * 0.5) { tgt = this.interceptPoint(m, p); sprint = urgent = true; }
+      if (it < 0.65 + sk * 0.4) { tgt = this.interceptPoint(m, p); sprint = urgent = true; }
     }
     if (!b.owner && c.ballDist < 4.5 && b.pos.y < 1.6 && !(k && k.type === 'pass' && k.to && k.to.team === p.team && k.to !== p)) { tgt = this.interceptPoint(m, p); sprint = urgent = true; }
     if (p === m.caller && c.mateHasBall && p.callT <= 0 && chance(0.05)) p.callT = 1.6; // test caller: calls like a human, open or not

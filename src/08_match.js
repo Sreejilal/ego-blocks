@@ -7,7 +7,7 @@ const BOT_NAMES = ['BLOK', 'CUBO', 'PIXL', 'VOXX', 'CHUNK', 'BRIK', 'TILE', 'STA
 const MODES = {
   // rewards: offline, only these full-time matches give rewards (online with friends, every mode does)
   ranked: { name: 'RANKED', ranked: true, items: false, rewards: true },
-  quick: { name: 'QUICK MATCH', ranked: false, items: false, rewards: true },
+  quick: { name: 'QUICK MATCH', ranked: false, items: false, rewards: true, roster: ['GK', 'DEF', 'MID', 'LW'] }, // 4v4 with a winger on the left
   lawless: { name: 'LAWLESS', ranked: false, items: true, rewards: true },
   koth: { name: 'KING OF THE HILL', ranked: false, items: false, hill: true, tip: 'HOLD THE BALL IN THE RING FOR POINTS \u00b7 GOALS ARE WORTH 3' },
   volleys: { name: 'VOLLEYS ONLY', ranked: false, items: false, aerialOnly: true, tip: 'ONLY VOLLEYS AND HEADERS COUNT' },
@@ -52,6 +52,7 @@ class Match {
   rolesFor(team) {
     if (this.cfg.practice) return team === 0 ? ['ST'] : ['GK', 'DEF', 'DEF2', 'MID', 'ST']; // free kicks: you against a keeper, a wall and defenders in the box
     if (this.cfg.tutorial) return team === 0 ? ['ST', 'MID'] : ['DEF']; // the tutorial: you, a teammate and one defender (an empty goal)
+    if (this.cfg.roster && this.cfg.roster.length === this.size) return this.cfg.roster; // a mode's own line-up (Quick Match: a winger)
     return this.size === 5 ? SETUPS_5[this.setups[team]].roles : ROSTERS[this.size];
   }
   buildTeams(opts) {

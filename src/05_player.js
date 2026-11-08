@@ -250,7 +250,7 @@ class Player {
       if (this.isGK) base *= 0.96;
       if (this.exhausted) base *= OUT_OF_BREATH;
       if (ownsBall) base *= 0.94;
-      if (this.charging) base *= 0.62;
+      if (this.charging) base *= lerp(0.5, 0.25, clamp(this.charge, 0, 1)); // winding up a shot: the bigger the shot, the more you plant your feet
       if (st === 'hold') base *= 0.6;
       maxSpeed = this.setPiece || this.fkHold || this.inWall ? 0 : base * m.speed; // a throw-in, corner or free kick taker stands still
       if (sprinting && m.stamDrain > 0) {
