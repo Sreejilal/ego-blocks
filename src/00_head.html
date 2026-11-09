@@ -349,6 +349,13 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 .btn.ghost.daily .dot { display: none; position: absolute; top: 4px; right: 3px; width: 8px; height: 8px; background: var(--emerald); box-shadow: 0 0 8px var(--emerald); animation: blink .8s steps(2) infinite; }
 .btn.ghost.daily.ready .dot { display: block; }
 .daily-box { width: min(520px, 100%); }
+.modes-box { width: min(640px, 100%); gap: 12px; }
+.md-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.md-card { display: grid; justify-items: start; align-content: start; gap: 6px; position: relative; font-size: 26px; padding: 10px 12px 13px; }
+.md-card .sub { white-space: normal; line-height: 1.35; }
+.md-card .tag { position: absolute; top: -9px; right: 8px; font-family: var(--font-label); font-size: 10px; letter-spacing: .08em; background: #ffcb3d; color: #2b1b00; padding: 3px 6px; border: 2px solid var(--ink); }
+@media (max-width: 560px) { .md-grid { grid-template-columns: 1fr; } .md-card { font-size: 22px; } }
+@media (max-height: 460px) { .modes-box { width: min(760px, 100%); padding: 12px 14px; gap: 8px; } .modes-box h2 { font-size: 40px; } .md-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; } .md-card { font-size: 19px; padding: 6px 8px 8px; gap: 4px; } .md-card .sub { font-size: 9px; } #md-close { font-size: 24px; padding: 4px 14px 8px; } }
 .dl-card { background: var(--slate-2); padding: 12px; display: grid; gap: 8px; }
 .dl-card > div { display: grid; gap: 6px; justify-items: start; }
 .dl-big { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; color: var(--gold); }

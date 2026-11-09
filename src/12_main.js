@@ -232,7 +232,6 @@ const Game = {
     } else {
       Reveal.update(rdt);
       Showcase.update(rdt);
-      if (UI.cur === 'lobby') UI.tickFeatured();
       Shake.update(rdt);
       FX.update(rdt);
     }

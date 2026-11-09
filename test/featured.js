@@ -1,5 +1,5 @@
-// Featured mode: a fixed 3-hour rotation from the clock (King of the Hill, Volleys Only, 1v1 Duels, Lawless),
-// a countdown in the lobby, and each mode's rules.
+// More modes: the MORE MODES button lists every extra mode (one tagged FEATURED, a fixed 3-hour rotation from the clock)
+// and starts any of them, and each mode's rules.
 const { open } = require('./harness');
 const results = [];
 const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name + (info !== undefined ? '  ' + JSON.stringify(info) : ''));
@@ -14,9 +14,19 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   check('featured mode rotates every 3 hours through all four', new Set(sched.modes.slice(0, 4)).size === 4 && sched.modes[4] === sched.modes[0] && ['koth', 'volleys', 'duel', 'lawless'].every((m) => sched.modes.includes(m)), sched.modes);
   check('the countdown runs down to the next one', sched.leftA === 150 && sched.drop === 60 && sched.same, sched);
 
-  const lobby = await page.evaluate(() => { EGO.Game.stepManual(2, true); const f = EGO.featuredAt(); return { name: document.getElementById('feat-name').textContent, sub: document.getElementById('feat-sub').textContent, want: EGO.MODES[f.mode].name }; });
-  check('the lobby shows the featured mode and the countdown', lobby.name === lobby.want && /NEXT IN \d+:\d\d:\d\d/.test(lobby.sub), lobby);
-  await page.screenshot({ path: __dirname + '/shots/f1_lobby.png' });
+  await page.click('#go-modes');
+  const panel = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('#md-grid [data-mode]')];
+    const tagged = cards.filter((c) => c.querySelector('.tag')).map((c) => c.dataset.mode);
+    return { open: !document.getElementById('scr-modes').hidden, modes: cards.map((c) => c.dataset.mode), tagged, feat: EGO.featuredAt().mode };
+  });
+  check('MORE MODES lists King of the Hill, Volleys, Duel, Free Kicks and the Tutorial', panel.open && ['koth', 'volleys', 'duel', 'freekick', 'tutorial'].every((k) => panel.modes.includes(k)), panel);
+  check('the featured one is tagged (or none when Lawless is featured, it is on the main menu)', panel.feat === 'lawless' ? panel.tagged.length === 0 : panel.tagged.join() === panel.feat, panel);
+  await page.screenshot({ path: __dirname + '/shots/f1_modes.png' });
+  await page.click('#md-grid [data-mode="volleys"]');
+  const started = await page.evaluate(() => ({ state: EGO.Game.state, mode: EGO.Game.lastMode, panel: !document.getElementById('scr-modes').hidden }));
+  check('a card starts that mode and the panel closes', started.state === 'match' && started.mode === 'volleys' && !started.panel, started);
+  await page.evaluate(() => { EGO.Game.match.dispose(); EGO.Game.match = null; EGO.Game.toLobby(); });
 
   // King of the Hill
   const koth = await page.evaluate(() => {
