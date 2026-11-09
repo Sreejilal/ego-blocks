@@ -39,7 +39,7 @@ const FAKE_SDK = `(() => {
       getUser: async () => cg.user,
       showAuthPrompt: async () => { cg.user = { username: 'Cool Kid77', profilePictureUrl: '' }; return cg.user; },
       addAuthListener: (f) => { cg.listeners.auth = f; },
-      systemInfo: { countryCode: 'GB', locale: 'en-GB', device: { type: 'desktop' } },
+      systemInfo: { countryCode: 'GB', locale: 'en-GB', device: { type: P.device || 'desktop' } },
     },
     data: { getItem: (k) => (k in cg.data ? cg.data[k] : null), setItem: (k, v) => { cg.data[k] = String(v); }, removeItem: (k) => { delete cg.data[k]; }, clear: () => { cg.data = {}; } },
     ad: {
@@ -77,6 +77,12 @@ const FAKE_SDK = `(() => {
   check('their SDK starts first and loading start/stop are reported', boot.on && c0[0] === 'loadingStart' && c0.includes('loadingStop'), c0);
   check('an older save on this device moves into their Data module', boot.em === 4321 && boot.inData, boot);
   check('no fullscreen button and no server address box; PLAY WITH FRIENDS is there', boot.fs && !boot.adv && boot.online, boot);
+  // their rules: no typed names (guests too), and their SDK says when to show phone controls (not touch detection)
+  const guest = await A.evaluate(() => ({ ro: document.getElementById('on-name').readOnly, touch: EGO.Touch.on }));
+  const P = await mk({ viewport: { width: 1280, height: 720 } }, { device: 'mobile' });
+  const phone = await P.evaluate(() => EGO.Touch.on); await P.context().close();
+  check('a guest cannot type a name either (CrazyGames names only)', guest.ro === true, guest);
+  check('their SDK device type picks the controls: desktop has none, mobile gets touch controls', guest.touch === false && phone === true, { desktop: guest.touch, mobile: phone });
 
   // gameplay start and stop
   await A.click('#go-quick'); await sleep(1500);

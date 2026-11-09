@@ -33,7 +33,7 @@ const { open } = require('./harness');
         const r = { style: sid, ability: id };
         try {
           reset();
-          const mate = m.teams[0][2], opp = m.teams[1][1], opp2 = m.teams[1][2];
+          const mate = m.teams[0].find((p) => p !== h && !p.isGK), opp = m.teams[1][1], opp2 = m.teams[1][2];
           // scenario setup
           if (['quickShot', 'curler', 'zigzag', 'feint', 'snapPass', 'pinpointPass', 'undeadShuffle', 'cutInside', 'volley', 'fakeVolley', 'impactShot', 'overhead', 'vision', 'burst', 'turbo'].includes(id)) m.possess(h, true);
           if (['snapPass', 'pinpointPass'].includes(id)) { mate.setState('free'); mate.pos.set(6, 0, 12); }

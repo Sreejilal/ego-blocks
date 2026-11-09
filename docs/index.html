@@ -48,7 +48,7 @@ html, body { height: 100%; }
 body {
   margin: 0; overflow: hidden; background: var(--ink); color: var(--text);
   font-family: var(--font-body); font-size: 20px; line-height: 1.25;
-  -webkit-font-smoothing: none; user-select: none; -webkit-user-select: none;
+  -webkit-font-smoothing: none; user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;
 }
 canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: var(--ink); }
 #app { position: fixed; inset: 0; pointer-events: none; }
@@ -7083,9 +7083,10 @@ const Touch = {
   board: false, boardT: 0, lastTap: 0, s: 1, R: 56, W: 0, H: 0, sa: { l: 0, r: 0, t: 0, b: 0 },
   ghost: { x: 0, y: 0 }, zoneX: 0, portrait: false, visible: false, cache: {}, probe: null,
   mq(q) { try { return !!(window.matchMedia && window.matchMedia(q).matches); } catch (e) { return false; } },
-  /** first guess before any input arrives: phones and tablets report a coarse primary pointer */
+  /** first guess before any input arrives: phones and tablets report a coarse primary pointer. On CrazyGames their SDK says which device it is (their rule) */
   detect() {
-    this.on = this.mq('(pointer: coarse)');
+    const dev = Portal.on ? Portal.try(() => Portal.sdk.user.systemInfo.device.type) : null;
+    this.on = dev ? dev !== 'desktop' : this.mq('(pointer: coarse)');
     document.body.classList.toggle('touch', this.on);
   },
   tpl() {
@@ -7584,6 +7585,7 @@ const Portal = {
     this.try(() => this.sdk.game.loadingStop());
     const blk = document.createElement('div'); blk.id = 'ad-block'; blk.hidden = true; $('app').appendChild(blk);
     if (this.user) this.useName();
+    const nameIn = $('on-name'); if (nameIn) nameIn.readOnly = true; // their rule: no typed names, guests keep the PLAYER name until they sign in
     const inv = this.try(() => this.sdk.game.inviteParams);
     if (inv && inv.room && BUILD.server) this.joinFrom(inv);
     else if (this.try(() => this.sdk.game.isInstantMultiplayer) && BUILD.server) { Net.open(); Net.connect(() => Net.send({ t: 'create' })); }

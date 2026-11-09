@@ -44,6 +44,7 @@ const Portal = {
     this.try(() => this.sdk.game.loadingStop());
     const blk = document.createElement('div'); blk.id = 'ad-block'; blk.hidden = true; $('app').appendChild(blk);
     if (this.user) this.useName();
+    const nameIn = $('on-name'); if (nameIn) nameIn.readOnly = true; // their rule: no typed names, guests keep the PLAYER name until they sign in
     const inv = this.try(() => this.sdk.game.inviteParams);
     if (inv && inv.room && BUILD.server) this.joinFrom(inv);
     else if (this.try(() => this.sdk.game.isInstantMultiplayer) && BUILD.server) { Net.open(); Net.connect(() => Net.send({ t: 'create' })); }

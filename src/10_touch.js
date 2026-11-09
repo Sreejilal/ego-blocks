@@ -13,9 +13,10 @@ const Touch = {
   board: false, boardT: 0, lastTap: 0, s: 1, R: 56, W: 0, H: 0, sa: { l: 0, r: 0, t: 0, b: 0 },
   ghost: { x: 0, y: 0 }, zoneX: 0, portrait: false, visible: false, cache: {}, probe: null,
   mq(q) { try { return !!(window.matchMedia && window.matchMedia(q).matches); } catch (e) { return false; } },
-  /** first guess before any input arrives: phones and tablets report a coarse primary pointer */
+  /** first guess before any input arrives: phones and tablets report a coarse primary pointer. On CrazyGames their SDK says which device it is (their rule) */
   detect() {
-    this.on = this.mq('(pointer: coarse)');
+    const dev = Portal.on ? Portal.try(() => Portal.sdk.user.systemInfo.device.type) : null;
+    this.on = dev ? dev !== 'desktop' : this.mq('(pointer: coarse)');
     document.body.classList.toggle('touch', this.on);
   },
   tpl() {

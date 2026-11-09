@@ -83,6 +83,8 @@ file in file-name order into ONE function scope. There are no imports or exports
 - `npm run build` makes `docs/index.html` (GitHub Pages, itch.io). `npm run build:crazygames` makes `dist/crazygames/index.html`, the same game with the CrazyGames SDK script in `<head>`.
 - build.js puts `const BUILD = { portal, server }` at the top of the game code. `BUILD.portal` is `'crazygames'` only in that build. `SCORZ_SERVER=wss://.../ws` sets `BUILD.server`, the online server address baked into the page. Only use `BUILD` in files 10_ and later (the server's headless loader does not have it).
 - Every `Portal` call does nothing when the SDK is not running, so the normal build behaves exactly as before. On CrazyGames our own accounts are hidden (no other logins allowed there).
+- CrazyGames rules we follow (docs.crazygames.com/requirements): no fullscreen button of our own (`Touch.fsAvailable` is off on portals), no typed names (the online name box is read-only for guests too: `PLAYERxx` until they sign in), phone controls come from their SDK's `systemInfo.device.type` (`Touch.detect`), not touch detection, P pauses as well as ESC, midgame ads only at the final whistle, chat follows their `disableChat`. Upload `dist/SCORZ-crazygames.zip` (just `index.html`); covers from `npm run covers`.
+- SCORZ's main repo is now github.com/dhyan-gesus/SCORZ (this folder sits at `ego-blocks/ego-blocks` in it). Render (scorz.onrender.com and the ego-blocks.onrender.com server) still deploys from github.com/Sreejilal/ego-blocks, so push there too until Render is moved over.
 - `npm run covers` makes the three cover images in `dist/covers/` from the lobby scene. Test: `node test/crazygames.js` (uses a stand-in SDK).
 
 ## Online server
