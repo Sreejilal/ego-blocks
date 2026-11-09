@@ -361,6 +361,13 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 .btn.ghost.daily .dot { display: none; position: absolute; top: 4px; right: 3px; width: 8px; height: 8px; background: var(--emerald); box-shadow: 0 0 8px var(--emerald); animation: blink .8s steps(2) infinite; }
 .btn.ghost.daily.ready .dot { display: block; }
 .daily-box { width: min(520px, 100%); }
+.modes-box { width: min(640px, 100%); gap: 12px; }
+.md-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.md-card { display: grid; justify-items: start; align-content: start; gap: 6px; position: relative; font-size: 26px; padding: 10px 12px 13px; }
+.md-card .sub { white-space: normal; line-height: 1.35; }
+.md-card .tag { position: absolute; top: -9px; right: 8px; font-family: var(--font-label); font-size: 10px; letter-spacing: .08em; background: #ffcb3d; color: #2b1b00; padding: 3px 6px; border: 2px solid var(--ink); }
+@media (max-width: 560px) { .md-grid { grid-template-columns: 1fr; } .md-card { font-size: 22px; } }
+@media (max-height: 460px) { .modes-box { width: min(760px, 100%); padding: 12px 14px; gap: 8px; } .modes-box h2 { font-size: 40px; } .md-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; } .md-card { font-size: 19px; padding: 6px 8px 8px; gap: 4px; } .md-card .sub { font-size: 9px; } #md-close { font-size: 24px; padding: 4px 14px 8px; } }
 .dl-card { background: var(--slate-2); padding: 12px; display: grid; gap: 8px; }
 .dl-card > div { display: grid; gap: 6px; justify-items: start; }
 .dl-big { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; color: var(--gold); }
@@ -448,6 +455,9 @@ body.touch #chat-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0
 .charge { left: 50%; top: calc(50% + 26px); transform: translateX(-50%); width: 120px; height: 12px; background: var(--ink); border: 2px solid var(--ink); }
 .charge i { display: block; height: 100%; width: 0%; background: var(--gold); }
 .charge.lob i { background: var(--blue-light); }
+.charge .cmark { display: none; position: absolute; top: -5px; bottom: -5px; width: 4px; margin-left: -2px; left: 50%; background: #7cf2ff; border: 1px solid var(--ink); }
+.charge.curl .cmark { display: block; }
+.charge.curl i { background: #7cf2ff; }
 .charge span { position: absolute; top: 14px; left: 0; right: 0; text-align: center; font-family: var(--font-label); font-size: 10px; letter-spacing: .1em; }
 .dock { left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: grid; justify-items: center; gap: 8px; }
 .flowbar { width: 420px; max-width: 70vw; display: grid; gap: 3px; }
@@ -2999,7 +3009,9 @@ class Player {
     if (az > F.L - 0.45 && az < F.L + F.GD + 0.6 && ax < F.GW + F.POST + 0.45 && this.pos.y < F.GH + 0.6) {
       const s = sgn(this.pos.z);
       const inside = ax < F.GW + F.POST - 0.1;
+      const side = F.GW + F.POST + 0.45 - ax, back = F.L + F.GD + 0.6 - az; // how far into the goal from the side and from behind
       if (inside && az < F.L + 0.4) { this.pos.z = s * (F.L - 0.45); this.vel.z = 0; }
+      else if (az >= F.L + 0.4 && back < side) { this.pos.z = s * (F.L + F.GD + 0.6); if (this.vel.z * s < 0) this.vel.z = 0; } // behind the goal: the back of the net stops you (no jump to the side)
       else if (az >= F.L + 0.4) { this.pos.x = sgn(this.pos.x) * (F.GW + F.POST + 0.45); this.vel.x = 0; }
       else { this.pos.z = s * (F.L - 0.45); }
     }
@@ -4081,7 +4093,7 @@ const TUT_STEPS = [
   { id: 'ball', title: 'GET THE BALL', k: 'RUN INTO THE BALL TO TAKE IT', pad: 'RUN INTO THE BALL TO TAKE IT', touch: 'RUN INTO THE BALL TO TAKE IT' },
   { id: 'pass', title: 'PASS', k: 'RIGHT MOUSE PASSES TO YOUR TEAMMATE. HOLD IT FOR A LOB', pad: 'LT PASSES TO YOUR TEAMMATE. HOLD IT FOR A LOB', touch: 'TAP PASS TO PASS TO YOUR TEAMMATE. HOLD IT FOR A LOB' },
   { id: 'back', title: 'ONE MORE TIME', k: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT', pad: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT', touch: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT' },
-  { id: 'shoot', title: 'SHOOT', k: 'AIM AT THE GOAL WITH THE MOUSE. HOLD LEFT MOUSE FOR POWER, LET GO TO SHOOT', pad: 'AIM WITH THE RIGHT STICK. HOLD RT FOR POWER, LET GO TO SHOOT', touch: 'DRAG TO AIM. HOLD SHOOT FOR POWER, LET GO TO FIRE' },
+  { id: 'shoot', title: 'SHOOT', k: 'AIM AT THE GOAL WITH THE MOUSE. HOLD LEFT MOUSE FOR POWER, LET GO TO SHOOT. HOLD A OR D AS WELL TO CURVE IT', pad: 'AIM WITH THE RIGHT STICK. HOLD RT FOR POWER, LET GO TO SHOOT. PUSH THE LEFT STICK SIDEWAYS TO CURVE IT', touch: 'DRAG TO AIM. HOLD SHOOT FOR POWER, LET GO TO FIRE. PUSH THE STICK SIDEWAYS TO CURVE IT' },
   { id: 'feint', title: 'FEINT', k: 'WITH THE BALL, PRESS C TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO', pad: 'WITH THE BALL, PRESS B TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO', touch: 'WITH THE BALL, TAP FEINT TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO' },
   { id: 'tackle', title: 'TACKLE', k: 'THEY HAVE THE BALL. GET CLOSE AND PRESS F TO SLIDE IN AND WIN IT', pad: 'THEY HAVE THE BALL. GET CLOSE AND PRESS X TO SLIDE IN AND WIN IT', touch: 'THEY HAVE THE BALL. GET CLOSE AND TAP TACKLE TO SLIDE IN AND WIN IT' },
   { id: 'ability', title: 'ABILITIES', k: 'YOUR STYLE HAS 3 ABILITIES. PRESS Q, E OR R TO USE ONE', pad: 'YOUR STYLE HAS 3 ABILITIES. PRESS THE D-PAD LEFT, UP OR RIGHT', touch: 'YOUR STYLE HAS 3 ABILITIES. TAP ONE OF THE ROUND ABILITY BUTTONS' },
@@ -4097,6 +4109,10 @@ const FK_TYPES = {
   dip: { name: 'DIP', sp: [19, 27], curve: 4, g: 1.75, desc: 'UP OVER THE WALL, THEN DOWN' },
 };
 const FK_TYPE_IDS = Object.keys(FK_TYPES);
+/** curve shots in open play: hold A/D (the stick) while you charge. The ball starts out to one side and bends back to
+    where you aimed. CURVE_ANGLE: how far out it starts at full curve (radians), CURVE_SLOW: speed lost at full curve,
+    CURVE_MIN: less input than this is a straight shot (a stick that wobbles a little) */
+const CURVE_ANGLE = 0.26, CURVE_SLOW = 0.08, CURVE_MIN = 0.2;
 const FK_TOL = 0.08; // how far from the perfect power you can be (the green zone on the power bar)
 /** the perfect power for a distance: further out needs more */
 const fkIdeal = (D) => clamp(0.42 + (D - 16) / 12 * 0.36, 0.4, 0.86);
@@ -4604,25 +4620,26 @@ class Match {
     if (c.emote != null && c.emote >= 0 && live) this.emote(p, c.emote);
     p.faceYaw = p.charging || c.shiftLock || p.fkHold ? cy : null; // shift lock (and a free kick): always face where the camera looks
     p.jetThrust = c.jumpHeld && p.fx.jetpack > 0;
-    if (this.phase !== 'play') { p.charging = false; p.charge = 0; return; }
+    if (this.phase !== 'play') { p.charging = false; p.charge = 0; p.shotBuffer = null; return; } // a shot pressed as play stopped never fires by itself at the restart
     if (p.setPiece) { // throw-in, corner: pass plays it to a teammate, shoot plays it where you aim
       p.faceYaw = cy; p.yaw = cy; p.charging = false; p.charge = 0;
-      if (c.passUp || c.passDown) this.takeSetPiece(p, 'pass');
-      else if (c.shootUp || c.shootDown) this.takeSetPiece(p, 'shoot');
+      if (c.passDown) this.takeSetPiece(p, 'pass'); // only a fresh press: letting go of a button you held when the ball went out does not take it by accident
+      else if (c.shootDown) this.takeSetPiece(p, 'shoot');
+      p.passHold = 0; p.shotBuffer = null;
       return;
     }
     if (p.fkHold) { this.freeKickControls(dt, c, p, cy); return; }
     if (p.inWall) { p.mx = p.mz = 0; p.charging = false; p.charge = 0; if (c.jump) this.jump(p); return; } // in the wall for their free kick: jump to block it
-    if (!this.canAct(p)) { if (p.state !== 'dash') { p.charging = false; p.charge = 0; } return; }
-    if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; }
+    if (!this.canAct(p)) { if (p.state !== 'dash') { p.charging = false; p.charge = 0; p.shotBuffer = null; } return; }
+    if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; p.shotCurve = clamp(c.moveX || 0, -1, 1); }
     if (p.charging) {
       if (!c.shootHeld && !c.shootUp) { p.charging = false; p.charge = 0; }
-      else p.charge = p.fx.loaded > 0 ? 1 : Math.min(1, p.charge + dt / 0.8);
+      else { p.charge = p.fx.loaded > 0 ? 1 : Math.min(1, p.charge + dt / 0.8); if (c.shootHeld) p.shotCurve = damp(p.shotCurve || 0, clamp(c.moveX || 0, -1, 1), 12, dt); } // A/D (the stick) while you charge: the curve (letting go of both at once keeps it)
     }
     if (c.shootUp && p.charging) {
-      const power = Math.max(0.5, p.charge); // a quick tap is still a proper shot
-      p.charging = false; p.charge = 0;
-      if (!this.tryShoot(p, power, p.aimV || this.aim, { curveIn: c.moveX }) && this.ball.owner !== p) p.shotBuffer = { power, curveIn: c.moveX, t: 0.35 };
+      const power = Math.max(0.5, p.charge), curveIn = p.shotCurve || 0; // a quick tap is still a proper shot
+      p.charging = false; p.charge = 0; p.shotCurve = 0;
+      if (!this.tryShoot(p, power, p.aimV || this.aim, { curveIn }) && this.ball.owner !== p) p.shotBuffer = { power, curveIn, t: 0.35 };
     }
     // pressed a moment before the ball reached you: it goes as soon as you have it
     if (p.shotBuffer) {
@@ -4711,20 +4728,37 @@ class Match {
     if (sp > 27 && this.involvesHuman(p)) Shake.add(0.22);
     return true;
   }
-  shootAt(p, target, power, o = {}) {
+  /** a shot's launch. With curve (`curveIn`, -1 left to 1 right: A/D or the stick while you charge) the ball starts out
+      to the other side and bends back in, so it still ends up where you aimed, only round the keeper or a defender */
+  shotLaunch(p, target, power, o = {}) {
     const b = this.ball;
-    const speed = lerp(17, 36, clamp(power, 0, 1)) * p.mods.shot * (o.mult || 1);
+    const ci = clamp(o.curveIn || 0, -1, 1), curl = Math.abs(ci) >= CURVE_MIN ? ci : 0;
+    const speed = lerp(17, 36, clamp(power, 0, 1)) * p.mods.shot * (o.mult || 1) * (1 - CURVE_SLOW * Math.abs(curl)); // a curler is a little slower
     let from = b.pos;
     if (b.owner === p) { const dx = target.x - p.pos.x, dz = target.z - p.pos.z, l = len2D(dx, dz) || 1; from = V3(p.pos.x + dx / l * 0.6, b.pos.y, p.pos.z + dz / l * 0.6); }
     const v = solveLaunch(from, target, speed, BALL_G * 1.04);
     let cx = 0, cz = 0;
-    if (o.curveIn) { const hl = len2D(v.x, v.z) || 1; const k = clamp(o.curveIn, -1, 1) * 7; cx = (-v.z / hl) * k; cz = (v.x / hl) * k; }
+    const hs = len2D(v.x, v.z), D = len2D(target.x - from.x, target.z - from.z), T0 = hs > 1 ? D / hs : 0; // T0: about when it gets there
+    if (curl && hs > 1 && D > 2) {
+      // the same speed towards the target, plus a sideways part that the spin bends back to zero by the time it gets there
+      const ux = v.x / hs, uz = v.z / hs, rx = -uz, rz = ux, T = D / hs; // r: right of the shot
+      const side = hs * Math.tan(CURVE_ANGLE * Math.abs(curl)) * -Math.sign(curl), acc = -2 * side / T;
+      v.x += rx * side; v.z += rz * side; cx = rx * acc; cz = rz * acc;
+    }
+    return { from, v, cx, cz, speed, curl, T: T0 };
+  }
+  shootAt(p, target, power, o = {}) {
+    const b = this.ball;
+    const L = this.shotLaunch(p, target, power, o), v = L.v, speed = L.speed;
     p.stats.shots++;
     const trail = o.trail || (speed > 28 ? p.aura : null);
     if (!o.kickStyle) { o.kickStyle = 'strike'; o.kickDur = lerp(0.36, 0.5, clamp(power, 0, 1)); } // a full strike, longer for big shots
     p.kickPow = clamp(power, 0, 1.4);
     if (power > 0.85 && b.pos.y < 1) FX.dirt(p.pos.x, p.pos.z, Math.sin(p.yaw), Math.cos(p.yaw), 6, 0.7); // turf flies on a big one
-    return this.kick(p, v.x, v.y, v.z, Object.assign({ type: 'shot', trail, cx, cz }, o));
+    if (L.curl && Math.abs(L.curl) > 0.6 && this.involvesHuman(p)) FX.sparks(b.pos.x, b.pos.y, b.pos.z, '#7cf2ff', 6, 3); // spin on it
+    const ok = this.kick(p, v.x, v.y, v.z, Object.assign({ type: 'shot', trail: trail || (L.curl ? '#7cf2ff' : null), curveDecay: L.curl ? 0 : 1.4 }, o, { cx: L.cx, cz: L.cz }));
+    if (ok && L.curl) this.ball.kick.curl = L.curl;
+    return ok;
   }
   tryShoot(p, power, aim, o = {}) {
     const b = this.ball;
@@ -4942,6 +4976,7 @@ class Match {
       if (!b.owner && !S.hitBall && Math.hypot(b.pos.x - hx, b.pos.z - hz) < R * 0.85 && b.pos.y < 1.0) {
         S.hitBall = true;
         b.vel.set(S.dx * 10.5 + p.vel.x * 0.15, 2.2, S.dz * 10.5 + p.vel.z * 0.15);
+        b.curve.set(0, 0, 0); b.straightT = 0; b.gMul = 1; // a curler knocked away by the slide stops bending
         b.kick = { by: p, type: 'tackle', t: this.time }; b.touch(p); p.pickBlock = 0;
         Sfx.kick(0.3);
       }
@@ -6038,6 +6073,7 @@ class Match {
       if (b.owner) { b.owner.pickBlock = 0.6; b.release(); }
       const l = bd || 1;
       b.vel.set((b.pos.x - x) / l * 14, 9, (b.pos.z - z) / l * 14);
+      b.curve.set(0, 0, 0); b.straightT = 0; b.gMul = 1;
       b.kick = { by: owner, type: 'loose', t: this.time };
     }
   }
@@ -6352,7 +6388,7 @@ const AI = {
       if (b.owner !== p || p.state !== 'free') { a.wantShot = null; p.charging = false; p.charge = 0; }
       else {
         a.wantShot.at -= dt; p.charging = true; p.charge = Math.min(1, p.charge + dt / 0.9);
-        if (a.wantShot.at <= 0) { const w = a.wantShot; a.wantShot = null; p.charging = false; p.charge = 0; m.shootAt(p, w.t, w.power); return; }
+        if (a.wantShot.at <= 0) { const w = a.wantShot; a.wantShot = null; p.charging = false; p.charge = 0; m.shootAt(p, w.t, w.power, { curveIn: w.curveIn }); return; }
       }
     }
     if (a.task === 'press' || (a.task === 'chase' && b.owner && b.owner.team !== p.team) || p.fx.lockdown > 0) this.tryTackle(m, p, dt);
@@ -6492,7 +6528,10 @@ const AI = {
   shoot(m, p, c, sk) {
     const t = this.shotTarget(p, m, sk);
     const power = clamp(0.48 + c.dGoal / 30, 0.55, 1);
-    p.ai.wantShot = { t, power, at: rand(0.1, 0.24) + (1 - sk) * 0.12 };
+    // good bots sometimes bend it: out past the post, then back in (curveIn > 0 bends right of the shot)
+    let curveIn = 0;
+    if (c.dGoal > 9 && Math.abs(t.x) > 1.2 && chance(0.25 * sk)) { const dx = t.x - p.pos.x, dz = t.z - p.pos.z, l = len2D(dx, dz) || 1; curveIn = Math.sign(dz / l * Math.sign(t.x)) * rand(0.5, 1); }
+    p.ai.wantShot = { t, power, curveIn, at: rand(0.1, 0.24) + (1 - sk) * 0.12 };
     p.charging = true; p.charge = 0;
   },
   shotTarget(p, m, sk, corner = false) {
@@ -6689,7 +6728,7 @@ const AI = {
         if (Math.abs(px) < F.GW + 1.0 && py < F.GH + 0.9 && !screened) {
           // hard to read: volleys and bicycle kicks come off the foot at odd angles, a knuckleball wobbles, a long bomb dips late
           const sp = b.kick && b.kick.special, tricky = sp === 'volley' || sp === 'overhead' || sp === 'knuckle' || sp === 'bomb';
-          if (a.react == null) a.react = lerp(0.55, 0.16, Math.min(1, sk)) * rand(0.8, 1.2) * (m.fk && sp === 'knuckle' ? 1.8 : m.fk && b.kick.curved ? 1.5 : tricky ? 1.4 : 1); // free kicks: a knuckleball is the hardest, a curler round the wall is hard too
+          if (a.react == null) a.react = lerp(0.55, 0.16, Math.min(1, sk)) * rand(0.8, 1.2) * (m.fk && sp === 'knuckle' ? 1.8 : m.fk && b.kick.curved ? 1.5 : tricky ? 1.4 : b.kick && Math.abs(b.kick.curl || 0) > 0.5 ? 1.2 : 1); // free kicks: a knuckleball is the hardest, a curler round the wall is hard too
           a.react -= dt;
           if (a.react <= 0) {
             const K = this.crossAt(b, p.pos.z) || X; // where it passes the keeper
@@ -6974,6 +7013,7 @@ const Cam = {
       let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.85 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
       if (Save.data.settings.shiftLock && !wide) { tx += -Math.cos(this.yaw) * 1.0; tz += Math.sin(this.yaw) * 1.0; ty -= 0.25; } // shift lock: over your right shoulder
       tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
+      if (Math.abs(tz) > F.L - 0.6 && Math.abs(tz) < F.L + F.GD + 0.8 && Math.abs(tx) < F.GW + F.POST + 0.6) ty = Math.max(ty, F.GH + F.POST + 0.7); // never inside the goal net: up over the bar
       const k = 1 - Math.exp(-16 * realDt);
       this.pos.x += (tx - this.pos.x) * k; this.pos.y += (ty - this.pos.y) * k; this.pos.z += (tz - this.pos.z) * k;
     }
@@ -7672,6 +7712,31 @@ const FKHud = {
   },
 };
 
+/** ShotHud: while you charge a curve shot (A/D or the stick), dots show how it bends: the first part of its path */
+const ShotHud = {
+  dots: [], on: false,
+  build() {
+    if (this.dots.length) return;
+    const g = new THREE.BoxGeometry(0.13, 0.13, 0.13), mat = new THREE.MeshBasicMaterial({ color: 0x7cf2ff, transparent: true, opacity: 0.8, depthTest: false });
+    for (let i = 0; i < 12; i++) { const d = new THREE.Mesh(g, mat); d.visible = false; d.renderOrder = 20; World.scene.add(d); this.dots.push(d); }
+  },
+  hide() { if (!this.on) return; this.on = false; for (const d of this.dots) d.visible = false; },
+  update(m) {
+    const p = m && m.human;
+    const show = !!(p && m.shotLaunch && !m.fk && m.phase === 'play' && p.charging && m.ball.owner === p && Math.abs(p.shotCurve || 0) >= CURVE_MIN);
+    if (!show) { this.hide(); return; }
+    this.build(); this.on = true;
+    const L = m.shotLaunch(p, p.aimV || m.aim, Math.max(0.5, p.charge), { curveIn: p.shotCurve });
+    if (!(L.T > 0)) { this.hide(); return; }
+    const n = this.dots.length, sub = 6, h = L.T * 0.75 / ((n + 2) * sub); // the first 75% of the way, from a little in front of you
+    let x = L.from.x, y = L.from.y, z = L.from.z, vx = L.v.x, vy = L.v.y, vz = L.v.z;
+    for (let i = -2; i < n; i++) {
+      for (let j = 0; j < sub; j++) { vx += L.cx * h; vz += L.cz * h; vy -= BALL_G * h; x += vx * h; y = Math.max(BALL_R, y + vy * h); z += vz * h; }
+      if (i >= 0) { const d = this.dots[i]; d.visible = true; d.position.set(x, y, z); }
+    }
+  },
+};
+
 const TutHud = {
   mark: null, step: -2,
   update(m) {
@@ -8155,6 +8220,8 @@ const Net = {
     if (!busy) UI.emoteKeys();
     if (!busy) Cam.look(rdt);
     this.collect(busy ? null : Input.controls());
+    const me = nm.human, hc = this.held; // the curve you are putting on a shot, for the power bar (the server works out the real one)
+    if (me) me.shotCurve = me.charging && hc ? damp(me.shotCurve || 0, clamp(hc.moveX || 0, -1, 1), 12, rdt) : 0;
     if (!busy) this.chatKeys();
     this.sendT -= rdt;
     if (this.sendT <= 0) { this.sendT = 1 / 30; this.sendInput(); }
@@ -8700,7 +8767,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + this.tplEmotes();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + this.tplEmotes();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -8736,7 +8803,7 @@ const UI = {
           <button class="btn" id="go-quick" type="button">QUICK MATCH <span class="sub">4V4 &middot; NO RANK CHANGE</span></button>
           <button class="btn friends" id="go-online" type="button">PLAY WITH FRIENDS <span class="sub">ONLINE ROOM</span></button>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
-          <button class="btn featured" id="go-featured" type="button"><span id="feat-name">FEATURED</span> <span class="sub" id="feat-sub">NEW MODE IN 3:00:00</span></button>
+          <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub">HILL &middot; VOLLEYS &middot; DUEL</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
           <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
@@ -8796,6 +8863,7 @@ const UI = {
             ${row(key('LEFT THUMB'), 'Touch anywhere on the left and drag to move. Push past the outer ring to sprint')}
             ${row(key('RIGHT THUMB'), 'Drag anywhere on the right to turn the camera. The crosshair is where shots go')}
             ${row(key('SHOOT'), 'Hold to charge, let go to shoot. Drag on it while holding to aim')}
+            ${row(key('CURVE'), 'While you hold SHOOT, push the move stick left or right to bend the shot. It still ends up where you aim')}
             ${row(key('PASS'), 'Tap to pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for it: your teammate looks up, then picks the pass')}
             ${row(key('FEINT') + key('TACKLE'), 'One button. With the ball it feints (a step-over nobody can tackle you through, every 5s), without it you slide')}
             ${row(key('JUMP'), 'Jump. With the ball it flicks it over a defender')}
@@ -8812,6 +8880,7 @@ const UI = {
             ${row(key('MOUSE'), 'Aim the camera. Click the pitch to lock the mouse')}
             ${row(key('SHIFT'), 'Sprint. It uses stamina. Run it empty and you are out of breath (the bar flashes red): no sprint and a slower jog until it is a third full. Stand still to get it back faster')}
             ${row(key('HOLD LMB'), 'Charge a shot, release to shoot where you aim')}
+            ${row(key('LMB') + key('A') + key('D'), 'Curve shot: hold A or D while you charge. The ball swings out and bends back in to where you aim, round the keeper')}
             ${row(key('RMB'), 'Pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for a pass: your teammate looks up, then picks one. Sprint into space for a through ball')}
             ${row(key('SPACE'), 'Jump. With the ball it flicks it over defenders')}
             ${row(key('C'), 'Feint: a step-over cut to the side. Nobody can tackle you through it. Once every 5 seconds')}
@@ -8831,7 +8900,7 @@ const UI = {
             ${row(key('L'), 'Shift lock: your player always faces where you look, so A and D step sideways with the ball in front. The camera sits over your shoulder')}
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
-            ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}
+            ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}${row(key('RT') + key('L STICK'), 'Curve shot: push the left stick left or right while you charge')}
             ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Feint')}${row(key('X'), 'Slide tackle')}
             ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('D-PAD DOWN'), 'Emote wheel (not in Lawless), then the D-pad chooses and A plays it')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
           </div></section>
@@ -8857,7 +8926,7 @@ const UI = {
             <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
             <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
-            <li><b>Featured mode</b> changes every 3 hours, the same for everyone: King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3) and Lawless.</li>
+            <li><b>More modes</b> (the MORE MODES button): King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3), Free Kicks and the Tutorial. One of them is FEATURED, and it changes every 3 hours.</li>
             <li><b>Rewards</b> (emeralds, XP, pass, GOALS) come from full-time matches: Quick Match, Ranked and Lawless. King of the Hill, Volleys and Duels are just for fun, unless you play them with friends: every friends match gives rewards. Leaving early gives nothing.</li>
             <li><b>Team size:</b> Quick Match is 4v4 with a winger. Lawless is 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
@@ -8980,7 +9049,7 @@ const UI = {
       <div class="hud-em emer"><img class="px" id="hud-em-ico" alt=""><span id="hud-em">0</span></div>
       <div class="crosshair" id="xhair"></div>
       <div class="balltag" id="balltag" hidden>BALL</div>
-      <div class="charge" id="charge" hidden><i id="charge-fill"></i><span id="charge-txt">POWER</span></div>
+      <div class="charge" id="charge" hidden><i id="charge-fill"></i><b class="cmark" id="charge-cmark"></b><span id="charge-txt">POWER</span></div>
       <div class="toasts" id="toasts"></div>
       <div class="chatfeed" id="chatfeed" aria-live="polite"></div>
       <div class="awakeside" id="awakeside" hidden><span class="aw-name" id="aws-name"></span><div class="aw-track"><i id="aws-fill"></i></div><b id="aws-txt">0%</b><span class="key k">Z</span></div>
@@ -9029,6 +9098,23 @@ const UI = {
     for (const k in mv) if (E.has(k)) { E.delete(k); this.markEmote(this.emoteSel + mv[k]); Sfx.hover(); }
     if (E.has('PadA')) { E.delete('PadA'); this.pickEmote(this.emoteSel); return; }
     if (E.has('PadB')) this.toggleEmotes(false);
+  },
+  /** MORE MODES: every mode that is not on the main menu, just for fun (offline they give no rewards) */
+  tplModes() {
+    return `<section id="scr-modes" class="overlay" hidden>
+      <div class="dialog panel modes-box">
+        <h2>MORE MODES</h2>
+        <p class="label">JUST FOR FUN, SO NO REWARDS. QUICK MATCH, RANKED AND LAWLESS GIVE REWARDS.</p>
+        <div class="md-grid" id="md-grid"></div>
+        <button class="btn" id="md-close" type="button">CLOSE</button>
+      </div>
+    </section>`;
+  },
+  openModes() {
+    const desc = { koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
+    const feat = featuredAt().mode;
+    $('md-grid').innerHTML = Object.keys(desc).map((k) => `<button class="btn md-card" type="button" data-mode="${k}">${MODES[k].name}${k === feat ? '<span class="tag">FEATURED</span>' : ''}<span class="sub">${desc[k]}</span></button>`).join('');
+    $('scr-modes').hidden = false;
   },
   tplDaily() {
     return `<section id="scr-daily" class="overlay" hidden>
@@ -9130,7 +9216,7 @@ const UI = {
       const t = b.textContent.trim();
       Sfx.press(/-(back|close)$/.test(b.id) || t === 'BACK' || t === 'CLOSE' ? 'back' : b.classList.contains('tab') ? 'tab' : 'go');
     }, true);
-    const pops = ['friend-card', 'scr-daily', 'scr-pause', 'emote-pop'].map((id) => $(id)).filter(Boolean);
+    const pops = ['friend-card', 'scr-daily', 'scr-modes', 'scr-pause', 'emote-pop'].map((id) => $(id)).filter(Boolean);
     const mo = new MutationObserver((list) => { for (const r of list) { const was = r.oldValue !== null, now = r.target.hidden; if (was !== now) { if (now) Sfx.close(); else Sfx.open(); } } });
     for (const el of pops) mo.observe(el, { attributes: true, attributeFilter: ['hidden'], attributeOldValue: true });
   },
@@ -9140,7 +9226,9 @@ const UI = {
     click('go-ranked', () => Game.startMatch('ranked'));
     click('go-quick', () => Game.startMatch('quick'));
     click('go-lawless', () => Game.startMatch('lawless'));
-    click('go-featured', () => Game.startMatch(featuredAt().mode));
+    click('go-modes', () => this.openModes());
+    click('md-close', () => { $('scr-modes').hidden = true; });
+    $('md-grid').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (!b) return; $('scr-modes').hidden = true; Sfx.init(); Game.startMatch(b.dataset.mode); });
     click('go-spins', () => this.openSpins());
     click('go-locker', () => this.openLocker());
     click('go-howto', () => this.show('howto'));
@@ -9260,15 +9348,6 @@ const UI = {
     fsb.hidden = !(Touch.on && Touch.fsAvailable());
     fsb.textContent = Touch.isFs() ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
   },
-  /** the featured slot: this mode's name and the countdown to the next one (ticks once a second) */
-  tickFeatured() {
-    const f = featuredAt(), sec = Math.ceil(f.left / 1000);
-    if (sec === this._featSec && f.mode === this._featMode) return;
-    this._featSec = sec; this._featMode = f.mode;
-    const hms = Math.floor(sec / 3600) + ':' + String(Math.floor(sec / 60) % 60).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
-    $('feat-name').textContent = MODES[f.mode].name;
-    $('feat-sub').textContent = (MODES[f.mode].rewards ? 'FEATURED' : 'NO REWARDS') + ' · NEXT IN ' + hms;
-  },
   /* ---------- HUD ---------- */
   buildHud(m) {
     const p = m.human;
@@ -9317,7 +9396,7 @@ const UI = {
   setText(id, v) { const c = this.hudCache; if (c[id] !== v) { c[id] = v; $(id).textContent = v; } },
   updateHud(m, dt) {
     const p = m.human; if (!p) return;
-    FKHud.update(m); TutHud.update(m);
+    FKHud.update(m); TutHud.update(m); ShotHud.update(m);
     this.setText('sc0', String(m.score[0])); this.setText('sc1', String(m.score[1]));
     if (m.tut) { this.setText('clock', Math.min(m.tut.step + 1, TUT_STEPS.length) + '/' + TUT_STEPS.length); this.setText('clock-sub', 'TUTORIAL'); }
     else if (m.fk && m.fk.battle) { this.setText('clock', m.fk.bs[0] + '-' + m.fk.bs[1]); this.setText('clock-sub', 'FK BATTLE'); }
@@ -9363,8 +9442,11 @@ const UI = {
       ch.hidden = false;
       const lob = !p.charging;
       ch.classList.toggle('lob', lob);
+      const cv = lob ? 0 : p.shotCurve || 0, curl = Math.abs(cv) >= CURVE_MIN; // A/D (the stick) while charging: a curve shot
+      ch.classList.toggle('curl', curl);
       $('charge-fill').style.width = (lob ? 100 : Math.max(28, p.charge * 100)).toFixed(0) + '%';
-      this.setText('charge-txt', lob ? 'LOB' : p.charge >= 1 ? 'MAX POWER' : 'POWER');
+      $('charge-cmark').style.left = (50 + clamp(cv, -1, 1) * 50).toFixed(1) + '%';
+      this.setText('charge-txt', lob ? 'LOB' : curl ? (cv < 0 ? 'CURVE LEFT' : 'CURVE RIGHT') + (p.charge >= 1 ? ' MAX' : '') : p.charge >= 1 ? 'MAX POWER' : 'POWER');
     } else ch.hidden = true;
     $('xhair').style.filter = m.aimOnTarget ? 'drop-shadow(0 0 0 #ffcb3d)' : '';
     $('xhair').classList.toggle('on', m.aimOnTarget);
@@ -9747,7 +9829,7 @@ const Game = {
   },
   applyQuality() { const q = Save.data.settings.quality; if (q === 'auto') World.setQuality(...AUTO_STEPS[this.autoStep]); else World.setQuality(q); },
   toLobby() {
-    Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false); UI.toggleEmotes(false); FKHud.hide();
+    Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false); UI.toggleEmotes(false); FKHud.hide(); ShotHud.hide();
     if (this.match) { this.match.dispose(); this.match = null; }
     Net.nm = null; Net.paused = false;
     Input.releaseLock();
@@ -9946,7 +10028,6 @@ const Game = {
     } else {
       Reveal.update(rdt);
       Showcase.update(rdt);
-      if (UI.cur === 'lobby') UI.tickFeatured();
       Shake.update(rdt);
       FX.update(rdt);
     }
@@ -9964,7 +10045,7 @@ window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS,
-  EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
+  EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
   CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */

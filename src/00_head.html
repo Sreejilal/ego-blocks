@@ -443,6 +443,9 @@ body.touch #chat-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0
 .charge { left: 50%; top: calc(50% + 26px); transform: translateX(-50%); width: 120px; height: 12px; background: var(--ink); border: 2px solid var(--ink); }
 .charge i { display: block; height: 100%; width: 0%; background: var(--gold); }
 .charge.lob i { background: var(--blue-light); }
+.charge .cmark { display: none; position: absolute; top: -5px; bottom: -5px; width: 4px; margin-left: -2px; left: 50%; background: #7cf2ff; border: 1px solid var(--ink); }
+.charge.curl .cmark { display: block; }
+.charge.curl i { background: #7cf2ff; }
 .charge span { position: absolute; top: 14px; left: 0; right: 0; text-align: center; font-family: var(--font-label); font-size: 10px; letter-spacing: .1em; }
 .dock { left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: grid; justify-items: center; gap: 8px; }
 .flowbar { width: 420px; max-width: 70vw; display: grid; gap: 3px; }

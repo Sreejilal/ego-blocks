@@ -175,7 +175,7 @@ const AI = {
       if (b.owner !== p || p.state !== 'free') { a.wantShot = null; p.charging = false; p.charge = 0; }
       else {
         a.wantShot.at -= dt; p.charging = true; p.charge = Math.min(1, p.charge + dt / 0.9);
-        if (a.wantShot.at <= 0) { const w = a.wantShot; a.wantShot = null; p.charging = false; p.charge = 0; m.shootAt(p, w.t, w.power); return; }
+        if (a.wantShot.at <= 0) { const w = a.wantShot; a.wantShot = null; p.charging = false; p.charge = 0; m.shootAt(p, w.t, w.power, { curveIn: w.curveIn }); return; }
       }
     }
     if (a.task === 'press' || (a.task === 'chase' && b.owner && b.owner.team !== p.team) || p.fx.lockdown > 0) this.tryTackle(m, p, dt);
@@ -315,7 +315,10 @@ const AI = {
   shoot(m, p, c, sk) {
     const t = this.shotTarget(p, m, sk);
     const power = clamp(0.48 + c.dGoal / 30, 0.55, 1);
-    p.ai.wantShot = { t, power, at: rand(0.1, 0.24) + (1 - sk) * 0.12 };
+    // good bots sometimes bend it: out past the post, then back in (curveIn > 0 bends right of the shot)
+    let curveIn = 0;
+    if (c.dGoal > 9 && Math.abs(t.x) > 1.2 && chance(0.25 * sk)) { const dx = t.x - p.pos.x, dz = t.z - p.pos.z, l = len2D(dx, dz) || 1; curveIn = Math.sign(dz / l * Math.sign(t.x)) * rand(0.5, 1); }
+    p.ai.wantShot = { t, power, curveIn, at: rand(0.1, 0.24) + (1 - sk) * 0.12 };
     p.charging = true; p.charge = 0;
   },
   shotTarget(p, m, sk, corner = false) {
@@ -512,7 +515,7 @@ const AI = {
         if (Math.abs(px) < F.GW + 1.0 && py < F.GH + 0.9 && !screened) {
           // hard to read: volleys and bicycle kicks come off the foot at odd angles, a knuckleball wobbles, a long bomb dips late
           const sp = b.kick && b.kick.special, tricky = sp === 'volley' || sp === 'overhead' || sp === 'knuckle' || sp === 'bomb';
-          if (a.react == null) a.react = lerp(0.55, 0.16, Math.min(1, sk)) * rand(0.8, 1.2) * (m.fk && sp === 'knuckle' ? 1.8 : m.fk && b.kick.curved ? 1.5 : tricky ? 1.4 : 1); // free kicks: a knuckleball is the hardest, a curler round the wall is hard too
+          if (a.react == null) a.react = lerp(0.55, 0.16, Math.min(1, sk)) * rand(0.8, 1.2) * (m.fk && sp === 'knuckle' ? 1.8 : m.fk && b.kick.curved ? 1.5 : tricky ? 1.4 : b.kick && Math.abs(b.kick.curl || 0) > 0.5 ? 1.2 : 1); // free kicks: a knuckleball is the hardest, a curler round the wall is hard too
           a.react -= dt;
           if (a.react <= 0) {
             const K = this.crossAt(b, p.pos.z) || X; // where it passes the keeper

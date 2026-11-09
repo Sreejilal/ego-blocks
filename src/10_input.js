@@ -196,6 +196,7 @@ const Cam = {
       let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.85 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
       if (Save.data.settings.shiftLock && !wide) { tx += -Math.cos(this.yaw) * 1.0; tz += Math.sin(this.yaw) * 1.0; ty -= 0.25; } // shift lock: over your right shoulder
       tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
+      if (Math.abs(tz) > F.L - 0.6 && Math.abs(tz) < F.L + F.GD + 0.8 && Math.abs(tx) < F.GW + F.POST + 0.6) ty = Math.max(ty, F.GH + F.POST + 0.7); // never inside the goal net: up over the bar
       const k = 1 - Math.exp(-16 * realDt);
       this.pos.x += (tx - this.pos.x) * k; this.pos.y += (ty - this.pos.y) * k; this.pos.z += (tz - this.pos.z) * k;
     }

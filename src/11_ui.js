@@ -106,6 +106,7 @@ const UI = {
             ${row(key('LEFT THUMB'), 'Touch anywhere on the left and drag to move. Push past the outer ring to sprint')}
             ${row(key('RIGHT THUMB'), 'Drag anywhere on the right to turn the camera. The crosshair is where shots go')}
             ${row(key('SHOOT'), 'Hold to charge, let go to shoot. Drag on it while holding to aim')}
+            ${row(key('CURVE'), 'While you hold SHOOT, push the move stick left or right to bend the shot. It still ends up where you aim')}
             ${row(key('PASS'), 'Tap to pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for it: your teammate looks up, then picks the pass')}
             ${row(key('FEINT') + key('TACKLE'), 'One button. With the ball it feints (a step-over nobody can tackle you through, every 5s), without it you slide')}
             ${row(key('JUMP'), 'Jump. With the ball it flicks it over a defender')}
@@ -122,6 +123,7 @@ const UI = {
             ${row(key('MOUSE'), 'Aim the camera. Click the pitch to lock the mouse')}
             ${row(key('SHIFT'), 'Sprint. It uses stamina. Run it empty and you are out of breath (the bar flashes red): no sprint and a slower jog until it is a third full. Stand still to get it back faster')}
             ${row(key('HOLD LMB'), 'Charge a shot, release to shoot where you aim')}
+            ${row(key('LMB') + key('A') + key('D'), 'Curve shot: hold A or D while you charge. The ball swings out and bends back in to where you aim, round the keeper')}
             ${row(key('RMB'), 'Pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for a pass: your teammate looks up, then picks one. Sprint into space for a through ball')}
             ${row(key('SPACE'), 'Jump. With the ball it flicks it over defenders')}
             ${row(key('C'), 'Feint: a step-over cut to the side. Nobody can tackle you through it. Once every 5 seconds')}
@@ -141,7 +143,7 @@ const UI = {
             ${row(key('L'), 'Shift lock: your player always faces where you look, so A and D step sideways with the ball in front. The camera sits over your shoulder')}
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
-            ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}
+            ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}${row(key('RT') + key('L STICK'), 'Curve shot: push the left stick left or right while you charge')}
             ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Feint')}${row(key('X'), 'Slide tackle')}
             ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('D-PAD DOWN'), 'Emote wheel (not in Lawless), then the D-pad chooses and A plays it')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
           </div></section>
@@ -290,7 +292,7 @@ const UI = {
       <div class="hud-em emer"><img class="px" id="hud-em-ico" alt=""><span id="hud-em">0</span></div>
       <div class="crosshair" id="xhair"></div>
       <div class="balltag" id="balltag" hidden>BALL</div>
-      <div class="charge" id="charge" hidden><i id="charge-fill"></i><span id="charge-txt">POWER</span></div>
+      <div class="charge" id="charge" hidden><i id="charge-fill"></i><b class="cmark" id="charge-cmark"></b><span id="charge-txt">POWER</span></div>
       <div class="toasts" id="toasts"></div>
       <div class="chatfeed" id="chatfeed" aria-live="polite"></div>
       <div class="awakeside" id="awakeside" hidden><span class="aw-name" id="aws-name"></span><div class="aw-track"><i id="aws-fill"></i></div><b id="aws-txt">0%</b><span class="key k">Z</span></div>
@@ -637,7 +639,7 @@ const UI = {
   setText(id, v) { const c = this.hudCache; if (c[id] !== v) { c[id] = v; $(id).textContent = v; } },
   updateHud(m, dt) {
     const p = m.human; if (!p) return;
-    FKHud.update(m); TutHud.update(m);
+    FKHud.update(m); TutHud.update(m); ShotHud.update(m);
     this.setText('sc0', String(m.score[0])); this.setText('sc1', String(m.score[1]));
     if (m.tut) { this.setText('clock', Math.min(m.tut.step + 1, TUT_STEPS.length) + '/' + TUT_STEPS.length); this.setText('clock-sub', 'TUTORIAL'); }
     else if (m.fk && m.fk.battle) { this.setText('clock', m.fk.bs[0] + '-' + m.fk.bs[1]); this.setText('clock-sub', 'FK BATTLE'); }
@@ -683,8 +685,11 @@ const UI = {
       ch.hidden = false;
       const lob = !p.charging;
       ch.classList.toggle('lob', lob);
+      const cv = lob ? 0 : p.shotCurve || 0, curl = Math.abs(cv) >= CURVE_MIN; // A/D (the stick) while charging: a curve shot
+      ch.classList.toggle('curl', curl);
       $('charge-fill').style.width = (lob ? 100 : Math.max(28, p.charge * 100)).toFixed(0) + '%';
-      this.setText('charge-txt', lob ? 'LOB' : p.charge >= 1 ? 'MAX POWER' : 'POWER');
+      $('charge-cmark').style.left = (50 + clamp(cv, -1, 1) * 50).toFixed(1) + '%';
+      this.setText('charge-txt', lob ? 'LOB' : curl ? (cv < 0 ? 'CURVE LEFT' : 'CURVE RIGHT') + (p.charge >= 1 ? ' MAX' : '') : p.charge >= 1 ? 'MAX POWER' : 'POWER');
     } else ch.hidden = true;
     $('xhair').style.filter = m.aimOnTarget ? 'drop-shadow(0 0 0 #ffcb3d)' : '';
     $('xhair').classList.toggle('on', m.aimOnTarget);

@@ -238,25 +238,26 @@ class Match {
     if (c.emote != null && c.emote >= 0 && live) this.emote(p, c.emote);
     p.faceYaw = p.charging || c.shiftLock || p.fkHold ? cy : null; // shift lock (and a free kick): always face where the camera looks
     p.jetThrust = c.jumpHeld && p.fx.jetpack > 0;
-    if (this.phase !== 'play') { p.charging = false; p.charge = 0; return; }
+    if (this.phase !== 'play') { p.charging = false; p.charge = 0; p.shotBuffer = null; return; } // a shot pressed as play stopped never fires by itself at the restart
     if (p.setPiece) { // throw-in, corner: pass plays it to a teammate, shoot plays it where you aim
       p.faceYaw = cy; p.yaw = cy; p.charging = false; p.charge = 0;
-      if (c.passUp || c.passDown) this.takeSetPiece(p, 'pass');
-      else if (c.shootUp || c.shootDown) this.takeSetPiece(p, 'shoot');
+      if (c.passDown) this.takeSetPiece(p, 'pass'); // only a fresh press: letting go of a button you held when the ball went out does not take it by accident
+      else if (c.shootDown) this.takeSetPiece(p, 'shoot');
+      p.passHold = 0; p.shotBuffer = null;
       return;
     }
     if (p.fkHold) { this.freeKickControls(dt, c, p, cy); return; }
     if (p.inWall) { p.mx = p.mz = 0; p.charging = false; p.charge = 0; if (c.jump) this.jump(p); return; } // in the wall for their free kick: jump to block it
-    if (!this.canAct(p)) { if (p.state !== 'dash') { p.charging = false; p.charge = 0; } return; }
-    if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; }
+    if (!this.canAct(p)) { if (p.state !== 'dash') { p.charging = false; p.charge = 0; p.shotBuffer = null; } return; }
+    if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; p.shotCurve = clamp(c.moveX || 0, -1, 1); }
     if (p.charging) {
       if (!c.shootHeld && !c.shootUp) { p.charging = false; p.charge = 0; }
-      else p.charge = p.fx.loaded > 0 ? 1 : Math.min(1, p.charge + dt / 0.8);
+      else { p.charge = p.fx.loaded > 0 ? 1 : Math.min(1, p.charge + dt / 0.8); if (c.shootHeld) p.shotCurve = damp(p.shotCurve || 0, clamp(c.moveX || 0, -1, 1), 12, dt); } // A/D (the stick) while you charge: the curve (letting go of both at once keeps it)
     }
     if (c.shootUp && p.charging) {
-      const power = Math.max(0.5, p.charge); // a quick tap is still a proper shot
-      p.charging = false; p.charge = 0;
-      if (!this.tryShoot(p, power, p.aimV || this.aim, { curveIn: c.moveX }) && this.ball.owner !== p) p.shotBuffer = { power, curveIn: c.moveX, t: 0.35 };
+      const power = Math.max(0.5, p.charge), curveIn = p.shotCurve || 0; // a quick tap is still a proper shot
+      p.charging = false; p.charge = 0; p.shotCurve = 0;
+      if (!this.tryShoot(p, power, p.aimV || this.aim, { curveIn }) && this.ball.owner !== p) p.shotBuffer = { power, curveIn, t: 0.35 };
     }
     // pressed a moment before the ball reached you: it goes as soon as you have it
     if (p.shotBuffer) {
@@ -345,20 +346,37 @@ class Match {
     if (sp > 27 && this.involvesHuman(p)) Shake.add(0.22);
     return true;
   }
-  shootAt(p, target, power, o = {}) {
+  /** a shot's launch. With curve (`curveIn`, -1 left to 1 right: A/D or the stick while you charge) the ball starts out
+      to the other side and bends back in, so it still ends up where you aimed, only round the keeper or a defender */
+  shotLaunch(p, target, power, o = {}) {
     const b = this.ball;
-    const speed = lerp(17, 36, clamp(power, 0, 1)) * p.mods.shot * (o.mult || 1);
+    const ci = clamp(o.curveIn || 0, -1, 1), curl = Math.abs(ci) >= CURVE_MIN ? ci : 0;
+    const speed = lerp(17, 36, clamp(power, 0, 1)) * p.mods.shot * (o.mult || 1) * (1 - CURVE_SLOW * Math.abs(curl)); // a curler is a little slower
     let from = b.pos;
     if (b.owner === p) { const dx = target.x - p.pos.x, dz = target.z - p.pos.z, l = len2D(dx, dz) || 1; from = V3(p.pos.x + dx / l * 0.6, b.pos.y, p.pos.z + dz / l * 0.6); }
     const v = solveLaunch(from, target, speed, BALL_G * 1.04);
     let cx = 0, cz = 0;
-    if (o.curveIn) { const hl = len2D(v.x, v.z) || 1; const k = clamp(o.curveIn, -1, 1) * 7; cx = (-v.z / hl) * k; cz = (v.x / hl) * k; }
+    const hs = len2D(v.x, v.z), D = len2D(target.x - from.x, target.z - from.z), T0 = hs > 1 ? D / hs : 0; // T0: about when it gets there
+    if (curl && hs > 1 && D > 2) {
+      // the same speed towards the target, plus a sideways part that the spin bends back to zero by the time it gets there
+      const ux = v.x / hs, uz = v.z / hs, rx = -uz, rz = ux, T = D / hs; // r: right of the shot
+      const side = hs * Math.tan(CURVE_ANGLE * Math.abs(curl)) * -Math.sign(curl), acc = -2 * side / T;
+      v.x += rx * side; v.z += rz * side; cx = rx * acc; cz = rz * acc;
+    }
+    return { from, v, cx, cz, speed, curl, T: T0 };
+  }
+  shootAt(p, target, power, o = {}) {
+    const b = this.ball;
+    const L = this.shotLaunch(p, target, power, o), v = L.v, speed = L.speed;
     p.stats.shots++;
     const trail = o.trail || (speed > 28 ? p.aura : null);
     if (!o.kickStyle) { o.kickStyle = 'strike'; o.kickDur = lerp(0.36, 0.5, clamp(power, 0, 1)); } // a full strike, longer for big shots
     p.kickPow = clamp(power, 0, 1.4);
     if (power > 0.85 && b.pos.y < 1) FX.dirt(p.pos.x, p.pos.z, Math.sin(p.yaw), Math.cos(p.yaw), 6, 0.7); // turf flies on a big one
-    return this.kick(p, v.x, v.y, v.z, Object.assign({ type: 'shot', trail, cx, cz }, o));
+    if (L.curl && Math.abs(L.curl) > 0.6 && this.involvesHuman(p)) FX.sparks(b.pos.x, b.pos.y, b.pos.z, '#7cf2ff', 6, 3); // spin on it
+    const ok = this.kick(p, v.x, v.y, v.z, Object.assign({ type: 'shot', trail: trail || (L.curl ? '#7cf2ff' : null), curveDecay: L.curl ? 0 : 1.4 }, o, { cx: L.cx, cz: L.cz }));
+    if (ok && L.curl) this.ball.kick.curl = L.curl;
+    return ok;
   }
   tryShoot(p, power, aim, o = {}) {
     const b = this.ball;
@@ -576,6 +594,7 @@ class Match {
       if (!b.owner && !S.hitBall && Math.hypot(b.pos.x - hx, b.pos.z - hz) < R * 0.85 && b.pos.y < 1.0) {
         S.hitBall = true;
         b.vel.set(S.dx * 10.5 + p.vel.x * 0.15, 2.2, S.dz * 10.5 + p.vel.z * 0.15);
+        b.curve.set(0, 0, 0); b.straightT = 0; b.gMul = 1; // a curler knocked away by the slide stops bending
         b.kick = { by: p, type: 'tackle', t: this.time }; b.touch(p); p.pickBlock = 0;
         Sfx.kick(0.3);
       }
@@ -1672,6 +1691,7 @@ class Match {
       if (b.owner) { b.owner.pickBlock = 0.6; b.release(); }
       const l = bd || 1;
       b.vel.set((b.pos.x - x) / l * 14, 9, (b.pos.z - z) / l * 14);
+      b.curve.set(0, 0, 0); b.straightT = 0; b.gMul = 1;
       b.kick = { by: owner, type: 'loose', t: this.time };
     }
   }

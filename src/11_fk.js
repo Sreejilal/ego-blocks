@@ -50,6 +50,31 @@ const FKHud = {
   },
 };
 
+/** ShotHud: while you charge a curve shot (A/D or the stick), dots show how it bends: the first part of its path */
+const ShotHud = {
+  dots: [], on: false,
+  build() {
+    if (this.dots.length) return;
+    const g = new THREE.BoxGeometry(0.13, 0.13, 0.13), mat = new THREE.MeshBasicMaterial({ color: 0x7cf2ff, transparent: true, opacity: 0.8, depthTest: false });
+    for (let i = 0; i < 12; i++) { const d = new THREE.Mesh(g, mat); d.visible = false; d.renderOrder = 20; World.scene.add(d); this.dots.push(d); }
+  },
+  hide() { if (!this.on) return; this.on = false; for (const d of this.dots) d.visible = false; },
+  update(m) {
+    const p = m && m.human;
+    const show = !!(p && m.shotLaunch && !m.fk && m.phase === 'play' && p.charging && m.ball.owner === p && Math.abs(p.shotCurve || 0) >= CURVE_MIN);
+    if (!show) { this.hide(); return; }
+    this.build(); this.on = true;
+    const L = m.shotLaunch(p, p.aimV || m.aim, Math.max(0.5, p.charge), { curveIn: p.shotCurve });
+    if (!(L.T > 0)) { this.hide(); return; }
+    const n = this.dots.length, sub = 6, h = L.T * 0.75 / ((n + 2) * sub); // the first 75% of the way, from a little in front of you
+    let x = L.from.x, y = L.from.y, z = L.from.z, vx = L.v.x, vy = L.v.y, vz = L.v.z;
+    for (let i = -2; i < n; i++) {
+      for (let j = 0; j < sub; j++) { vx += L.cx * h; vz += L.cz * h; vy -= BALL_G * h; x += vx * h; y = Math.max(BALL_R, y + vy * h); z += vz * h; }
+      if (i >= 0) { const d = this.dots[i]; d.visible = true; d.position.set(x, y, z); }
+    }
+  },
+};
+
 const TutHud = {
   mark: null, step: -2,
   update(m) {

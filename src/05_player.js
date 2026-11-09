@@ -314,7 +314,9 @@ class Player {
     if (az > F.L - 0.45 && az < F.L + F.GD + 0.6 && ax < F.GW + F.POST + 0.45 && this.pos.y < F.GH + 0.6) {
       const s = sgn(this.pos.z);
       const inside = ax < F.GW + F.POST - 0.1;
+      const side = F.GW + F.POST + 0.45 - ax, back = F.L + F.GD + 0.6 - az; // how far into the goal from the side and from behind
       if (inside && az < F.L + 0.4) { this.pos.z = s * (F.L - 0.45); this.vel.z = 0; }
+      else if (az >= F.L + 0.4 && back < side) { this.pos.z = s * (F.L + F.GD + 0.6); if (this.vel.z * s < 0) this.vel.z = 0; } // behind the goal: the back of the net stops you (no jump to the side)
       else if (az >= F.L + 0.4) { this.pos.x = sgn(this.pos.x) * (F.GW + F.POST + 0.45); this.vel.x = 0; }
       else { this.pos.z = s * (F.L - 0.45); }
     }

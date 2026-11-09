@@ -460,6 +460,8 @@ const Net = {
     if (!busy) UI.emoteKeys();
     if (!busy) Cam.look(rdt);
     this.collect(busy ? null : Input.controls());
+    const me = nm.human, hc = this.held; // the curve you are putting on a shot, for the power bar (the server works out the real one)
+    if (me) me.shotCurve = me.charging && hc ? damp(me.shotCurve || 0, clamp(hc.moveX || 0, -1, 1), 12, rdt) : 0;
     if (!busy) this.chatKeys();
     this.sendT -= rdt;
     if (this.sendT <= 0) { this.sendT = 1 / 30; this.sendInput(); }

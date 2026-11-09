@@ -130,7 +130,7 @@ Without it, PLAY WITH FRIENDS is simply hidden in the CrazyGames copy and everyt
 - **Description:** Voxel football for 3v3 up to 5v5. Pick a style with three abilities, fill your Flow
   bar, and climb ranked from Wood to Obsidian. Play quick matches, Lawless mode with items, a featured
   mode that changes every 3 hours, and online rooms with friends.
-- **Controls:** WASD move, mouse aims, Shift sprints, hold left click to shoot, right click passes,
+- **Controls:** WASD move, mouse aims, Shift sprints, hold left click to shoot (hold A or D as well to curve it), right click passes,
   Space jumps, C dodges, F slide tackles, Q E R abilities, G Flow, ESC or P pauses. Controller and touch
   are supported (the How to Play screen lists them all).
 - **Genre and tags:** Sports, Football (Soccer), 3D, Multiplayer.

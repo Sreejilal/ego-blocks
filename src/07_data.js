@@ -706,7 +706,7 @@ const TUT_STEPS = [
   { id: 'ball', title: 'GET THE BALL', k: 'RUN INTO THE BALL TO TAKE IT', pad: 'RUN INTO THE BALL TO TAKE IT', touch: 'RUN INTO THE BALL TO TAKE IT' },
   { id: 'pass', title: 'PASS', k: 'RIGHT MOUSE PASSES TO YOUR TEAMMATE. HOLD IT FOR A LOB', pad: 'LT PASSES TO YOUR TEAMMATE. HOLD IT FOR A LOB', touch: 'TAP PASS TO PASS TO YOUR TEAMMATE. HOLD IT FOR A LOB' },
   { id: 'back', title: 'ONE MORE TIME', k: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT', pad: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT', touch: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT' },
-  { id: 'shoot', title: 'SHOOT', k: 'AIM AT THE GOAL WITH THE MOUSE. HOLD LEFT MOUSE FOR POWER, LET GO TO SHOOT', pad: 'AIM WITH THE RIGHT STICK. HOLD RT FOR POWER, LET GO TO SHOOT', touch: 'DRAG TO AIM. HOLD SHOOT FOR POWER, LET GO TO FIRE' },
+  { id: 'shoot', title: 'SHOOT', k: 'AIM AT THE GOAL WITH THE MOUSE. HOLD LEFT MOUSE FOR POWER, LET GO TO SHOOT. HOLD A OR D AS WELL TO CURVE IT', pad: 'AIM WITH THE RIGHT STICK. HOLD RT FOR POWER, LET GO TO SHOOT. PUSH THE LEFT STICK SIDEWAYS TO CURVE IT', touch: 'DRAG TO AIM. HOLD SHOOT FOR POWER, LET GO TO FIRE. PUSH THE STICK SIDEWAYS TO CURVE IT' },
   { id: 'feint', title: 'FEINT', k: 'WITH THE BALL, PRESS C TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO', pad: 'WITH THE BALL, PRESS B TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO', touch: 'WITH THE BALL, TAP FEINT TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO' },
   { id: 'tackle', title: 'TACKLE', k: 'THEY HAVE THE BALL. GET CLOSE AND PRESS F TO SLIDE IN AND WIN IT', pad: 'THEY HAVE THE BALL. GET CLOSE AND PRESS X TO SLIDE IN AND WIN IT', touch: 'THEY HAVE THE BALL. GET CLOSE AND TAP TACKLE TO SLIDE IN AND WIN IT' },
   { id: 'ability', title: 'ABILITIES', k: 'YOUR STYLE HAS 3 ABILITIES. PRESS Q, E OR R TO USE ONE', pad: 'YOUR STYLE HAS 3 ABILITIES. PRESS THE D-PAD LEFT, UP OR RIGHT', touch: 'YOUR STYLE HAS 3 ABILITIES. TAP ONE OF THE ROUND ABILITY BUTTONS' },
@@ -722,6 +722,10 @@ const FK_TYPES = {
   dip: { name: 'DIP', sp: [19, 27], curve: 4, g: 1.75, desc: 'UP OVER THE WALL, THEN DOWN' },
 };
 const FK_TYPE_IDS = Object.keys(FK_TYPES);
+/** curve shots in open play: hold A/D (the stick) while you charge. The ball starts out to one side and bends back to
+    where you aimed. CURVE_ANGLE: how far out it starts at full curve (radians), CURVE_SLOW: speed lost at full curve,
+    CURVE_MIN: less input than this is a straight shot (a stick that wobbles a little) */
+const CURVE_ANGLE = 0.26, CURVE_SLOW = 0.08, CURVE_MIN = 0.2;
 const FK_TOL = 0.08; // how far from the perfect power you can be (the green zone on the power bar)
 /** the perfect power for a distance: further out needs more */
 const fkIdeal = (D) => clamp(0.42 + (D - 16) / 12 * 0.36, 0.4, 0.86);
