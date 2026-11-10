@@ -2900,7 +2900,7 @@ class Player {
     if (fx.jetpack > 0) m.speed *= 1.25;
     if (fx.lockdown > 0) m.tackleRange *= 2.3;
     if (fx.slimed > 0) m.speed *= 0.55;
-    if (fx.tempo > 0) m.speed *= 1.2; // MAESTRO's TEMPO
+    if (fx.tempo > 0) m.speed *= 1.25; // MAESTRO's TEMPO
     if (fx.loaded > 0) m.speed *= 1.25; // THUNDER's LOADED
     if (fx.wind > 0) m.stamDrain *= 0.5; // SECOND WIND
     if (fx.hunt > 0 && this.m.ball.owner !== this) { m.speed *= 1.2; m.stamDrain = 0; } // BLITZ's HUNT
@@ -3410,8 +3410,8 @@ const STYLES = {
   BLITZ: { name: 'BLITZ', rarity: 'Legendary', hair: '#ff3b2f', hairShape: 'undercut', aura: '#ff3b5c', blurb: 'Never stops running. Hunts the ball down and pokes it away without leaving the ground.', abilities: ['hunt', 'poke', 'burst'],
     awaken: { move: { name: 'RED ALERT', kind: 'steal', desc: 'Lunge at a carrier up to 10 blocks away and take the ball.' }, name: 'FRENZY', desc: '+15% speed, and tackles come back twice as fast.', mods: { speed: 1.15, tackleCd: 0.5 } } },
   COMET: { name: 'COMET', rarity: 'Mythic', hair: '#bde8ff', hairShape: 'afro', aura: '#7cf2ff', blurb: 'Lives in the air. Rocket jumps, overheads and volleys from anywhere.', abilities: ['rocketJump', 'overhead', 'volley'],
-    awaken: { move: { name: 'STARFALL', kind: 'starfall', desc: 'Leap sky high and crash down, knocking over everyone near you.' }, name: 'ORBIT', desc: '+20% shot power and 10% faster.', mods: { shot: 1.2, speed: 1.1 } } },
-  RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'], awaken: { move: { name: 'RAILSHOT', kind: 'bolt', desc: 'Dead straight, top power, from anywhere.' }, name: 'OVERDRIVE', desc: '+25% shot power and 10% faster.', mods: { shot: 1.25, speed: 1.1 } } },
+    awaken: { move: { name: 'STARFALL', kind: 'starfall', desc: 'Leap sky high and crash down, knocking over everyone near you.' }, name: 'ORBIT', desc: '+20% shot power, 15% faster, and abilities recharge faster.', mods: { shot: 1.2, speed: 1.15, cdRate: 1.3 } } },
+  RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'], awaken: { move: { name: 'RAILSHOT', kind: 'bolt', desc: 'Dead straight, top power, from anywhere.' }, name: 'OVERDRIVE', desc: '+25% shot power, 10% faster, and abilities recharge faster.', mods: { shot: 1.25, speed: 1.1, cdRate: 1.3 } } },
   KESTREL: { name: 'KESTREL', rarity: 'Rare', hair: '#d9a53a', hairShape: 'spiky', aura: '#7fe0ff', blurb: 'Never stops running. Fresh legs, quick passes and quick shots.', abilities: ['secondWind', 'snapPass', 'quickShot'],
     awaken: { move: { name: 'SLIPSTREAM', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'TAILWIND', desc: '+12% speed, and sprinting costs half the stamina.', mods: { speed: 1.12, stamDrain: 0.5 } } },
   ANCHOR: { name: 'ANCHOR', rarity: 'Rare', hair: '#2d2a28', hairShape: 'crop', aura: '#4fd0a0', blurb: 'A tidy defender. Wins the ball back, clears it long and never runs out of legs.', abilities: ['lurch', 'clearance', 'secondWind'],
@@ -3493,20 +3493,20 @@ const ABILITIES = {
     ai(p, m, c) { return c.hasBall && c.dGoal < 21 && c.dGoal > 8; },
   },
   zigzag: {
-    name: 'ZIGZAG', cd: 10, icon: 'dash', big: true,
+    name: 'ZIGZAG', cd: 13, icon: 'dash', big: true,
     desc: 'A rapid zig-zag dash past the defender in front. Tackle-proof while dashing. Leaves black feathers.',
     use(p, m) {
       if (m.ball.owner !== p) return NEED_BALL;
       m.dashP(p, Math.sin(p.yaw), Math.cos(p.yaw), 14.5, 0.62, { zig: true });
-      p.tackleProof = 0.7; p.fx.feathers = 0.7; Sfx.swoosh();
+      p.tackleProof = 0.45; p.fx.feathers = 0.55; Sfx.swoosh();
       return true;
     },
     ai(p, m, c) { return c.hasBall && c.nearOpp < 4.2 && c.oppInFront; },
   },
   feint: {
     name: 'FAKE SHOT', cd: 8, icon: 'fake',
-    desc: 'Fake a shot. Defenders near you freeze for 0.6s and the keeper may dive the wrong way.',
-    use(p, m) { if (!nearBall(p, m)) return NEED_BALL; p.kickT = 0; p.kickDur = 0.3; m.feint(p, 6.5, 0.6); return true; },
+    desc: 'Fake a shot. Defenders near you freeze for a moment and the keeper may dive the wrong way.',
+    use(p, m) { if (!nearBall(p, m)) return NEED_BALL; p.kickT = 0; p.kickDur = 0.3; m.feint(p, 5, 0.45); return true; },
     ai(p, m, c) { return c.hasBall && (c.nearOpp < 4.5 || (c.dGoal < 16 && c.angleOK)); },
   },
   snapPass: {
@@ -3572,7 +3572,7 @@ const ABILITIES = {
     ai(p, m, c) { return !c.hasBall && ((c.carrierOpp && c.carrierDist < 6.5) || (c.looseDist < 5.5)); },
   },
   lurch: {
-    name: 'LURCH', cd: 10, icon: 'dash',
+    name: 'LURCH', cd: 12, icon: 'dash',
     desc: 'Burst straight at the nearest ball carrier.',
     use(p, m) {
       const c = m.ball.owner;
@@ -3580,11 +3580,11 @@ const ABILITIES = {
       const d = dist2D(c.pos, p.pos);
       if (d > 24) return 'TOO FAR';
       const dx = (c.pos.x - p.pos.x) / d, dz = (c.pos.z - p.pos.z) / d;
-      m.dashP(p, dx, dz, 21, Math.min(0.8, d / 21), { home: c });
+      m.dashP(p, dx, dz, 18, Math.min(0.8, d / 18), { home: c });
       FX.feathers(p.pos.x, 0.5, p.pos.z, p.aura, 6);
       return true;
     },
-    ai(p, m, c) { return c.carrierOpp && c.carrierDist > 4 && c.carrierDist < 18; },
+    ai(p, m, c) { return c.carrierOpp && c.carrierDist > 4 && c.carrierDist < 11; },
   },
   skyTrap: {
     name: 'SKY TRAP', cd: 6, icon: 'trap',
@@ -3593,7 +3593,7 @@ const ABILITIES = {
     ai(p, m, c) { return c.highBallNear; },
   },
   volley: {
-    name: 'VOLLEY', cd: 7, icon: 'shot', big: true,
+    name: 'VOLLEY', cd: 6, icon: 'shot', big: true,
     desc: 'A huge volley while airborne. On the ground it flicks the ball up and volleys it for you.',
     use(p, m) { return m.volley(p); },
     ai(p, m, c) { return (c.hasBall && c.dGoal < 17 && c.angleOK) || (c.highBallNear && c.dGoal < 24); },
@@ -3608,7 +3608,7 @@ const ABILITIES = {
     name: 'IMPACT SHOT', cd: 9, icon: 'beam', big: true,
     desc: 'Infinite range, max power, zero arc. The ball flies dead straight as a glowing beam.',
     use(p, m) { if (!nearBall(p, m, 2.1)) return NEED_BALL; m.impactShot(p, aimFor(p, m, true)); return true; },
-    ai(p, m, c) { return c.hasBall && c.dGoal < 38 && c.angleOK && (c.dGoal < 30 || chance(0.4)); },
+    ai(p, m, c) { return c.hasBall && c.dGoal < 30 && c.angleOK; }, // from further out it rarely goes in
   },
   call: {
     name: 'CALL', cd: 10, icon: 'call',
@@ -3617,7 +3617,7 @@ const ABILITIES = {
     ai(p, m, c) { return c.mateHasBall && c.open > 4.5 && c.progAhead > 2; },
   },
   overhead: {
-    name: 'OVERHEAD', cd: 9, icon: 'flip', big: true,
+    name: 'OVERHEAD', cd: 8, icon: 'flip', big: true,
     desc: 'A bicycle kick off any high ball. On the ground it pops the ball up and flips into it.',
     use(p, m) { return m.overhead(p); },
     ai(p, m, c) { return (c.hasBall && c.dGoal < 14 && c.angleOK) || (c.highBallNear && c.dGoal < 20); },
@@ -3650,8 +3650,8 @@ const ABILITIES = {
   },
   tempo: {
     name: 'TEMPO', cd: 16, icon: 'buff',
-    desc: 'Your whole team gets 5s of +20% speed.',
-    use(p, m) { for (const q of m.teams[p.team]) if (!q.isGK) q.fx.tempo = 5; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 3, 30); return true; },
+    desc: 'Your whole team gets 6s of +25% speed.',
+    use(p, m) { for (const q of m.teams[p.team]) if (!q.isGK) q.fx.tempo = 6; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 3, 30); return true; },
     ai(p, m, c) { return (c.hasBall && c.spaceAhead) || (c.defending && c.carrierDist > 8 && c.carrierDist < 22); },
   },
   /* BLITZ */
@@ -3677,10 +3677,10 @@ const ABILITIES = {
   },
   /* COMET */
   rocketJump: {
-    name: 'ROCKET JUMP', cd: 8, icon: 'jump',
-    desc: 'A huge leap, almost twice as high as a jump, to win any high ball. You land running, 45% faster.',
-    use(p) { if (!p.onGround || p.state !== 'free') return 'ON THE GROUND ONLY'; p.vel.y = 13; p.onGround = false; p.fx.burst = Math.max(p.fx.burst || 0, 2.6); FX.dust(p.pos.x, p.pos.z, 8); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.2, 16); return true; },
-    ai(p, m, c) { return c.highBallNear && c.ballDist < 3.5; }, // bots: only right under the ball, or they are up in the air while the other team attacks
+    name: 'ROCKET JUMP', cd: 8, icon: 'jump', combo: true, // bots can volley or overhead straight after
+    desc: 'A huge leap to win any high ball. Land running 45% faster, and land next to the ball carrier to knock it loose.',
+    use(p) { if (!p.onGround || p.state !== 'free') return 'ON THE GROUND ONLY'; p.vel.y = 13; p.onGround = false; p.rocketing = true; p.fx.burst = Math.max(p.fx.burst || 0, 5); FX.dust(p.pos.x, p.pos.z, 8); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.2, 16); return true; },
+    ai(p, m, c) { return (c.highBallNear && c.ballDist < 3.5) || (c.carrierOpp && c.carrierDist > 2.5 && c.carrierDist < 16); }, // bots: right under the ball, or at a carrier: land on them to knock it loose, or land running after one who got away
   },
   /* PROWLER */
   scent: {
@@ -3690,7 +3690,7 @@ const ABILITIES = {
     ai(p, m, c) { return !c.hasBall && !m.ball.owner && c.looseDist < 18; },
   },
   pounce: {
-    name: 'POUNCE', cd: 10, icon: 'dash', big: true,
+    name: 'POUNCE', cd: 10, icon: 'dash', big: true, combo: true, // bots can follow it at once (with ONE TOUCH while the ball is fresh)
     desc: 'Lunge onto a loose ball up to 12 blocks away and take it.',
     use(p, m) {
       if (m.ball.owner) return 'NO LOOSE BALL';
@@ -3703,15 +3703,15 @@ const ABILITIES = {
     ai(p, m, c) { return !c.hasBall && c.looseDist < 11 && c.looseDist > 2.5; },
   },
   oneTouch: {
-    name: 'ONE TOUCH', cd: 12, icon: 'shot', big: true,
-    desc: 'A first-time finish. On a loose ball, or within a second of it reaching you, it flies 30% harder.',
+    name: 'ONE TOUCH', cd: 8, icon: 'shot', big: true,
+    desc: 'A first-time finish. On a loose ball, or within 1.5s of it reaching you, it flies 40% harder.',
     use(p, m) {
       if (!nearBall(p, m)) return NEED_BALL;
-      const fresh = !m.ball.owner || m.time - (p.gotBallT == null ? -9 : p.gotBallT) < 1.0;
-      m.shootAt(p, aimFor(p, m), 1, { mult: fresh ? 1.3 : 1.05, trail: p.aura, kickDur: 0.2, keepPos: !m.ball.owner, special: fresh ? 'onetouch' : null });
+      const fresh = !m.ball.owner || m.time - (p.gotBallT == null ? -9 : p.gotBallT) < 1.5;
+      m.shootAt(p, aimFor(p, m), 1, { mult: fresh ? 1.4 : 1.05, trail: p.aura, kickDur: 0.2, keepPos: !m.ball.owner, special: fresh ? 'onetouch' : null });
       return true;
     },
-    ai(p, m, c) { return (c.hasBall || c.looseDist < 1.8) && c.dGoal < 24 && c.angleOK; },
+    ai(p, m, c) { return (c.hasBall || c.looseDist < 1.8) && c.dGoal < 27 && c.angleOK; },
   },
   /* TRICKSTER */
   rainbow: {
@@ -3769,16 +3769,16 @@ const ABILITIES = {
     ai(p, m, c) { return c.hasBall && c.dGoal < 28 && c.angleOK; },
   },
   secondWind: {
-    name: 'SECOND WIND', cd: 16, icon: 'buff',
-    desc: 'Your stamina fills up at once, and for 6s sprinting costs half as much.',
-    use(p) { p.stamina = 100; p.exhausted = false; p.fx.wind = 6; FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 1.2, 18); return true; },
+    name: 'SECOND WIND', cd: 23, icon: 'buff',
+    desc: 'Your stamina fills up at once, and for 3s sprinting costs half as much.',
+    use(p) { p.stamina = 100; p.exhausted = false; p.fx.wind = 3; FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 1.2, 18); return true; },
     ai(p, m, c) { return p.stamina < 35; },
   },
   chipShot: {
     name: 'CHIP SHOT', cd: 12, icon: 'shot', big: true,
     desc: 'A soft lob that floats over the keeper and drops in under the bar.',
     use(p, m) { if (!nearBall(p, m)) return NEED_BALL; m.chipShot(p, aimFor(p, m)); return true; },
-    ai(p, m, c) { if (!(c.hasBall && c.dGoal > 8 && c.dGoal < 24)) return false; const gk = m.keeperOf(1 - p.team); return !gk || Math.abs(gk.pos.z - m.oppGoalZ(p.team)) > 1.6; }, // bots chip a keeper who has come out
+    ai(p, m, c) { if (!(c.hasBall && c.dGoal > 8 && c.dGoal < 24 && c.angleOK)) return false; const gk = m.keeperOf(1 - p.team); return !gk || Math.abs(gk.pos.z - m.oppGoalZ(p.team)) > 1.0 || (c.dGoal < 18 && chance(0.2)); }, // bots chip a keeper who has come off the line, and now and then from the edge of the box
   },
   rally: {
     name: 'RALLY', cd: 16, icon: 'shield',
@@ -3787,11 +3787,11 @@ const ABILITIES = {
     ai(p, m, c) { return (c.hasBall && c.pressure < 4) || (c.mateHasBall && chance(0.3)); },
   },
   frost: {
-    name: 'FROST', cd: 14, icon: 'snow',
-    desc: 'A blast of cold: opponents within 6 blocks slow right down for 2.5s.',
+    name: 'FROST', cd: 12, icon: 'snow',
+    desc: 'A blast of cold: opponents within 7 blocks slow right down for 3s.',
     use(p, m) {
-      for (const o of m.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 6) o.fx.slimed = Math.max(o.fx.slimed || 0, 2.5);
-      FX.ring(p.pos.x, 0.3, p.pos.z, '#bfe9ff', 6, 40); FX.sparks(p.pos.x, 1, p.pos.z, '#e8f8ff', 24, 6);
+      for (const o of m.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 7) o.fx.slimed = Math.max(o.fx.slimed || 0, 3);
+      FX.ring(p.pos.x, 0.3, p.pos.z, '#bfe9ff', 7, 40); FX.sparks(p.pos.x, 1, p.pos.z, '#e8f8ff', 24, 6);
       return true;
     },
     ai(p, m, c) { return (c.hasBall && c.nearOpp < 4) || (c.defending && c.carrierDist < 5); },
@@ -4566,6 +4566,7 @@ class Match {
     this.updateAwakening(dt);
     this.updatePending(dt);
     for (const p of this.players) p.physics(dt);
+    this.rocketLandings();
     this.separate();
     if (ph === 'play') { this.updateSlides(); this.updateMagnets(dt); }
     this.updateBallSpecials(dt);
@@ -4929,6 +4930,24 @@ class Match {
     p.setState('dash');
   }
   /** TITAN's RAM: anyone in the way goes flying (a carrier drops the ball) */
+  /** COMET's ROCKET JUMP: landing next to an opponent with the ball pops it loose, up towards the lander */
+  rocketLandings() {
+    for (const p of this.players) {
+      if (!p.rocketing || !p.onGround) continue;
+      p.rocketing = false;
+      if (this.phase !== 'play') continue;
+      FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 3.5, 24); FX.dust(p.pos.x, p.pos.z, 10);
+      const b = this.ball, o = b.owner;
+      if (!o || o.team === p.team || o.isGK || dist2D(o.pos, p.pos) > 3.5) continue;
+      if (o.tackleProof > 0 || o.iframes > 0 || o.protect > 0 || o.fx.bubble > 0) { this.label(o, 'KEPT IT', o.aura); continue; }
+      const dx = p.pos.x - o.pos.x, dz = p.pos.z - o.pos.z;
+      b.release(); b.vel.set(dx * 1.6, 6, dz * 1.6);
+      b.kick = { by: p, type: 'flick', t: this.time, trail: p.aura }; b.touch(p); b.ignore = o; b.ignoreT = 0.5;
+      o.pickBlock = 0.6; p.stats.tackles++; this.flowAdd(p, 10);
+      this.label(p, 'TOUCHDOWN', p.aura); Sfx.tackle();
+      if (this.involvesHuman(p, o)) { Shake.add(0.25); if (o.isHuman) this.toast('KNOCKED LOOSE', 'bad', o); }
+    }
+  }
   ramHits(p) {
     for (const o of this.opponents(p)) {
       if (o.isGK || o.state === 'down' || dist2D(o.pos, p.pos) > 1.4) continue;
@@ -5069,10 +5088,11 @@ class Match {
     let n = 0;
     for (const o of this.opponents(p)) {
       if (o.isGK) continue;
-      if (dist2D(o.pos, p.pos) < radius && this.stun(o, dur)) { n++; FX.sparks(o.pos.x, 2.1, o.pos.z, '#ffffff', 6, 2, 0.12, 0.5); }
+      if (this.time - (o.feintAt == null ? -9 : o.feintAt) < 1.5) continue; // just fell for one: ready for the next, so nobody is frozen again and again
+      if (dist2D(o.pos, p.pos) < radius && this.stun(o, dur)) { o.feintAt = this.time; n++; FX.sparks(o.pos.x, 2.1, o.pos.z, '#ffffff', 6, 2, 0.12, 0.5); }
     }
     const gk = this.keeperOf(1 - p.team);
-    if (gk && gk.state === 'free' && dist2D(gk.pos, p.pos) < 24 && chance(0.75 - 0.35 * this.skill(gk))) AI.keeperBite(this, gk);
+    if (gk && gk.state === 'free' && dist2D(gk.pos, p.pos) < 24 && chance(0.6 - 0.35 * this.skill(gk))) AI.keeperBite(this, gk);
     Sfx.swoosh();
     if (p.isHuman && n) this.toast('FROZE ' + n, 'good', p);
   }
@@ -6402,7 +6422,7 @@ const AI = {
         const ab = p.abil[i];
         if (ab.cd > 0) continue;
         if (ab.def.ai(p, m, c) && chance(0.3 + 0.5 * sk)) {
-          if (m.useAbility(p, i)) { a.abilIn = rand(1.2, 3.2) * (1.6 - sk); if (p.state !== 'free' || m.ball.owner !== p && c.hasBall) return; break; }
+          if (m.useAbility(p, i)) { a.abilIn = ab.def.combo ? 0.15 : rand(1.2, 3.2) * (1.6 - sk); if (p.state !== 'free' || m.ball.owner !== p && c.hasBall) return; break; }
         }
       }
     }
@@ -6726,8 +6746,8 @@ const AI = {
         // a free kick: the wall hides it, so the keeper only picks it up once it is past the wall
         const screened = m.fk && b.kick && Math.hypot(b.pos.x - b.kick.fx, b.pos.z - b.kick.fz) < 7.6;
         if (Math.abs(px) < F.GW + 1.0 && py < F.GH + 0.9 && !screened) {
-          // hard to read: volleys and bicycle kicks come off the foot at odd angles, a knuckleball wobbles, a long bomb dips late
-          const sp = b.kick && b.kick.special, tricky = sp === 'volley' || sp === 'overhead' || sp === 'knuckle' || sp === 'bomb';
+          // hard to read: volleys and bicycle kicks come off the foot at odd angles, a knuckleball wobbles, a long bomb dips late, a first-time finish gives no time to get set, an impact shot is a beam
+          const sp = b.kick && b.kick.special, tricky = sp === 'volley' || sp === 'overhead' || sp === 'knuckle' || sp === 'bomb' || sp === 'onetouch' || sp === 'impact';
           if (a.react == null) a.react = lerp(0.55, 0.16, Math.min(1, sk)) * rand(0.8, 1.2) * (m.fk && sp === 'knuckle' ? 1.8 : m.fk && b.kick.curved ? 1.5 : tricky ? 1.4 : b.kick && Math.abs(b.kick.curl || 0) > 0.5 ? 1.2 : 1); // free kicks: a knuckleball is the hardest, a curler round the wall is hard too
           a.react -= dt;
           if (a.react <= 0) {

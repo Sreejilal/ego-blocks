@@ -189,7 +189,7 @@ const AI = {
         const ab = p.abil[i];
         if (ab.cd > 0) continue;
         if (ab.def.ai(p, m, c) && chance(0.3 + 0.5 * sk)) {
-          if (m.useAbility(p, i)) { a.abilIn = rand(1.2, 3.2) * (1.6 - sk); if (p.state !== 'free' || m.ball.owner !== p && c.hasBall) return; break; }
+          if (m.useAbility(p, i)) { a.abilIn = ab.def.combo ? 0.15 : rand(1.2, 3.2) * (1.6 - sk); if (p.state !== 'free' || m.ball.owner !== p && c.hasBall) return; break; }
         }
       }
     }
@@ -513,8 +513,8 @@ const AI = {
         // a free kick: the wall hides it, so the keeper only picks it up once it is past the wall
         const screened = m.fk && b.kick && Math.hypot(b.pos.x - b.kick.fx, b.pos.z - b.kick.fz) < 7.6;
         if (Math.abs(px) < F.GW + 1.0 && py < F.GH + 0.9 && !screened) {
-          // hard to read: volleys and bicycle kicks come off the foot at odd angles, a knuckleball wobbles, a long bomb dips late
-          const sp = b.kick && b.kick.special, tricky = sp === 'volley' || sp === 'overhead' || sp === 'knuckle' || sp === 'bomb';
+          // hard to read: volleys and bicycle kicks come off the foot at odd angles, a knuckleball wobbles, a long bomb dips late, a first-time finish gives no time to get set, an impact shot is a beam
+          const sp = b.kick && b.kick.special, tricky = sp === 'volley' || sp === 'overhead' || sp === 'knuckle' || sp === 'bomb' || sp === 'onetouch' || sp === 'impact';
           if (a.react == null) a.react = lerp(0.55, 0.16, Math.min(1, sk)) * rand(0.8, 1.2) * (m.fk && sp === 'knuckle' ? 1.8 : m.fk && b.kick.curved ? 1.5 : tricky ? 1.4 : b.kick && Math.abs(b.kick.curl || 0) > 0.5 ? 1.2 : 1); // free kicks: a knuckleball is the hardest, a curler round the wall is hard too
           a.react -= dt;
           if (a.react <= 0) {

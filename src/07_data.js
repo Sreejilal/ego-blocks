@@ -23,8 +23,8 @@ const STYLES = {
   BLITZ: { name: 'BLITZ', rarity: 'Legendary', hair: '#ff3b2f', hairShape: 'undercut', aura: '#ff3b5c', blurb: 'Never stops running. Hunts the ball down and pokes it away without leaving the ground.', abilities: ['hunt', 'poke', 'burst'],
     awaken: { move: { name: 'RED ALERT', kind: 'steal', desc: 'Lunge at a carrier up to 10 blocks away and take the ball.' }, name: 'FRENZY', desc: '+15% speed, and tackles come back twice as fast.', mods: { speed: 1.15, tackleCd: 0.5 } } },
   COMET: { name: 'COMET', rarity: 'Mythic', hair: '#bde8ff', hairShape: 'afro', aura: '#7cf2ff', blurb: 'Lives in the air. Rocket jumps, overheads and volleys from anywhere.', abilities: ['rocketJump', 'overhead', 'volley'],
-    awaken: { move: { name: 'STARFALL', kind: 'starfall', desc: 'Leap sky high and crash down, knocking over everyone near you.' }, name: 'ORBIT', desc: '+20% shot power and 10% faster.', mods: { shot: 1.2, speed: 1.1 } } },
-  RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'], awaken: { move: { name: 'RAILSHOT', kind: 'bolt', desc: 'Dead straight, top power, from anywhere.' }, name: 'OVERDRIVE', desc: '+25% shot power and 10% faster.', mods: { shot: 1.25, speed: 1.1 } } },
+    awaken: { move: { name: 'STARFALL', kind: 'starfall', desc: 'Leap sky high and crash down, knocking over everyone near you.' }, name: 'ORBIT', desc: '+20% shot power, 15% faster, and abilities recharge faster.', mods: { shot: 1.2, speed: 1.15, cdRate: 1.3 } } },
+  RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'], awaken: { move: { name: 'RAILSHOT', kind: 'bolt', desc: 'Dead straight, top power, from anywhere.' }, name: 'OVERDRIVE', desc: '+25% shot power, 10% faster, and abilities recharge faster.', mods: { shot: 1.25, speed: 1.1, cdRate: 1.3 } } },
   KESTREL: { name: 'KESTREL', rarity: 'Rare', hair: '#d9a53a', hairShape: 'spiky', aura: '#7fe0ff', blurb: 'Never stops running. Fresh legs, quick passes and quick shots.', abilities: ['secondWind', 'snapPass', 'quickShot'],
     awaken: { move: { name: 'SLIPSTREAM', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'TAILWIND', desc: '+12% speed, and sprinting costs half the stamina.', mods: { speed: 1.12, stamDrain: 0.5 } } },
   ANCHOR: { name: 'ANCHOR', rarity: 'Rare', hair: '#2d2a28', hairShape: 'crop', aura: '#4fd0a0', blurb: 'A tidy defender. Wins the ball back, clears it long and never runs out of legs.', abilities: ['lurch', 'clearance', 'secondWind'],
@@ -106,20 +106,20 @@ const ABILITIES = {
     ai(p, m, c) { return c.hasBall && c.dGoal < 21 && c.dGoal > 8; },
   },
   zigzag: {
-    name: 'ZIGZAG', cd: 10, icon: 'dash', big: true,
+    name: 'ZIGZAG', cd: 13, icon: 'dash', big: true,
     desc: 'A rapid zig-zag dash past the defender in front. Tackle-proof while dashing. Leaves black feathers.',
     use(p, m) {
       if (m.ball.owner !== p) return NEED_BALL;
       m.dashP(p, Math.sin(p.yaw), Math.cos(p.yaw), 14.5, 0.62, { zig: true });
-      p.tackleProof = 0.7; p.fx.feathers = 0.7; Sfx.swoosh();
+      p.tackleProof = 0.45; p.fx.feathers = 0.55; Sfx.swoosh();
       return true;
     },
     ai(p, m, c) { return c.hasBall && c.nearOpp < 4.2 && c.oppInFront; },
   },
   feint: {
     name: 'FAKE SHOT', cd: 8, icon: 'fake',
-    desc: 'Fake a shot. Defenders near you freeze for 0.6s and the keeper may dive the wrong way.',
-    use(p, m) { if (!nearBall(p, m)) return NEED_BALL; p.kickT = 0; p.kickDur = 0.3; m.feint(p, 6.5, 0.6); return true; },
+    desc: 'Fake a shot. Defenders near you freeze for a moment and the keeper may dive the wrong way.',
+    use(p, m) { if (!nearBall(p, m)) return NEED_BALL; p.kickT = 0; p.kickDur = 0.3; m.feint(p, 5, 0.45); return true; },
     ai(p, m, c) { return c.hasBall && (c.nearOpp < 4.5 || (c.dGoal < 16 && c.angleOK)); },
   },
   snapPass: {
@@ -185,7 +185,7 @@ const ABILITIES = {
     ai(p, m, c) { return !c.hasBall && ((c.carrierOpp && c.carrierDist < 6.5) || (c.looseDist < 5.5)); },
   },
   lurch: {
-    name: 'LURCH', cd: 10, icon: 'dash',
+    name: 'LURCH', cd: 12, icon: 'dash',
     desc: 'Burst straight at the nearest ball carrier.',
     use(p, m) {
       const c = m.ball.owner;
@@ -193,11 +193,11 @@ const ABILITIES = {
       const d = dist2D(c.pos, p.pos);
       if (d > 24) return 'TOO FAR';
       const dx = (c.pos.x - p.pos.x) / d, dz = (c.pos.z - p.pos.z) / d;
-      m.dashP(p, dx, dz, 21, Math.min(0.8, d / 21), { home: c });
+      m.dashP(p, dx, dz, 18, Math.min(0.8, d / 18), { home: c });
       FX.feathers(p.pos.x, 0.5, p.pos.z, p.aura, 6);
       return true;
     },
-    ai(p, m, c) { return c.carrierOpp && c.carrierDist > 4 && c.carrierDist < 18; },
+    ai(p, m, c) { return c.carrierOpp && c.carrierDist > 4 && c.carrierDist < 11; },
   },
   skyTrap: {
     name: 'SKY TRAP', cd: 6, icon: 'trap',
@@ -206,7 +206,7 @@ const ABILITIES = {
     ai(p, m, c) { return c.highBallNear; },
   },
   volley: {
-    name: 'VOLLEY', cd: 7, icon: 'shot', big: true,
+    name: 'VOLLEY', cd: 6, icon: 'shot', big: true,
     desc: 'A huge volley while airborne. On the ground it flicks the ball up and volleys it for you.',
     use(p, m) { return m.volley(p); },
     ai(p, m, c) { return (c.hasBall && c.dGoal < 17 && c.angleOK) || (c.highBallNear && c.dGoal < 24); },
@@ -221,7 +221,7 @@ const ABILITIES = {
     name: 'IMPACT SHOT', cd: 9, icon: 'beam', big: true,
     desc: 'Infinite range, max power, zero arc. The ball flies dead straight as a glowing beam.',
     use(p, m) { if (!nearBall(p, m, 2.1)) return NEED_BALL; m.impactShot(p, aimFor(p, m, true)); return true; },
-    ai(p, m, c) { return c.hasBall && c.dGoal < 38 && c.angleOK && (c.dGoal < 30 || chance(0.4)); },
+    ai(p, m, c) { return c.hasBall && c.dGoal < 30 && c.angleOK; }, // from further out it rarely goes in
   },
   call: {
     name: 'CALL', cd: 10, icon: 'call',
@@ -230,7 +230,7 @@ const ABILITIES = {
     ai(p, m, c) { return c.mateHasBall && c.open > 4.5 && c.progAhead > 2; },
   },
   overhead: {
-    name: 'OVERHEAD', cd: 9, icon: 'flip', big: true,
+    name: 'OVERHEAD', cd: 8, icon: 'flip', big: true,
     desc: 'A bicycle kick off any high ball. On the ground it pops the ball up and flips into it.',
     use(p, m) { return m.overhead(p); },
     ai(p, m, c) { return (c.hasBall && c.dGoal < 14 && c.angleOK) || (c.highBallNear && c.dGoal < 20); },
@@ -263,8 +263,8 @@ const ABILITIES = {
   },
   tempo: {
     name: 'TEMPO', cd: 16, icon: 'buff',
-    desc: 'Your whole team gets 5s of +20% speed.',
-    use(p, m) { for (const q of m.teams[p.team]) if (!q.isGK) q.fx.tempo = 5; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 3, 30); return true; },
+    desc: 'Your whole team gets 6s of +25% speed.',
+    use(p, m) { for (const q of m.teams[p.team]) if (!q.isGK) q.fx.tempo = 6; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 3, 30); return true; },
     ai(p, m, c) { return (c.hasBall && c.spaceAhead) || (c.defending && c.carrierDist > 8 && c.carrierDist < 22); },
   },
   /* BLITZ */
@@ -290,10 +290,10 @@ const ABILITIES = {
   },
   /* COMET */
   rocketJump: {
-    name: 'ROCKET JUMP', cd: 8, icon: 'jump',
-    desc: 'A huge leap, almost twice as high as a jump, to win any high ball. You land running, 45% faster.',
-    use(p) { if (!p.onGround || p.state !== 'free') return 'ON THE GROUND ONLY'; p.vel.y = 13; p.onGround = false; p.fx.burst = Math.max(p.fx.burst || 0, 2.6); FX.dust(p.pos.x, p.pos.z, 8); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.2, 16); return true; },
-    ai(p, m, c) { return c.highBallNear && c.ballDist < 3.5; }, // bots: only right under the ball, or they are up in the air while the other team attacks
+    name: 'ROCKET JUMP', cd: 8, icon: 'jump', combo: true, // bots can volley or overhead straight after
+    desc: 'A huge leap to win any high ball. Land running 45% faster, and land next to the ball carrier to knock it loose.',
+    use(p) { if (!p.onGround || p.state !== 'free') return 'ON THE GROUND ONLY'; p.vel.y = 13; p.onGround = false; p.rocketing = true; p.fx.burst = Math.max(p.fx.burst || 0, 5); FX.dust(p.pos.x, p.pos.z, 8); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.2, 16); return true; },
+    ai(p, m, c) { return (c.highBallNear && c.ballDist < 3.5) || (c.carrierOpp && c.carrierDist > 2.5 && c.carrierDist < 16); }, // bots: right under the ball, or at a carrier: land on them to knock it loose, or land running after one who got away
   },
   /* PROWLER */
   scent: {
@@ -303,7 +303,7 @@ const ABILITIES = {
     ai(p, m, c) { return !c.hasBall && !m.ball.owner && c.looseDist < 18; },
   },
   pounce: {
-    name: 'POUNCE', cd: 10, icon: 'dash', big: true,
+    name: 'POUNCE', cd: 10, icon: 'dash', big: true, combo: true, // bots can follow it at once (with ONE TOUCH while the ball is fresh)
     desc: 'Lunge onto a loose ball up to 12 blocks away and take it.',
     use(p, m) {
       if (m.ball.owner) return 'NO LOOSE BALL';
@@ -316,15 +316,15 @@ const ABILITIES = {
     ai(p, m, c) { return !c.hasBall && c.looseDist < 11 && c.looseDist > 2.5; },
   },
   oneTouch: {
-    name: 'ONE TOUCH', cd: 12, icon: 'shot', big: true,
-    desc: 'A first-time finish. On a loose ball, or within a second of it reaching you, it flies 30% harder.',
+    name: 'ONE TOUCH', cd: 8, icon: 'shot', big: true,
+    desc: 'A first-time finish. On a loose ball, or within 1.5s of it reaching you, it flies 40% harder.',
     use(p, m) {
       if (!nearBall(p, m)) return NEED_BALL;
-      const fresh = !m.ball.owner || m.time - (p.gotBallT == null ? -9 : p.gotBallT) < 1.0;
-      m.shootAt(p, aimFor(p, m), 1, { mult: fresh ? 1.3 : 1.05, trail: p.aura, kickDur: 0.2, keepPos: !m.ball.owner, special: fresh ? 'onetouch' : null });
+      const fresh = !m.ball.owner || m.time - (p.gotBallT == null ? -9 : p.gotBallT) < 1.5;
+      m.shootAt(p, aimFor(p, m), 1, { mult: fresh ? 1.4 : 1.05, trail: p.aura, kickDur: 0.2, keepPos: !m.ball.owner, special: fresh ? 'onetouch' : null });
       return true;
     },
-    ai(p, m, c) { return (c.hasBall || c.looseDist < 1.8) && c.dGoal < 24 && c.angleOK; },
+    ai(p, m, c) { return (c.hasBall || c.looseDist < 1.8) && c.dGoal < 27 && c.angleOK; },
   },
   /* TRICKSTER */
   rainbow: {
@@ -382,16 +382,16 @@ const ABILITIES = {
     ai(p, m, c) { return c.hasBall && c.dGoal < 28 && c.angleOK; },
   },
   secondWind: {
-    name: 'SECOND WIND', cd: 16, icon: 'buff',
-    desc: 'Your stamina fills up at once, and for 6s sprinting costs half as much.',
-    use(p) { p.stamina = 100; p.exhausted = false; p.fx.wind = 6; FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 1.2, 18); return true; },
+    name: 'SECOND WIND', cd: 23, icon: 'buff',
+    desc: 'Your stamina fills up at once, and for 3s sprinting costs half as much.',
+    use(p) { p.stamina = 100; p.exhausted = false; p.fx.wind = 3; FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 1.2, 18); return true; },
     ai(p, m, c) { return p.stamina < 35; },
   },
   chipShot: {
     name: 'CHIP SHOT', cd: 12, icon: 'shot', big: true,
     desc: 'A soft lob that floats over the keeper and drops in under the bar.',
     use(p, m) { if (!nearBall(p, m)) return NEED_BALL; m.chipShot(p, aimFor(p, m)); return true; },
-    ai(p, m, c) { if (!(c.hasBall && c.dGoal > 8 && c.dGoal < 24)) return false; const gk = m.keeperOf(1 - p.team); return !gk || Math.abs(gk.pos.z - m.oppGoalZ(p.team)) > 1.6; }, // bots chip a keeper who has come out
+    ai(p, m, c) { if (!(c.hasBall && c.dGoal > 8 && c.dGoal < 24 && c.angleOK)) return false; const gk = m.keeperOf(1 - p.team); return !gk || Math.abs(gk.pos.z - m.oppGoalZ(p.team)) > 1.0 || (c.dGoal < 18 && chance(0.2)); }, // bots chip a keeper who has come off the line, and now and then from the edge of the box
   },
   rally: {
     name: 'RALLY', cd: 16, icon: 'shield',
@@ -400,11 +400,11 @@ const ABILITIES = {
     ai(p, m, c) { return (c.hasBall && c.pressure < 4) || (c.mateHasBall && chance(0.3)); },
   },
   frost: {
-    name: 'FROST', cd: 14, icon: 'snow',
-    desc: 'A blast of cold: opponents within 6 blocks slow right down for 2.5s.',
+    name: 'FROST', cd: 12, icon: 'snow',
+    desc: 'A blast of cold: opponents within 7 blocks slow right down for 3s.',
     use(p, m) {
-      for (const o of m.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 6) o.fx.slimed = Math.max(o.fx.slimed || 0, 2.5);
-      FX.ring(p.pos.x, 0.3, p.pos.z, '#bfe9ff', 6, 40); FX.sparks(p.pos.x, 1, p.pos.z, '#e8f8ff', 24, 6);
+      for (const o of m.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 7) o.fx.slimed = Math.max(o.fx.slimed || 0, 3);
+      FX.ring(p.pos.x, 0.3, p.pos.z, '#bfe9ff', 7, 40); FX.sparks(p.pos.x, 1, p.pos.z, '#e8f8ff', 24, 6);
       return true;
     },
     ai(p, m, c) { return (c.hasBall && c.nearOpp < 4) || (c.defending && c.carrierDist < 5); },

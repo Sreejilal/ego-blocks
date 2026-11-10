@@ -184,6 +184,7 @@ class Match {
     this.updateAwakening(dt);
     this.updatePending(dt);
     for (const p of this.players) p.physics(dt);
+    this.rocketLandings();
     this.separate();
     if (ph === 'play') { this.updateSlides(); this.updateMagnets(dt); }
     this.updateBallSpecials(dt);
@@ -547,6 +548,24 @@ class Match {
     p.setState('dash');
   }
   /** TITAN's RAM: anyone in the way goes flying (a carrier drops the ball) */
+  /** COMET's ROCKET JUMP: landing next to an opponent with the ball pops it loose, up towards the lander */
+  rocketLandings() {
+    for (const p of this.players) {
+      if (!p.rocketing || !p.onGround) continue;
+      p.rocketing = false;
+      if (this.phase !== 'play') continue;
+      FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 3.5, 24); FX.dust(p.pos.x, p.pos.z, 10);
+      const b = this.ball, o = b.owner;
+      if (!o || o.team === p.team || o.isGK || dist2D(o.pos, p.pos) > 3.5) continue;
+      if (o.tackleProof > 0 || o.iframes > 0 || o.protect > 0 || o.fx.bubble > 0) { this.label(o, 'KEPT IT', o.aura); continue; }
+      const dx = p.pos.x - o.pos.x, dz = p.pos.z - o.pos.z;
+      b.release(); b.vel.set(dx * 1.6, 6, dz * 1.6);
+      b.kick = { by: p, type: 'flick', t: this.time, trail: p.aura }; b.touch(p); b.ignore = o; b.ignoreT = 0.5;
+      o.pickBlock = 0.6; p.stats.tackles++; this.flowAdd(p, 10);
+      this.label(p, 'TOUCHDOWN', p.aura); Sfx.tackle();
+      if (this.involvesHuman(p, o)) { Shake.add(0.25); if (o.isHuman) this.toast('KNOCKED LOOSE', 'bad', o); }
+    }
+  }
   ramHits(p) {
     for (const o of this.opponents(p)) {
       if (o.isGK || o.state === 'down' || dist2D(o.pos, p.pos) > 1.4) continue;
@@ -687,10 +706,11 @@ class Match {
     let n = 0;
     for (const o of this.opponents(p)) {
       if (o.isGK) continue;
-      if (dist2D(o.pos, p.pos) < radius && this.stun(o, dur)) { n++; FX.sparks(o.pos.x, 2.1, o.pos.z, '#ffffff', 6, 2, 0.12, 0.5); }
+      if (this.time - (o.feintAt == null ? -9 : o.feintAt) < 1.5) continue; // just fell for one: ready for the next, so nobody is frozen again and again
+      if (dist2D(o.pos, p.pos) < radius && this.stun(o, dur)) { o.feintAt = this.time; n++; FX.sparks(o.pos.x, 2.1, o.pos.z, '#ffffff', 6, 2, 0.12, 0.5); }
     }
     const gk = this.keeperOf(1 - p.team);
-    if (gk && gk.state === 'free' && dist2D(gk.pos, p.pos) < 24 && chance(0.75 - 0.35 * this.skill(gk))) AI.keeperBite(this, gk);
+    if (gk && gk.state === 'free' && dist2D(gk.pos, p.pos) < 24 && chance(0.6 - 0.35 * this.skill(gk))) AI.keeperBite(this, gk);
     Sfx.swoosh();
     if (p.isHuman && n) this.toast('FROZE ' + n, 'good', p);
   }

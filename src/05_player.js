@@ -205,7 +205,7 @@ class Player {
     if (fx.jetpack > 0) m.speed *= 1.25;
     if (fx.lockdown > 0) m.tackleRange *= 2.3;
     if (fx.slimed > 0) m.speed *= 0.55;
-    if (fx.tempo > 0) m.speed *= 1.2; // MAESTRO's TEMPO
+    if (fx.tempo > 0) m.speed *= 1.25; // MAESTRO's TEMPO
     if (fx.loaded > 0) m.speed *= 1.25; // THUNDER's LOADED
     if (fx.wind > 0) m.stamDrain *= 0.5; // SECOND WIND
     if (fx.hunt > 0 && this.m.ball.owner !== this) { m.speed *= 1.2; m.stamDrain = 0; } // BLITZ's HUNT
