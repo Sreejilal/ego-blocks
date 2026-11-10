@@ -338,6 +338,11 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 
 /* you have the ball: a frame round the crosshair and BALL under it */
 .crosshair.ball { outline: 3px solid #ffe9a8; outline-offset: 7px; }
+#hud .slowfx { inset: 0; background: radial-gradient(ellipse at center, rgba(120,150,255,.06) 35%, rgba(80,105,235,.34) 68%, rgba(34,36,120,.72) 100%); box-shadow: inset 0 0 0 6px rgba(159,180,255,.6), inset 0 0 60px rgba(120,150,255,.5); animation: slowIn .25s ease-out; }
+#hud .slowfx b { position: absolute; left: 50%; top: 21%; transform: translateX(-50%); font-family: var(--font-display); font-weight: 400; font-size: clamp(26px, 5vw, 44px); letter-spacing: .12em; color: #dfe6ff; text-shadow: 3px 3px 0 var(--ink), 0 0 18px #7f95ff; white-space: nowrap; }
+#hud .slowfx.caught { background: radial-gradient(ellipse at center, rgba(160,170,190,0) 45%, rgba(110,120,150,.32) 80%, rgba(56,60,86,.62) 100%); box-shadow: inset 0 0 0 4px rgba(190,200,220,.35); }
+#hud .slowfx.caught b { color: #c9cedb; text-shadow: 3px 3px 0 var(--ink); font-size: clamp(18px, 3.4vw, 28px); }
+@keyframes slowIn { from { opacity: 0; } to { opacity: 1; } }
 #hud .balltag { left: 50%; top: calc(50% + 26px); transform: translateX(-50%); font-family: var(--font-label); font-size: 11px; letter-spacing: .14em; color: #ffe9a8; text-shadow: 2px 2px 0 var(--ink); }
 
 /* the emote wheel */
@@ -536,6 +541,7 @@ body.touch .fk-row b { font-size: 20px; }
 .slot.small img { width: 26px; height: 26px; }
 .slot.ready { box-shadow: inset 0 0 0 3px var(--gold); }
 .slot.active { box-shadow: inset 0 0 0 3px var(--aura, var(--emerald)); }
+#slot-s.active { box-shadow: inset 0 0 0 3px #9fb4ff, 0 0 12px #9fb4ff; }
 .slot .pips { position: absolute; bottom: 3px; left: 0; right: 0; display: flex; justify-content: center; gap: 3px; }
 .slot .pips i { width: 8px; height: 5px; background: var(--slate-3); }
 .slot .pips i.on { background: var(--text); }
@@ -1195,6 +1201,10 @@ const Sfx = (() => {
       if (r >= 4) { tone(200, 1.2, { type: 'sawtooth', vol: 0.05, slide: 2400, delay: 0.05 }); tone(NOTES[7], 0.9, { type: 'square', vol: 0.05, delay: 0.9 }); }
     },
     dodge() { noise(0.14, { vol: 0.16, type: 'bandpass', freq: 900, slide: 3200, q: 2.5 }); },
+    slowmo(caught) { // time winding down: a falling hum and a soft whoosh. Caught in someone else's: quieter and lower
+      tone(caught ? 300 : 520, 0.6, { type: 'sine', vol: caught ? 0.08 : 0.14, slide: caught ? 70 : 110 });
+      noise(0.55, { vol: caught ? 0.05 : 0.1, type: 'lowpass', freq: 1800, slide: 160 });
+    },
     swoosh() { noise(0.22, { vol: 0.14, type: 'bandpass', freq: 500, slide: 2400, q: 1.6 }); },
     tackle() { noise(0.1, { vol: 0.28, type: 'lowpass', freq: 700 }); tone(80, 0.12, { type: 'sine', vol: 0.3, slide: 38 }); },
     slide() { noise(0.35, { vol: 0.12, type: 'lowpass', freq: 1400, slide: 300 }); },
@@ -1638,6 +1648,7 @@ const ICON_MAPS = {
   wall: ['............', '............', 'kkkkkkkkkkkk', 'kgggkgggggkk', 'kgggkgggggkk', 'kkkkkkkkkkkk', 'kgkgggggkggk', 'kgkgggggkggk', 'kkkkkkkkkkkk', '............', '............', '............'],
   mine: ['............', '............', '............', '............', '.....rr.....', '.....rr.....', '...kkkkkk...', '..kggggggk..', '.kggggggggk.', '.kkkkkkkkkk.', '............', '............'],
   bolt: ['............', '......YYY...', '.....YYY....', '....YYY.....', '...YYYYYY...', '......YYY...', '.....YYY....', '....YYY.....', '...YY.......', '..Y.........', '............', '............'],
+  hourglass: ['............', '.AAAAAAAAAA.', '..bOOOOOOb..', '..bOOOOOOb..', '...bOOOOb...', '....bOOb....', '....b.Ob....', '...b..O.b...', '..b...O..b..', '..b.OOOO.b..', '.AAAAAAAAAA.', '............'],
   lock: ['............', '....kkkk....', '...k....k...', '...k....k...', '..kkkkkkkk..', '..kggggggk..', '..kggkkggk..', '..kggkkggk..', '..kggggggk..', '..kkkkkkkk..', '............', '............'],
   jump: ['............', '.....kk.....', '....kwwk....', '...kwwwwk...', '..kwwwwwwk..', '.kwwwwwwwwk.', '.kkkkwwkkkk.', '....kwwk....', '....kwwk....', '....kwwk....', '....kkkk....', '............'],
   boot: ['............', '............', '............', '...kkkk.....', '...kAAk.....', '...kAAk.....', '...kAAkkkk..', '..kAAAAAAAk.', '..kAAAAAAAAk', '..kkkkkkkkkk', '...w.w.w.w..', '............'],
@@ -2796,6 +2807,7 @@ class Player {
     this.mx = 0; this.mz = 0; this.sprint = false; this.faceYaw = null; this.exhausted = false;
     this.stamina = 100; this.stamDelay = 0;
     this.dodgeCharges = 1; this.dodgeRe = 0; this.feint = 0; this.iframes = 0; this.tackleProof = 0;
+    this.slowRe = 0; this.cTapAt = -9;
     this.tackleCd = 0; this.pickBlock = 0; this.protect = 0;
     this.state = 'free'; this.stateT = 0; this.stateDur = 0;
     this.kickT = -1; this.kickDur = 0.34; this.charge = 0; this.charging = false;
@@ -2854,7 +2866,7 @@ class Player {
   }
   dispose() {
     this.m.scene.remove(this.P.root, this.blob);
-    for (const k of ['ring', 'bubble', 'ice', 'ownRing']) if (this[k]) { this.m.scene.remove(this[k]); this[k].material.dispose(); }
+    for (const k of ['ring', 'bubble', 'ice', 'ownRing', 'slowRing']) if (this[k]) { this.m.scene.remove(this[k]); this[k].material.dispose(); }
     this.skinTex.dispose(); this.mat.dispose();
     if (this.hairGlowMat) this.hairGlowMat.dispose();
     if (this.accMat) this.accMat.dispose();
@@ -2900,6 +2912,7 @@ class Player {
     if (fx.jetpack > 0) m.speed *= 1.25;
     if (fx.lockdown > 0) m.tackleRange *= 2.3;
     if (fx.slimed > 0) m.speed *= 0.55;
+    if (fx.slowed > 0) m.speed *= SLOWMO_SLOW; // inside someone's SLOW-MO
     if (fx.tempo > 0) m.speed *= 1.25; // MAESTRO's TEMPO
     if (fx.loaded > 0) m.speed *= 1.25; // THUNDER's LOADED
     if (fx.wind > 0) m.stamDrain *= 0.5; // SECOND WIND
@@ -2918,6 +2931,7 @@ class Player {
     if (this.pickBlock > 0) this.pickBlock -= dt;
     if (this.protect > 0) this.protect -= dt;
     if (this.callT > 0) this.callT -= dt;
+    if (this.slowRe > 0) this.slowRe = Math.max(0, this.slowRe - dt);
     if (this.dodgeCharges < 1) {
       const quick = this.awakeT > 0 && this.style.awaken && this.style.awaken.perk === 'dodge' ? 3 : 1; // NIGHTFALL and SHOWTIME
       this.dodgeRe += dt * quick; if (this.dodgeRe >= FEINT_CD) { this.dodgeRe = 0; this.dodgeCharges = 1; }
@@ -3022,6 +3036,7 @@ class Player {
     if (fy != null && st !== 'dash' && st !== 'slide' && st !== 'dive' && st !== 'down') this.yaw = dampAngle(this.yaw, fy, this.charging ? 22 : 14, dt);
   }
   animate(dt) {
+    if (this.fx.slowed > 0) dt *= SLOWMO_SLOW; // caught in someone's SLOW-MO: arms and legs move in slow motion too
     const P = this.P, st = this.state;
     const sp = len2D(this.vel.x, this.vel.z);
     const run = clamp(sp / 9, 0, 1.25);
@@ -3166,6 +3181,15 @@ class Player {
       if (!this.bubble) { this.bubble = new THREE.Mesh(PlayerGeo.get().cube, new THREE.MeshBasicMaterial({ color: lin('#8fd8ff'), transparent: true, opacity: 0.22, depthWrite: false, toneMapped: false })); this.m.scene.add(this.bubble); }
       this.bubble.visible = true; this.bubble.position.set(this.pos.x, this.pos.y + 1.0, this.pos.z); this.bubble.scale.set(1.5, 2.3, 1.5); this.bubble.rotation.y = this.yaw;
     } else if (this.bubble) this.bubble.visible = false;
+    // SLOW-MO: a blue ring under everyone caught in it, and the player who used it leaves a ghost trail
+    if (this.fx.slowed > 0) {
+      if (!this.slowRing) { this.slowRing = new THREE.Mesh(PlayerGeo.get().ring, new THREE.MeshBasicMaterial({ color: lin('#9fb4ff'), transparent: true, opacity: 0.6, toneMapped: false, depthWrite: false })); this.m.scene.add(this.slowRing); }
+      this.slowRing.visible = true; this.slowRing.position.set(this.pos.x, 0.04, this.pos.z); this.slowRing.scale.set(1.15, 1, 1.15); this.slowRing.rotation.y -= dt * 2;
+    } else if (this.slowRing) this.slowRing.visible = false;
+    if (this.fx.slowmo > 0 && this.P.root.visible) {
+      this.slowTrail = (this.slowTrail || 0) - dt;
+      if (this.slowTrail <= 0) { this.slowTrail = 0.03; FX.trail(this.pos.x, this.pos.y + 1.0, this.pos.z, '#9fb4ff', 0.42, 0.45); FX.trail(this.pos.x, this.pos.y + 0.35, this.pos.z, '#ffffff', 0.2, 0.3); }
+    }
     if (st === 'frozen') {
       if (!this.ice) { this.ice = new THREE.Mesh(PlayerGeo.get().cube, new THREE.MeshLambertMaterial({ map: World.T.ice, transparent: true, opacity: 0.62 })); this.m.scene.add(this.ice); }
       this.ice.visible = true; this.ice.position.set(this.pos.x, this.pos.y + 1.0, this.pos.z); this.ice.scale.set(1.2, 2.2, 1.2); this.ice.rotation.y = this.yaw;
@@ -3846,6 +3870,9 @@ const FLOW_IDS = Object.keys(FLOWS);
 const AWAKEN_TIME = 20;
 /** the feint (C): a step-over cut nobody can tackle you through, once every FEINT_CD seconds */
 const FEINT_CD = 5;
+/** SLOW-MO (C twice within SLOWMO_TAP seconds): with the ball, opponents within SLOWMO_RANGE (not keepers) move at SLOWMO_SLOW
+    speed and nobody can tackle you, for SLOWMO_TIME or until the ball leaves you. Once every SLOWMO_CD seconds */
+const SLOWMO_CD = 20, SLOWMO_TIME = 2.5, SLOWMO_RANGE = 8, SLOWMO_SLOW = 0.45, SLOWMO_TAP = 0.4;
 const AWAKEN_ALL = 'It comes by itself at random moments, sooner after big plays. Cooldowns reset and recharge twice as fast, and ability effects last 50% longer. Press Z for its signature move, once.';
 const RAW_FLOW_DESC = 'No Flow equipped: +8% speed. Equip one from Flow Spins for a bigger buff.';
 
@@ -4567,6 +4594,7 @@ class Match {
     this.updatePending(dt);
     for (const p of this.players) p.physics(dt);
     this.rocketLandings();
+    this.slowZones();
     this.separate();
     if (ph === 'play') { this.updateSlides(); this.updateMagnets(dt); }
     this.updateBallSpecials(dt);
@@ -4631,6 +4659,10 @@ class Match {
     }
     if (p.fkHold) { this.freeKickControls(dt, c, p, cy); return; }
     if (p.inWall) { p.mx = p.mz = 0; p.charging = false; p.charge = 0; if (c.jump) this.jump(p); return; } // in the wall for their free kick: jump to block it
+    let dodge = c.dodge;
+    if (dodge) { // C twice quickly (B, FEINT): SLOW-MO instead of a second feint. Checked here, so it works during the feint's step too
+      if (this.time - p.cTapAt < SLOWMO_TAP) { p.cTapAt = -9; dodge = false; this.slowMo(p); } else p.cTapAt = this.time;
+    }
     if (!this.canAct(p)) { if (p.state !== 'dash') { p.charging = false; p.charge = 0; p.shotBuffer = null; } return; }
     if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; p.shotCurve = clamp(c.moveX || 0, -1, 1); }
     if (p.charging) {
@@ -4656,7 +4688,7 @@ class Match {
       else { p.callT = 1.6; this.label(p, 'PASS!', '#2ee38f'); }
     }
     if (c.jump) this.jump(p);
-    if (c.dodge) this.dodge(p, mx, mz);
+    if (dodge) this.dodge(p, mx, mz);
     if (c.tackle) {
       let tx = mx, tz = mz;
       if (len2D(tx, tz) < 0.2) { tx = Math.sin(p.yaw); tz = Math.cos(p.yaw); }
@@ -4923,6 +4955,31 @@ class Match {
     FX.feathers(p.pos.x, p.pos.y + 0.3, p.pos.z, '#ffffff', 6); Sfx.dodge();
     if (p.isHuman) this.label(p, 'FEINT', '#ffffff', 0.6);
     return true;
+  }
+  /** SLOW-MO (C twice, B twice, FEINT twice): with the ball, opponents near you slow right down and nobody can tackle you,
+      for SLOWMO_TIME or until the ball leaves you (slowZones). Once every SLOWMO_CD seconds. Keepers are never slowed */
+  slowMo(p) {
+    const ok = p.state === 'free' || p.state === 'dash' || p.state === 'hold';
+    if (p.slowRe > 0 || this.ball.owner !== p || p.isGK || !ok || this.phase !== 'play') {
+      if (p.isHuman && ok && this.phase === 'play') { this.toast(p.slowRe > 0 ? 'SLOW-MO IN ' + Math.ceil(p.slowRe) + 'S' : 'SLOW-MO NEEDS THE BALL', 'bad', p); Sfx.deny(); }
+      return false;
+    }
+    p.slowRe = SLOWMO_CD; p.fx.slowmo = SLOWMO_TIME;
+    this.slowZones();
+    FX.ring(p.pos.x, 0.3, p.pos.z, '#9fb4ff', SLOWMO_RANGE, 48); FX.ring(p.pos.x, 0.6, p.pos.z, '#ffffff', 2.2, 22);
+    this.label(p, 'SLOW-MO', '#9fb4ff', 1.2);
+    if (p === this.human) { TimeCtl.slowMo(0.3, 0.45); Cam.punch(0.5); }
+    p.slowUses = (p.slowUses || 0) + 1;
+    return true;
+  }
+  /** every frame: a player in SLOW-MO cannot be tackled and opponents near them (not keepers) move slowly. It ends when the ball leaves them */
+  slowZones() {
+    for (const p of this.players) {
+      if (!(p.fx.slowmo > 0)) continue;
+      if (this.ball.owner !== p || this.phase !== 'play') { p.fx.slowmo = 0; continue; }
+      p.tackleProof = Math.max(p.tackleProof, 0.15);
+      for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < SLOWMO_RANGE) o.fx.slowed = Math.max(o.fx.slowed || 0, 0.2);
+    }
   }
   dashP(p, dx, dz, speed, dur, o = {}) {
     p.charging = false; p.charge = 0;
@@ -6449,6 +6506,8 @@ const AI = {
       a.target.set(p.pos.x + ox * 3, 0, p.pos.z + oz * 3); a.sprint = false;
       return;
     }
+    // a defender right on them: SLOW-MO and dribble past
+    if (p.slowRe <= 0 && !p.isGK && c.pressure < 3.2 && c.dGoal < 38 && chance(0.15 + 0.3 * sk) && m.slowMo(p)) { this.dribble(m, p, c); return; }
     const range = 12 + 9 * sk + (p.flowT > 0 ? 3 : 0);
     if (c.dGoal < range && c.angleOK) {
       const pShoot = clamp((range - c.dGoal) / range * 1.3 + (c.pressure < 2.6 ? 0.25 : 0) + (c.dGoal < 9 ? 0.4 : 0), 0.1, 0.97);
@@ -8128,7 +8187,7 @@ const Net = {
     if (m.me && nm.human) {
       const p = nm.human, me = m.me;
       p.abil.forEach((a, i) => { a.cd = me.cd[i] || 0; });
-      p.flow = me.fl; p.flowT = me.ft; p.awake = me.aw || 0; p.awakeT = me.awt || 0; p.awakeMoveUsed = !!me.amu; p.stamina = me.st; p.exhausted = !!me.ex; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
+      p.flow = me.fl; p.flowT = me.ft; p.awake = me.aw || 0; p.awakeT = me.awt || 0; p.awakeMoveUsed = !!me.amu; p.stamina = me.st; p.exhausted = !!me.ex; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.slowRe = me.sr || 0; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
       for (const k in p.fx) p.fx[k] = 0;
       Object.assign(p.fx, me.fx || {});
     }
@@ -8198,6 +8257,7 @@ const Net = {
       if (aw && !(p.awakeT > 0)) { FX.awakenBurst(p); if (p === nm.human) Shake.add(0.4); } // someone just awakened
       p.awakeT = aw ? Math.max(p.awakeT, 1) : 0;
       p.fx.shuffle = f & 16 ? 1 : 0; p.fx.lockdown = f & 32 ? 1 : 0; p.fx.bubble = f & 64 ? 1 : 0;
+      p.fx.slowed = f & 512 ? 1 : 0; p.fx.slowmo = f & 1024 ? 1 : 0;
       p.charge = B[12];
       p.dive = st === 'dive' ? { side: B[13], high: !!B[14], dur: B[15] } : null;
       p.flipT = B[16];
@@ -8889,6 +8949,7 @@ const UI = {
             ${row(key('CURVE'), 'While you hold SHOOT, push the move stick left or right to bend the shot. It still ends up where you aim')}
             ${row(key('PASS'), 'Tap to pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for it: your teammate looks up, then picks the pass')}
             ${row(key('FEINT') + key('TACKLE'), 'One button. With the ball it feints (a step-over nobody can tackle you through, every 5s), without it you slide')}
+            ${row(key('FEINT') + key('FEINT'), 'Slow-mo: with the ball, tap FEINT twice fast. Players near you slow right down and nobody can tackle you for 2.5s, or until you pass or shoot. Every 20s')}
             ${row(key('JUMP'), 'Jump. With the ball it flicks it over a defender')}
             ${row(key('ARC'), 'Your three style abilities, then FLOW when the bar is full')}
             ${row(key('DOUBLE TAP'), 'Double tap the right side to face the goal')}
@@ -8907,6 +8968,7 @@ const UI = {
             ${row(key('RMB'), 'Pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for a pass: your teammate looks up, then picks one. Sprint into space for a through ball')}
             ${row(key('SPACE'), 'Jump. With the ball it flicks it over defenders')}
             ${row(key('C'), 'Feint: a step-over cut to the side. Nobody can tackle you through it. Once every 5 seconds')}
+            ${row(key('C') + key('C'), 'Slow-mo: with the ball, tap C twice fast. Players near you slow right down and nobody can tackle you for 2.5s, or until you pass or shoot. Once every 20 seconds')}
             ${row(key('F'), 'Slide tackle')}
             ${row(key('Q') + key('E') + key('R'), 'Style abilities. Big moves get a quick cut-in; turn them off in the pause menu')}
             ${row(key('G'), 'Activate Flow when the bar is full')}
@@ -8924,7 +8986,7 @@ const UI = {
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}${row(key('RT') + key('L STICK'), 'Curve shot: push the left stick left or right while you charge')}
-            ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Feint')}${row(key('X'), 'Slide tackle')}
+            ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Feint')}${row(key('B') + key('B'), 'Slow-mo: tap B twice fast with the ball')}${row(key('X'), 'Slide tackle')}
             ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('D-PAD DOWN'), 'Emote wheel (not in Lawless), then the D-pad chooses and A plays it')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
           </div></section>
           <section class="panel"><h3>WINNING THE BALL</h3><ul>
@@ -9070,6 +9132,7 @@ const UI = {
       <div class="hud-mode"><span class="chip" id="hud-mode">RANKED</span><img class="px" id="hud-badge" alt=""></div>
       <div class="scorebar"><div class="team blue"><span class="nm" id="sc0-nm">HOME</span><span id="sc0">0</span></div><div class="clock"><span id="clock">4:00</span><small id="clock-sub"></small></div><div class="team orange"><span id="sc1">0</span><span class="nm" id="sc1-nm">AWAY</span></div></div>
       <div class="hud-em emer"><img class="px" id="hud-em-ico" alt=""><span id="hud-em">0</span></div>
+      <div class="slowfx" id="slowfx" hidden><b id="slowfx-txt">SLOW-MO</b></div>
       <div class="crosshair" id="xhair"></div>
       <div class="balltag" id="balltag" hidden>BALL</div>
       <div class="charge" id="charge" hidden><i id="charge-fill"></i><b class="cmark" id="charge-cmark"></b><span id="charge-txt">POWER</span></div>
@@ -9390,10 +9453,12 @@ const UI = {
     });
     html += '<div class="sep"></div>';
     html += `<div class="slot small" id="slot-c"><img class="px" src="${iconURL('dash', '#ffffff')}" alt=""><span class="key k">C</span><div class="cd"></div><div class="pips"><i></i></div><span class="nm">FEINT</span></div>`;
+    html += `<div class="slot small" id="slot-s"><img class="px" src="${iconURL('hourglass', '#9fb4ff')}" alt=""><span class="key k">CC</span><div class="cd"></div><span class="nm">SLOW-MO</span></div>`;
     html += `<div class="slot small" id="slot-g"><img class="px" src="${iconURL('flame', p.aura)}" alt=""><span class="key k">G</span><div class="cd"></div><span class="nm">FLOW</span></div>`;
     hb.innerHTML = html;
     this.slots = [0, 1, 2].map((i) => ({ el: $('slot' + i), cd: $('slot' + i).querySelector('.cd'), num: $('slot' + i).querySelector('.num'), last: -1 }));
     this.slotC = { el: $('slot-c'), cd: $('slot-c').querySelector('.cd'), pips: $('slot-c').querySelectorAll('.pips i') };
+    this.slotS = { el: $('slot-s'), cd: $('slot-s').querySelector('.cd') };
     this.slotG = { el: $('slot-g') };
     const st = $('stamina');
     st.innerHTML = '';
@@ -9438,6 +9503,13 @@ const UI = {
     const C = this.slotC;
     C.pips.forEach((pip, i) => pip.classList.toggle('on', i < p.dodgeCharges));
     C.cd.style.setProperty('--p', (p.dodgeCharges >= 1 ? 0 : (1 - p.dodgeRe / FEINT_CD) * 360).toFixed(1) + 'deg');
+    // SLOW-MO: its own slot, a blue edge round the screen while yours runs, a grey one while you are caught in someone's
+    const S = this.slotS, smOn = p.fx.slowmo > 0, sdOn = p.fx.slowed > 0;
+    S.cd.style.setProperty('--p', (smOn ? 0 : clamp((p.slowRe || 0) / SLOWMO_CD, 0, 1) * 360).toFixed(1) + 'deg');
+    S.el.classList.toggle('ready', !(p.slowRe > 0) && !smOn); S.el.classList.toggle('active', smOn);
+    const sfx = $('slowfx'); sfx.hidden = !(smOn || sdOn); sfx.classList.toggle('caught', !smOn && sdOn); this.setText('slowfx-txt', smOn ? 'SLOW-MO' : 'SLOWED DOWN');
+    if (smOn && !this.slowWas) Sfx.slowmo(); else if (sdOn && !this.slowedWas && !smOn) Sfx.slowmo(true);
+    this.slowWas = smOn; this.slowedWas = sdOn;
     const has = m.ball.owner === p; $('xhair').classList.toggle('ball', has); $('balltag').hidden = !has; // a frame and BALL while you have the ball
     this.slotG.el.classList.toggle('ready', p.flow >= 100 && p.flowT <= 0);
     this.slotG.el.classList.toggle('active', p.flowT > 0);

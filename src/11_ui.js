@@ -109,6 +109,7 @@ const UI = {
             ${row(key('CURVE'), 'While you hold SHOOT, push the move stick left or right to bend the shot. It still ends up where you aim')}
             ${row(key('PASS'), 'Tap to pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for it: your teammate looks up, then picks the pass')}
             ${row(key('FEINT') + key('TACKLE'), 'One button. With the ball it feints (a step-over nobody can tackle you through, every 5s), without it you slide')}
+            ${row(key('FEINT') + key('FEINT'), 'Slow-mo: with the ball, tap FEINT twice fast. Players near you slow right down and nobody can tackle you for 2.5s, or until you pass or shoot. Every 20s')}
             ${row(key('JUMP'), 'Jump. With the ball it flicks it over a defender')}
             ${row(key('ARC'), 'Your three style abilities, then FLOW when the bar is full')}
             ${row(key('DOUBLE TAP'), 'Double tap the right side to face the goal')}
@@ -127,6 +128,7 @@ const UI = {
             ${row(key('RMB'), 'Pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for a pass: your teammate looks up, then picks one. Sprint into space for a through ball')}
             ${row(key('SPACE'), 'Jump. With the ball it flicks it over defenders')}
             ${row(key('C'), 'Feint: a step-over cut to the side. Nobody can tackle you through it. Once every 5 seconds')}
+            ${row(key('C') + key('C'), 'Slow-mo: with the ball, tap C twice fast. Players near you slow right down and nobody can tackle you for 2.5s, or until you pass or shoot. Once every 20 seconds')}
             ${row(key('F'), 'Slide tackle')}
             ${row(key('Q') + key('E') + key('R'), 'Style abilities. Big moves get a quick cut-in; turn them off in the pause menu')}
             ${row(key('G'), 'Activate Flow when the bar is full')}
@@ -144,7 +146,7 @@ const UI = {
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}${row(key('RT') + key('L STICK'), 'Curve shot: push the left stick left or right while you charge')}
-            ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Feint')}${row(key('X'), 'Slide tackle')}
+            ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Feint')}${row(key('B') + key('B'), 'Slow-mo: tap B twice fast with the ball')}${row(key('X'), 'Slide tackle')}
             ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('D-PAD DOWN'), 'Emote wheel (not in Lawless), then the D-pad chooses and A plays it')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
           </div></section>
           <section class="panel"><h3>WINNING THE BALL</h3><ul>
@@ -290,6 +292,7 @@ const UI = {
       <div class="hud-mode"><span class="chip" id="hud-mode">RANKED</span><img class="px" id="hud-badge" alt=""></div>
       <div class="scorebar"><div class="team blue"><span class="nm" id="sc0-nm">HOME</span><span id="sc0">0</span></div><div class="clock"><span id="clock">4:00</span><small id="clock-sub"></small></div><div class="team orange"><span id="sc1">0</span><span class="nm" id="sc1-nm">AWAY</span></div></div>
       <div class="hud-em emer"><img class="px" id="hud-em-ico" alt=""><span id="hud-em">0</span></div>
+      <div class="slowfx" id="slowfx" hidden><b id="slowfx-txt">SLOW-MO</b></div>
       <div class="crosshair" id="xhair"></div>
       <div class="balltag" id="balltag" hidden>BALL</div>
       <div class="charge" id="charge" hidden><i id="charge-fill"></i><b class="cmark" id="charge-cmark"></b><span id="charge-txt">POWER</span></div>
@@ -610,10 +613,12 @@ const UI = {
     });
     html += '<div class="sep"></div>';
     html += `<div class="slot small" id="slot-c"><img class="px" src="${iconURL('dash', '#ffffff')}" alt=""><span class="key k">C</span><div class="cd"></div><div class="pips"><i></i></div><span class="nm">FEINT</span></div>`;
+    html += `<div class="slot small" id="slot-s"><img class="px" src="${iconURL('hourglass', '#9fb4ff')}" alt=""><span class="key k">CC</span><div class="cd"></div><span class="nm">SLOW-MO</span></div>`;
     html += `<div class="slot small" id="slot-g"><img class="px" src="${iconURL('flame', p.aura)}" alt=""><span class="key k">G</span><div class="cd"></div><span class="nm">FLOW</span></div>`;
     hb.innerHTML = html;
     this.slots = [0, 1, 2].map((i) => ({ el: $('slot' + i), cd: $('slot' + i).querySelector('.cd'), num: $('slot' + i).querySelector('.num'), last: -1 }));
     this.slotC = { el: $('slot-c'), cd: $('slot-c').querySelector('.cd'), pips: $('slot-c').querySelectorAll('.pips i') };
+    this.slotS = { el: $('slot-s'), cd: $('slot-s').querySelector('.cd') };
     this.slotG = { el: $('slot-g') };
     const st = $('stamina');
     st.innerHTML = '';
@@ -658,6 +663,13 @@ const UI = {
     const C = this.slotC;
     C.pips.forEach((pip, i) => pip.classList.toggle('on', i < p.dodgeCharges));
     C.cd.style.setProperty('--p', (p.dodgeCharges >= 1 ? 0 : (1 - p.dodgeRe / FEINT_CD) * 360).toFixed(1) + 'deg');
+    // SLOW-MO: its own slot, a blue edge round the screen while yours runs, a grey one while you are caught in someone's
+    const S = this.slotS, smOn = p.fx.slowmo > 0, sdOn = p.fx.slowed > 0;
+    S.cd.style.setProperty('--p', (smOn ? 0 : clamp((p.slowRe || 0) / SLOWMO_CD, 0, 1) * 360).toFixed(1) + 'deg');
+    S.el.classList.toggle('ready', !(p.slowRe > 0) && !smOn); S.el.classList.toggle('active', smOn);
+    const sfx = $('slowfx'); sfx.hidden = !(smOn || sdOn); sfx.classList.toggle('caught', !smOn && sdOn); this.setText('slowfx-txt', smOn ? 'SLOW-MO' : 'SLOWED DOWN');
+    if (smOn && !this.slowWas) Sfx.slowmo(); else if (sdOn && !this.slowedWas && !smOn) Sfx.slowmo(true);
+    this.slowWas = smOn; this.slowedWas = sdOn;
     const has = m.ball.owner === p; $('xhair').classList.toggle('ball', has); $('balltag').hidden = !has; // a frame and BALL while you have the ball
     this.slotG.el.classList.toggle('ready', p.flow >= 100 && p.flowT <= 0);
     this.slotG.el.classList.toggle('active', p.flowT > 0);

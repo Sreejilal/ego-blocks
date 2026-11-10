@@ -418,6 +418,7 @@ const ICON_MAPS = {
   wall: ['............', '............', 'kkkkkkkkkkkk', 'kgggkgggggkk', 'kgggkgggggkk', 'kkkkkkkkkkkk', 'kgkgggggkggk', 'kgkgggggkggk', 'kkkkkkkkkkkk', '............', '............', '............'],
   mine: ['............', '............', '............', '............', '.....rr.....', '.....rr.....', '...kkkkkk...', '..kggggggk..', '.kggggggggk.', '.kkkkkkkkkk.', '............', '............'],
   bolt: ['............', '......YYY...', '.....YYY....', '....YYY.....', '...YYYYYY...', '......YYY...', '.....YYY....', '....YYY.....', '...YY.......', '..Y.........', '............', '............'],
+  hourglass: ['............', '.AAAAAAAAAA.', '..bOOOOOOb..', '..bOOOOOOb..', '...bOOOOb...', '....bOOb....', '....b.Ob....', '...b..O.b...', '..b...O..b..', '..b.OOOO.b..', '.AAAAAAAAAA.', '............'],
   lock: ['............', '....kkkk....', '...k....k...', '...k....k...', '..kkkkkkkk..', '..kggggggk..', '..kggkkggk..', '..kggkkggk..', '..kggggggk..', '..kkkkkkkk..', '............', '............'],
   jump: ['............', '.....kk.....', '....kwwk....', '...kwwwwk...', '..kwwwwwwk..', '.kwwwwwwwwk.', '.kkkkwwkkkk.', '....kwwk....', '....kwwk....', '....kwwk....', '....kkkk....', '............'],
   boot: ['............', '............', '............', '...kkkk.....', '...kAAk.....', '...kAAk.....', '...kAAkkkk..', '..kAAAAAAAk.', '..kAAAAAAAAk', '..kkkkkkkkkk', '...w.w.w.w..', '............'],

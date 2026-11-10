@@ -346,7 +346,7 @@ const Net = {
     if (m.me && nm.human) {
       const p = nm.human, me = m.me;
       p.abil.forEach((a, i) => { a.cd = me.cd[i] || 0; });
-      p.flow = me.fl; p.flowT = me.ft; p.awake = me.aw || 0; p.awakeT = me.awt || 0; p.awakeMoveUsed = !!me.amu; p.stamina = me.st; p.exhausted = !!me.ex; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
+      p.flow = me.fl; p.flowT = me.ft; p.awake = me.aw || 0; p.awakeT = me.awt || 0; p.awakeMoveUsed = !!me.amu; p.stamina = me.st; p.exhausted = !!me.ex; p.dodgeCharges = me.dc; p.dodgeRe = me.dr; p.slowRe = me.sr || 0; p.tackleCd = me.tc; p.mods.tackleCd = me.tk || 1; p.passHold = me.ph;
       for (const k in p.fx) p.fx[k] = 0;
       Object.assign(p.fx, me.fx || {});
     }
@@ -416,6 +416,7 @@ const Net = {
       if (aw && !(p.awakeT > 0)) { FX.awakenBurst(p); if (p === nm.human) Shake.add(0.4); } // someone just awakened
       p.awakeT = aw ? Math.max(p.awakeT, 1) : 0;
       p.fx.shuffle = f & 16 ? 1 : 0; p.fx.lockdown = f & 32 ? 1 : 0; p.fx.bubble = f & 64 ? 1 : 0;
+      p.fx.slowed = f & 512 ? 1 : 0; p.fx.slowmo = f & 1024 ? 1 : 0;
       p.charge = B[12];
       p.dive = st === 'dive' ? { side: B[13], high: !!B[14], dur: B[15] } : null;
       p.flipT = B[16];

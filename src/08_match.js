@@ -185,6 +185,7 @@ class Match {
     this.updatePending(dt);
     for (const p of this.players) p.physics(dt);
     this.rocketLandings();
+    this.slowZones();
     this.separate();
     if (ph === 'play') { this.updateSlides(); this.updateMagnets(dt); }
     this.updateBallSpecials(dt);
@@ -249,6 +250,10 @@ class Match {
     }
     if (p.fkHold) { this.freeKickControls(dt, c, p, cy); return; }
     if (p.inWall) { p.mx = p.mz = 0; p.charging = false; p.charge = 0; if (c.jump) this.jump(p); return; } // in the wall for their free kick: jump to block it
+    let dodge = c.dodge;
+    if (dodge) { // C twice quickly (B, FEINT): SLOW-MO instead of a second feint. Checked here, so it works during the feint's step too
+      if (this.time - p.cTapAt < SLOWMO_TAP) { p.cTapAt = -9; dodge = false; this.slowMo(p); } else p.cTapAt = this.time;
+    }
     if (!this.canAct(p)) { if (p.state !== 'dash') { p.charging = false; p.charge = 0; p.shotBuffer = null; } return; }
     if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; p.shotCurve = clamp(c.moveX || 0, -1, 1); }
     if (p.charging) {
@@ -274,7 +279,7 @@ class Match {
       else { p.callT = 1.6; this.label(p, 'PASS!', '#2ee38f'); }
     }
     if (c.jump) this.jump(p);
-    if (c.dodge) this.dodge(p, mx, mz);
+    if (dodge) this.dodge(p, mx, mz);
     if (c.tackle) {
       let tx = mx, tz = mz;
       if (len2D(tx, tz) < 0.2) { tx = Math.sin(p.yaw); tz = Math.cos(p.yaw); }
@@ -541,6 +546,31 @@ class Match {
     FX.feathers(p.pos.x, p.pos.y + 0.3, p.pos.z, '#ffffff', 6); Sfx.dodge();
     if (p.isHuman) this.label(p, 'FEINT', '#ffffff', 0.6);
     return true;
+  }
+  /** SLOW-MO (C twice, B twice, FEINT twice): with the ball, opponents near you slow right down and nobody can tackle you,
+      for SLOWMO_TIME or until the ball leaves you (slowZones). Once every SLOWMO_CD seconds. Keepers are never slowed */
+  slowMo(p) {
+    const ok = p.state === 'free' || p.state === 'dash' || p.state === 'hold';
+    if (p.slowRe > 0 || this.ball.owner !== p || p.isGK || !ok || this.phase !== 'play') {
+      if (p.isHuman && ok && this.phase === 'play') { this.toast(p.slowRe > 0 ? 'SLOW-MO IN ' + Math.ceil(p.slowRe) + 'S' : 'SLOW-MO NEEDS THE BALL', 'bad', p); Sfx.deny(); }
+      return false;
+    }
+    p.slowRe = SLOWMO_CD; p.fx.slowmo = SLOWMO_TIME;
+    this.slowZones();
+    FX.ring(p.pos.x, 0.3, p.pos.z, '#9fb4ff', SLOWMO_RANGE, 48); FX.ring(p.pos.x, 0.6, p.pos.z, '#ffffff', 2.2, 22);
+    this.label(p, 'SLOW-MO', '#9fb4ff', 1.2);
+    if (p === this.human) { TimeCtl.slowMo(0.3, 0.45); Cam.punch(0.5); }
+    p.slowUses = (p.slowUses || 0) + 1;
+    return true;
+  }
+  /** every frame: a player in SLOW-MO cannot be tackled and opponents near them (not keepers) move slowly. It ends when the ball leaves them */
+  slowZones() {
+    for (const p of this.players) {
+      if (!(p.fx.slowmo > 0)) continue;
+      if (this.ball.owner !== p || this.phase !== 'play') { p.fx.slowmo = 0; continue; }
+      p.tackleProof = Math.max(p.tackleProof, 0.15);
+      for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < SLOWMO_RANGE) o.fx.slowed = Math.max(o.fx.slowed || 0, 0.2);
+    }
   }
   dashP(p, dx, dz, speed, dur, o = {}) {
     p.charging = false; p.charge = 0;

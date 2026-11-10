@@ -370,6 +370,10 @@ const Sfx = (() => {
       if (r >= 4) { tone(200, 1.2, { type: 'sawtooth', vol: 0.05, slide: 2400, delay: 0.05 }); tone(NOTES[7], 0.9, { type: 'square', vol: 0.05, delay: 0.9 }); }
     },
     dodge() { noise(0.14, { vol: 0.16, type: 'bandpass', freq: 900, slide: 3200, q: 2.5 }); },
+    slowmo(caught) { // time winding down: a falling hum and a soft whoosh. Caught in someone else's: quieter and lower
+      tone(caught ? 300 : 520, 0.6, { type: 'sine', vol: caught ? 0.08 : 0.14, slide: caught ? 70 : 110 });
+      noise(0.55, { vol: caught ? 0.05 : 0.1, type: 'lowpass', freq: 1800, slide: 160 });
+    },
     swoosh() { noise(0.22, { vol: 0.14, type: 'bandpass', freq: 500, slide: 2400, q: 1.6 }); },
     tackle() { noise(0.1, { vol: 0.28, type: 'lowpass', freq: 700 }); tone(80, 0.12, { type: 'sine', vol: 0.3, slide: 38 }); },
     slide() { noise(0.35, { vol: 0.12, type: 'lowpass', freq: 1400, slide: 300 }); },

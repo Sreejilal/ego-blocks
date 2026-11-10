@@ -459,6 +459,9 @@ const FLOW_IDS = Object.keys(FLOWS);
 const AWAKEN_TIME = 20;
 /** the feint (C): a step-over cut nobody can tackle you through, once every FEINT_CD seconds */
 const FEINT_CD = 5;
+/** SLOW-MO (C twice within SLOWMO_TAP seconds): with the ball, opponents within SLOWMO_RANGE (not keepers) move at SLOWMO_SLOW
+    speed and nobody can tackle you, for SLOWMO_TIME or until the ball leaves you. Once every SLOWMO_CD seconds */
+const SLOWMO_CD = 20, SLOWMO_TIME = 2.5, SLOWMO_RANGE = 8, SLOWMO_SLOW = 0.45, SLOWMO_TAP = 0.4;
 const AWAKEN_ALL = 'It comes by itself at random moments, sooner after big plays. Cooldowns reset and recharge twice as fast, and ability effects last 50% longer. Press Z for its signature move, once.';
 const RAW_FLOW_DESC = 'No Flow equipped: +8% speed. Equip one from Flow Spins for a bigger buff.';
 

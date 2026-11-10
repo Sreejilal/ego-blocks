@@ -216,6 +216,8 @@ const AI = {
       a.target.set(p.pos.x + ox * 3, 0, p.pos.z + oz * 3); a.sprint = false;
       return;
     }
+    // a defender right on them: SLOW-MO and dribble past
+    if (p.slowRe <= 0 && !p.isGK && c.pressure < 3.2 && c.dGoal < 38 && chance(0.15 + 0.3 * sk) && m.slowMo(p)) { this.dribble(m, p, c); return; }
     const range = 12 + 9 * sk + (p.flowT > 0 ? 3 : 0);
     if (c.dGoal < range && c.angleOK) {
       const pShoot = clamp((range - c.dGoal) / range * 1.3 + (c.pressure < 2.6 ? 0.25 : 0) + (c.dGoal < 9 ? 0.4 : 0), 0.1, 0.97);

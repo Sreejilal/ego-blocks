@@ -326,6 +326,11 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 
 /* you have the ball: a frame round the crosshair and BALL under it */
 .crosshair.ball { outline: 3px solid #ffe9a8; outline-offset: 7px; }
+#hud .slowfx { inset: 0; background: radial-gradient(ellipse at center, rgba(120,150,255,.06) 35%, rgba(80,105,235,.34) 68%, rgba(34,36,120,.72) 100%); box-shadow: inset 0 0 0 6px rgba(159,180,255,.6), inset 0 0 60px rgba(120,150,255,.5); animation: slowIn .25s ease-out; }
+#hud .slowfx b { position: absolute; left: 50%; top: 21%; transform: translateX(-50%); font-family: var(--font-display); font-weight: 400; font-size: clamp(26px, 5vw, 44px); letter-spacing: .12em; color: #dfe6ff; text-shadow: 3px 3px 0 var(--ink), 0 0 18px #7f95ff; white-space: nowrap; }
+#hud .slowfx.caught { background: radial-gradient(ellipse at center, rgba(160,170,190,0) 45%, rgba(110,120,150,.32) 80%, rgba(56,60,86,.62) 100%); box-shadow: inset 0 0 0 4px rgba(190,200,220,.35); }
+#hud .slowfx.caught b { color: #c9cedb; text-shadow: 3px 3px 0 var(--ink); font-size: clamp(18px, 3.4vw, 28px); }
+@keyframes slowIn { from { opacity: 0; } to { opacity: 1; } }
 #hud .balltag { left: 50%; top: calc(50% + 26px); transform: translateX(-50%); font-family: var(--font-label); font-size: 11px; letter-spacing: .14em; color: #ffe9a8; text-shadow: 2px 2px 0 var(--ink); }
 
 /* the emote wheel */
@@ -524,6 +529,7 @@ body.touch .fk-row b { font-size: 20px; }
 .slot.small img { width: 26px; height: 26px; }
 .slot.ready { box-shadow: inset 0 0 0 3px var(--gold); }
 .slot.active { box-shadow: inset 0 0 0 3px var(--aura, var(--emerald)); }
+#slot-s.active { box-shadow: inset 0 0 0 3px #9fb4ff, 0 0 12px #9fb4ff; }
 .slot .pips { position: absolute; bottom: 3px; left: 0; right: 0; display: flex; justify-content: center; gap: 3px; }
 .slot .pips i { width: 8px; height: 5px; background: var(--slate-3); }
 .slot .pips i.on { background: var(--text); }

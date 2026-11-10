@@ -101,6 +101,7 @@ class Player {
     this.mx = 0; this.mz = 0; this.sprint = false; this.faceYaw = null; this.exhausted = false;
     this.stamina = 100; this.stamDelay = 0;
     this.dodgeCharges = 1; this.dodgeRe = 0; this.feint = 0; this.iframes = 0; this.tackleProof = 0;
+    this.slowRe = 0; this.cTapAt = -9;
     this.tackleCd = 0; this.pickBlock = 0; this.protect = 0;
     this.state = 'free'; this.stateT = 0; this.stateDur = 0;
     this.kickT = -1; this.kickDur = 0.34; this.charge = 0; this.charging = false;
@@ -159,7 +160,7 @@ class Player {
   }
   dispose() {
     this.m.scene.remove(this.P.root, this.blob);
-    for (const k of ['ring', 'bubble', 'ice', 'ownRing']) if (this[k]) { this.m.scene.remove(this[k]); this[k].material.dispose(); }
+    for (const k of ['ring', 'bubble', 'ice', 'ownRing', 'slowRing']) if (this[k]) { this.m.scene.remove(this[k]); this[k].material.dispose(); }
     this.skinTex.dispose(); this.mat.dispose();
     if (this.hairGlowMat) this.hairGlowMat.dispose();
     if (this.accMat) this.accMat.dispose();
@@ -205,6 +206,7 @@ class Player {
     if (fx.jetpack > 0) m.speed *= 1.25;
     if (fx.lockdown > 0) m.tackleRange *= 2.3;
     if (fx.slimed > 0) m.speed *= 0.55;
+    if (fx.slowed > 0) m.speed *= SLOWMO_SLOW; // inside someone's SLOW-MO
     if (fx.tempo > 0) m.speed *= 1.25; // MAESTRO's TEMPO
     if (fx.loaded > 0) m.speed *= 1.25; // THUNDER's LOADED
     if (fx.wind > 0) m.stamDrain *= 0.5; // SECOND WIND
@@ -223,6 +225,7 @@ class Player {
     if (this.pickBlock > 0) this.pickBlock -= dt;
     if (this.protect > 0) this.protect -= dt;
     if (this.callT > 0) this.callT -= dt;
+    if (this.slowRe > 0) this.slowRe = Math.max(0, this.slowRe - dt);
     if (this.dodgeCharges < 1) {
       const quick = this.awakeT > 0 && this.style.awaken && this.style.awaken.perk === 'dodge' ? 3 : 1; // NIGHTFALL and SHOWTIME
       this.dodgeRe += dt * quick; if (this.dodgeRe >= FEINT_CD) { this.dodgeRe = 0; this.dodgeCharges = 1; }
@@ -327,6 +330,7 @@ class Player {
     if (fy != null && st !== 'dash' && st !== 'slide' && st !== 'dive' && st !== 'down') this.yaw = dampAngle(this.yaw, fy, this.charging ? 22 : 14, dt);
   }
   animate(dt) {
+    if (this.fx.slowed > 0) dt *= SLOWMO_SLOW; // caught in someone's SLOW-MO: arms and legs move in slow motion too
     const P = this.P, st = this.state;
     const sp = len2D(this.vel.x, this.vel.z);
     const run = clamp(sp / 9, 0, 1.25);
@@ -471,6 +475,15 @@ class Player {
       if (!this.bubble) { this.bubble = new THREE.Mesh(PlayerGeo.get().cube, new THREE.MeshBasicMaterial({ color: lin('#8fd8ff'), transparent: true, opacity: 0.22, depthWrite: false, toneMapped: false })); this.m.scene.add(this.bubble); }
       this.bubble.visible = true; this.bubble.position.set(this.pos.x, this.pos.y + 1.0, this.pos.z); this.bubble.scale.set(1.5, 2.3, 1.5); this.bubble.rotation.y = this.yaw;
     } else if (this.bubble) this.bubble.visible = false;
+    // SLOW-MO: a blue ring under everyone caught in it, and the player who used it leaves a ghost trail
+    if (this.fx.slowed > 0) {
+      if (!this.slowRing) { this.slowRing = new THREE.Mesh(PlayerGeo.get().ring, new THREE.MeshBasicMaterial({ color: lin('#9fb4ff'), transparent: true, opacity: 0.6, toneMapped: false, depthWrite: false })); this.m.scene.add(this.slowRing); }
+      this.slowRing.visible = true; this.slowRing.position.set(this.pos.x, 0.04, this.pos.z); this.slowRing.scale.set(1.15, 1, 1.15); this.slowRing.rotation.y -= dt * 2;
+    } else if (this.slowRing) this.slowRing.visible = false;
+    if (this.fx.slowmo > 0 && this.P.root.visible) {
+      this.slowTrail = (this.slowTrail || 0) - dt;
+      if (this.slowTrail <= 0) { this.slowTrail = 0.03; FX.trail(this.pos.x, this.pos.y + 1.0, this.pos.z, '#9fb4ff', 0.42, 0.45); FX.trail(this.pos.x, this.pos.y + 0.35, this.pos.z, '#ffffff', 0.2, 0.3); }
+    }
     if (st === 'frozen') {
       if (!this.ice) { this.ice = new THREE.Mesh(PlayerGeo.get().cube, new THREE.MeshLambertMaterial({ map: World.T.ice, transparent: true, opacity: 0.62 })); this.m.scene.add(this.ice); }
       this.ice.visible = true; this.ice.position.set(this.pos.x, this.pos.y + 1.0, this.pos.z); this.ice.scale.set(1.2, 2.2, 1.2); this.ice.rotation.y = this.yaw;
