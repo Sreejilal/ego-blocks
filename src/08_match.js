@@ -252,7 +252,7 @@ class Match {
     if (p.inWall) { p.mx = p.mz = 0; p.charging = false; p.charge = 0; if (c.jump) this.jump(p); return; } // in the wall for their free kick: jump to block it
     let dodge = c.dodge;
     if (dodge) { // C twice quickly (B, FEINT): SLOW-MO instead of a second feint. Checked here, so it works during the feint's step too
-      if (this.time - p.cTapAt < SLOWMO_TAP) { p.cTapAt = -9; dodge = false; this.slowMo(p); } else p.cTapAt = this.time;
+      if (this.time - p.cTapAt < SLOWMO_TAP) { p.cTapAt = -9; dodge = false; if (this.slowMo(p)) this.cutFeint(p); } else p.cTapAt = this.time;
     }
     if (!this.canAct(p)) { if (p.state !== 'dash') { p.charging = false; p.charge = 0; p.shotBuffer = null; } return; }
     if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; p.shotCurve = clamp(c.moveX || 0, -1, 1); }
@@ -538,7 +538,7 @@ class Match {
     const side = Math.abs(push) > 0.3 ? Math.sign(push) : (p.feintSide = -(p.feintSide || -1));
     let cx = rx * side * 0.85 + fx * 0.45, cz = rz * side * 0.85 + fz * 0.45;
     const l = len2D(cx, cz); cx /= l; cz /= l;
-    p.dodgeCharges = 0; p.dodgeRe = 0; p.stamina = Math.max(0, p.stamina - 6); p.stamDelay = 0.4;
+    p.dodgeCharges = 0; p.dodgeRe = 0; p.feintT = this.time; p.stamina = Math.max(0, p.stamina - 6); p.stamDelay = 0.4;
     p.iframes = 0.55; p.tackleProof = Math.max(p.tackleProof, 0.55); p.feint = side;
     for (const o of this.opponents(p)) if ((o.state === 'windup' || o.state === 'slide') && dist2D(o.pos, p.pos) < 7) o.slideBeaten = p;
     const yawKeep = p.yaw;
@@ -559,9 +559,18 @@ class Match {
     this.slowZones();
     FX.ring(p.pos.x, 0.3, p.pos.z, '#9fb4ff', SLOWMO_RANGE, 48); FX.ring(p.pos.x, 0.6, p.pos.z, '#ffffff', 2.2, 22);
     this.label(p, 'SLOW-MO', '#9fb4ff', 1.2);
-    if (p === this.human) { TimeCtl.slowMo(0.3, 0.45); Cam.punch(0.5); }
+    if (p === this.human) { TimeCtl.slowMo(0.3, 0.45); Cam.punch(0.5, 0.3); } // only a light zoom: a big one pulled the view about
     p.slowUses = (p.slowUses || 0) + 1;
     return true;
+  }
+  /** the second tap of C C: you wanted SLOW-MO, not the feint the first tap started. Its sideways step stops at once (it used to
+      carry on through the slow motion and slide your view and aim away) and the feint is yours again */
+  cutFeint(p) {
+    if (p.state === 'dash' && p.feint && p.dash) {
+      const d = p.dash; p.dash = null; p.setState('free'); p.vel.x *= 0.15; p.vel.z *= 0.15;
+      if (d.onEnd) d.onEnd();
+    }
+    if (p.dodgeCharges < 1 && this.time - (p.feintT || -9) < SLOWMO_TAP + 0.05) { p.dodgeCharges = 1; p.dodgeRe = 0; }
   }
   /** every frame: a player in SLOW-MO cannot be tackled and opponents near them (not keepers) move slowly. It ends when the ball leaves them */
   slowZones() {

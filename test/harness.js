@@ -12,6 +12,7 @@ async function open(opts = {}) {
   if (!fs.existsSync(PAGE)) throw new Error('docs/index.html is missing. Run `node build.js` first.');
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
   const ctxOpts = { viewport: opts.viewport || { width: 1280, height: 720 } };
+  if (opts.userAgent) ctxOpts.userAgent = opts.userAgent;
   if (opts.mobile) Object.assign(ctxOpts, { hasTouch: true, isMobile: true, deviceScaleFactor: opts.dpr || 2 });
   const context = await browser.newContext(ctxOpts);
   const page = await context.newPage();
@@ -24,7 +25,8 @@ async function open(opts = {}) {
   await page.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
   await page.route('https://fonts.gstatic.com/**', (r) => r.abort());
   if (opts.clearStorage !== false) await page.addInitScript(() => { try { if (!sessionStorage.getItem('kept')) { localStorage.clear(); sessionStorage.setItem('kept', '1'); } } catch (e) {} });
-  await page.goto('file://' + PAGE);
+  if (opts.init) await page.addInitScript(opts.init); // code that runs before the game (to pretend to be another browser)
+  await page.goto('file://' + PAGE, { timeout: 120000 }); // a PC short of memory can take a while
   await page.waitForTimeout(opts.wait || 2500);
   return { browser, page, logs, context };
 }

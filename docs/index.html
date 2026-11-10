@@ -705,6 +705,16 @@ body { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 #touch .tb .pips i { width: 9px; height: 5px; background: var(--slate-3); }
 #touch .tb .pips i.on { background: var(--text); }
 #touch .tb.sm .ic { left: 22%; top: 22%; width: 56%; height: 56%; }
+#touch .tb.fsgo { background: var(--gold); animation: fsPulse 1s steps(2) infinite; }
+@keyframes fsPulse { 50% { opacity: .6; } } /* not fullscreen on a phone: a gold FULL button with the small ones at the top */
+#touch .tb.sm.fsgo .ic { left: 28%; top: 13%; width: 44%; height: 44%; }
+#touch .tb.fsgo .lb { bottom: 13%; --lbk: .21; }
+#fs-tip { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(480px, calc(100% - 32px)); max-height: calc(100% - 24px); overflow-y: auto; box-sizing: border-box;
+  padding: 16px 18px; display: grid; gap: 8px; z-index: 61; box-shadow: 0 0 0 3px var(--gold), 6px 6px 0 rgba(0,0,0,.5); }
+#fs-tip .fst-h { margin: 0; font-family: var(--font-display); font-size: 30px; line-height: 1; }
+#fs-tip .fst-t { margin: 0 0 4px; font-size: 15px; line-height: 1.35; }
+#fs-tip .row { display: flex; gap: 8px; flex-wrap: wrap; }
+#btn-fs.nag { background: var(--gold); color: var(--ink); box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); }
 #touch .tb .ic { z-index: 1; }
 #touch .tb .cd { z-index: 2; }
 #touch .tb .lb, #touch .tb .num, #touch .tb .pips { z-index: 3; }
@@ -1674,6 +1684,7 @@ const ICON_MAPS = {
   shades: ['............', '...kkkkkk...', '..kHHHHHHk..', '.kHHHHHHHHk.', '.kSSSSSSSSk.', 'kAAAAAAAAAAk', '.kAAkSSkAAk.', '.kSSSSSSSSk.', '.kSSSSSSSSk.', '..kSSSSSSk..', '...kkkkkk...', '............'],
   chain: ['............', '.A........A.', '.A........A.', '..A......A..', '..A......A..', '...A....A...', '...A....A...', '....A..A....', '.....AA.....', '....kAAk....', '....kAAk....', '.....kk.....'],
   celeb: ['............', '..A......A..', '..A..kk..A..', '...A.kk.A...', '....AAAA....', '.....AA.....', '.....AA.....', '....A..A....', '...A....A...', '..A......A..', '............', '............'],
+  full: ['kkkkk..kkkkk', 'kwwwk..kwwwk', 'kwkk....kkwk', 'kwk......kwk', 'kk........kk', '............', '............', 'kk........kk', 'kwk......kwk', 'kwkk....kkwk', 'kwwwk..kwwwk', 'kkkkk..kkkkk'],
   pause: ['............', '............', '.kkkk..kkkk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kkkk..kkkk.', '............', '............'],
 };
 const ICON_PAL_BASE = {
@@ -4677,7 +4688,7 @@ class Match {
     if (p.inWall) { p.mx = p.mz = 0; p.charging = false; p.charge = 0; if (c.jump) this.jump(p); return; } // in the wall for their free kick: jump to block it
     let dodge = c.dodge;
     if (dodge) { // C twice quickly (B, FEINT): SLOW-MO instead of a second feint. Checked here, so it works during the feint's step too
-      if (this.time - p.cTapAt < SLOWMO_TAP) { p.cTapAt = -9; dodge = false; this.slowMo(p); } else p.cTapAt = this.time;
+      if (this.time - p.cTapAt < SLOWMO_TAP) { p.cTapAt = -9; dodge = false; if (this.slowMo(p)) this.cutFeint(p); } else p.cTapAt = this.time;
     }
     if (!this.canAct(p)) { if (p.state !== 'dash') { p.charging = false; p.charge = 0; p.shotBuffer = null; } return; }
     if (c.shootDown && !p.charging) { p.charging = true; p.charge = 0; p.shotCurve = clamp(c.moveX || 0, -1, 1); }
@@ -4963,7 +4974,7 @@ class Match {
     const side = Math.abs(push) > 0.3 ? Math.sign(push) : (p.feintSide = -(p.feintSide || -1));
     let cx = rx * side * 0.85 + fx * 0.45, cz = rz * side * 0.85 + fz * 0.45;
     const l = len2D(cx, cz); cx /= l; cz /= l;
-    p.dodgeCharges = 0; p.dodgeRe = 0; p.stamina = Math.max(0, p.stamina - 6); p.stamDelay = 0.4;
+    p.dodgeCharges = 0; p.dodgeRe = 0; p.feintT = this.time; p.stamina = Math.max(0, p.stamina - 6); p.stamDelay = 0.4;
     p.iframes = 0.55; p.tackleProof = Math.max(p.tackleProof, 0.55); p.feint = side;
     for (const o of this.opponents(p)) if ((o.state === 'windup' || o.state === 'slide') && dist2D(o.pos, p.pos) < 7) o.slideBeaten = p;
     const yawKeep = p.yaw;
@@ -4984,9 +4995,18 @@ class Match {
     this.slowZones();
     FX.ring(p.pos.x, 0.3, p.pos.z, '#9fb4ff', SLOWMO_RANGE, 48); FX.ring(p.pos.x, 0.6, p.pos.z, '#ffffff', 2.2, 22);
     this.label(p, 'SLOW-MO', '#9fb4ff', 1.2);
-    if (p === this.human) { TimeCtl.slowMo(0.3, 0.45); Cam.punch(0.5); }
+    if (p === this.human) { TimeCtl.slowMo(0.3, 0.45); Cam.punch(0.5, 0.3); } // only a light zoom: a big one pulled the view about
     p.slowUses = (p.slowUses || 0) + 1;
     return true;
+  }
+  /** the second tap of C C: you wanted SLOW-MO, not the feint the first tap started. Its sideways step stops at once (it used to
+      carry on through the slow motion and slide your view and aim away) and the feint is yours again */
+  cutFeint(p) {
+    if (p.state === 'dash' && p.feint && p.dash) {
+      const d = p.dash; p.dash = null; p.setState('free'); p.vel.x *= 0.15; p.vel.z *= 0.15;
+      if (d.onEnd) d.onEnd();
+    }
+    if (p.dodgeCharges < 1 && this.time - (p.feintT || -9) < SLOWMO_TAP + 0.05) { p.dodgeCharges = 1; p.dodgeRe = 0; }
   }
   /** every frame: a player in SLOW-MO cannot be tackled and opponents near them (not keepers) move slowly. It ends when the ball leaves them */
   slowZones() {
@@ -6964,7 +6984,13 @@ const Input = {
     });
     document.addEventListener('pointerlockerror', () => this.lockError());
   },
-  lockError() { if (!this.everLocked) this.lockFailed = true; Hud.lockHint && Hud.lockHint(); },
+  lockError() {
+    // only a refusal straight after a click means this page can never lock the mouse. One without a click (an online match
+    // starting by itself) just waits for a click on the pitch, instead of turning the camera with a free cursor all match
+    const ua = navigator.userActivation;
+    if (!this.everLocked && !(ua && !ua.isActive)) this.lockFailed = true;
+    Hud.lockHint && Hud.lockHint();
+  },
   requestLock() {
     if (Touch.on) return; // touch play never needs the mouse locked
     if (!this.canvas || !this.canvas.requestPointerLock) { this.lockFailed = true; return; }
@@ -7029,7 +7055,7 @@ const CAM_EYE = 1.55; // first person: eye height above the feet
 const Cam = {
   yaw: 0, pitch: -0.13, dist: 7.0, hidden: null, pos: V3(0, 5, -10), pivotY: 1.7, aim: V3(), onTarget: false, fwd: V3(0, 0, 1), snapYaw: null, punchT: 0, punchDur: 1, punchK: 0,
   /** a quick zoom in and back out for the cut-ins */
-  punch(dur) { this.punchT = this.punchDur = dur; },
+  punch(dur, amt = 1) { this.punchT = this.punchDur = dur; this.punchAmt = amt; },
   reset(yaw = 0) { this.yaw = yaw; this.pitch = -0.13; this.pos.set(0, 5, -10); this.pivotY = 1.7; this.snapYaw = null; this.snapPitch = null; this.unhide(); },
   /** a free kick: turn to the goal with the crosshair on its middle (at once, or a quick turn) */
   fkFace(yaw, dist, instant) {
@@ -7091,6 +7117,7 @@ const Cam = {
     this.pivotY = damp(this.pivotY, p.pos.y + 1.7, 10, realDt);
     let pk = 0;
     if (this.punchT > 0) { this.punchT -= realDt; const u = 1 - Math.max(0, this.punchT) / this.punchDur; pk = u < 0.12 ? u / 0.12 : Math.max(0, 1 - (u - 0.12) / 0.88); }
+    pk *= this.punchAmt == null ? 1 : this.punchAmt;
     if (pk > 0 || this.punchK > 0) { cam.fov = World.baseFov - pk * 10; cam.updateProjectionMatrix(); }
     this.punchK = pk;
     // first person, except for goals and the final whistle (wide shots) and when you are on the grass
@@ -7189,7 +7216,7 @@ const Touch = {
     return `<div class="stick idle" id="t-stick"><div class="ring"></div><div class="base"></div><div class="knob"></div><b class="lb">MOVE</b></div>`
       + btn('shoot', 'big', 'SHOOT', '<span class="chg"></span>') + btn('pass', 'pass', 'PASS') + btn('dt', 'dt', 'TACKLE', '<span class="pips"><i></i></span>') + btn('jump', '', 'JUMP')
       + btn('ab0', 'ab', '') + btn('ab1', 'ab', '') + btn('ab2', 'ab', '') + btn('flow', 'flow off', 'FLOW') + btn('item', 'item off', 'ITEM')
-      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tb sm" data-act="cam" aria-label="Switch camera"><i class="ic"></i></div><div class="tb sm" data-act="emote" aria-label="Emotes"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
+      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tb sm" data-act="cam" aria-label="Switch camera"><i class="ic"></i></div><div class="tb sm" data-act="emote" aria-label="Emotes"><i class="ic"></i></div><div class="tb sm fsgo" data-act="fs" aria-label="Full screen" hidden><i class="ic"></i><b class="lb">FULL</b></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
   },
   init() {
     const el = document.createElement('div');
@@ -7208,6 +7235,7 @@ const Touch = {
     icon('chat', iconURL('chat'));
     icon('cam', iconURL('cam'));
     icon('emote', iconURL('smile'));
+    icon('fs', iconURL('full'));
     icon('shoot', iconURL('shot', '#ffffff'));
     icon('pass', iconURL('pass', '#a9c7ff'));
     icon('jump', iconURL('jump'));
@@ -7238,6 +7266,7 @@ const Touch = {
     document.body.classList.toggle('touch', v);
     if (v) Input.releaseLock();
     this.sync(); this.layout();
+    if (v && UI.cur === 'lobby') this.fsTip();
     if (UI.cur === 'lobby') UI.renderLobby();
     if (Game.state === 'paused') UI.renderPause();
     if (Hud.lockHint) Hud.lockHint();
@@ -7291,7 +7320,8 @@ const Touch = {
     put('pause', W - Math.max(raw.r, 8) - 30, raw.t + 30, 46);
     // chat (online) and camera sit next to pause; an upright phone has no room beside the score, so they stack under it
     this.b.chat.hidden = Game.state !== 'online' || !Portal.chatAllowed();
-    const tops = this.b.chat.hidden ? ['cam', 'emote'] : ['chat', 'cam', 'emote'], px = W - Math.max(raw.r, 8) - 30;
+    this.b.fs.hidden = !this.fsNag();
+    const tops = (this.b.chat.hidden ? ['cam', 'emote'] : ['chat', 'cam', 'emote']).concat(this.b.fs.hidden ? [] : ['fs']), px = W - Math.max(raw.r, 8) - 30;
     tops.forEach((a, i) => (portrait ? put(a, px, raw.t + 86 + i * 56, 46) : put(a, px - 56 * (i + 1), raw.t + 30, 46)));
     this.R = 58 * s;
     this.ghost.x = sa.l + (portrait ? 80 : 104) * s;
@@ -7319,7 +7349,7 @@ const Touch = {
     const rec = { kind: 'btn', act, el: btn, x0: x, y0: y, lx: x, ly: y, looking: false };
     this.ptrs.set(id, rec);
     btn.classList.add('down');
-    if (act === 'pause' || act === 'board' || act === 'chat' || act === 'cam' || act === 'emote') return; // these act on release
+    if (act === 'pause' || act === 'board' || act === 'chat' || act === 'cam' || act === 'emote' || act === 'fs') return; // these act on release
     if (act === 'dt') { const m = Game.match, p = m && m.human; act = p && m.ball.owner === p ? 'dodge' : 'tackle'; rec.act = act; }
     this.held.add(act);
     Input.edges.add('T_' + act);
@@ -7348,7 +7378,7 @@ const Touch = {
       this.placeStick(this.ghost.x, this.ghost.y, this.ghost.x, this.ghost.y, true);
     } else if (r.kind === 'look') {
       this.lookId = null;
-      if (e && !r.moved && performance.now() - r.t0 < 260) {
+      if (e && !r.moved && performance.now() - r.t0 < 260 && !this.nearButton(r.x0, r.y0)) { // a tap just beside a button (FEINT twice for SLOW-MO) never swings the camera
         const now = performance.now();
         if (now - this.lastTap < 380) { this.lastTap = 0; this.faceGoal(); } else this.lastTap = now;
       }
@@ -7358,6 +7388,7 @@ const Touch = {
       if (r.act === 'chat') { if (e) Net.openChat(); return; }
       if (r.act === 'cam') { if (e) Input.edges.add('T_cam'); return; }
       if (r.act === 'emote') { if (e) UI.toggleEmotes(); return; }
+      if (r.act === 'fs') { if (e) { Save.data.settings.autoFs = true; Save.save(); this.toggleFs(); } return; }
       if (r.act === 'board') { if (e) { this.board = !this.board; this.boardT = 8; } return; }
       this.held.delete(r.act);
       Input.up.add('T_' + r.act);
@@ -7395,6 +7426,17 @@ const Touch = {
     s.setProperty('--bx', bx.toFixed(1) + 'px'); s.setProperty('--by', by.toFixed(1) + 'px');
     s.setProperty('--kx', kx.toFixed(1) + 'px'); s.setProperty('--ky', ky.toFixed(1) + 'px');
     if (idle) { this.st.classList.add('idle'); this.st.classList.remove('sprint'); }
+  },
+  /** a point just outside one of the buttons: a thumb that missed it by a little */
+  nearButton(x, y) {
+    const pad = 30 * (this.s || 1);
+    for (const k in this.b) {
+      const b = this.b[k];
+      if (!b || b.hidden || !b.offsetParent) continue;
+      const q = b.getBoundingClientRect();
+      if (x > q.left - pad && x < q.right + pad && y > q.top - pad && y < q.bottom + pad) return true;
+    }
+    return false;
   },
   /** double tap on the look side: swing the camera round to face the goal you attack */
   faceGoal(m = Game.match) {
@@ -7483,11 +7525,55 @@ const Touch = {
   /* ---------- fullscreen (only where the page is allowed to) ---------- */
   fsAvailable() { return !BUILD.portal && !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); }, // portals have their own fullscreen button
   isFs() { return !!(document.fullscreenElement || document.webkitFullscreenElement); },
-  /** phones go fullscreen when a match starts or you open online play (a tap is needed, so it happens then) */
+  /** opened from the home screen as an app: no browser bars already */
+  standalone() { try { return navigator.standalone === true || this.mq('(display-mode: standalone)') || this.mq('(display-mode: fullscreen)'); } catch (e) { return false; } },
+  /** how this device can show only the game: 'done' (fullscreen already, opened from the home screen, or a portal, which has
+      its own button), 'can' (our FULL SCREEN works), 'ios' (iPhone browsers have no fullscreen at all: Add to Home Screen
+      instead) or 'none' (this browser cannot, like the small browser inside a chat app) */
+  fsWay() {
+    if (BUILD.portal || this.isFs() || this.standalone()) return 'done';
+    if (this.fsAvailable()) return 'can';
+    const ua = navigator.userAgent || '';
+    return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? 'ios' : 'none';
+  },
+  /** a phone that could be fullscreen but is not (the browser bars eat the pitch): the gold FULL button shows in matches */
+  fsNag() { return this.on && this.fsWay() === 'can' && Save.data.settings.autoFs !== false; },
+  /** every match and online play goes fullscreen (phones and laptops: no web address or tabs while you play), unless you
+      turned it off. Browsers only allow it straight after a tap or click, so this is called from those */
   autoFs() {
-    if (!this.on || !Save.data.settings.autoFs || !this.fsAvailable() || this.isFs()) return;
+    if (!Save.data.settings.autoFs || !this.fsAvailable() || this.isFs() || (!this.on && navigator.webdriver)) return; // laptops: not in automated tests and the video tools
     this.toggleFs();
   },
+  /** the phone reminder: once per visit on the start screen, when the game is not filling the screen */
+  fsTip() {
+    if (!this.on || this.tipShown || navigator.webdriver) return;
+    const way = this.fsWay();
+    if (way === 'done' || (way === 'can' && Save.data.settings.autoFs === false)) return;
+    this.tipShown = true;
+    this.showTip(way);
+  },
+  showTip(way) {
+    let el = $('fs-tip');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'fs-tip'; el.className = 'panel'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-labelledby', 'fst-h');
+      el.innerHTML = `<span class="label gold">PHONE TIP</span><p class="fst-h" id="fst-h"></p><p class="fst-t" id="fst-t"></p>
+        <div class="row"><button class="btn small blue" id="fst-go" type="button">GO FULL SCREEN</button><button class="btn small" id="fst-no" type="button">NOT NOW</button></div>`;
+      $('app').appendChild(el);
+      $('fst-go').addEventListener('click', () => { Save.data.settings.autoFs = true; Save.save(); this.toggleFs(); el.hidden = true; });
+      $('fst-no').addEventListener('click', () => { el.hidden = true; });
+    }
+    const T = {
+      can: ['PLAY IN FULL SCREEN', 'The game then fills your whole screen: no web address bar, a bigger pitch and the buttons right under your thumbs. Matches go full screen by themselves too.'],
+      ios: ['FULL SCREEN ON IPHONE', 'iPhone browsers cannot go full screen. Tap the Share button, then Add to Home Screen. Open SCORZ from the new icon and the game fills the whole screen.'],
+      none: ['THIS BROWSER CANNOT GO FULL SCREEN', 'Apps often open links in their own small browser. Open this page in Chrome or Safari instead, then the game can fill the whole screen.'],
+    }[way];
+    $('fst-h').textContent = T[0]; $('fst-t').textContent = T[1];
+    $('fst-go').hidden = way !== 'can';
+    $('fst-no').textContent = way === 'can' ? 'NOT NOW' : 'GOT IT';
+    el.hidden = false;
+  },
+  hideTip() { const el = $('fs-tip'); if (el) el.hidden = true; },
   toggleFs() {
     const d = document, el = d.documentElement;
     try {
@@ -7501,6 +7587,8 @@ const Touch = {
   },
   onFs() {
     setTimeout(() => { World.resize(); this.layout(); }, 150);
+    if (this.isFs()) this.hideTip();
+    if (this.isFs() && !this.on && (Game.state === 'match' || (Game.state === 'online' && !Net.paused)) && !Input.locked) Input.requestLock(); // a laptop going fullscreen as the match starts: keep the mouse locked
     if (UI.cur === 'lobby') UI.renderLobby();
     if (Game.state === 'paused') UI.renderPause();
   },
@@ -8098,7 +8186,7 @@ const Net = {
   noServerText() { return location.protocol === 'file:' && /localhost/.test(this.url || '') ? 'NO SERVER IS RUNNING. IN THE VS CODE TERMINAL TYPE NPM RUN SERVER, THEN OPEN LOCALHOST:8787' : 'CANNOT REACH THE SCORZ SERVER RIGHT NOW. TRY AGAIN IN A LITTLE WHILE.'; },
   cleanName(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12); },
   setStatus(t) { this.status = t; const el = $('on-status'); if (el) el.textContent = t; },
-  open() { Touch.autoFs(); UI.show('online'); this.renderRoom(); this.renderWho(); if (!navigator.webdriver && !this.noServerHere()) this.connect(() => this.askWho()); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },
+  open() { Touch.autoFs(); Touch.hideTip(); UI.show('online'); this.renderRoom(); this.renderWho(); if (!navigator.webdriver && !this.noServerHere()) this.connect(() => this.askWho()); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },
   join(code) { code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); if (code.length !== 4) { this.setStatus('A ROOM CODE IS 4 LETTERS OR NUMBERS'); return; } this.connect(() => this.send({ t: 'join', code })); },
   /* ---------- the connection ---------- */
   connect(then) {
@@ -9562,6 +9650,7 @@ const UI = {
     const fsb = $('btn-fs');
     fsb.hidden = !Touch.fsAvailable(); // phones and laptops alike (not on portals: their page has its own button)
     fsb.textContent = Touch.isFs() ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
+    fsb.classList.toggle('nag', Touch.fsNag()); // a phone with the browser bars showing: the button stands out in gold
   },
   /* ---------- HUD ---------- */
   buildHud(m) {
@@ -10062,12 +10151,13 @@ const Game = {
     const me = sideFor(Save.data.club); World.paintCrowd(me, me); World.setTier(tierOf(Save.data.rp));
     TimeCtl.reset(); FX.clear();
     UI.hideOverlays(); UI.show('lobby');
+    Touch.fsTip();
     Showcase.show();
     Sfx.setCrowd(0.2);
     Net.where('menu');
   },
   startMatch(mode) {
-    Touch.autoFs();
+    Touch.autoFs(); Touch.hideTip();
     if (this.match) { this.match.dispose(); this.match = null; }
     Reveal.stop(); Showcase.hide();
     UI.hideOverlays();
@@ -10103,10 +10193,11 @@ const Game = {
     UI.showPause(true);
   },
   resume() {
-    if (this.state === 'online') { Net.paused = false; UI.showPause(false); Input.consumeEdges(); Input.requestLock(); UI.lockHint(); return; }
+    if (this.state === 'online') { Net.paused = false; UI.showPause(false); Touch.autoFs(); Input.consumeEdges(); Input.requestLock(); UI.lockHint(); return; }
     if (this.state !== 'paused') return;
     this.state = 'match'; this.match.paused = false;
     UI.showPause(false);
+    Touch.autoFs(); // ESC left fullscreen as well: RESUME goes back to only the game
     Input.consumeEdges();
     Input.requestLock();
     UI.lockHint();

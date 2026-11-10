@@ -428,6 +428,7 @@ const ICON_MAPS = {
   shades: ['............', '...kkkkkk...', '..kHHHHHHk..', '.kHHHHHHHHk.', '.kSSSSSSSSk.', 'kAAAAAAAAAAk', '.kAAkSSkAAk.', '.kSSSSSSSSk.', '.kSSSSSSSSk.', '..kSSSSSSk..', '...kkkkkk...', '............'],
   chain: ['............', '.A........A.', '.A........A.', '..A......A..', '..A......A..', '...A....A...', '...A....A...', '....A..A....', '.....AA.....', '....kAAk....', '....kAAk....', '.....kk.....'],
   celeb: ['............', '..A......A..', '..A..kk..A..', '...A.kk.A...', '....AAAA....', '.....AA.....', '.....AA.....', '....A..A....', '...A....A...', '..A......A..', '............', '............'],
+  full: ['kkkkk..kkkkk', 'kwwwk..kwwwk', 'kwkk....kkwk', 'kwk......kwk', 'kk........kk', '............', '............', 'kk........kk', 'kwk......kwk', 'kwkk....kkwk', 'kwwwk..kwwwk', 'kkkkk..kkkkk'],
   pause: ['............', '............', '.kkkk..kkkk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kwwk..kwwk.', '.kkkk..kkkk.', '............', '............'],
 };
 const ICON_PAL_BASE = {

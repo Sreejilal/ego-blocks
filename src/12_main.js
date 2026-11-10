@@ -42,12 +42,13 @@ const Game = {
     const me = sideFor(Save.data.club); World.paintCrowd(me, me); World.setTier(tierOf(Save.data.rp));
     TimeCtl.reset(); FX.clear();
     UI.hideOverlays(); UI.show('lobby');
+    Touch.fsTip();
     Showcase.show();
     Sfx.setCrowd(0.2);
     Net.where('menu');
   },
   startMatch(mode) {
-    Touch.autoFs();
+    Touch.autoFs(); Touch.hideTip();
     if (this.match) { this.match.dispose(); this.match = null; }
     Reveal.stop(); Showcase.hide();
     UI.hideOverlays();
@@ -83,10 +84,11 @@ const Game = {
     UI.showPause(true);
   },
   resume() {
-    if (this.state === 'online') { Net.paused = false; UI.showPause(false); Input.consumeEdges(); Input.requestLock(); UI.lockHint(); return; }
+    if (this.state === 'online') { Net.paused = false; UI.showPause(false); Touch.autoFs(); Input.consumeEdges(); Input.requestLock(); UI.lockHint(); return; }
     if (this.state !== 'paused') return;
     this.state = 'match'; this.match.paused = false;
     UI.showPause(false);
+    Touch.autoFs(); // ESC left fullscreen as well: RESUME goes back to only the game
     Input.consumeEdges();
     Input.requestLock();
     UI.lockHint();

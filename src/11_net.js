@@ -240,7 +240,7 @@ const Net = {
   noServerText() { return location.protocol === 'file:' && /localhost/.test(this.url || '') ? 'NO SERVER IS RUNNING. IN THE VS CODE TERMINAL TYPE NPM RUN SERVER, THEN OPEN LOCALHOST:8787' : 'CANNOT REACH THE SCORZ SERVER RIGHT NOW. TRY AGAIN IN A LITTLE WHILE.'; },
   cleanName(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12); },
   setStatus(t) { this.status = t; const el = $('on-status'); if (el) el.textContent = t; },
-  open() { Touch.autoFs(); UI.show('online'); this.renderRoom(); this.renderWho(); if (!navigator.webdriver && !this.noServerHere()) this.connect(() => this.askWho()); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },
+  open() { Touch.autoFs(); Touch.hideTip(); UI.show('online'); this.renderRoom(); this.renderWho(); if (!navigator.webdriver && !this.noServerHere()) this.connect(() => this.askWho()); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },
   join(code) { code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); if (code.length !== 4) { this.setStatus('A ROOM CODE IS 4 LETTERS OR NUMBERS'); return; } this.connect(() => this.send({ t: 'join', code })); },
   /* ---------- the connection ---------- */
   connect(then) {

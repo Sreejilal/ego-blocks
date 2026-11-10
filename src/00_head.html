@@ -693,6 +693,16 @@ body { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 #touch .tb .pips i { width: 9px; height: 5px; background: var(--slate-3); }
 #touch .tb .pips i.on { background: var(--text); }
 #touch .tb.sm .ic { left: 22%; top: 22%; width: 56%; height: 56%; }
+#touch .tb.fsgo { background: var(--gold); animation: fsPulse 1s steps(2) infinite; }
+@keyframes fsPulse { 50% { opacity: .6; } } /* not fullscreen on a phone: a gold FULL button with the small ones at the top */
+#touch .tb.sm.fsgo .ic { left: 28%; top: 13%; width: 44%; height: 44%; }
+#touch .tb.fsgo .lb { bottom: 13%; --lbk: .21; }
+#fs-tip { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(480px, calc(100% - 32px)); max-height: calc(100% - 24px); overflow-y: auto; box-sizing: border-box;
+  padding: 16px 18px; display: grid; gap: 8px; z-index: 61; box-shadow: 0 0 0 3px var(--gold), 6px 6px 0 rgba(0,0,0,.5); }
+#fs-tip .fst-h { margin: 0; font-family: var(--font-display); font-size: 30px; line-height: 1; }
+#fs-tip .fst-t { margin: 0 0 4px; font-size: 15px; line-height: 1.35; }
+#fs-tip .row { display: flex; gap: 8px; flex-wrap: wrap; }
+#btn-fs.nag { background: var(--gold); color: var(--ink); box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); }
 #touch .tb .ic { z-index: 1; }
 #touch .tb .cd { z-index: 2; }
 #touch .tb .lb, #touch .tb .num, #touch .tb .pips { z-index: 3; }

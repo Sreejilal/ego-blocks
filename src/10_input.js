@@ -52,7 +52,13 @@ const Input = {
     });
     document.addEventListener('pointerlockerror', () => this.lockError());
   },
-  lockError() { if (!this.everLocked) this.lockFailed = true; Hud.lockHint && Hud.lockHint(); },
+  lockError() {
+    // only a refusal straight after a click means this page can never lock the mouse. One without a click (an online match
+    // starting by itself) just waits for a click on the pitch, instead of turning the camera with a free cursor all match
+    const ua = navigator.userActivation;
+    if (!this.everLocked && !(ua && !ua.isActive)) this.lockFailed = true;
+    Hud.lockHint && Hud.lockHint();
+  },
   requestLock() {
     if (Touch.on) return; // touch play never needs the mouse locked
     if (!this.canvas || !this.canvas.requestPointerLock) { this.lockFailed = true; return; }
@@ -117,7 +123,7 @@ const CAM_EYE = 1.55; // first person: eye height above the feet
 const Cam = {
   yaw: 0, pitch: -0.13, dist: 7.0, hidden: null, pos: V3(0, 5, -10), pivotY: 1.7, aim: V3(), onTarget: false, fwd: V3(0, 0, 1), snapYaw: null, punchT: 0, punchDur: 1, punchK: 0,
   /** a quick zoom in and back out for the cut-ins */
-  punch(dur) { this.punchT = this.punchDur = dur; },
+  punch(dur, amt = 1) { this.punchT = this.punchDur = dur; this.punchAmt = amt; },
   reset(yaw = 0) { this.yaw = yaw; this.pitch = -0.13; this.pos.set(0, 5, -10); this.pivotY = 1.7; this.snapYaw = null; this.snapPitch = null; this.unhide(); },
   /** a free kick: turn to the goal with the crosshair on its middle (at once, or a quick turn) */
   fkFace(yaw, dist, instant) {
@@ -179,6 +185,7 @@ const Cam = {
     this.pivotY = damp(this.pivotY, p.pos.y + 1.7, 10, realDt);
     let pk = 0;
     if (this.punchT > 0) { this.punchT -= realDt; const u = 1 - Math.max(0, this.punchT) / this.punchDur; pk = u < 0.12 ? u / 0.12 : Math.max(0, 1 - (u - 0.12) / 0.88); }
+    pk *= this.punchAmt == null ? 1 : this.punchAmt;
     if (pk > 0 || this.punchK > 0) { cam.fov = World.baseFov - pk * 10; cam.updateProjectionMatrix(); }
     this.punchK = pk;
     // first person, except for goals and the final whistle (wide shots) and when you are on the grass

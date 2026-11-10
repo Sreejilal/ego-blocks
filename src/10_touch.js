@@ -24,7 +24,7 @@ const Touch = {
     return `<div class="stick idle" id="t-stick"><div class="ring"></div><div class="base"></div><div class="knob"></div><b class="lb">MOVE</b></div>`
       + btn('shoot', 'big', 'SHOOT', '<span class="chg"></span>') + btn('pass', 'pass', 'PASS') + btn('dt', 'dt', 'TACKLE', '<span class="pips"><i></i></span>') + btn('jump', '', 'JUMP')
       + btn('ab0', 'ab', '') + btn('ab1', 'ab', '') + btn('ab2', 'ab', '') + btn('flow', 'flow off', 'FLOW') + btn('item', 'item off', 'ITEM')
-      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tb sm" data-act="cam" aria-label="Switch camera"><i class="ic"></i></div><div class="tb sm" data-act="emote" aria-label="Emotes"><i class="ic"></i></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
+      + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tb sm" data-act="cam" aria-label="Switch camera"><i class="ic"></i></div><div class="tb sm" data-act="emote" aria-label="Emotes"><i class="ic"></i></div><div class="tb sm fsgo" data-act="fs" aria-label="Full screen" hidden><i class="ic"></i><b class="lb">FULL</b></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
   },
   init() {
     const el = document.createElement('div');
@@ -43,6 +43,7 @@ const Touch = {
     icon('chat', iconURL('chat'));
     icon('cam', iconURL('cam'));
     icon('emote', iconURL('smile'));
+    icon('fs', iconURL('full'));
     icon('shoot', iconURL('shot', '#ffffff'));
     icon('pass', iconURL('pass', '#a9c7ff'));
     icon('jump', iconURL('jump'));
@@ -73,6 +74,7 @@ const Touch = {
     document.body.classList.toggle('touch', v);
     if (v) Input.releaseLock();
     this.sync(); this.layout();
+    if (v && UI.cur === 'lobby') this.fsTip();
     if (UI.cur === 'lobby') UI.renderLobby();
     if (Game.state === 'paused') UI.renderPause();
     if (Hud.lockHint) Hud.lockHint();
@@ -126,7 +128,8 @@ const Touch = {
     put('pause', W - Math.max(raw.r, 8) - 30, raw.t + 30, 46);
     // chat (online) and camera sit next to pause; an upright phone has no room beside the score, so they stack under it
     this.b.chat.hidden = Game.state !== 'online' || !Portal.chatAllowed();
-    const tops = this.b.chat.hidden ? ['cam', 'emote'] : ['chat', 'cam', 'emote'], px = W - Math.max(raw.r, 8) - 30;
+    this.b.fs.hidden = !this.fsNag();
+    const tops = (this.b.chat.hidden ? ['cam', 'emote'] : ['chat', 'cam', 'emote']).concat(this.b.fs.hidden ? [] : ['fs']), px = W - Math.max(raw.r, 8) - 30;
     tops.forEach((a, i) => (portrait ? put(a, px, raw.t + 86 + i * 56, 46) : put(a, px - 56 * (i + 1), raw.t + 30, 46)));
     this.R = 58 * s;
     this.ghost.x = sa.l + (portrait ? 80 : 104) * s;
@@ -154,7 +157,7 @@ const Touch = {
     const rec = { kind: 'btn', act, el: btn, x0: x, y0: y, lx: x, ly: y, looking: false };
     this.ptrs.set(id, rec);
     btn.classList.add('down');
-    if (act === 'pause' || act === 'board' || act === 'chat' || act === 'cam' || act === 'emote') return; // these act on release
+    if (act === 'pause' || act === 'board' || act === 'chat' || act === 'cam' || act === 'emote' || act === 'fs') return; // these act on release
     if (act === 'dt') { const m = Game.match, p = m && m.human; act = p && m.ball.owner === p ? 'dodge' : 'tackle'; rec.act = act; }
     this.held.add(act);
     Input.edges.add('T_' + act);
@@ -183,7 +186,7 @@ const Touch = {
       this.placeStick(this.ghost.x, this.ghost.y, this.ghost.x, this.ghost.y, true);
     } else if (r.kind === 'look') {
       this.lookId = null;
-      if (e && !r.moved && performance.now() - r.t0 < 260) {
+      if (e && !r.moved && performance.now() - r.t0 < 260 && !this.nearButton(r.x0, r.y0)) { // a tap just beside a button (FEINT twice for SLOW-MO) never swings the camera
         const now = performance.now();
         if (now - this.lastTap < 380) { this.lastTap = 0; this.faceGoal(); } else this.lastTap = now;
       }
@@ -193,6 +196,7 @@ const Touch = {
       if (r.act === 'chat') { if (e) Net.openChat(); return; }
       if (r.act === 'cam') { if (e) Input.edges.add('T_cam'); return; }
       if (r.act === 'emote') { if (e) UI.toggleEmotes(); return; }
+      if (r.act === 'fs') { if (e) { Save.data.settings.autoFs = true; Save.save(); this.toggleFs(); } return; }
       if (r.act === 'board') { if (e) { this.board = !this.board; this.boardT = 8; } return; }
       this.held.delete(r.act);
       Input.up.add('T_' + r.act);
@@ -230,6 +234,17 @@ const Touch = {
     s.setProperty('--bx', bx.toFixed(1) + 'px'); s.setProperty('--by', by.toFixed(1) + 'px');
     s.setProperty('--kx', kx.toFixed(1) + 'px'); s.setProperty('--ky', ky.toFixed(1) + 'px');
     if (idle) { this.st.classList.add('idle'); this.st.classList.remove('sprint'); }
+  },
+  /** a point just outside one of the buttons: a thumb that missed it by a little */
+  nearButton(x, y) {
+    const pad = 30 * (this.s || 1);
+    for (const k in this.b) {
+      const b = this.b[k];
+      if (!b || b.hidden || !b.offsetParent) continue;
+      const q = b.getBoundingClientRect();
+      if (x > q.left - pad && x < q.right + pad && y > q.top - pad && y < q.bottom + pad) return true;
+    }
+    return false;
   },
   /** double tap on the look side: swing the camera round to face the goal you attack */
   faceGoal(m = Game.match) {
@@ -318,11 +333,55 @@ const Touch = {
   /* ---------- fullscreen (only where the page is allowed to) ---------- */
   fsAvailable() { return !BUILD.portal && !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); }, // portals have their own fullscreen button
   isFs() { return !!(document.fullscreenElement || document.webkitFullscreenElement); },
-  /** phones go fullscreen when a match starts or you open online play (a tap is needed, so it happens then) */
+  /** opened from the home screen as an app: no browser bars already */
+  standalone() { try { return navigator.standalone === true || this.mq('(display-mode: standalone)') || this.mq('(display-mode: fullscreen)'); } catch (e) { return false; } },
+  /** how this device can show only the game: 'done' (fullscreen already, opened from the home screen, or a portal, which has
+      its own button), 'can' (our FULL SCREEN works), 'ios' (iPhone browsers have no fullscreen at all: Add to Home Screen
+      instead) or 'none' (this browser cannot, like the small browser inside a chat app) */
+  fsWay() {
+    if (BUILD.portal || this.isFs() || this.standalone()) return 'done';
+    if (this.fsAvailable()) return 'can';
+    const ua = navigator.userAgent || '';
+    return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? 'ios' : 'none';
+  },
+  /** a phone that could be fullscreen but is not (the browser bars eat the pitch): the gold FULL button shows in matches */
+  fsNag() { return this.on && this.fsWay() === 'can' && Save.data.settings.autoFs !== false; },
+  /** every match and online play goes fullscreen (phones and laptops: no web address or tabs while you play), unless you
+      turned it off. Browsers only allow it straight after a tap or click, so this is called from those */
   autoFs() {
-    if (!this.on || !Save.data.settings.autoFs || !this.fsAvailable() || this.isFs()) return;
+    if (!Save.data.settings.autoFs || !this.fsAvailable() || this.isFs() || (!this.on && navigator.webdriver)) return; // laptops: not in automated tests and the video tools
     this.toggleFs();
   },
+  /** the phone reminder: once per visit on the start screen, when the game is not filling the screen */
+  fsTip() {
+    if (!this.on || this.tipShown || navigator.webdriver) return;
+    const way = this.fsWay();
+    if (way === 'done' || (way === 'can' && Save.data.settings.autoFs === false)) return;
+    this.tipShown = true;
+    this.showTip(way);
+  },
+  showTip(way) {
+    let el = $('fs-tip');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'fs-tip'; el.className = 'panel'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-labelledby', 'fst-h');
+      el.innerHTML = `<span class="label gold">PHONE TIP</span><p class="fst-h" id="fst-h"></p><p class="fst-t" id="fst-t"></p>
+        <div class="row"><button class="btn small blue" id="fst-go" type="button">GO FULL SCREEN</button><button class="btn small" id="fst-no" type="button">NOT NOW</button></div>`;
+      $('app').appendChild(el);
+      $('fst-go').addEventListener('click', () => { Save.data.settings.autoFs = true; Save.save(); this.toggleFs(); el.hidden = true; });
+      $('fst-no').addEventListener('click', () => { el.hidden = true; });
+    }
+    const T = {
+      can: ['PLAY IN FULL SCREEN', 'The game then fills your whole screen: no web address bar, a bigger pitch and the buttons right under your thumbs. Matches go full screen by themselves too.'],
+      ios: ['FULL SCREEN ON IPHONE', 'iPhone browsers cannot go full screen. Tap the Share button, then Add to Home Screen. Open SCORZ from the new icon and the game fills the whole screen.'],
+      none: ['THIS BROWSER CANNOT GO FULL SCREEN', 'Apps often open links in their own small browser. Open this page in Chrome or Safari instead, then the game can fill the whole screen.'],
+    }[way];
+    $('fst-h').textContent = T[0]; $('fst-t').textContent = T[1];
+    $('fst-go').hidden = way !== 'can';
+    $('fst-no').textContent = way === 'can' ? 'NOT NOW' : 'GOT IT';
+    el.hidden = false;
+  },
+  hideTip() { const el = $('fs-tip'); if (el) el.hidden = true; },
   toggleFs() {
     const d = document, el = d.documentElement;
     try {
@@ -336,6 +395,8 @@ const Touch = {
   },
   onFs() {
     setTimeout(() => { World.resize(); this.layout(); }, 150);
+    if (this.isFs()) this.hideTip();
+    if (this.isFs() && !this.on && (Game.state === 'match' || (Game.state === 'online' && !Net.paused)) && !Input.locked) Input.requestLock(); // a laptop going fullscreen as the match starts: keep the mouse locked
     if (UI.cur === 'lobby') UI.renderLobby();
     if (Game.state === 'paused') UI.renderPause();
   },

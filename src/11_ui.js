@@ -598,6 +598,7 @@ const UI = {
     const fsb = $('btn-fs');
     fsb.hidden = !Touch.fsAvailable(); // phones and laptops alike (not on portals: their page has its own button)
     fsb.textContent = Touch.isFs() ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
+    fsb.classList.toggle('nag', Touch.fsNag()); // a phone with the browser bars showing: the button stands out in gold
   },
   /* ---------- HUD ---------- */
   buildHud(m) {
