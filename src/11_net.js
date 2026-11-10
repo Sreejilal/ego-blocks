@@ -41,6 +41,7 @@ for (const k of ['dir', 'oppGoalZ', 'ownGoalZ', 'prog', 'buildHill']) NetMatch.p
 const Net = {
   ws: null, id: null, room: null, nm: null, url: '', status: '', snaps: [], rt: 0, sendT: 0, pend: {}, paused: false, joinCode: null, lastBall: null,
   muted: new Set(), reported: new Set(), log: [], logCode: null, chatOpen: false,
+  who: null, inv: null, invT: null, pendingInvite: null, retryT: null, retryWait: 10000,
   tpl() {
     return `<section id="scr-online" class="screen sub-screen" hidden>
       <div class="sub-wrap">
@@ -76,6 +77,14 @@ const Net = {
           <p class="label chat-guest">SIGN IN ON THE PROFILE SCREEN TO TYPE MESSAGES. QUICK CHAT WORKS FOR EVERYONE.</p>
           <p class="on-status" id="on-chat-note"></p>
         </div>
+        </div>
+        <div class="panel on-box on-who" id="on-whobox">
+          <div class="cp-head"><span class="label">PLAYERS ONLINE <b id="on-who-n"></b></span><button class="btn ghost" id="on-who-refresh" type="button">REFRESH</button></div>
+          <div class="who-list" id="on-who"><p class="label">CONNECTING...</p></div>
+          <div class="who-set">
+            <span class="label">SHOW ME HERE</span><div class="seg" id="on-show"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
+            <span class="label">INVITES FROM</span><div class="seg" id="on-inv"><button type="button" data-v="all">EVERYONE</button><button type="button" data-v="friends">FRIENDS</button><button type="button" data-v="off">NOBODY</button></div>
+          </div>
         </div>
       </div>
     </section>`;
@@ -119,6 +128,94 @@ const Net = {
     $('on-bots').addEventListener('click', (e) => { const b = e.target.closest('[data-b]'); if (b && this.room) { Sfx.click(); this.send({ t: 'settings', mode: this.room.mode, size: this.room.size, bots: b.dataset.b }); } });
     // an invite link opens straight into the room
     try { const q = new URLSearchParams(location.search); this.joinCode = q.get('room'); if (q.get('server')) this.urlOverride = q.get('server'); } catch (e) {}
+    // players online and invites
+    click('on-who-refresh', () => this.askWho());
+    $('on-who').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-invite],[data-add],[data-join]'); if (!b) return;
+      Sfx.click();
+      if (b.dataset.invite) this.invite(b.dataset.invite);
+      else if (b.dataset.join) this.join(b.dataset.join);
+      else if (b.dataset.add) { b.disabled = true; Account.friendAction('add', b.dataset.add).then(() => { this.setStatus(Account.msg); this.askWho(); }); }
+    });
+    $('on-show').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Sfx.click(); d.settings.showOnline = v === '1'; Save.save(); this.renderOnlineSet(); this.hello(); this.askWho(); });
+    $('on-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v) return; Sfx.click(); d.settings.invites = v; Save.save(); this.renderOnlineSet(); this.hello(); });
+    click('ip-join', () => this.acceptInvite());
+    click('ip-no', () => this.declineInvite());
+    this.renderOnlineSet();
+    setInterval(() => { if (UI.cur === 'online' && this.ws && this.ws.readyState === 1) this.askWho(); }, 5000);
+    // stay connected while the game is open, so friends see you online and can invite you (not in automated tests)
+    if (/^https?:$/.test(location.protocol) && !navigator.webdriver) setTimeout(() => this.presence(), 1500);
+  },
+  /** the quiet background connection: you show up in PLAYERS ONLINE and on friends' lists, and invites reach you */
+  presence() {
+    if (this.noServerHere()) return;
+    this.wantPresence = true;
+    this.connect(() => {});
+  },
+  /** what you are doing, for PLAYERS ONLINE: in the menus or in a match against bots (rooms the server knows itself) */
+  where(w) { this.send({ t: 'where', w }); },
+  askWho() { if (this.ws && this.ws.readyState === 1) this.send({ t: 'who' }); else this.renderWho(); },
+  renderOnlineSet() {
+    const st = Save.data.settings;
+    $('on-show').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === st.showOnline));
+    $('on-inv').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === st.invites));
+  },
+  /** the list: friends first. INVITE asks them into your room (it makes one if you have none), ADD asks to be
+      friends (both signed in), JOIN walks into a friend's room */
+  renderWho() {
+    const el = $('on-who'); if (!el) return;
+    const W = this.who, on = this.ws && this.ws.readyState === 1;
+    $('on-who-n').textContent = on && W ? String(W.n) : '';
+    if (!on) { el.innerHTML = `<p class="label">${this.ws ? 'CONNECTING...' : 'NOT CONNECTED. CREATE OR JOIN A ROOM TO GO ONLINE.'}</p>`; return; }
+    if (!W) { el.innerHTML = '<p class="label">LOOKING...</p>'; return; }
+    if (!W.list.length) { el.innerHTML = '<p class="label">NOBODY ELSE IS ONLINE RIGHT NOW. SEND A FRIEND THE INVITE LINK.</p>'; return; }
+    const what = { menu: 'IN THE MENUS', match: 'PLAYING BOTS', room: 'IN A ROOM', playing: 'IN AN ONLINE MATCH' };
+    const canAdd = !!Account.token && !Portal.on;
+    el.innerHTML = W.list.map((p) => `<div class="fr-row who-row${p.friend ? ' friend' : ''}"><b>${esc(p.name)}</b>${p.friend ? '<span class="label gold">FRIEND</span>' : ''}<span class="label ${p.st === 'menu' ? 'on' : ''}">${p.mine ? 'IN YOUR ROOM' : what[p.st] || ''}</span>
+      ${p.inv ? `<button class="btn small blue" type="button" data-invite="${esc(p.id)}">INVITE</button>` : ''}${p.friend && p.room && !p.mine ? `<button class="btn small" type="button" data-join="${esc(p.room)}">JOIN</button>` : ''}${canAdd && p.acc && !p.friend ? `<button class="btn small" type="button" data-add="${esc(p.name)}">ADD FRIEND</button>` : ''}</div>`).join('');
+  },
+  invite(id) {
+    if (this.room) { this.send({ t: 'invite', id }); return; }
+    this.pendingInvite = id; // no room yet: make one, then invite
+    this.connect(() => this.send({ t: 'create' }));
+  },
+  /* ---------- an invite for you ---------- */
+  invitePopTpl() {
+    return `<div id="invite-pop" class="panel" hidden role="dialog" aria-labelledby="ip-text">
+      <span class="label">INVITE</span><p class="ip-text" id="ip-text"></p><p class="label" id="ip-sub"></p>
+      <div class="row"><button class="btn small blue" id="ip-join" type="button">JOIN <span class="key">J</span></button><button class="btn small" id="ip-no" type="button">NO THANKS <span class="key">N</span></button></div>
+      <p class="label" id="ip-pad">CONTROLLER: A JOINS, B SAYS NO (IN THE MENUS OR THE PAUSE MENU)</p>
+    </div>`;
+  },
+  gotInvite(m) {
+    if (Save.data.settings.invites === 'off') return;
+    this.inv = m;
+    $('ip-text').textContent = m.from + (m.friend ? ' (FRIEND)' : '') + ' INVITED YOU TO PLAY';
+    const mode = (NET_MODES.find(([k]) => k === m.mode) || [0, 'QUICK'])[1];
+    $('ip-sub').textContent = mode + ' · ' + m.n + (m.n === 1 ? ' PLAYER' : ' PLAYERS') + ' IN THE ROOM';
+    $('invite-pop').hidden = false;
+    Sfx.coin();
+    clearTimeout(this.invT); this.invT = setTimeout(() => this.hideInvite(), 30000); // it goes away by itself
+  },
+  hideInvite() { clearTimeout(this.invT); this.inv = null; const el = $('invite-pop'); if (el) el.hidden = true; },
+  acceptInvite() {
+    const m = this.inv; if (!m) return;
+    this.hideInvite();
+    if (Game.state === 'online') { this.send({ t: 'leave' }); this.room = null; this.paused = false; Game.toLobby(); }
+    else if (Game.match) Game.toLobby(); // your match against bots ends (no rewards)
+    this.open(); this.join(m.code);
+  },
+  declineInvite() { const m = this.inv; if (!m) return; this.send({ t: 'invite-no', id: m.id }); this.hideInvite(); },
+  /** every frame: J joins and N says no on a keyboard; on a controller A and B do, when you are not playing */
+  inviteKeys() {
+    if (!this.inv) return;
+    const E = Input.edges, a = document.activeElement;
+    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
+    const playing = Game.state === 'match' || (Game.state === 'online' && !this.paused);
+    if (E.has('KeyJ')) { E.delete('KeyJ'); this.acceptInvite(); }
+    else if (E.has('KeyN')) { E.delete('KeyN'); this.declineInvite(); }
+    else if (!playing && E.has('PadA')) { E.delete('PadA'); this.acceptInvite(); }
+    else if (!playing && E.has('PadB')) { E.delete('PadB'); this.declineInvite(); }
   },
   /** where the server is: your saved address, the invite link's, or the server that sent you this page */
   serverUrl() {
@@ -143,7 +240,7 @@ const Net = {
   noServerText() { return location.protocol === 'file:' && /localhost/.test(this.url || '') ? 'NO SERVER IS RUNNING. IN THE VS CODE TERMINAL TYPE NPM RUN SERVER, THEN OPEN LOCALHOST:8787' : 'CANNOT REACH THE SCORZ SERVER RIGHT NOW. TRY AGAIN IN A LITTLE WHILE.'; },
   cleanName(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12); },
   setStatus(t) { this.status = t; const el = $('on-status'); if (el) el.textContent = t; },
-  open() { Touch.autoFs(); UI.show('online'); this.renderRoom(); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },
+  open() { Touch.autoFs(); UI.show('online'); this.renderRoom(); this.renderWho(); if (!navigator.webdriver && !this.noServerHere()) this.connect(() => this.askWho()); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },
   join(code) { code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); if (code.length !== 4) { this.setStatus('A ROOM CODE IS 4 LETTERS OR NUMBERS'); return; } this.connect(() => this.send({ t: 'join', code })); },
   /* ---------- the connection ---------- */
   connect(then) {
@@ -163,24 +260,34 @@ const Net = {
     let ws;
     try { ws = new WebSocket(this.url); } catch (e) { this.setStatus('THAT SERVER ADDRESS DOES NOT WORK'); return; }
     this.ws = ws; this.onOpen = then;
-    ws.onopen = () => { this.setStatus('CONNECTED'); this.hello(); const f = this.onOpen; this.onOpen = null; if (f) f(); };
+    ws.onopen = () => { this.setStatus('CONNECTED'); this.retryWait = 10000; this.hello(); this.askWho(); const f = this.onOpen; this.onOpen = null; if (f) f(); };
     ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } this.onMessage(m); };
     ws.onclose = () => {
       const wasPlaying = Game.state === 'online';
       this.awake = false; // it may have gone back to sleep
       this.ws = null; this.room = null; Portal.room(null);
       if (wasPlaying) { Game.toLobby(); UI.show('online'); }
-      this.renderRoom();
+      this.renderRoom(); this.who = null; this.renderWho();
       this.setStatus(wasPlaying ? 'LOST THE CONNECTION TO THE SERVER' : this.noServerText());
+      if (this.wantPresence) { clearTimeout(this.retryT); this.retryT = setTimeout(() => this.connect(() => {}), this.retryWait); this.retryWait = Math.min(300000, this.retryWait * 2); }
     };
   },
   close() { if (this.ws) { this.ws.onclose = null; try { this.ws.close(); } catch (e) {} } this.ws = null; this.room = null; this.renderRoom(); },
   send(m) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(m)); },
-  hello() { const d = Save.data; this.send({ t: 'hello', name: d.name, style: d.style, flow: d.flow, look: d.look, club: d.club, tone: d.tone, rp: d.rp, token: Account.token }); },
+  hello() {
+    const d = Save.data;
+    this.send({ t: 'hello', name: d.name, style: d.style, flow: d.flow, look: d.look, club: d.club, tone: d.tone, rp: d.rp, token: Account.token,
+      hide: !d.settings.showOnline, inv: d.settings.invites, where: Game.match ? 'match' : 'menu' });
+  },
   onMessage(m) {
     switch (m.t) {
       case 'welcome': this.id = m.id; break;
-      case 'room': this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); Portal.room(m); break;
+      case 'room':
+        this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); Portal.room(m);
+        if (this.pendingInvite) { this.send({ t: 'invite', id: this.pendingInvite }); this.pendingInvite = null; }
+        break;
+      case 'who': this.who = m; this.renderWho(); break;
+      case 'invite': this.gotInvite(m); break;
       case 'chat': this.addChat(m); break;
       case 'chat-note': this.note(m.text); Sfx.deny(); break;
       case 'info': this.note(m.text); break; // good news from the server (the room grew), no buzz

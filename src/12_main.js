@@ -44,6 +44,7 @@ const Game = {
     UI.hideOverlays(); UI.show('lobby');
     Showcase.show();
     Sfx.setCrowd(0.2);
+    Net.where('menu');
   },
   startMatch(mode) {
     Touch.autoFs();
@@ -62,6 +63,7 @@ const Game = {
     this.state = 'match';
     UI.show('hud'); UI.buildHud(this.match);
     Sfx.setCrowd(0.55);
+    Net.where('match');
     Input.requestLock();
     Input.consumeEdges();
     Cam.look(0); Cam.follow(1, this.match);
@@ -189,6 +191,7 @@ const Game = {
     Portal.tick();
     Sfx.crowdTick(rdt);
     Input.pollPad();
+    Net.inviteKeys();
     Touch.sync();
     const m = this.match;
     if (m && (this.state === 'match' || this.state === 'paused' || this.state === 'results' || this.state === 'replay')) {

@@ -61,16 +61,16 @@ function findFfmpeg() {
 }
 
 /** open the game at w x h, start the seeded match with the computer playing you, ready at game frame 0 */
-async function openMatch(browser, w, h, seed) {
+async function openMatch(browser, w, h, seed, extra = {}) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.log('  page error: ' + e.message));
   await page.goto(pathToFileURL(PAGE).href);
-  await page.waitForFunction(() => window.EGO && EGO.Game.state === 'lobby', null, { timeout: 60000 });
+  await page.waitForFunction(() => window.EGO && EGO.Game.state === 'lobby', null, { timeout: 180000 });
   await page.evaluate((cfg) => {
     const d = EGO.Save.data;
     d.style = cfg.style; Object.assign(d.look, cfg.look); d.club = cfg.club; d.rp = cfg.rp; d.tutorial = true;
-    Object.assign(d.settings, { quality: 'high', cam: 'third', camPicked: true, cutins: false, autoFs: false, mute: true, shiftLock: false, sky: 'day' });
+    Object.assign(d.settings, { quality: 'high', cam: 'third', camPicked: true, cutins: false, autoFs: false, mute: true, shiftLock: false, sky: 'day' }, cfg.settings);
     EGO.Game.applyQuality();
     // no words on the advertising boards (no promo text in the video, and the easter egg code stays a secret)
     EGO.World.scene.traverse((o) => { if (o.material && o.material.map && o.material.map === EGO.World.T.ads) o.visible = false; });
@@ -89,7 +89,7 @@ async function openMatch(browser, w, h, seed) {
     const m = EGO.Game.match;
     m.autopilot = true; m.caller = null; // the computer plays you, like EGO.simulate
     window.VID = { frame: 0, step(n, draw) { EGO.Game.stepManual(n, draw); this.frame += n; } };
-  }, { ...SETUP, seed });
+  }, { ...SETUP, seed, ...extra });
   await page.addStyleTag({ content: '#replay .rp-offer, #hint { display: none !important; } * { cursor: none !important; }' });
   return { ctx, page };
 }
@@ -183,7 +183,9 @@ async function film(browser, v, plan, ff) {
   return true;
 }
 
-(async () => {
+module.exports = { openMatch, findFfmpeg };
+
+if (require.main === module) (async () => {
   if (!fs.existsSync(PAGE)) { console.error('Run npm run build first.'); process.exit(1); }
   const ff = findFfmpeg();
   if (!ff) { console.error('No ffmpeg found. Run npx playwright install, or set FFMPEG to an ffmpeg.exe.'); process.exit(1); }

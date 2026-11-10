@@ -10,7 +10,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + this.tplEmotes();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -118,6 +118,7 @@ const UI = {
             ${row(key('EMOTE'), 'The smiley button at the top opens the emote wheel')}
             ${row(key('CHAT'), 'Online: the bubble next to pause opens quick chat. Typing needs an account')}
             ${row(key('REPLAY'), 'After a goal, a nutmeg or an ankle breaker, tap REPLAY to watch it again')}
+            ${row(key('JOIN'), 'Someone invited you: tap JOIN to go to their room, or NO THANKS')}
           </div></section>
           <section class="panel"><h3>KEYBOARD + MOUSE</h3><div class="ctrl">
             ${row(key('W') + key('A') + key('S') + key('D'), 'Move')}
@@ -142,9 +143,11 @@ const UI = {
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
             ${row(key('V'), 'Switch camera: third person (behind you) or first person (your eyes)')}
             ${row(key('B'), 'Emote wheel: wave, clap, robot, shush, flex, point up, salute, bow, air drums. Pick with 1 to 9. Not while you have the ball')}
+            ${row(key('J') + key('N'), 'Someone invited you: J joins their room, N says no thanks')}
             ${row(key('L'), 'Shift lock: your player always faces where you look, so A and D step sideways with the ball in front. The camera sits over your shoulder')}
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
+            ${row(key('A') + key('B'), 'Someone invited you: in the menus or the pause menu, A joins their room and B says no thanks')}
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}${row(key('RT') + key('L STICK'), 'Curve shot: push the left stick left or right while you charge')}
             ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Feint')}${row(key('B') + key('B'), 'Slow-mo: tap B twice fast with the ball')}${row(key('X'), 'Slide tackle')}
             ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('D-PAD DOWN'), 'Emote wheel (not in Lawless), then the D-pad chooses and A plays it')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
@@ -167,6 +170,7 @@ const UI = {
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
             <li><b>Play with friends:</b> create a room, send the code or invite link, pick teams and a mode. The host picks BOTS: FILL puts bots in the empty spots, KEEPERS ONLY is just you and your friends with computer keepers, NONE is only you and your friends. Keyboard, controller and phone players can all join the same room.</li>
+            <li><b>Players online:</b> on PLAY WITH FRIENDS you can see who else has the game open. INVITE asks them into your room (it makes one if you have none), ADD FRIEND asks to be friends (you both need an account), JOIN walks into a friend's room. Friends also show on the Profile screen with an INVITE button. Do not want to be seen or invited? Turn SHOW ME HERE off, or set INVITES FROM to FRIENDS or NOBODY.</li>
             <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
             <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>

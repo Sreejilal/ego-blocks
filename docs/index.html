@@ -425,6 +425,17 @@ body.touch #chat-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0
 .fr-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; background: var(--slate-2); padding: 8px 10px; }
 .fr-row b { font-family: var(--font-display); font-weight: 400; font-size: 26px; min-width: 7ch; }
 .fr-row .label.on { color: var(--emerald); }
+.on-who { max-width: 1096px; gap: 8px; }
+.who-list { display: grid; gap: 6px; max-height: 300px; overflow-y: auto; }
+.who-row.friend { box-shadow: inset 4px 0 0 var(--gold); }
+.label.gold { color: var(--gold); }
+.who-set { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+#invite-pop { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); width: min(460px, calc(100% - 32px)); box-sizing: border-box;
+  padding: 14px 16px; display: grid; gap: 6px; z-index: 60; box-shadow: 0 0 0 3px var(--gold), 6px 6px 0 rgba(0,0,0,.5); animation: ipIn .25s steps(4); }
+#invite-pop .ip-text { margin: 0; font-family: var(--font-display); font-size: 28px; line-height: 1; }
+#invite-pop .row { display: flex; gap: 8px; flex-wrap: wrap; }
+body.touch #invite-pop .key, body.touch #ip-pad { display: none; }
+@keyframes ipIn { from { transform: translate(-50%, -30px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 #friend-card .fc { width: min(760px, 100%); max-height: 100%; overflow-y: auto; }
 #friend-card .fc-body { display: grid; gap: 12px; }
 #friend-card h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; }
@@ -925,7 +936,7 @@ const Save = {
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
       spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false,
-      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true, shiftLock: false, sky: 'day' },
+      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all' },
       howto: false,
     };
   },
@@ -978,6 +989,7 @@ const Save = {
     st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false; st.server = typeof st.server === 'string' ? st.server.slice(0, 200) : '';
     st.chat = ['all', 'quick', 'off'].includes(st.chat) ? st.chat : 'all';
     st.sky = st.sky === 'sunset' ? 'sunset' : 'day';
+    st.showOnline = st.showOnline !== false; st.invites = ['all', 'friends', 'off'].includes(st.invites) ? st.invites : 'all';
     st.camPicked = !!st.camPicked; st.cam = !st.camPicked ? 'first' : st.cam === 'third' ? 'third' : 'first'; st.autoFs = st.autoFs !== false; st.shiftLock = !!st.shiftLock; // first person until you pick
     out.account = out.account && typeof out.account === 'object' && typeof out.account.token === 'string' && typeof out.account.user === 'string' ? { user: out.account.user.slice(0, 12), token: out.account.token.slice(0, 128) } : null;
     out.name = String(out.name || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12);
@@ -7580,7 +7592,7 @@ const Account = {
         <p class="pf-note small">Never use your real name or a password you use anywhere else. Friends only ever see your profile card.</p>`;
     }
     const fr = this.friends.map((f) => `<div class="fr-row"><b>${esc(f.user)}</b><span class="label ${f.online ? 'on' : ''}">${f.online ? (f.room ? (f.playing ? 'PLAYING IN ' : 'IN ROOM ') + esc(f.room) : 'ONLINE') : 'OFFLINE'}</span>
-      <button class="btn small" type="button" data-card="${esc(f.user)}">CARD</button>${f.room ? `<button class="btn small blue" type="button" data-join="${esc(f.room)}">JOIN</button>` : ''}<button class="btn ghost" type="button" data-remove="${esc(f.user)}">REMOVE</button></div>`).join('');
+      <button class="btn small" type="button" data-card="${esc(f.user)}">CARD</button>${f.room ? `<button class="btn small blue" type="button" data-join="${esc(f.room)}">JOIN</button>` : ''}${f.online && f.id ? `<button class="btn small" type="button" data-invite="${esc(f.id)}">INVITE</button>` : ''}<button class="btn ghost" type="button" data-remove="${esc(f.user)}">REMOVE</button></div>`).join('');
     const rq = this.requests.map((u) => `<div class="fr-row"><b>${esc(u)}</b><span class="label">WANTS TO BE FRIENDS</span><button class="btn small blue" type="button" data-accept="${esc(u)}">ACCEPT</button><button class="btn ghost" type="button" data-decline="${esc(u)}">NO THANKS</button></div>`).join('');
     return `<h3>ACCOUNT</h3><div class="on-row"><span class="label">SIGNED IN AS</span><b class="ac-name">${esc(this.user)}</b><button class="btn small" id="ac-out" type="button">SIGN OUT</button></div>
       <p class="pf-note">Your progress is saved on the SCORZ server.</p>
@@ -7601,6 +7613,7 @@ const Account = {
     el.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => this.friendAction('remove', b.dataset.remove)));
     el.querySelectorAll('[data-join]').forEach((b) => b.addEventListener('click', () => { Sfx.click(); Net.open(); Net.join(b.dataset.join); }));
     el.querySelectorAll('[data-card]').forEach((b) => b.addEventListener('click', () => this.showCard(b.dataset.card)));
+    el.querySelectorAll('[data-invite]').forEach((b) => b.addEventListener('click', () => { Sfx.click(); Net.open(); Net.invite(b.dataset.invite); }));
   },
   /** a friend's profile card: level, style, skins, rank and their last matches */
   async showCard(user) {
@@ -7882,6 +7895,7 @@ for (const k of ['dir', 'oppGoalZ', 'ownGoalZ', 'prog', 'buildHill']) NetMatch.p
 const Net = {
   ws: null, id: null, room: null, nm: null, url: '', status: '', snaps: [], rt: 0, sendT: 0, pend: {}, paused: false, joinCode: null, lastBall: null,
   muted: new Set(), reported: new Set(), log: [], logCode: null, chatOpen: false,
+  who: null, inv: null, invT: null, pendingInvite: null, retryT: null, retryWait: 10000,
   tpl() {
     return `<section id="scr-online" class="screen sub-screen" hidden>
       <div class="sub-wrap">
@@ -7917,6 +7931,14 @@ const Net = {
           <p class="label chat-guest">SIGN IN ON THE PROFILE SCREEN TO TYPE MESSAGES. QUICK CHAT WORKS FOR EVERYONE.</p>
           <p class="on-status" id="on-chat-note"></p>
         </div>
+        </div>
+        <div class="panel on-box on-who" id="on-whobox">
+          <div class="cp-head"><span class="label">PLAYERS ONLINE <b id="on-who-n"></b></span><button class="btn ghost" id="on-who-refresh" type="button">REFRESH</button></div>
+          <div class="who-list" id="on-who"><p class="label">CONNECTING...</p></div>
+          <div class="who-set">
+            <span class="label">SHOW ME HERE</span><div class="seg" id="on-show"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
+            <span class="label">INVITES FROM</span><div class="seg" id="on-inv"><button type="button" data-v="all">EVERYONE</button><button type="button" data-v="friends">FRIENDS</button><button type="button" data-v="off">NOBODY</button></div>
+          </div>
         </div>
       </div>
     </section>`;
@@ -7960,6 +7982,94 @@ const Net = {
     $('on-bots').addEventListener('click', (e) => { const b = e.target.closest('[data-b]'); if (b && this.room) { Sfx.click(); this.send({ t: 'settings', mode: this.room.mode, size: this.room.size, bots: b.dataset.b }); } });
     // an invite link opens straight into the room
     try { const q = new URLSearchParams(location.search); this.joinCode = q.get('room'); if (q.get('server')) this.urlOverride = q.get('server'); } catch (e) {}
+    // players online and invites
+    click('on-who-refresh', () => this.askWho());
+    $('on-who').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-invite],[data-add],[data-join]'); if (!b) return;
+      Sfx.click();
+      if (b.dataset.invite) this.invite(b.dataset.invite);
+      else if (b.dataset.join) this.join(b.dataset.join);
+      else if (b.dataset.add) { b.disabled = true; Account.friendAction('add', b.dataset.add).then(() => { this.setStatus(Account.msg); this.askWho(); }); }
+    });
+    $('on-show').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Sfx.click(); d.settings.showOnline = v === '1'; Save.save(); this.renderOnlineSet(); this.hello(); this.askWho(); });
+    $('on-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v) return; Sfx.click(); d.settings.invites = v; Save.save(); this.renderOnlineSet(); this.hello(); });
+    click('ip-join', () => this.acceptInvite());
+    click('ip-no', () => this.declineInvite());
+    this.renderOnlineSet();
+    setInterval(() => { if (UI.cur === 'online' && this.ws && this.ws.readyState === 1) this.askWho(); }, 5000);
+    // stay connected while the game is open, so friends see you online and can invite you (not in automated tests)
+    if (/^https?:$/.test(location.protocol) && !navigator.webdriver) setTimeout(() => this.presence(), 1500);
+  },
+  /** the quiet background connection: you show up in PLAYERS ONLINE and on friends' lists, and invites reach you */
+  presence() {
+    if (this.noServerHere()) return;
+    this.wantPresence = true;
+    this.connect(() => {});
+  },
+  /** what you are doing, for PLAYERS ONLINE: in the menus or in a match against bots (rooms the server knows itself) */
+  where(w) { this.send({ t: 'where', w }); },
+  askWho() { if (this.ws && this.ws.readyState === 1) this.send({ t: 'who' }); else this.renderWho(); },
+  renderOnlineSet() {
+    const st = Save.data.settings;
+    $('on-show').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === st.showOnline));
+    $('on-inv').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === st.invites));
+  },
+  /** the list: friends first. INVITE asks them into your room (it makes one if you have none), ADD asks to be
+      friends (both signed in), JOIN walks into a friend's room */
+  renderWho() {
+    const el = $('on-who'); if (!el) return;
+    const W = this.who, on = this.ws && this.ws.readyState === 1;
+    $('on-who-n').textContent = on && W ? String(W.n) : '';
+    if (!on) { el.innerHTML = `<p class="label">${this.ws ? 'CONNECTING...' : 'NOT CONNECTED. CREATE OR JOIN A ROOM TO GO ONLINE.'}</p>`; return; }
+    if (!W) { el.innerHTML = '<p class="label">LOOKING...</p>'; return; }
+    if (!W.list.length) { el.innerHTML = '<p class="label">NOBODY ELSE IS ONLINE RIGHT NOW. SEND A FRIEND THE INVITE LINK.</p>'; return; }
+    const what = { menu: 'IN THE MENUS', match: 'PLAYING BOTS', room: 'IN A ROOM', playing: 'IN AN ONLINE MATCH' };
+    const canAdd = !!Account.token && !Portal.on;
+    el.innerHTML = W.list.map((p) => `<div class="fr-row who-row${p.friend ? ' friend' : ''}"><b>${esc(p.name)}</b>${p.friend ? '<span class="label gold">FRIEND</span>' : ''}<span class="label ${p.st === 'menu' ? 'on' : ''}">${p.mine ? 'IN YOUR ROOM' : what[p.st] || ''}</span>
+      ${p.inv ? `<button class="btn small blue" type="button" data-invite="${esc(p.id)}">INVITE</button>` : ''}${p.friend && p.room && !p.mine ? `<button class="btn small" type="button" data-join="${esc(p.room)}">JOIN</button>` : ''}${canAdd && p.acc && !p.friend ? `<button class="btn small" type="button" data-add="${esc(p.name)}">ADD FRIEND</button>` : ''}</div>`).join('');
+  },
+  invite(id) {
+    if (this.room) { this.send({ t: 'invite', id }); return; }
+    this.pendingInvite = id; // no room yet: make one, then invite
+    this.connect(() => this.send({ t: 'create' }));
+  },
+  /* ---------- an invite for you ---------- */
+  invitePopTpl() {
+    return `<div id="invite-pop" class="panel" hidden role="dialog" aria-labelledby="ip-text">
+      <span class="label">INVITE</span><p class="ip-text" id="ip-text"></p><p class="label" id="ip-sub"></p>
+      <div class="row"><button class="btn small blue" id="ip-join" type="button">JOIN <span class="key">J</span></button><button class="btn small" id="ip-no" type="button">NO THANKS <span class="key">N</span></button></div>
+      <p class="label" id="ip-pad">CONTROLLER: A JOINS, B SAYS NO (IN THE MENUS OR THE PAUSE MENU)</p>
+    </div>`;
+  },
+  gotInvite(m) {
+    if (Save.data.settings.invites === 'off') return;
+    this.inv = m;
+    $('ip-text').textContent = m.from + (m.friend ? ' (FRIEND)' : '') + ' INVITED YOU TO PLAY';
+    const mode = (NET_MODES.find(([k]) => k === m.mode) || [0, 'QUICK'])[1];
+    $('ip-sub').textContent = mode + ' · ' + m.n + (m.n === 1 ? ' PLAYER' : ' PLAYERS') + ' IN THE ROOM';
+    $('invite-pop').hidden = false;
+    Sfx.coin();
+    clearTimeout(this.invT); this.invT = setTimeout(() => this.hideInvite(), 30000); // it goes away by itself
+  },
+  hideInvite() { clearTimeout(this.invT); this.inv = null; const el = $('invite-pop'); if (el) el.hidden = true; },
+  acceptInvite() {
+    const m = this.inv; if (!m) return;
+    this.hideInvite();
+    if (Game.state === 'online') { this.send({ t: 'leave' }); this.room = null; this.paused = false; Game.toLobby(); }
+    else if (Game.match) Game.toLobby(); // your match against bots ends (no rewards)
+    this.open(); this.join(m.code);
+  },
+  declineInvite() { const m = this.inv; if (!m) return; this.send({ t: 'invite-no', id: m.id }); this.hideInvite(); },
+  /** every frame: J joins and N says no on a keyboard; on a controller A and B do, when you are not playing */
+  inviteKeys() {
+    if (!this.inv) return;
+    const E = Input.edges, a = document.activeElement;
+    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
+    const playing = Game.state === 'match' || (Game.state === 'online' && !this.paused);
+    if (E.has('KeyJ')) { E.delete('KeyJ'); this.acceptInvite(); }
+    else if (E.has('KeyN')) { E.delete('KeyN'); this.declineInvite(); }
+    else if (!playing && E.has('PadA')) { E.delete('PadA'); this.acceptInvite(); }
+    else if (!playing && E.has('PadB')) { E.delete('PadB'); this.declineInvite(); }
   },
   /** where the server is: your saved address, the invite link's, or the server that sent you this page */
   serverUrl() {
@@ -7984,7 +8094,7 @@ const Net = {
   noServerText() { return location.protocol === 'file:' && /localhost/.test(this.url || '') ? 'NO SERVER IS RUNNING. IN THE VS CODE TERMINAL TYPE NPM RUN SERVER, THEN OPEN LOCALHOST:8787' : 'CANNOT REACH THE SCORZ SERVER RIGHT NOW. TRY AGAIN IN A LITTLE WHILE.'; },
   cleanName(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12); },
   setStatus(t) { this.status = t; const el = $('on-status'); if (el) el.textContent = t; },
-  open() { Touch.autoFs(); UI.show('online'); this.renderRoom(); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },
+  open() { Touch.autoFs(); UI.show('online'); this.renderRoom(); this.renderWho(); if (!navigator.webdriver && !this.noServerHere()) this.connect(() => this.askWho()); if (this.joinCode) { const c = this.joinCode; this.joinCode = null; $('on-code').value = c; this.join(c); } },
   join(code) { code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); if (code.length !== 4) { this.setStatus('A ROOM CODE IS 4 LETTERS OR NUMBERS'); return; } this.connect(() => this.send({ t: 'join', code })); },
   /* ---------- the connection ---------- */
   connect(then) {
@@ -8004,24 +8114,34 @@ const Net = {
     let ws;
     try { ws = new WebSocket(this.url); } catch (e) { this.setStatus('THAT SERVER ADDRESS DOES NOT WORK'); return; }
     this.ws = ws; this.onOpen = then;
-    ws.onopen = () => { this.setStatus('CONNECTED'); this.hello(); const f = this.onOpen; this.onOpen = null; if (f) f(); };
+    ws.onopen = () => { this.setStatus('CONNECTED'); this.retryWait = 10000; this.hello(); this.askWho(); const f = this.onOpen; this.onOpen = null; if (f) f(); };
     ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } this.onMessage(m); };
     ws.onclose = () => {
       const wasPlaying = Game.state === 'online';
       this.awake = false; // it may have gone back to sleep
       this.ws = null; this.room = null; Portal.room(null);
       if (wasPlaying) { Game.toLobby(); UI.show('online'); }
-      this.renderRoom();
+      this.renderRoom(); this.who = null; this.renderWho();
       this.setStatus(wasPlaying ? 'LOST THE CONNECTION TO THE SERVER' : this.noServerText());
+      if (this.wantPresence) { clearTimeout(this.retryT); this.retryT = setTimeout(() => this.connect(() => {}), this.retryWait); this.retryWait = Math.min(300000, this.retryWait * 2); }
     };
   },
   close() { if (this.ws) { this.ws.onclose = null; try { this.ws.close(); } catch (e) {} } this.ws = null; this.room = null; this.renderRoom(); },
   send(m) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(m)); },
-  hello() { const d = Save.data; this.send({ t: 'hello', name: d.name, style: d.style, flow: d.flow, look: d.look, club: d.club, tone: d.tone, rp: d.rp, token: Account.token }); },
+  hello() {
+    const d = Save.data;
+    this.send({ t: 'hello', name: d.name, style: d.style, flow: d.flow, look: d.look, club: d.club, tone: d.tone, rp: d.rp, token: Account.token,
+      hide: !d.settings.showOnline, inv: d.settings.invites, where: Game.match ? 'match' : 'menu' });
+  },
   onMessage(m) {
     switch (m.t) {
       case 'welcome': this.id = m.id; break;
-      case 'room': this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); Portal.room(m); break;
+      case 'room':
+        this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); Portal.room(m);
+        if (this.pendingInvite) { this.send({ t: 'invite', id: this.pendingInvite }); this.pendingInvite = null; }
+        break;
+      case 'who': this.who = m; this.renderWho(); break;
+      case 'invite': this.gotInvite(m); break;
       case 'chat': this.addChat(m); break;
       case 'chat-note': this.note(m.text); Sfx.deny(); break;
       case 'info': this.note(m.text); break; // good news from the server (the room grew), no buzz
@@ -8850,7 +8970,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + this.tplEmotes();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
@@ -8958,6 +9078,7 @@ const UI = {
             ${row(key('EMOTE'), 'The smiley button at the top opens the emote wheel')}
             ${row(key('CHAT'), 'Online: the bubble next to pause opens quick chat. Typing needs an account')}
             ${row(key('REPLAY'), 'After a goal, a nutmeg or an ankle breaker, tap REPLAY to watch it again')}
+            ${row(key('JOIN'), 'Someone invited you: tap JOIN to go to their room, or NO THANKS')}
           </div></section>
           <section class="panel"><h3>KEYBOARD + MOUSE</h3><div class="ctrl">
             ${row(key('W') + key('A') + key('S') + key('D'), 'Move')}
@@ -8982,9 +9103,11 @@ const UI = {
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
             ${row(key('V'), 'Switch camera: third person (behind you) or first person (your eyes)')}
             ${row(key('B'), 'Emote wheel: wave, clap, robot, shush, flex, point up, salute, bow, air drums. Pick with 1 to 9. Not while you have the ball')}
+            ${row(key('J') + key('N'), 'Someone invited you: J joins their room, N says no thanks')}
             ${row(key('L'), 'Shift lock: your player always faces where you look, so A and D step sideways with the ball in front. The camera sits over your shoulder')}
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
+            ${row(key('A') + key('B'), 'Someone invited you: in the menus or the pause menu, A joins their room and B says no thanks')}
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}${row(key('RT') + key('L STICK'), 'Curve shot: push the left stick left or right while you charge')}
             ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Feint')}${row(key('B') + key('B'), 'Slow-mo: tap B twice fast with the ball')}${row(key('X'), 'Slide tackle')}
             ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('D-PAD DOWN'), 'Emote wheel (not in Lawless), then the D-pad chooses and A plays it')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
@@ -9007,6 +9130,7 @@ const UI = {
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
             <li><b>Play with friends:</b> create a room, send the code or invite link, pick teams and a mode. The host picks BOTS: FILL puts bots in the empty spots, KEEPERS ONLY is just you and your friends with computer keepers, NONE is only you and your friends. Keyboard, controller and phone players can all join the same room.</li>
+            <li><b>Players online:</b> on PLAY WITH FRIENDS you can see who else has the game open. INVITE asks them into your room (it makes one if you have none), ADD FRIEND asks to be friends (you both need an account), JOIN walks into a friend's room. Friends also show on the Profile screen with an INVITE button. Do not want to be seen or invited? Turn SHOW ME HERE off, or set INVITES FROM to FRIENDS or NOBODY.</li>
             <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
             <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
@@ -9935,6 +10059,7 @@ const Game = {
     UI.hideOverlays(); UI.show('lobby');
     Showcase.show();
     Sfx.setCrowd(0.2);
+    Net.where('menu');
   },
   startMatch(mode) {
     Touch.autoFs();
@@ -9953,6 +10078,7 @@ const Game = {
     this.state = 'match';
     UI.show('hud'); UI.buildHud(this.match);
     Sfx.setCrowd(0.55);
+    Net.where('match');
     Input.requestLock();
     Input.consumeEdges();
     Cam.look(0); Cam.follow(1, this.match);
@@ -10080,6 +10206,7 @@ const Game = {
     Portal.tick();
     Sfx.crowdTick(rdt);
     Input.pollPad();
+    Net.inviteKeys();
     Touch.sync();
     const m = this.match;
     if (m && (this.state === 'match' || this.state === 'paused' || this.state === 'results' || this.state === 'replay')) {

@@ -413,6 +413,17 @@ body.touch #chat-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0
 .fr-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; background: var(--slate-2); padding: 8px 10px; }
 .fr-row b { font-family: var(--font-display); font-weight: 400; font-size: 26px; min-width: 7ch; }
 .fr-row .label.on { color: var(--emerald); }
+.on-who { max-width: 1096px; gap: 8px; }
+.who-list { display: grid; gap: 6px; max-height: 300px; overflow-y: auto; }
+.who-row.friend { box-shadow: inset 4px 0 0 var(--gold); }
+.label.gold { color: var(--gold); }
+.who-set { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+#invite-pop { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); width: min(460px, calc(100% - 32px)); box-sizing: border-box;
+  padding: 14px 16px; display: grid; gap: 6px; z-index: 60; box-shadow: 0 0 0 3px var(--gold), 6px 6px 0 rgba(0,0,0,.5); animation: ipIn .25s steps(4); }
+#invite-pop .ip-text { margin: 0; font-family: var(--font-display); font-size: 28px; line-height: 1; }
+#invite-pop .row { display: flex; gap: 8px; flex-wrap: wrap; }
+body.touch #invite-pop .key, body.touch #ip-pad { display: none; }
+@keyframes ipIn { from { transform: translate(-50%, -30px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
 #friend-card .fc { width: min(760px, 100%); max-height: 100%; overflow-y: auto; }
 #friend-card .fc-body { display: grid; gap: 12px; }
 #friend-card h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; }

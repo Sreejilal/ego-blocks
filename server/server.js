@@ -29,6 +29,7 @@ const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const IDLE_WARN = Number(process.env.IDLE_SECONDS) || 30, IDLE_GRACE = Number(process.env.IDLE_GRACE) || 10;
 const rooms = new Map();
 const online = new Map(); // account name -> connection, so friends can see who is on and in which room
+const clients = new Set(); // every open game (also in the menus or an offline match), for PLAYERS ONLINE and invites
 let nextId = 1;
 
 /* ---------- the web page ---------- */
@@ -67,7 +68,7 @@ function api(req, res, route) {
       reply(r.error ? 400 : 200, r); return;
     }
     if (!u) { reply(401, { error: 'SIGN IN AGAIN' }); return; }
-    const friendInfo = (name) => { const f = Accounts.get(name), c = online.get(name); return { user: name, online: !!c, room: c && c.room ? c.room.code : null, playing: !!(c && c.room && c.room.match), card: f ? Accounts.card(f) : null }; };
+    const friendInfo = (name) => { const f = Accounts.get(name), c = online.get(name); return { user: name, online: !!c, id: c ? c.id : null, room: c && c.room ? c.room.code : null, playing: !!(c && c.room && c.room.match), card: f ? Accounts.card(f) : null }; };
     switch (route) {
       case 'me': reply(200, { user: u.user, save: u.save }); return;
       case 'logout': Accounts.logout(u, token); reply(200, { ok: true }); return;
@@ -143,6 +144,44 @@ function idleStep(room, h) {
   h.isHuman = false; h.ctl = null; h.botFor = true; h.wasIdle = true; h.idleT = 0; h.idleWarned = null;
   m.humans = m.humans.filter((x) => x !== h);
   room.events.push({ e: 'bot', to: h.netId });
+}
+
+/* ---------- who is online, and invites ---------- */
+const WHO_MAX = 40, INVITE_GAP = 20000, INVITE_PER_MIN = 6, INVITE_MUTE = 10 * 60000;
+const INVITES_OK = ['all', 'friends', 'off'], WHERE_OK = ['menu', 'match'];
+const byId = (id) => { for (const c of clients) if (c.id === id) return c; return null; };
+/** both signed in, and on each other's friend list */
+function friendsOf(a, b) { if (!a.account || !b.account) return false; const u = Accounts.get(a.account); return !!(u && u.friends.includes(b.account)); }
+const statusOf = (c) => (c.room ? (c.room.match ? 'playing' : 'room') : c.where === 'match' ? 'match' : 'menu');
+const takesInvites = (to, friend) => to.inv === 'all' ? !to.hide || friend : to.inv === 'friends' && friend;
+/** PLAYERS ONLINE: names and what they are doing. A room code only for friends (nobody else can walk in uninvited).
+    Hidden players only show to their friends */
+function whoList(me) {
+  const list = [];
+  for (const c of clients) {
+    if (c === me || !c.hello) continue;
+    const friend = friendsOf(me, c);
+    if (c.hide && !friend) continue;
+    const mine = !!(me.room && c.room === me.room);
+    list.push({ id: c.id, name: c.name, acc: !!c.account, friend, st: statusOf(c), room: friend && c.room ? c.room.code : null, mine, inv: !mine && takesInvites(c, friendsOf(c, me)) });
+  }
+  list.sort((a, b) => (b.friend - a.friend) || (a.mine - b.mine) || a.name.localeCompare(b.name));
+  return { t: 'who', n: list.length, list: list.slice(0, WHO_MAX) };
+}
+/** ask someone into your room: it pops up on their screen with JOIN and NO THANKS. Not too often, and never
+    to someone who turned invites off or said no to you a moment ago */
+function invite(me, m) {
+  const to = byId(m.id), now = Date.now();
+  if (!me.room) { send(me.ws, { t: 'error', text: 'MAKE A ROOM FIRST' }); return; }
+  if (!to || to === me || !to.hello) { send(me.ws, { t: 'error', text: 'THAT PLAYER IS NOT ONLINE ANY MORE' }); return; }
+  if (to.room === me.room) { send(me.ws, { t: 'info', text: to.name + ' IS ALREADY IN YOUR ROOM' }); return; }
+  const friend = friendsOf(to, me);
+  if (!takesInvites(to, friend)) { send(me.ws, { t: 'error', text: to.name + ' IS NOT TAKING INVITES' }); return; }
+  me.invTimes = (me.invTimes || []).filter((t) => now - t < 60000);
+  if (me.invTimes.length >= INVITE_PER_MIN || now - (me.invAt.get(to.id) || 0) < INVITE_GAP) { send(me.ws, { t: 'error', text: 'WAIT A LITTLE BEFORE INVITING AGAIN' }); return; }
+  me.invTimes.push(now); me.invAt.set(to.id, now);
+  if ((to.invMute.get(me.id) || 0) < now) send(to.ws, { t: 'invite', id: me.id, from: me.name, friend, code: me.room.code, mode: me.room.mode, n: me.room.players.length });
+  send(me.ws, { t: 'info', text: 'INVITE SENT TO ' + to.name });
 }
 
 /* ---------- chat ---------- */
@@ -253,7 +292,9 @@ H.flash = H.flowReady = H.lockHint = () => {};
 /* ---------- connections ---------- */
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 });
 wss.on('connection', (ws) => {
-  const me = { id: 'p' + nextId++, ws, name: 'PLAYER', team: 0, style: 'ROOKIE', flow: null, look: {}, club: 'ROVERS', room: null };
+  const me = { id: 'p' + nextId++, ws, name: 'PLAYER', team: 0, style: 'ROOKIE', flow: null, look: {}, club: 'ROVERS', room: null,
+    hello: false, where: 'menu', hide: false, inv: 'all', invAt: new Map(), invMute: new Map() };
+  clients.add(me);
   send(ws, { t: 'welcome', id: me.id });
   ws.on('message', (raw) => {
     let m; try { m = JSON.parse(raw); } catch (e) { return; }
@@ -273,6 +314,8 @@ wss.on('connection', (ws) => {
         me.club = G.CLUBS[m.club] ? m.club : 'ROVERS';
         me.tone = Number.isInteger(m.tone) && m.tone >= 0 && m.tone < 8 ? m.tone : 1;
         me.rp = Math.max(0, Math.min(99999, Math.floor(Number(m.rp) || 0)));
+        me.hello = true; me.hide = !!m.hide; me.inv = INVITES_OK.includes(m.inv) ? m.inv : 'all';
+        if (WHERE_OK.includes(m.where)) me.where = m.where;
         if (room) sync(room);
         break;
       }
@@ -330,9 +373,17 @@ wss.on('connection', (ws) => {
       case 'chat': if (room) chat(me, room, m); break;
       case 'report': if (room) report(me, room, m); break;
       case 'leave': leave(me); send(ws, { t: 'left' }); break;
+      case 'where': if (WHERE_OK.includes(m.w)) me.where = m.w; break;
+      case 'who': send(ws, whoList(me)); break;
+      case 'invite': invite(me, m); break;
+      case 'invite-no': { // no thanks: no more invites from them for a while
+        const from = byId(m.id);
+        if (from) { me.invMute.set(from.id, Date.now() + INVITE_MUTE); send(from.ws, { t: 'info', text: me.name + ' CANNOT PLAY RIGHT NOW' }); }
+        break;
+      }
     }
   });
-  ws.on('close', () => { leave(me); if (me.account && online.get(me.account) === me) online.delete(me.account); });
+  ws.on('close', () => { clients.delete(me); leave(me); if (me.account && online.get(me.account) === me) online.delete(me.account); });
 });
 function join(me, room) {
   const full = (t) => room.players.filter((p) => p.team === t).length >= maxPerTeam(room);

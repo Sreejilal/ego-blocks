@@ -87,7 +87,7 @@ const Account = {
         <p class="pf-note small">Never use your real name or a password you use anywhere else. Friends only ever see your profile card.</p>`;
     }
     const fr = this.friends.map((f) => `<div class="fr-row"><b>${esc(f.user)}</b><span class="label ${f.online ? 'on' : ''}">${f.online ? (f.room ? (f.playing ? 'PLAYING IN ' : 'IN ROOM ') + esc(f.room) : 'ONLINE') : 'OFFLINE'}</span>
-      <button class="btn small" type="button" data-card="${esc(f.user)}">CARD</button>${f.room ? `<button class="btn small blue" type="button" data-join="${esc(f.room)}">JOIN</button>` : ''}<button class="btn ghost" type="button" data-remove="${esc(f.user)}">REMOVE</button></div>`).join('');
+      <button class="btn small" type="button" data-card="${esc(f.user)}">CARD</button>${f.room ? `<button class="btn small blue" type="button" data-join="${esc(f.room)}">JOIN</button>` : ''}${f.online && f.id ? `<button class="btn small" type="button" data-invite="${esc(f.id)}">INVITE</button>` : ''}<button class="btn ghost" type="button" data-remove="${esc(f.user)}">REMOVE</button></div>`).join('');
     const rq = this.requests.map((u) => `<div class="fr-row"><b>${esc(u)}</b><span class="label">WANTS TO BE FRIENDS</span><button class="btn small blue" type="button" data-accept="${esc(u)}">ACCEPT</button><button class="btn ghost" type="button" data-decline="${esc(u)}">NO THANKS</button></div>`).join('');
     return `<h3>ACCOUNT</h3><div class="on-row"><span class="label">SIGNED IN AS</span><b class="ac-name">${esc(this.user)}</b><button class="btn small" id="ac-out" type="button">SIGN OUT</button></div>
       <p class="pf-note">Your progress is saved on the SCORZ server.</p>
@@ -108,6 +108,7 @@ const Account = {
     el.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => this.friendAction('remove', b.dataset.remove)));
     el.querySelectorAll('[data-join]').forEach((b) => b.addEventListener('click', () => { Sfx.click(); Net.open(); Net.join(b.dataset.join); }));
     el.querySelectorAll('[data-card]').forEach((b) => b.addEventListener('click', () => this.showCard(b.dataset.card)));
+    el.querySelectorAll('[data-invite]').forEach((b) => b.addEventListener('click', () => { Sfx.click(); Net.open(); Net.invite(b.dataset.invite); }));
   },
   /** a friend's profile card: level, style, skins, rank and their last matches */
   async showCard(user) {
