@@ -93,6 +93,17 @@ const send = (ws, msg) => { if (ws.readyState === 1) ws.send(JSON.stringify(msg)
 const r2 = (v) => Math.round(v * 100) / 100;
 function newCode() { let c; do { c = ''; for (let i = 0; i < 4; i++) c += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]; } while (rooms.has(c)); return c; }
 function maxPerTeam(room) { return room.size - 1; } // the keeper's spot is never a player's (a computer keeper, or none with bots off)
+const MAX_SIZE = 5, MAX_PLAYERS = 2 * (MAX_SIZE - 1); // 5v5 with computer keepers: 8 friends
+/** the smallest team size that holds everyone in the room, plus one more if `extra` */
+const sizeFor = (room, extra = 0) => Math.max(3, Math.min(MAX_SIZE, Math.ceil((room.players.length + extra) / 2) + 1));
+/** a friend arrives and the room has no spot: it grows (a Duel becomes a normal match) so nobody is turned away */
+function makeRoom(room) {
+  const need = sizeFor(room, 1);
+  if (room.mode === 'duel') { if (room.players.length < 2) return; room.mode = 'quick'; room.size = need; }
+  else if (room.size < need) room.size = need;
+  else return;
+  broadcast(room, { t: 'info', text: 'A FRIEND JOINED: THE ROOM IS NOW ' + room.size + 'V' + room.size });
+}
 const BOTS_OK = ['fill', 'keepers', 'none']; // fill: bots in the empty spots; keepers: only computer keepers; none: only the friends
 function summary(room) {
   return { t: 'room', code: room.code, host: room.host, mode: room.mode, size: room.size, bots: room.bots, state: room.match ? 'match' : 'room',
@@ -273,7 +284,7 @@ wss.on('connection', (ws) => {
       case 'join': {
         const r = rooms.get(clean(m.code, 4));
         if (!r) { send(ws, { t: 'error', text: 'NO ROOM WITH THAT CODE' }); break; }
-        if (r.players.length >= 8) { send(ws, { t: 'error', text: 'THAT ROOM IS FULL' }); break; }
+        if (r.players.length >= MAX_PLAYERS) { send(ws, { t: 'error', text: 'THAT ROOM IS FULL (8 PLAYERS)' }); break; }
         leave(me); join(me, r);
         break;
       }
@@ -284,7 +295,9 @@ wss.on('connection', (ws) => {
         if (room && room.host === me.id && !room.match) {
           if (MODES_OK.includes(m.mode)) room.mode = m.mode;
           if (BOTS_OK.includes(m.bots)) room.bots = m.bots;
-          room.size = room.mode === 'duel' ? 2 : Math.max(3, Math.min(5, Math.round(+m.size) || room.size));
+          if (room.mode === 'duel' && room.players.length > 2) room.mode = 'quick'; // a Duel is only for two
+          // never smaller than what holds everyone in the room
+          room.size = room.mode === 'duel' ? 2 : Math.max(sizeFor(room), Math.min(MAX_SIZE, Math.round(+m.size) || room.size));
           if (room.mode !== 'duel' && room.size < 3) room.size = 3;
           // players who no longer fit sit out the next match
           for (const t of [0, 1]) room.players.filter((p) => p.team === t).slice(maxPerTeam(room)).forEach((p) => { p.team = 1 - t; });
@@ -322,7 +335,8 @@ wss.on('connection', (ws) => {
 });
 function join(me, room) {
   const full = (t) => room.players.filter((p) => p.team === t).length >= maxPerTeam(room);
-  if (full(0) && full(1)) { send(me.ws, { t: 'error', text: 'THAT ROOM IS FULL' }); return; }
+  if (full(0) && full(1)) makeRoom(room);
+  if (full(0) && full(1)) { send(me.ws, { t: 'error', text: 'THAT ROOM IS FULL (8 PLAYERS)' }); return; }
   me.room = room; me.team = pickTeam(room);
   if (full(me.team)) me.team = 1 - me.team;
   room.players.push(me);

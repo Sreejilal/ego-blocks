@@ -7945,6 +7945,7 @@ const Net = {
       case 'room': this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); Portal.room(m); break;
       case 'chat': this.addChat(m); break;
       case 'chat-note': this.note(m.text); Sfx.deny(); break;
+      case 'info': this.note(m.text); break; // good news from the server (the room grew), no buzz
       case 'reported': this.reported.add(m.id); this.mute(m.id, true); this.note('REPORTED. THANKS. THEY ARE MUTED FOR YOU.'); break;
       case 'error': this.setStatus(m.text); $('on-wait').textContent = m.text; Sfx.deny(); break;
       case 'left': this.room = null; this.renderRoom(); Portal.room(null); break;

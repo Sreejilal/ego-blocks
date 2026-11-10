@@ -145,7 +145,8 @@ Without it, PLAY WITH FRIENDS is simply hidden in the CrazyGames copy and everyt
 - **SDK:** yes, the CrazyGames HTML5 SDK v3.
 - **Progress save:** pick "Yes, using the Data Module from the CrazyGames SDK". If you skip this, their
   Data module is off and the game falls back to saving on the device only.
-- **Multiplayer:** yes if you baked in a server. Lobby size: 2 to 8 players per room (the rest are bots).
+- **Multiplayer:** yes if you baked in a server. Lobby size: 2 to 8 players per room (the room grows from 3v3 to
+  5v5 as friends join; bots fill the rest).
 - **Covers:** the three files from `dist/covers/`.
 - **Preview videos:** required, one landscape and one portrait: the two files from `dist/videos/` (their rules:
   15 to 20 seconds, no sound, 1080p, under 50 MB, the cover picture as the first frame).
@@ -207,6 +208,11 @@ the `DATA_DIR` setting. On hosts with a free plan that folder is often wiped whe
 so add a **persistent disk** (Render and Fly.io both have one) and point `DATA_DIR` at it. Back it up now
 and then. Never put that file on GitHub (it is already in `.gitignore`). Accounts only hold a name, a
 hashed password and game progress, no email or real names.
+
+**How many friends.** A room holds up to 8 friends. Each team's keeper is a computer, so 3V3 holds 4
+friends, 4V4 holds 6 and 5V5 holds 8. When a friend joins a full room it grows by itself (a Duel turns into a
+normal match when a third friend comes), so nobody sees "room full" before 8. The host can pick a bigger
+size, but not one too small for everyone in the room. Friends who join during a match play in the next one.
 
 **Chat safety.** Quick chat (PASS!, NICE!, GG and so on) works for everyone. Typing messages needs an
 account. The server hides swear words and removes links, emails, @names and phone numbers before anyone
