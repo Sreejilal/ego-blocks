@@ -19,6 +19,9 @@ const URL = 'file:///' + path.join(__dirname, '..', 'docs', 'index.html').replac
   });
   const A = await mk({ viewport: { width: 1280, height: 720 } });
   check('first person is the default', await A.evaluate(() => EGO.Save.data.settings.cam) === 'first');
+  // laptops get the FULLSCREEN button too (owner: "why is there not a full screen thing for laptop"), on the start screen and in the pause menu
+  const lap = await A.evaluate(() => { EGO.UI.renderLobby(); const b = document.getElementById('btn-fs'); return { lobby: !b.hidden && !!b.offsetParent, text: b.textContent, touch: EGO.Touch.on }; });
+  check('a laptop has a FULLSCREEN button on the start screen', lap.lobby && lap.text === 'FULLSCREEN' && !lap.touch, lap);
   await A.evaluate(() => { const s = EGO.Save.data.settings; s.cam = 'third'; s.camPicked = true; EGO.Game.startMatch('quick'); }); await A.evaluate(() => EGO.Game.stepManual(90, true));
   const v0 = await view(A);
   check('third person: the camera sits behind you and you can see yourself', v0.cam === 'third' && v0.d > 4 && v0.seen, v0);

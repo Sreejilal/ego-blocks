@@ -585,6 +585,10 @@ body.touch .fk-row b { font-size: 20px; }
 .dialog .row .btn { flex: 1 1 160px; }
 .set { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 14px; align-items: center; }
 @media (max-width: 420px) { .seg button { padding: 7px 7px; } .dialog { padding: 18px 16px; } }
+@media (max-height: 780px) and (min-width: 820px) { /* a laptop: the settings side by side, so RESUME is not off the bottom */
+  #scr-pause .dialog { width: min(820px, 100%); }
+  #scr-pause .set { grid-template-columns: max-content max-content max-content max-content; gap: 8px 16px; }
+}
 .seg { display: flex; }
 .seg button { font-family: var(--font-label); font-size: 11px; font-weight: 700; padding: 7px 10px; background: var(--slate-2); border: 2px solid var(--ink); color: var(--muted); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--text); color: var(--ink); }
@@ -9104,6 +9108,7 @@ const UI = {
             ${row(key('V'), 'Switch camera: third person (behind you) or first person (your eyes)')}
             ${row(key('B'), 'Emote wheel: wave, clap, robot, shush, flex, point up, salute, bow, air drums. Pick with 1 to 9. Not while you have the ball')}
             ${row(key('J') + key('N'), 'Someone invited you: J joins their room, N says no thanks')}
+            ${row(key('FULLSCREEN') + key('F11'), 'Fill the whole screen: the FULLSCREEN button at the top of the start screen or in the pause menu, or F11. ESC leaves it (P still pauses)')}
             ${row(key('L'), 'Shift lock: your player always faces where you look, so A and D step sideways with the ball in front. The camera sits over your shoulder')}
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
@@ -9555,7 +9560,7 @@ const UI = {
     $('lob-notice').innerHTML = notes.join(' ');
     $('lob-gift').hidden = Save.data.codes.includes(codeHash(GIFT_CODE)); // gone once you used it
     const fsb = $('btn-fs');
-    fsb.hidden = !(Touch.on && Touch.fsAvailable());
+    fsb.hidden = !Touch.fsAvailable(); // phones and laptops alike (not on portals: their page has its own button)
     fsb.textContent = Touch.isFs() ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
   },
   /* ---------- HUD ---------- */
@@ -9796,7 +9801,7 @@ const UI = {
     $('set-sens').value = s.sens;
     $('set-btn').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', Math.abs(parseFloat(b.dataset.v) - (s.btn || 1)) < 0.01));
     $('set-assist').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.assist !== false)));
-    const fs = Touch.on && Touch.fsAvailable();
+    const fs = Touch.fsAvailable();
     document.querySelectorAll('#scr-pause .fs-only').forEach((el) => { el.hidden = !fs; });
     $('set-fs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === Touch.isFs()));
     $('p-note').textContent = Touch.on ? 'Tip: double tap the right side of the screen to face the goal you attack.' : 'Click the pitch after resuming to lock the mouse again.';

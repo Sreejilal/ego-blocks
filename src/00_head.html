@@ -573,6 +573,10 @@ body.touch .fk-row b { font-size: 20px; }
 .dialog .row .btn { flex: 1 1 160px; }
 .set { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 14px; align-items: center; }
 @media (max-width: 420px) { .seg button { padding: 7px 7px; } .dialog { padding: 18px 16px; } }
+@media (max-height: 780px) and (min-width: 820px) { /* a laptop: the settings side by side, so RESUME is not off the bottom */
+  #scr-pause .dialog { width: min(820px, 100%); }
+  #scr-pause .set { grid-template-columns: max-content max-content max-content max-content; gap: 8px 16px; }
+}
 .seg { display: flex; }
 .seg button { font-family: var(--font-label); font-size: 11px; font-weight: 700; padding: 7px 10px; background: var(--slate-2); border: 2px solid var(--ink); color: var(--muted); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--text); color: var(--ink); }

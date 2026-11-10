@@ -144,6 +144,7 @@ const UI = {
             ${row(key('V'), 'Switch camera: third person (behind you) or first person (your eyes)')}
             ${row(key('B'), 'Emote wheel: wave, clap, robot, shush, flex, point up, salute, bow, air drums. Pick with 1 to 9. Not while you have the ball')}
             ${row(key('J') + key('N'), 'Someone invited you: J joins their room, N says no thanks')}
+            ${row(key('FULLSCREEN') + key('F11'), 'Fill the whole screen: the FULLSCREEN button at the top of the start screen or in the pause menu, or F11. ESC leaves it (P still pauses)')}
             ${row(key('L'), 'Shift lock: your player always faces where you look, so A and D step sideways with the ball in front. The camera sits over your shoulder')}
           </div></section>
           <section class="panel"><h3>CONTROLLER</h3><div class="ctrl">
@@ -595,7 +596,7 @@ const UI = {
     $('lob-notice').innerHTML = notes.join(' ');
     $('lob-gift').hidden = Save.data.codes.includes(codeHash(GIFT_CODE)); // gone once you used it
     const fsb = $('btn-fs');
-    fsb.hidden = !(Touch.on && Touch.fsAvailable());
+    fsb.hidden = !Touch.fsAvailable(); // phones and laptops alike (not on portals: their page has its own button)
     fsb.textContent = Touch.isFs() ? 'EXIT FULLSCREEN' : 'FULLSCREEN';
   },
   /* ---------- HUD ---------- */
@@ -836,7 +837,7 @@ const UI = {
     $('set-sens').value = s.sens;
     $('set-btn').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', Math.abs(parseFloat(b.dataset.v) - (s.btn || 1)) < 0.01));
     $('set-assist').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.assist !== false)));
-    const fs = Touch.on && Touch.fsAvailable();
+    const fs = Touch.fsAvailable();
     document.querySelectorAll('#scr-pause .fs-only').forEach((el) => { el.hidden = !fs; });
     $('set-fs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === Touch.isFs()));
     $('p-note').textContent = Touch.on ? 'Tip: double tap the right side of the screen to face the goal you attack.' : 'Click the pitch after resuming to lock the mouse again.';
