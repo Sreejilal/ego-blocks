@@ -103,11 +103,17 @@ GitHub and itch.io copies stay exactly as they are.
 ```
 npm run build:crazygames
 npm run covers
+npm run videos
 ```
 
 - `dist/crazygames/index.html` is the game for CrazyGames (about 1.1 MB, one file).
 - `dist/covers/` has the three cover pictures they ask for: `cover-landscape-1920x1080.png`,
   `cover-portrait-800x1200.png` and `cover-square-800x800.png` (title only, as their rules say).
+- `dist/videos/` has the two preview videos they ask for: `video-landscape-1920x1080.mp4` and
+  `video-portrait-1080x1620.mp4` (16.5 seconds, silent, they start on the cover, then a real attack and a goal
+  you score). Filming is slow in the test browser, so `npm run videos` stops after 8 minutes: run it again and
+  it carries on until it says the video is saved. MP4 needs ffmpeg (set `FFMPEG` to its path, or have it on
+  PATH); without it you get WebM.
 
 Online play on CrazyGames needs your hosted server (see section 5). Build with its address baked in:
 
@@ -120,8 +126,9 @@ Without it, PLAY WITH FRIENDS is simply hidden in the CrazyGames copy and everyt
 **Step 2: upload**
 
 1. Make a developer account at https://developer.crazygames.com and start a new game submission.
-2. Choose HTML5 as the type. Upload `dist/crazygames/index.html`. If the form asks for a folder or a zip,
-   zip the `dist/crazygames` folder (it only holds `index.html`) and upload that.
+2. Choose HTML5 as the type. Upload `dist/crazygames/index.html` itself. Zips do not work there ("archive
+   files are not supported"). Careful: `ego-blocks-web/index.html` in the outer folder is the very first
+   version (EGO BLOCKS), not this one.
 3. Use their preview to play one match on a computer and one on a phone before you submit.
 
 **Step 3: the form** (what to put in each part)
@@ -140,8 +147,8 @@ Without it, PLAY WITH FRIENDS is simply hidden in the CrazyGames copy and everyt
   Data module is off and the game falls back to saving on the device only.
 - **Multiplayer:** yes if you baked in a server. Lobby size: 2 to 8 players per room (the rest are bots).
 - **Covers:** the three files from `dist/covers/`.
-- **Preview video:** optional. If you add one, it must be 15 to 20 seconds, no sound, 1080p landscape and
-  portrait, and start on your cover picture.
+- **Preview videos:** required, one landscape and one portrait: the two files from `dist/videos/` (their rules:
+  15 to 20 seconds, no sound, 1080p, under 50 MB, the cover picture as the first frame).
 - **Age:** it fits PEGI 12. There is no blood or fighting, just football and slide tackles.
 
 **What happens next**
