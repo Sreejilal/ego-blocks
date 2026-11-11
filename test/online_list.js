@@ -122,10 +122,10 @@ async function browserPart() {
     EGO.Input.edges.add('KeyJ'); EGO.Game.stepManual(1);
     out.joined = joined; out.hiddenAfter = pop.hidden; out.screen = EGO.UI.cur;
     N.ws = { readyState: 1, send() {} };
-    N.onMessage({ t: 'who', n: 3, list: [{ id: 'p2', name: 'BENX', acc: true, friend: true, st: 'room', room: 'QK7Z', mine: false, inv: true }, { id: 'p3', name: 'PLAYER42', acc: false, friend: false, st: 'match', room: null, mine: false, inv: true }, { id: 'p4', name: 'CARL1', acc: true, friend: false, st: 'menu', room: null, mine: false, inv: false }] });
+    N.onMessage({ t: 'who', n: 3, list: [{ id: 'p2', name: 'BENX', acc: true, friend: true, st: 'room', room: 'QK7Z', mine: false, inv: true }, { id: 'p3', name: 'PLAYER42', acc: false, fr: true, friend: false, st: 'match', room: null, mine: false, inv: true }, { id: 'p4', name: 'CARL1', acc: true, fr: true, friend: false, st: 'menu', room: null, mine: false, inv: false }] });
     const rows = [...document.querySelectorAll('#on-who .who-row')].map((r) => [...r.children].map((c) => c.textContent.trim()).join(' '));
     out.rows = rows;
-    EGO.Account.token = 'x'; N.renderWho(); out.addBtns = document.querySelectorAll('#on-who [data-add]').length; EGO.Account.token = null;
+    out.addBtns = document.querySelectorAll('#on-who [data-add]').length; // device friends (Nov 2026): no account needed
     N.ws = null;
     N.onMessage({ t: 'invite', id: 'p9', from: 'CARL1', friend: false, code: 'ABCD', mode: 'koth', n: 1 });
     EGO.Input.edges.add('KeyN'); EGO.Game.stepManual(1);
@@ -137,7 +137,7 @@ async function browserPart() {
   check('J joins their room (and opens PLAY WITH FRIENDS)', r.joined === 'QK7Z' && r.hiddenAfter && r.screen === 'online', { joined: r.joined, hidden: r.hiddenAfter, screen: r.screen });
   check('N says no thanks', r.declined, null);
   check('the list shows friends, what everyone is doing, INVITE and JOIN buttons', r.rows.length === 3 && /BENX FRIEND IN A ROOM INVITE JOIN/.test(r.rows[0]) && /PLAYER42 PLAYING BOTS INVITE/.test(r.rows[1]) && !/INVITE/.test(r.rows[2]), r.rows);
-  check('signed in, ADD FRIEND shows for other signed-in players who are not friends yet', r.addBtns === 1, r.addBtns);
+  check('ADD FRIEND shows for everyone who is not a friend yet (no account needed: friends are kept on the device)', r.addBtns === 2, r.addBtns);
   check('How to Play explains it for keyboard, controller and touch', /Players online/.test(r.howto) && /J joins their room/.test(r.howto) && /A joins their room/.test(r.howto) && /tap JOIN/.test(r.howto), null);
   const errs = logs.filter((l) => /error/i.test(l));
   check('no errors in the console', errs.length === 0, errs.slice(0, 3));

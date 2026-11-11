@@ -11,8 +11,9 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     window.__snd = { osc: 0, noise: 0 };
     const A = window.AudioContext || window.webkitAudioContext, P = A.prototype;
     const o = P.createOscillator, n = P.createBufferSource;
-    P.createOscillator = function () { window.__snd.osc++; return o.call(this); };
-    P.createBufferSource = function () { window.__snd.noise++; return n.call(this); };
+    const thump = () => /Object.juggle/.test(new Error().stack || ''); // the player on the start screen juggling the ball thumps now and then: not a menu sound
+    P.createOscillator = function () { if (!thump()) window.__snd.osc++; return o.call(this); };
+    P.createBufferSource = function () { if (!thump()) window.__snd.noise++; return n.call(this); };
   });
   await page.reload(); await page.waitForTimeout(1500);
   const snap = () => page.evaluate(() => Object.assign({}, window.__snd));

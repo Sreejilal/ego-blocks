@@ -150,8 +150,43 @@ function idleStep(room, h) {
 const WHO_MAX = 40, INVITE_GAP = 20000, INVITE_PER_MIN = 6, INVITE_MUTE = 10 * 60000;
 const INVITES_OK = ['all', 'friends', 'off'], WHERE_OK = ['menu', 'match'];
 const byId = (id) => { for (const c of clients) if (c.id === id) return c; return null; };
-/** both signed in, and on each other's friend list */
-function friendsOf(a, b) { if (!a.account || !b.account) return false; const u = Accounts.get(a.account); return !!(u && u.friends.includes(b.account)); }
+/** friends: both signed in and on each other's account list, or each on the other's FRIENDS list on their own device
+    (`fid` and `fr` from hello: nothing is stored here, so it survives the free server forgetting everything when it restarts) */
+function friendsOf(a, b) {
+  if (a.fid && b.fid && a.fr.has(b.fid) && b.fr.has(a.fid)) return true;
+  if (!a.account || !b.account) return false;
+  const u = Accounts.get(a.account); return !!(u && u.friends.includes(b.account));
+}
+const FID = /^[a-z0-9]{16}$/, FRIENDS_MAX = 60;
+/** the FRIENDS panel: which of your friends are online and what they are doing (device friends by their fid, account friends by name) */
+function friendList(me) {
+  const list = [];
+  for (const c of clients) {
+    if (c === me || !c.hello || !friendsOf(me, c)) continue;
+    const mine = !!(me.room && c.room === me.room);
+    list.push({ id: c.id, f: c.fid && me.fr.has(c.fid) ? c.fid : null, name: c.name, st: statusOf(c), room: c.room ? c.room.code : null, mine, inv: !mine && takesInvites(c, true) });
+  }
+  return { t: 'friends', list };
+}
+/** ADD FRIEND: it pops up on their screen; only a YES swaps the two device ids */
+function friendAsk(me, m) {
+  const to = byId(m.id), now = Date.now();
+  if (!to || to === me || !to.hello || !to.fid || !me.fid) { send(me.ws, { t: 'error', text: 'THAT PLAYER IS NOT ONLINE ANY MORE' }); return; }
+  if (friendsOf(me, to)) { send(me.ws, { t: 'info', text: to.name + ' IS ALREADY YOUR FRIEND' }); return; }
+  me.invTimes = (me.invTimes || []).filter((t) => now - t < 60000);
+  if (me.invTimes.length >= INVITE_PER_MIN || now - (me.frAt.get(to.id) || 0) < INVITE_GAP) { send(me.ws, { t: 'error', text: 'WAIT A LITTLE BEFORE ASKING AGAIN' }); return; }
+  me.invTimes.push(now); me.frAt.set(to.id, now);
+  if ((to.invMute.get(me.id) || 0) < now) { to.frAsk.set(me.id, now); send(to.ws, { t: 'freq', id: me.id, from: me.name }); }
+  send(me.ws, { t: 'info', text: 'FRIEND REQUEST SENT TO ' + to.name });
+}
+function friendAnswer(me, m, yes) {
+  const from = byId(m.id);
+  if (!from || !me.frAsk.has(from.id)) return; // only an answer to a real request
+  me.frAsk.delete(from.id);
+  if (!yes) { me.invMute.set(from.id, Date.now() + INVITE_MUTE); send(from.ws, { t: 'info', text: me.name + ' SAID NO THANKS' }); return; }
+  send(from.ws, { t: 'fadd', f: me.fid, name: me.name });
+  send(me.ws, { t: 'fadd', f: from.fid, name: from.name });
+}
 const statusOf = (c) => (c.room ? (c.room.match ? 'playing' : 'room') : c.where === 'match' ? 'match' : 'menu');
 const takesInvites = (to, friend) => to.inv === 'all' ? !to.hide || friend : to.inv === 'friends' && friend;
 /** PLAYERS ONLINE: names and what they are doing. A room code only for friends (nobody else can walk in uninvited).
@@ -163,7 +198,7 @@ function whoList(me) {
     const friend = friendsOf(me, c);
     if (c.hide && !friend) continue;
     const mine = !!(me.room && c.room === me.room);
-    list.push({ id: c.id, name: c.name, acc: !!c.account, friend, st: statusOf(c), room: friend && c.room ? c.room.code : null, mine, inv: !mine && takesInvites(c, friendsOf(c, me)) });
+    list.push({ id: c.id, name: c.name, acc: !!c.account, fr: !!(c.fid && me.fid), friend, st: statusOf(c), room: friend && c.room ? c.room.code : null, mine, inv: !mine && takesInvites(c, friendsOf(c, me)) });
   }
   list.sort((a, b) => (b.friend - a.friend) || (a.mine - b.mine) || a.name.localeCompare(b.name));
   return { t: 'who', n: list.length, list: list.slice(0, WHO_MAX) };
@@ -227,11 +262,32 @@ function startMatch(room) {
   const home = G.CLUBS[room.hostClub] ? room.hostClub : 'ROVERS', away = G.CLUB_IDS.filter((c) => c !== home)[Math.floor(Math.random() * (G.CLUB_IDS.length - 1))];
   const m = new G.Match(room.mode, 0.5, { humans, size: room.size, bots: room.bots, home, away, length: Number(process.env.MATCH_SECONDS) || undefined, goldenLength: Number(process.env.GOLDEN_SECONDS) || undefined });
   room.match = m; room.events = []; room.steps = 0; room.acc = 0; room.last = Date.now();
+  room.sides = { home: G.TEAM[0].club, away: G.TEAM[1].club, awayKit: G.TEAM[1].away }; // kept: another room's match changes G.TEAM
   for (const h of m.humans) h.ctl = toCtl({}, null);
-  const rpOf = (id) => { const rp = room.players.find((x) => x.id === id); return rp ? rp.rp || 0 : 0; };
-  const roster = m.players.map((p) => ({ team: p.team, role: p.role, number: p.number, name: p.name, style: p.styleId, flow: p.flowId, look: p.lookIds || null, skin: p.skin, id: p.netId || null, rp: p.netId ? rpOf(p.netId) : 0 }));
-  broadcast(room, { t: 'start', mode: room.mode, size: room.size, home: G.TEAM[0].club, away: G.TEAM[1].club, awayKit: G.TEAM[1].away, roster, looks: m.players.map((p) => p.lookIds || null) });
+  broadcast(room, startMsg(room));
   sync(room);
+}
+function rosterOf(room, p) {
+  const rp = p.netId ? room.players.find((x) => x.id === p.netId) : null;
+  return { team: p.team, role: p.role, number: p.number, name: p.name, style: p.styleId, flow: p.flowId, look: p.lookIds || null, skin: p.skin, id: p.netId || null, rp: rp ? rp.rp || 0 : 0 };
+}
+function startMsg(room) {
+  const m = room.match;
+  return Object.assign({ t: 'start', mode: room.mode, size: m.size, roster: m.players.map((p) => rosterOf(room, p)), looks: m.players.map((p) => p.lookIds || null) }, room.sides);
+}
+/** a friend arrives while the match is on: they take a bot's place at once (their own style and look) instead of
+    waiting for the next match. With no bot to take over (bots off, or only friends) they play the next one */
+function joinLive(me, room) {
+  const m = room.match, net = { id: me.id, team: me.team, name: me.name, style: me.style, flow: me.flow, look: me.look, tone: me.tone };
+  let p = m.joinLive(net);
+  const other = 1 - me.team; // no bot left on your team: the other team, if it still has a spot
+  if (!p && room.players.filter((o) => o !== me && o.team === other).length < maxPerTeam(room)) p = m.joinLive(Object.assign(net, { team: other }));
+  if (!p) return false;
+  me.team = p.team; p.ctl = toCtl({}, null);
+  const i = m.players.indexOf(p), r = rosterOf(room, p);
+  for (const o of room.players) if (o !== me) send(o.ws, { t: 'swap', i, r });
+  send(me.ws, Object.assign(startMsg(room), { live: true }));
+  return true;
 }
 function snapshot(room) {
   const m = room.match, b = m.ball, idx = (p) => (p ? m.players.indexOf(p) : -1);
@@ -293,7 +349,7 @@ H.flash = H.flowReady = H.lockHint = () => {};
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 });
 wss.on('connection', (ws) => {
   const me = { id: 'p' + nextId++, ws, name: 'PLAYER', team: 0, style: 'ROOKIE', flow: null, look: {}, club: 'ROVERS', room: null,
-    hello: false, where: 'menu', hide: false, inv: 'all', invAt: new Map(), invMute: new Map() };
+    hello: false, where: 'menu', hide: false, inv: 'all', invAt: new Map(), invMute: new Map(), fid: null, fr: new Set(), frAt: new Map(), frAsk: new Map() };
   clients.add(me);
   send(ws, { t: 'welcome', id: me.id });
   ws.on('message', (raw) => {
@@ -316,6 +372,8 @@ wss.on('connection', (ws) => {
         me.rp = Math.max(0, Math.min(99999, Math.floor(Number(m.rp) || 0)));
         me.hello = true; me.hide = !!m.hide; me.inv = INVITES_OK.includes(m.inv) ? m.inv : 'all';
         if (WHERE_OK.includes(m.where)) me.where = m.where;
+        me.fid = typeof m.fid === 'string' && FID.test(m.fid) ? m.fid : null;
+        me.fr = new Set(Array.isArray(m.fr) ? m.fr.filter((f) => typeof f === 'string' && FID.test(f)).slice(0, FRIENDS_MAX) : []);
         if (room) sync(room);
         break;
       }
@@ -376,6 +434,10 @@ wss.on('connection', (ws) => {
       case 'where': if (WHERE_OK.includes(m.w)) me.where = m.w; break;
       case 'who': send(ws, whoList(me)); break;
       case 'invite': invite(me, m); break;
+      case 'friends': send(ws, friendList(me)); break;
+      case 'freq': friendAsk(me, m); break;
+      case 'freq-yes': friendAnswer(me, m, true); break;
+      case 'freq-no': friendAnswer(me, m, false); break;
       case 'invite-no': { // no thanks: no more invites from them for a while
         const from = byId(m.id);
         if (from) { me.invMute.set(from.id, Date.now() + INVITE_MUTE); send(from.ws, { t: 'info', text: me.name + ' CANNOT PLAY RIGHT NOW' }); }
@@ -392,6 +454,7 @@ function join(me, room) {
   me.room = room; me.team = pickTeam(room);
   if (full(me.team)) me.team = 1 - me.team;
   room.players.push(me);
+  if (room.match) joinLive(me, room);
   sync(room);
 }
 function leave(me) {

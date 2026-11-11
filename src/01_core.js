@@ -94,7 +94,8 @@ const Save = {
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
       spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false,
-      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all' },
+      fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
+      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null },
       howto: false,
     };
   },
@@ -148,6 +149,9 @@ const Save = {
     st.chat = ['all', 'quick', 'off'].includes(st.chat) ? st.chat : 'all';
     st.sky = st.sky === 'sunset' ? 'sunset' : 'day';
     st.showOnline = st.showOnline !== false; st.invites = ['all', 'friends', 'off'].includes(st.invites) ? st.invites : 'all';
+    st.frOpen = typeof st.frOpen === 'boolean' ? st.frOpen : null; // the FRIENDS panel open or hidden (null: open on wide screens)
+    out.fid = typeof out.fid === 'string' && /^[a-z0-9]{16}$/.test(out.fid) ? out.fid : Array.from({ length: 16 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
+    out.friends = Array.isArray(out.friends) ? out.friends.filter((f) => f && typeof f.f === 'string' && /^[a-z0-9]{16}$/.test(f.f) && f.f !== out.fid).map((f) => ({ f: f.f, n: String(f.n || 'FRIEND').toUpperCase().replace(/[^A-Z0-9 ]/g, '').slice(0, 12) || 'FRIEND' })).slice(0, 60) : [];
     st.camPicked = !!st.camPicked; st.cam = !st.camPicked ? 'first' : st.cam === 'third' ? 'third' : 'first'; st.autoFs = st.autoFs !== false; st.shiftLock = !!st.shiftLock; // first person until you pick
     out.account = out.account && typeof out.account === 'object' && typeof out.account.token === 'string' && typeof out.account.user === 'string' ? { user: out.account.user.slice(0, 12), token: out.account.token.slice(0, 128) } : null;
     out.name = String(out.name || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12);
@@ -160,6 +164,7 @@ const Save = {
     this.data = out;
     // copy an old save to the new key; the old one is only removed once the copy is written
     if (migrated) { this.save(); if (this.ok) try { window.localStorage.removeItem(migrated); } catch (e) {} }
+    else if (!(d && d.fid === out.fid)) this.save(); // a new friend id is kept at once (friends know you by it)
   },
   validate() {
     const d = this.data;

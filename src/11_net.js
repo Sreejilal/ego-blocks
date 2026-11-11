@@ -30,6 +30,17 @@ class NetMatch {
     for (const p of this.players) if (p.isHuman && p !== this.human) p.isHuman = false; // only you are "you" on this screen
     if (this.cfg.hill) this.buildHill();
   }
+  /** a friend joined mid-match and took over player i (a bot): build that player again in their style and look */
+  swap(i, r, myId) {
+    const old = this.players[i]; if (!old || !r) return;
+    const p = new Player(this, { team: r.team, role: r.role, human: false, style: STYLES[r.style] ? r.style : 'ROOKIE', flow: r.flow, look: r.look || {}, skin: r.skin, number: r.number, name: r.id === myId ? 'YOU' : r.name });
+    p.netId = r.id; p.rp = r.rp || 0;
+    p.pos.copy(old.pos); p.vel.copy(old.vel); p.yaw = old.yaw;
+    old.dispose();
+    this.players[i] = p;
+    const T = this.teams[old.team], k = T.indexOf(old); if (k >= 0) T[k] = p;
+    if (this.ball.owner === old) this.ball.owner = p;
+  }
   dispose() {
     for (const p of this.players) p.dispose();
     this.ball.dispose();
@@ -118,8 +129,9 @@ const Net = {
     click('cp-close', () => this.closeChat(true));
     $('on-chatset').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v) { Sfx.click(); this.setChatShow(v); } });
     const people = (e) => {
-      const m = e.target.closest('[data-mute]'), r = e.target.closest('[data-report]');
-      if (m) { Sfx.click(); this.toggleMute(m.dataset.mute); }
+      const m = e.target.closest('[data-mute]'), r = e.target.closest('[data-report]'), a = e.target.closest('[data-addf]');
+      if (a) { Sfx.click(); a.disabled = true; a.textContent = 'ASKED'; this.send({ t: 'freq', id: a.dataset.addf }); }
+      else if (m) { Sfx.click(); this.toggleMute(m.dataset.mute); }
       else if (r) { Sfx.click(); if (!r.dataset.armed) { r.dataset.armed = '1'; r.textContent = 'SURE?'; } else this.send({ t: 'report', id: r.dataset.report }); }
     };
     $('on-room').addEventListener('click', people); $('p-people').addEventListener('click', people);
@@ -135,7 +147,7 @@ const Net = {
       Sfx.click();
       if (b.dataset.invite) this.invite(b.dataset.invite);
       else if (b.dataset.join) this.join(b.dataset.join);
-      else if (b.dataset.add) { b.disabled = true; Account.friendAction('add', b.dataset.add).then(() => { this.setStatus(Account.msg); this.askWho(); }); }
+      else if (b.dataset.add) { b.disabled = true; b.textContent = 'ASKED'; this.send({ t: 'freq', id: b.dataset.add }); }
     });
     $('on-show').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Sfx.click(); d.settings.showOnline = v === '1'; Save.save(); this.renderOnlineSet(); this.hello(); this.askWho(); });
     $('on-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v) return; Sfx.click(); d.settings.invites = v; Save.save(); this.renderOnlineSet(); this.hello(); });
@@ -170,9 +182,9 @@ const Net = {
     if (!W) { el.innerHTML = '<p class="label">LOOKING...</p>'; return; }
     if (!W.list.length) { el.innerHTML = '<p class="label">NOBODY ELSE IS ONLINE RIGHT NOW. SEND A FRIEND THE INVITE LINK.</p>'; return; }
     const what = { menu: 'IN THE MENUS', match: 'PLAYING BOTS', room: 'IN A ROOM', playing: 'IN AN ONLINE MATCH' };
-    const canAdd = !!Account.token && !Portal.on;
+    const canAdd = true; // device friends: no account needed
     el.innerHTML = W.list.map((p) => `<div class="fr-row who-row${p.friend ? ' friend' : ''}"><b>${esc(p.name)}</b>${p.friend ? '<span class="label gold">FRIEND</span>' : ''}<span class="label ${p.st === 'menu' ? 'on' : ''}">${p.mine ? 'IN YOUR ROOM' : what[p.st] || ''}</span>
-      ${p.inv ? `<button class="btn small blue" type="button" data-invite="${esc(p.id)}">INVITE</button>` : ''}${p.friend && p.room && !p.mine ? `<button class="btn small" type="button" data-join="${esc(p.room)}">JOIN</button>` : ''}${canAdd && p.acc && !p.friend ? `<button class="btn small" type="button" data-add="${esc(p.name)}">ADD FRIEND</button>` : ''}</div>`).join('');
+      ${p.inv ? `<button class="btn small blue" type="button" data-invite="${esc(p.id)}">INVITE</button>` : ''}${p.friend && p.room && !p.mine ? `<button class="btn small" type="button" data-join="${esc(p.room)}">JOIN</button>` : ''}${canAdd && p.fr && !p.friend ? `<button class="btn small" type="button" data-add="${esc(p.id)}">ADD FRIEND</button>` : ''}</div>`).join('');
   },
   invite(id) {
     if (this.room) { this.send({ t: 'invite', id }); return; }
@@ -182,17 +194,31 @@ const Net = {
   /* ---------- an invite for you ---------- */
   invitePopTpl() {
     return `<div id="invite-pop" class="panel" hidden role="dialog" aria-labelledby="ip-text">
-      <span class="label">INVITE</span><p class="ip-text" id="ip-text"></p><p class="label" id="ip-sub"></p>
+      <span class="label" id="ip-kind">INVITE</span><p class="ip-text" id="ip-text"></p><p class="label" id="ip-sub"></p>
       <div class="row"><button class="btn small blue" id="ip-join" type="button">JOIN <span class="key">J</span></button><button class="btn small" id="ip-no" type="button">NO THANKS <span class="key">N</span></button></div>
       <p class="label" id="ip-pad">CONTROLLER: A JOINS, B SAYS NO (IN THE MENUS OR THE PAUSE MENU)</p>
     </div>`;
   },
   gotInvite(m) {
     if (Save.data.settings.invites === 'off') return;
-    this.inv = m;
-    $('ip-text').textContent = m.from + (m.friend ? ' (FRIEND)' : '') + ' INVITED YOU TO PLAY';
     const mode = (NET_MODES.find(([k]) => k === m.mode) || [0, 'QUICK'])[1];
-    $('ip-sub').textContent = mode + ' · ' + m.n + (m.n === 1 ? ' PLAYER' : ' PLAYERS') + ' IN THE ROOM';
+    this.showPop(Object.assign({ kind: 'invite' }, m), 'INVITE', m.from + (m.friend ? ' (FRIEND)' : '') + ' INVITED YOU TO PLAY',
+      mode + ' · ' + m.n + (m.n === 1 ? ' PLAYER' : ' PLAYERS') + ' IN THE ROOM' + (Game.playing() ? ' · YOU CAN SAY YES MID-MATCH' : ''), 'JOIN', 'NO THANKS');
+  },
+  /** ADD FRIEND from someone online */
+  gotFriendAsk(m) {
+    if (Save.data.settings.invites === 'off') return;
+    this.showPop({ kind: 'friend', id: m.id }, 'FRIEND REQUEST', m.from + ' WANTS TO BE FRIENDS', 'FRIENDS SEE WHEN YOU ARE ONLINE AND CAN INVITE YOU', 'YES', 'NO THANKS');
+  },
+  /** a friend you invited is in your room while you are somewhere else */
+  arrived(name) {
+    const bots = Game.state === 'match' || Game.state === 'paused';
+    this.showPop({ kind: 'arrived' }, 'YOUR ROOM', name + ' IS IN YOUR ROOM', bots ? 'GO NOW? THIS MATCH AGAINST BOTS ENDS (NO REWARDS)' : 'GO TO YOUR ROOM TO PLAY TOGETHER', 'GO', 'LATER');
+  },
+  showPop(inv, kind, text, sub, yes, no) {
+    this.inv = inv;
+    $('ip-kind').textContent = kind; $('ip-text').textContent = text; $('ip-sub').textContent = sub;
+    $('ip-join').innerHTML = yes + ' <span class="key">J</span>'; $('ip-no').innerHTML = no + ' <span class="key">N</span>';
     $('invite-pop').hidden = false;
     Sfx.coin();
     clearTimeout(this.invT); this.invT = setTimeout(() => this.hideInvite(), 30000); // it goes away by itself
@@ -201,11 +227,18 @@ const Net = {
   acceptInvite() {
     const m = this.inv; if (!m) return;
     this.hideInvite();
+    if (m.kind === 'friend') { this.send({ t: 'freq-yes', id: m.id }); return; }
+    if (m.kind === 'arrived') { if (Game.match && Game.state !== 'online') Game.toLobby(); this.open(); return; } // your room is still there
     if (Game.state === 'online') { this.send({ t: 'leave' }); this.room = null; this.paused = false; Game.toLobby(); }
     else if (Game.match) Game.toLobby(); // your match against bots ends (no rewards)
     this.open(); this.join(m.code);
   },
-  declineInvite() { const m = this.inv; if (!m) return; this.send({ t: 'invite-no', id: m.id }); this.hideInvite(); },
+  declineInvite() {
+    const m = this.inv; if (!m) return;
+    if (m.kind === 'friend') this.send({ t: 'freq-no', id: m.id });
+    else if (m.kind !== 'arrived') this.send({ t: 'invite-no', id: m.id });
+    this.hideInvite();
+  },
   /** every frame: J joins and N says no on a keyboard; on a controller A and B do, when you are not playing */
   inviteKeys() {
     if (!this.inv) return;
@@ -277,17 +310,28 @@ const Net = {
   hello() {
     const d = Save.data;
     this.send({ t: 'hello', name: d.name, style: d.style, flow: d.flow, look: d.look, club: d.club, tone: d.tone, rp: d.rp, token: Account.token,
-      hide: !d.settings.showOnline, inv: d.settings.invites, where: Game.match ? 'match' : 'menu' });
+      hide: !d.settings.showOnline, inv: d.settings.invites, where: Game.match ? 'match' : 'menu', fid: d.fid, fr: d.friends.map((f) => f.f) });
   },
   onMessage(m) {
     switch (m.t) {
       case 'welcome': this.id = m.id; break;
-      case 'room':
+      case 'room': {
+        const before = this.room && this.room.code === m.code ? this.room.players.map((p) => p.id) : null;
         this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); Portal.room(m);
         if (this.pendingInvite) { this.send({ t: 'invite', id: this.pendingInvite }); this.pendingInvite = null; }
+        if (Friends.afterRoom) { const f = Friends.afterRoom; Friends.afterRoom = null; f(); }
+        // someone you invited arrived while you were somewhere else (a match against bots, the menus): GO TO ROOM?
+        const fresh = before ? m.players.filter((p) => p.id !== this.id && !before.includes(p.id)) : [];
+        if (fresh.length && UI.cur !== 'online' && Game.state !== 'online') this.arrived(fresh[0].name);
+        Friends.place();
         break;
-      case 'who': this.who = m; this.renderWho(); break;
+      }
+      case 'who': this.who = m; this.renderWho(); Friends.place(); break;
       case 'invite': this.gotInvite(m); break;
+      case 'friends': Friends.got(m); break;
+      case 'freq': this.gotFriendAsk(m); break;
+      case 'fadd': Friends.add(m.f, m.name); break;
+      case 'swap': if (this.nm) this.nm.swap(m.i, m.r, this.id); break;
       case 'chat': this.addChat(m); break;
       case 'chat-note': this.note(m.text); Sfx.deny(); break;
       case 'info': this.note(m.text); break; // good news from the server (the room grew), no buzz
@@ -387,7 +431,7 @@ const Net = {
   },
   /** MUTE / REPORT next to everyone else in the room and in the match menu */
   acts(p) {
-    return `<span class="on-acts"><button class="btn ghost tiny" type="button" data-mute="${esc(p.id)}">${this.muted.has(p.id) ? 'UNMUTE' : 'MUTE'}</button>`
+    return `<span class="on-acts">${Friends.isFriendId(p.id) ? '<span class="label gold">FRIEND</span>' : `<button class="btn ghost tiny" type="button" data-addf="${esc(p.id)}">ADD FRIEND</button>`}<button class="btn ghost tiny" type="button" data-mute="${esc(p.id)}">${this.muted.has(p.id) ? 'UNMUTE' : 'MUTE'}</button>`
       + (this.reported.has(p.id) ? '<span class="label">REPORTED</span>' : `<button class="btn ghost tiny" type="button" data-report="${esc(p.id)}">REPORT</button>`) + '</span>';
   },
   mute(id, on) {
@@ -439,6 +483,7 @@ const Net = {
     Sfx.init(); Sfx.setCrowd(0.55);
     Input.consumeEdges(); Input.requestLock();
     Game.matchReady();
+    if (msg.live) this.note('YOU JUMPED INTO A MATCH THAT WAS ALREADY ON'); // a friend's invite, mid-match
   },
   onSnap(m) {
     const nm = this.nm; if (!nm) return;

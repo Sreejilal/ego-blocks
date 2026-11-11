@@ -91,6 +91,20 @@ class Match {
     // bot skill for each side: your teammates are never hopeless; a test can set both (e.g. Wood vs Obsidian)
     this.teamD = opts.teamD || (this.human ? [Math.max(0.55, this.d), this.d] : [this.d, this.d]);
   }
+  /** online: a friend arriving mid-match takes over a bot on `net.team` (never a keeper). The same player object stays
+      (passes, restarts and marking keep pointing at it); only who controls it, the style, the look and the name change */
+  joinLive(net) {
+    const p = this.teams[net.team].find((q) => !q.isGK && !q.netId && !q.isHuman);
+    if (!p) return null;
+    const tone = Number.isInteger(net.tone) ? net.tone : 1;
+    p.styleId = STYLES[net.style] ? net.style : 'ROOKIE'; p.style = STYLES[p.styleId]; p.flowId = net.flow || null;
+    p.lookIds = net.look || {}; p.skin = SKIN_TONES[tone] || SKIN_TONES[1]; p.look = lookFor(p.styleId, p.lookIds); p.look.skin = p.skin;
+    p.name = net.name; p.abil = p.style.abilities.map((id) => ({ id, def: ABILITIES[id], cd: 0 }));
+    p.speedMul = 1; p.fit = 1; p.flow = 0; p.flowT = 0; p.awake = 0; p.awakeT = 0; p.gamble = null;
+    p.isHuman = true; p.netId = net.id; p.botFor = false; p.ctl = null; p.idleT = 0;
+    this.humans.push(p);
+    return p;
+  }
   dispose() {
     if (this.hill) { this.scene.remove(this.hill.mesh); this.hill.mesh.children.forEach((c) => { c.geometry.dispose(); c.material.dispose(); }); }
     for (const p of this.players) p.dispose();

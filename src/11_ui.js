@@ -565,6 +565,7 @@ const UI = {
     if (name === 'profile') this.renderProfile();
     if (name === 'pass') this.renderPass();
     if (name === 'goals') this.renderGoals();
+    Friends.place(); // the FRIENDS panel on the side: start screen, room screen and pause menu only
   },
   /* ---------- lobby ---------- */
   renderLobby() {
@@ -851,6 +852,7 @@ const UI = {
     if (on && this.emoteOpen) this.toggleEmotes(false);
     if (on) { this.renderPause(); $('scoreboard').hidden = true; Touch.board = false; for (const l of this.labels) { l.t = 0; l.el.hidden = true; } this.youLabel.hidden = true; }
     $('scr-pause').hidden = !on;
+    Friends.place();
   },
   showResults(r) {
     $('r-again').textContent = 'PLAY AGAIN'; $('r-lobby').textContent = 'LOBBY';
