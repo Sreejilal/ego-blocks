@@ -3,7 +3,7 @@
    ===================================================================== */
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const KEYS3 = ['Q', 'E', 'R'];
+const KEYS3 = ['KeyQ', 'KeyE', 'KeyR']; // shown with KeyNames.of: Q E R, or A E R on a French keyboard
 
 const UI = {
   labels: [], toastsN: 0, bannerT: 0, spinning: false, spinKind: 'style', lockerTab: 'style', lockerSel: null, skinSlot: 'hair',
@@ -42,8 +42,8 @@ const UI = {
         <h1 class="title"><span class="t1">SCOR<em class="t2">Z</em></span></h1>
         <p class="tagline">Voxel football, 3v3 up to 5v5. Pick a style, find your Flow, climb from Wood to Obsidian.</p>
         <nav class="menu" aria-label="Main menu">
-          <button class="btn blue" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
-          <button class="btn" id="go-quick" type="button">QUICK MATCH <span class="sub">4V4 &middot; NO RANK CHANGE</span></button>
+          <button class="btn blue play" id="go-quick" type="button">PLAY <span class="sub">QUICK MATCH &middot; 4V4</span></button>
+          <button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
           <button class="btn friends" id="go-online" type="button">PLAY WITH FRIENDS <span class="sub">ONLINE ROOM</span></button>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
           <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub">HILL &middot; VOLLEYS &middot; DUEL</span></button>
@@ -96,7 +96,7 @@ const UI = {
   },
   tplHowto() {
     const row = (k, t) => `<span>${k}</span><span>${t}</span>`;
-    const key = (k) => `<span class="key">${k}</span>`;
+    const key = (k) => `<span class="key">${k}</span>`, kk = (c) => `<span class="key" data-kc="${c}">${KeyNames.of(c)}</span>`; // kk: a letter key that moves on a French keyboard
     return `<section id="scr-howto" class="screen sub-screen" hidden>
       <div class="sub-wrap">
         <div class="sub-head"><h2>HOW TO PLAY</h2><button class="btn small" id="howto-back" type="button">BACK</button></div>
@@ -121,19 +121,19 @@ const UI = {
             ${row(key('JOIN'), 'Someone invited you: tap JOIN to go to their room, or NO THANKS')}
           </div></section>
           <section class="panel"><h3>KEYBOARD + MOUSE</h3><div class="ctrl">
-            ${row(key('W') + key('A') + key('S') + key('D'), 'Move')}
+            ${row(kk('KeyW') + kk('KeyA') + kk('KeyS') + kk('KeyD'), 'Move')}
             ${row(key('MOUSE'), 'Aim the camera. Click the pitch to lock the mouse')}
             ${row(key('SHIFT'), 'Sprint. It uses stamina. Run it empty and you are out of breath (the bar flashes red): no sprint and a slower jog until it is a third full. Stand still to get it back faster')}
             ${row(key('HOLD LMB'), 'Charge a shot, release to shoot where you aim')}
-            ${row(key('LMB') + key('A') + key('D'), 'Curve shot: hold A or D while you charge. The ball swings out and bends back in to where you aim, round the keeper')}
+            ${row(key('LMB') + kk('KeyA') + kk('KeyD'), 'Curve shot: hold A or D while you charge. The ball swings out and bends back in to where you aim, round the keeper')}
             ${row(key('RMB'), 'Pass to the teammate nearest your aim. Hold for a lob. Without the ball it calls for a pass: your teammate looks up, then picks one. Sprint into space for a through ball')}
             ${row(key('SPACE'), 'Jump. With the ball it flicks it over defenders')}
             ${row(key('C'), 'Feint: a step-over cut to the side. Nobody can tackle you through it. Once every 5 seconds')}
             ${row(key('C') + key('C'), 'Slow-mo: with the ball, tap C twice fast. Players near you slow right down and nobody can tackle you for 2.5s, or until you pass or shoot. Once every 20 seconds')}
             ${row(key('F'), 'Slide tackle')}
-            ${row(key('Q') + key('E') + key('R'), 'Style abilities. Big moves get a quick cut-in; turn them off in the pause menu')}
+            ${row(kk('KeyQ') + kk('KeyE') + kk('KeyR'), 'Style abilities. Big moves get a quick cut-in; turn them off in the pause menu')}
             ${row(key('G'), 'Activate Flow when the bar is full')}
-            ${row(key('Z'), 'Awakened, your style\'s signature move (once). Awakening comes by itself at random moments, sooner after big plays')}
+            ${row(kk('KeyZ'), 'Awakened, your style\'s signature move (once). Awakening comes by itself at random moments, sooner after big plays')}
             ${row(key('X'), 'Use item (Lawless)')}
             ${row(key('TAB'), 'Scoreboard')}
             ${row(key('1') + key('2') + key('3') + key('4'), 'Online: quick chat. PASS!, NICE!, GG, ON ME')}
@@ -628,7 +628,7 @@ const UI = {
     const hb = $('hotbar');
     let html = '';
     p.abil.forEach((a, i) => {
-      html += `<div class="slot" id="slot${i}"><img class="px" src="${iconURL(a.def.icon, p.aura)}" alt=""><span class="key k">${KEYS3[i]}</span><div class="cd"></div><div class="num"></div><span class="nm">${esc(a.def.name)}</span></div>`;
+      html += `<div class="slot" id="slot${i}"><img class="px" src="${iconURL(a.def.icon, p.aura)}" alt=""><span class="key k">${KeyNames.of(KEYS3[i])}</span><div class="cd"></div><div class="num"></div><span class="nm">${esc(a.def.name)}</span></div>`;
     });
     html += '<div class="sep"></div>';
     html += `<div class="slot small" id="slot-c"><img class="px" src="${iconURL('dash', '#ffffff')}" alt=""><span class="key k">C</span><div class="cd"></div><div class="pips"><i></i></div><span class="nm">FEINT</span></div>`;
@@ -700,7 +700,7 @@ const UI = {
       $('awake-fill').style.width = apct; $('aws-fill').style.height = apct;
       this.setText('aws-txt', p.awakeT > 0 ? Math.ceil(p.awakeT) + 's' + (!p.awakeMoveUsed && p.style.awaken.move ? ' · Z: ' + p.style.awaken.move.name : '') : ar ? 'READY' : Math.floor(p.awake) + '%');
       $('awakeside').classList.toggle('ready', ar); $('awakeside').classList.toggle('active', p.awakeT > 0);
-      this.setText('awake-txt', p.awakeT > 0 ? (Touch.on ? '' : 'AWAKENED ') + Math.ceil(p.awakeT) + 's' : ar ? (Touch.on ? 'READY' : 'READY [Z]') : Math.floor(p.awake) + '%');
+      this.setText('awake-txt', p.awakeT > 0 ? (Touch.on ? '' : 'AWAKENED ') + Math.ceil(p.awakeT) + 's' : ar ? (Touch.on ? 'READY' : 'READY [' + KeyNames.of('KeyZ') + ']') : Math.floor(p.awake) + '%');
       $('awakebar').classList.toggle('ready', ar); $('awakebar').classList.toggle('active', p.awakeT > 0);
     }
     const stEl = $('stamina'), sv = Math.round(clamp(p.stamina, 0, 100));
@@ -856,6 +856,8 @@ const UI = {
     $('p-note').textContent = Game.state === 'online' ? 'Online matches keep going while this menu is open.' : $('p-note').textContent;
     $('scr-pause').querySelector('h2').textContent = Game.state === 'online' ? 'MENU' : 'PAUSED';
   },
+  /** the keyboard's own letters are known (KeyNames): relabel the keys already drawn */
+  relabelKeys() { document.querySelectorAll('[data-kc]').forEach((el) => { el.textContent = KeyNames.of(el.dataset.kc); }); },
   showPause(on) {
     if (on && Net.chatOpen) Net.closeChat(false);
     if (on && this.emoteOpen) this.toggleEmotes(false);
@@ -1031,7 +1033,7 @@ const UI = {
     const head = (sub, blurb) => `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px">${it.chip ? `<span class="chip" style="justify-self:start">${it.chip}</span>` : it.base ? '<span class="chip" style="justify-self:start">FREE</span>' : `<span class="rar" data-r="${it.rarity}" style="justify-self:start">${it.rarity.toUpperCase()}</span>`}<h3>${esc(it.name)}</h3>${sub ? `<span class="label">${sub}</span>` : ''}${blurb ? `<p style="margin:0;color:var(--muted);max-width:46ch">${esc(blurb)}</p>` : ''}</div></div>`;
     if (tab === 'style') {
       const st = STYLES[id];
-      det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KEYS3[i]}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
+      det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KeyNames.of(KEYS3[i])}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
         + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)}</p></div></div>` : '')
         + (st.awaken && st.awaken.move ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><div><div class="t"><span class="key">Z</span><b>${esc(st.awaken.move.name)}</b><span class="label">AWAKENED · ONCE</span></div><p>${esc(st.awaken.move.desc)}</p></div></div>` : '') + '</div>';
     } else if (tab === 'club') {

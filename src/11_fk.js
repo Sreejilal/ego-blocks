@@ -46,7 +46,7 @@ const FKHud = {
     f.style.width = (ch * 100).toFixed(1) + '%';
     f.className = ch > ideal + FK_TOL ? 'over' : ch >= ideal - FK_TOL ? 'good' : '';
     const pad = Input.usingPad;
-    UI.setText('fk-typekey', pad ? 'LT' : 'RMB'); UI.setText('fk-curvekey', pad ? 'L STICK' : 'A D'); UI.setText('fk-powkey', pad ? 'RT' : 'LMB');
+    UI.setText('fk-typekey', pad ? 'LT' : 'RMB'); UI.setText('fk-curvekey', pad ? 'L STICK' : KeyNames.of('KeyA') + ' ' + KeyNames.of('KeyD')); UI.setText('fk-powkey', pad ? 'RT' : 'LMB');
   },
 };
 

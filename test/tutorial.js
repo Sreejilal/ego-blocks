@@ -89,6 +89,8 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
     const F = await mk({ viewport: { width: 1280, height: 720 } }, () => { Object.defineProperty(Navigator.prototype, 'keyboard', { get: () => ({ getLayoutMap: () => Promise.resolve(new Map([['KeyW', 'z'], ['KeyA', 'q'], ['KeyS', 's'], ['KeyD', 'd'], ['KeyQ', 'a']])) }) }); });
     const k = await F.evaluate(() => { EGO.Game.startMatch('tutorial'); EGO.Game.stepManual(3, true); return [...document.querySelectorAll('#tut-keys .kc')].map((e) => e.textContent).join(''); });
     check('a French (AZERTY) keyboard sees Z Q S D', k === 'ZQSD', k);
+    const fr = await F.evaluate(() => { EGO.Game.toLobby(); const howto = [...document.querySelectorAll('#scr-howto [data-kc]')].slice(0, 4).map((e) => e.textContent).join(''); EGO.Game.startMatch('quick'); EGO.Game.stepManual(2, true); const slot = document.querySelector('#slot0 .key').textContent; EGO.Game.toLobby(); return { howto, slot }; });
+    check('French keyboard: How to Play says Z Q S D and the first power key says A', fr.howto === 'ZQSD' && fr.slot === 'A', fr);
     await F.context().close();
   }
 
