@@ -317,7 +317,7 @@ const UI = {
         </div>
         <div class="flowbar" id="flowbar"><div class="lbl"><span id="flow-name">FLOW</span><b id="flow-txt">0%</b></div><div class="track"><div class="fill" id="flow-fill"></div><div class="ticks"></div></div></div>
         <div class="flowbar awakebar" id="awakebar"><div class="lbl"><span id="awake-name">AWAKENING</span><b id="awake-txt">0%</b></div><div class="track"><div class="fill" id="awake-fill"></div></div></div>
-        <div class="stamina" id="stamina"></div>
+        <div class="stamina" id="stamina"><img class="px" id="st-ico" alt=""><div class="st-track"><div class="st-fill" id="st-fill"></div><div class="ticks"></div></div><b class="st-lbl">STAMINA</b></div>
         <div class="hotbar" id="hotbar"></div>
       </div>
       <div class="itemslot" id="itemslot" hidden><div class="slot"><img class="px" id="item-img" alt=""><span class="key k">X</span><span class="nm" id="item-nm"></span></div></div>
@@ -631,11 +631,7 @@ const UI = {
     this.slotC = { el: $('slot-c'), cd: $('slot-c').querySelector('.cd'), pips: $('slot-c').querySelectorAll('.pips i') };
     this.slotS = { el: $('slot-s'), cd: $('slot-s').querySelector('.cd') };
     this.slotG = { el: $('slot-g') };
-    const st = $('stamina');
-    st.innerHTML = '';
-    this.drums = [];
-    for (let i = 0; i < 10; i++) { const im = document.createElement('img'); im.className = 'px'; im.alt = ''; st.appendChild(im); this.drums.push({ el: im, v: '' }); }
-    this.drumURL = { full: iconURL('drum'), half: iconURL('drum', '#fff', 'half'), empty: iconURL('drum', '#fff', 'empty') };
+    $('st-ico').src = iconURL('bolt', '#ffd23d'); this.stLast = -1;
     $('flowbar').style.setProperty('--aura', p.aura);
     $('flow-name').textContent = p.flowId ? 'FLOW · ' + FLOWS[p.flowId].name : 'FLOW';
     if (p.flowId && FLOWS[p.flowId]) $('flowbar').style.setProperty('--aura', FLOWS[p.flowId].color);
@@ -698,11 +694,10 @@ const UI = {
       this.setText('awake-txt', p.awakeT > 0 ? (Touch.on ? '' : 'AWAKENED ') + Math.ceil(p.awakeT) + 's' : ar ? (Touch.on ? 'READY' : 'READY [Z]') : Math.floor(p.awake) + '%');
       $('awakebar').classList.toggle('ready', ar); $('awakebar').classList.toggle('active', p.awakeT > 0);
     }
-    $('stamina').classList.toggle('tired', !!p.exhausted); // out of breath: the drums flash red
-    for (let i = 0; i < 10; i++) {
-      const v = p.stamina - i * 10, want = v >= 7.5 ? 'full' : v >= 2.5 ? 'half' : 'empty';
-      if (this.drums[i].v !== want) { this.drums[i].v = want; this.drums[i].el.src = this.drumURL[want]; }
-    }
+    const stEl = $('stamina'), sv = Math.round(clamp(p.stamina, 0, 100));
+    stEl.classList.toggle('tired', !!p.exhausted); // out of breath: the bar flashes red
+    stEl.classList.toggle('low', !p.exhausted && sv < 30);
+    if (sv !== this.stLast) { this.stLast = sv; $('st-fill').style.width = sv + '%'; }
     const ch = $('charge');
     if (p.charging || p.passHold > 0.24) {
       ch.hidden = false;

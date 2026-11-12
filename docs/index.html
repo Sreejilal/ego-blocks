@@ -91,7 +91,7 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 /* spins, locker and the pass share one row of three smaller buttons */
 .menu .meta-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .menu .meta-row .btn { display: grid; justify-items: start; gap: 2px; font-size: clamp(20px, 3.4vh, 26px); padding: 6px 10px 9px; }
-.menu .meta-row .btn .sub { font-size: 9px; }
+.menu .meta-row .btn .sub { font-size: 10px; }
 .btn.friends { background: #0e6a7a; box-shadow: inset 0 -6px 0 #074451, inset 0 var(--px) 0 rgba(255,255,255,.22), 4px 4px 0 rgba(0,0,0,.45); }
 .btn.friends .sub { color: #c4f4ff; }
 /* play with friends */
@@ -502,9 +502,16 @@ body.touch #hud .awakeside { display: none; }
 body.touch #hud .awakebar .lbl { font-size: 9px; white-space: nowrap; }
 body.touch #hud .awakebar .track { height: 6px; }
 @keyframes blink { 50% { opacity: .2; } }
-.stamina { display: flex; gap: 2px; }
-.stamina img { width: 22px; height: 22px; }
-.stamina.tired img { animation: tired .5s steps(2) infinite; }
+/* STAMINA: a lightning bolt and a segmented bar under the Flow bar; orange when low, flashing red when out of breath */
+.stamina { width: 420px; max-width: 70vw; display: flex; align-items: center; gap: 6px; }
+.stamina img { width: 20px; height: 20px; flex: none; }
+.stamina .st-track { flex: 1; height: 12px; background: var(--ink); border: 2px solid var(--ink); position: relative; }
+.stamina .st-fill { height: 100%; width: 100%; background: #ffd23d; }
+.stamina .ticks { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 calc(10% - 2px), var(--ink) calc(10% - 2px) 10%); }
+.stamina .st-lbl { font-family: var(--font-label); font-weight: 700; font-size: 11px; letter-spacing: .1em; color: #ffd23d; text-shadow: 2px 2px 0 var(--ink); }
+.stamina.low .st-fill { background: #ff9a3d; } .stamina.low .st-lbl { color: #ff9a3d; }
+.stamina.tired .st-fill { width: 100% !important; background: #ff4d5e; animation: blink .5s steps(2) infinite; }
+.stamina.tired .st-lbl { color: #ff4d5e; } .stamina.tired img { animation: tired .5s steps(2) infinite; }
 @keyframes tired { 50% { filter: sepia(1) saturate(6) hue-rotate(-40deg) brightness(.9); } }
 .hotbar { display: flex; gap: 8px; align-items: flex-end; padding-bottom: 12px; }
 /* the tutorial's instructions, under the scoreboard */
@@ -573,7 +580,7 @@ body.touch .fk-row b { font-size: 20px; }
 .slot .k { position: absolute; left: -3px; top: -3px; }
 .slot .cd { position: absolute; inset: 0; background: conic-gradient(rgba(9,11,22,.82) var(--p, 0deg), transparent 0); }
 .slot .num { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-display); font-size: 30px; text-shadow: 2px 2px 0 var(--ink); }
-.slot .nm { position: absolute; bottom: -15px; left: 50%; transform: translateX(-50%); max-width: 68px; overflow: hidden; text-overflow: clip; white-space: nowrap; font-family: var(--font-label); font-size: 8px; letter-spacing: 0; text-shadow: 1px 1px 0 var(--ink); }
+.slot .nm { position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%); max-width: 84px; overflow: hidden; text-overflow: clip; white-space: nowrap; font-family: var(--font-label); font-size: 10px; letter-spacing: 0; text-shadow: 1px 1px 0 var(--ink); }
 .slot.small { width: 46px; height: 46px; }
 .slot.small img { width: 26px; height: 26px; }
 .slot.ready { box-shadow: inset 0 0 0 3px var(--gold); }
@@ -762,12 +769,12 @@ body { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 .fr-row.on .fr-dot { background: var(--emerald); }
 .fr-who { flex: 1; min-width: 0; display: grid; gap: 2px; }
 .fr-who b { font-family: var(--font-display); font-weight: 400; font-size: 18px; line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.fr-who .label { font-size: 9px; }
+.fr-who .label { font-size: 10px; }
 .fr-btns { display: flex; gap: 4px; flex: none; }
 .fr-btns .btn.tiny { font-size: 15px; padding: 3px 7px 5px; }
 .fr-empty { margin: 4px 0; line-height: 1.5; }
 .fr-foot { display: grid; gap: 4px; border-top: 2px solid var(--slate-3); padding-top: 8px; }
-.fr-foot .label { font-size: 9px; }
+.fr-foot .label { font-size: 10px; }
 @media (min-width: 1000px) and (min-height: 600px) { body.fr-lobby .fr-panel { max-height: calc(100% - 365px); min-height: 300px; } } /* stops above the rank card */
 @media (min-width: 1180px) { body.fr-open #scr-pause { padding-right: 330px; } body.fr-open.fr-online #scr-online { padding-right: 330px; } } /* the pause menu and the room screen move over to make room */
 @media (max-height: 500px) { .fr-panel { top: calc(8px + env(safe-area-inset-top, 0px)); max-height: calc(100% - 16px); padding: 10px; gap: 6px; } .fr-foot .label { display: none; } }
@@ -791,7 +798,7 @@ body.touch #hud .hotbar, body.touch #hud .itemslot, body.touch #hud .hud-em, bod
 body.touch #hud .scorebar { top: calc(8px + env(safe-area-inset-top, 0px)); }
 body.touch #hud .dock { top: calc(64px + env(safe-area-inset-top, 0px)); bottom: auto; gap: 3px; }
 body.touch #hud .flowbar { width: min(230px, 46vw); }
-body.touch #hud .stamina img { width: 15px; height: 15px; }
+body.touch #hud .stamina { width: min(230px, 46vw); } body.touch #hud .stamina img { width: 15px; height: 15px; } body.touch #hud .stamina .st-track { height: 8px; } body.touch #hud .stamina .st-lbl { display: none; }
 body.touch #hud #minimap { display: block; left: max(10px, env(safe-area-inset-left, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); bottom: auto; width: 62px; height: 94px; border-width: 2px; }
 body.touch #hud .toasts { top: calc(118px + env(safe-area-inset-top, 0px)); }
 body.touch #hud .hint { top: auto; left: max(16px, env(safe-area-inset-left, 0px)); bottom: var(--thb, 180px); transform: none; max-width: min(36vw, 320px); font-size: 10px; padding: 5px 8px; text-align: left; }
@@ -861,7 +868,7 @@ body.touch .howto .touchsec { order: -1; }
   .tagline { display: none; }
   .menu { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 560px; gap: 6px; }
   .menu .btn { font-size: 22px; padding: 4px 10px 7px; gap: 8px; }
-  .menu .btn .sub { font-size: 9px; }
+  .menu .btn .sub { font-size: 10px; }
   .menu .btn.ghost { font-size: 18px; padding: 2px 3px; }
   .menu .btn.ghost.daily { padding-right: 13px; }
   .menu .ghosts, .menu .meta-row { grid-column: 1 / -1; }
@@ -872,7 +879,7 @@ body.touch .howto .touchsec { order: -1; }
   .profile { width: 100%; padding: 6px 10px; gap: 2px 10px; }
   .profile .badge { width: 36px; height: 36px; }
   .profile .tier { font-size: 24px; }
-  .profile .label { font-size: 9px; }
+  .profile .label { font-size: 10px; }
   .rpbar { height: 9px; }
   .equip-row { padding-top: 4px; margin-top: 1px; gap: 5px; }
   .equip-row b { font-size: 18px; }
@@ -1708,7 +1715,6 @@ function makeBallGeometry() {
 /* ---------- UI icons (pixel maps rendered to data URLs) ---------- */
 const ICON_MAPS = {
   emerald: ['.....kk.....', '....kLLk....', '...kLlEEk...', '..kLlEEEek..', '.kLlEEEEEek.', 'kLlEEEEEEeek', 'kEEEEEEEEeek', '.kEEEEEEeek.', '..kEEEEeek..', '...kEEeek...', '....keek....', '.....kk.....'],
-  drum: ['.........ww.', '........wwww', '.........ww.', '........kw..', '......kkmk..', '....kkmMMk..', '...kmMMMMk..', '..kmMMMhMk..', '..kMMMhMMk..', '..kMMMMMk...', '...kMMMk....', '....kkk.....'],
   shot: ['............', '............', '.......kkkk.', '......kwwwwk', 'AAAA.kwwkwwk', '.....kwkkkwk', 'AAA..kwwkwwk', '......kwwwwk', 'AAAA...kkkk.', '............', '............', '............'],
   dash: ['............', '............', '.AA...AA....', '..AA...AA...', '...AA...AA..', '....AA...AA.', '....AA...AA.', '...AA...AA..', '..AA...AA...', '.AA...AA....', '............', '............'],
   pass: ['............', '............', '.......A....', '.......AA...', 'AAAAAAAAAA..', 'AAAAAAAAAAA.', 'AAAAAAAAAA..', '.......AA...', '.......A....', '............', '............', '............'],
@@ -1768,7 +1774,6 @@ function iconCanvas(name, aura = '#ffffff', variant = '') {
   let map = ICON_MAPS[name];
   const pal = Object.assign({}, ICON_PAL_BASE, { A: aura });
   if (name === 'emerald') Object.assign(pal, { k: '#0a3d27' });
-  if (name === 'drum') Object.assign(pal, { k: '#2a140a', w: '#f3ead6' });
   if (variant === 'empty' || variant === 'half') {
     map = map.map((row, y) => row.split('').map((ch, x) => {
       if (variant === 'half' && x < 7) return ch;
@@ -9672,7 +9677,7 @@ const UI = {
         </div>
         <div class="flowbar" id="flowbar"><div class="lbl"><span id="flow-name">FLOW</span><b id="flow-txt">0%</b></div><div class="track"><div class="fill" id="flow-fill"></div><div class="ticks"></div></div></div>
         <div class="flowbar awakebar" id="awakebar"><div class="lbl"><span id="awake-name">AWAKENING</span><b id="awake-txt">0%</b></div><div class="track"><div class="fill" id="awake-fill"></div></div></div>
-        <div class="stamina" id="stamina"></div>
+        <div class="stamina" id="stamina"><img class="px" id="st-ico" alt=""><div class="st-track"><div class="st-fill" id="st-fill"></div><div class="ticks"></div></div><b class="st-lbl">STAMINA</b></div>
         <div class="hotbar" id="hotbar"></div>
       </div>
       <div class="itemslot" id="itemslot" hidden><div class="slot"><img class="px" id="item-img" alt=""><span class="key k">X</span><span class="nm" id="item-nm"></span></div></div>
@@ -9986,11 +9991,7 @@ const UI = {
     this.slotC = { el: $('slot-c'), cd: $('slot-c').querySelector('.cd'), pips: $('slot-c').querySelectorAll('.pips i') };
     this.slotS = { el: $('slot-s'), cd: $('slot-s').querySelector('.cd') };
     this.slotG = { el: $('slot-g') };
-    const st = $('stamina');
-    st.innerHTML = '';
-    this.drums = [];
-    for (let i = 0; i < 10; i++) { const im = document.createElement('img'); im.className = 'px'; im.alt = ''; st.appendChild(im); this.drums.push({ el: im, v: '' }); }
-    this.drumURL = { full: iconURL('drum'), half: iconURL('drum', '#fff', 'half'), empty: iconURL('drum', '#fff', 'empty') };
+    $('st-ico').src = iconURL('bolt', '#ffd23d'); this.stLast = -1;
     $('flowbar').style.setProperty('--aura', p.aura);
     $('flow-name').textContent = p.flowId ? 'FLOW · ' + FLOWS[p.flowId].name : 'FLOW';
     if (p.flowId && FLOWS[p.flowId]) $('flowbar').style.setProperty('--aura', FLOWS[p.flowId].color);
@@ -10053,11 +10054,10 @@ const UI = {
       this.setText('awake-txt', p.awakeT > 0 ? (Touch.on ? '' : 'AWAKENED ') + Math.ceil(p.awakeT) + 's' : ar ? (Touch.on ? 'READY' : 'READY [Z]') : Math.floor(p.awake) + '%');
       $('awakebar').classList.toggle('ready', ar); $('awakebar').classList.toggle('active', p.awakeT > 0);
     }
-    $('stamina').classList.toggle('tired', !!p.exhausted); // out of breath: the drums flash red
-    for (let i = 0; i < 10; i++) {
-      const v = p.stamina - i * 10, want = v >= 7.5 ? 'full' : v >= 2.5 ? 'half' : 'empty';
-      if (this.drums[i].v !== want) { this.drums[i].v = want; this.drums[i].el.src = this.drumURL[want]; }
-    }
+    const stEl = $('stamina'), sv = Math.round(clamp(p.stamina, 0, 100));
+    stEl.classList.toggle('tired', !!p.exhausted); // out of breath: the bar flashes red
+    stEl.classList.toggle('low', !p.exhausted && sv < 30);
+    if (sv !== this.stLast) { this.stLast = sv; $('st-fill').style.width = sv + '%'; }
     const ch = $('charge');
     if (p.charging || p.passHold > 0.24) {
       ch.hidden = false;

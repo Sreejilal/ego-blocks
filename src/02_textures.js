@@ -390,7 +390,6 @@ function makeBallGeometry() {
 /* ---------- UI icons (pixel maps rendered to data URLs) ---------- */
 const ICON_MAPS = {
   emerald: ['.....kk.....', '....kLLk....', '...kLlEEk...', '..kLlEEEek..', '.kLlEEEEEek.', 'kLlEEEEEEeek', 'kEEEEEEEEeek', '.kEEEEEEeek.', '..kEEEEeek..', '...kEEeek...', '....keek....', '.....kk.....'],
-  drum: ['.........ww.', '........wwww', '.........ww.', '........kw..', '......kkmk..', '....kkmMMk..', '...kmMMMMk..', '..kmMMMhMk..', '..kMMMhMMk..', '..kMMMMMk...', '...kMMMk....', '....kkk.....'],
   shot: ['............', '............', '.......kkkk.', '......kwwwwk', 'AAAA.kwwkwwk', '.....kwkkkwk', 'AAA..kwwkwwk', '......kwwwwk', 'AAAA...kkkk.', '............', '............', '............'],
   dash: ['............', '............', '.AA...AA....', '..AA...AA...', '...AA...AA..', '....AA...AA.', '....AA...AA.', '...AA...AA..', '..AA...AA...', '.AA...AA....', '............', '............'],
   pass: ['............', '............', '.......A....', '.......AA...', 'AAAAAAAAAA..', 'AAAAAAAAAAA.', 'AAAAAAAAAA..', '.......AA...', '.......A....', '............', '............', '............'],
@@ -450,7 +449,6 @@ function iconCanvas(name, aura = '#ffffff', variant = '') {
   let map = ICON_MAPS[name];
   const pal = Object.assign({}, ICON_PAL_BASE, { A: aura });
   if (name === 'emerald') Object.assign(pal, { k: '#0a3d27' });
-  if (name === 'drum') Object.assign(pal, { k: '#2a140a', w: '#f3ead6' });
   if (variant === 'empty' || variant === 'half') {
     map = map.map((row, y) => row.split('').map((ch, x) => {
       if (variant === 'half' && x < 7) return ch;

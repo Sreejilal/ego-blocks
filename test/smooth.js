@@ -6,7 +6,7 @@
 // 5. PASS let go while knocked over (or during a restart) is not stuck down: no endless LOB bar, the next pass is normal.
 // 6. The game on GitHub Pages plays online on the server built into the page (Render); a page the server sends uses that server.
 // 7. The sky: a bright day by default, SUNSET in the pause menu brings back the evening look; it is saved and bad saves are fixed.
-// 8. Stamina matters: about 6s of sprint, then you are out of breath (no sprint, a slower jog, the drums flash) until it is a third back.
+// 8. Stamina matters: about 6s of sprint, then you are out of breath (no sprint, a slower jog, the stamina bar flashes) until it is a third back.
 const { open } = require('./harness');
 const results = [];
 const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name + (info !== undefined ? '  ' + JSON.stringify(info) : ''));
@@ -170,7 +170,7 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     I.down.delete('KeyW'); I.down.delete('ShiftLeft'); EGO.AI.update = window._aiU; G.forfeit();
     return { sprint: +fast.toFixed(2), empty, tired, back: +back.toFixed(1), again };
   });
-  check('stamina: about 5s of sprint, then out of breath (slower, drums flash) until it comes back, then you sprint again',
+  check('stamina: about 5s of sprint, then out of breath (slower, the bar flashes) until it comes back, then you sprint again',
     stam.empty > 4.2 && stam.empty < 5.8 && stam.tired.speed < stam.sprint * 0.62 && stam.tired.flashing && stam.back > 3 && stam.back < 8 && !stam.again.flashing && stam.again.speed > stam.sprint * 0.9, stam);
 
   check('the sky is a bright day; SUNSET in the pause menu switches to the evening and back; a bad save becomes day',
