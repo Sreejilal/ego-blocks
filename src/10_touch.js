@@ -350,6 +350,7 @@ const Touch = {
       turned it off. Browsers only allow it straight after a tap or click, so this is called from those */
   autoFs() {
     if (!Save.data.settings.autoFs || !this.fsAvailable() || this.isFs() || (!this.on && navigator.webdriver)) return; // laptops: not in automated tests and the video tools
+    const ua = navigator.userActivation; if (ua && !ua.isActive) return; // only right after a click or tap (otherwise the browser refuses and complains)
     this.toggleFs();
   },
   /** the phone reminder: once per visit on the start screen, when the game is not filling the screen */

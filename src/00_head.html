@@ -528,6 +528,20 @@ body.touch #hud .awakebar .track { height: 6px; }
 .tutbox .tut-skip .key { font-size: 9px; }
 body.touch .tutbox .tut-skip .key { display: none; }
 body.touch .kc { min-width: 32px; height: 32px; font-size: 18px; }
+/* first-match tips: one at a time under the score bar, with a picture of the key */
+.tipbox { position: absolute; left: 50%; top: calc(84px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 10px 16px; box-sizing: border-box; max-width: min(560px, calc(100vw - 32px)); z-index: 6; box-shadow: 0 0 0 3px var(--gold), 6px 6px 0 rgba(0,0,0,.45); }
+.tipbox.pop { animation: tutpop .35s ease-out; }
+.tipbox .tut-keys { margin: 0; flex: none; }
+.tip-words { display: grid; gap: 2px; }
+.tipbox b { font-family: var(--font-display); font-weight: 400; font-size: 28px; line-height: 1; color: var(--gold); }
+.tipbox p { margin: 0; font-size: 16px; color: var(--text); }
+body.touch .tipbox { top: calc(108px + env(safe-area-inset-top, 0px)); max-width: min(380px, calc(100vw - 160px)); padding: 6px 10px; } body.touch .tipbox b { font-size: 20px; } body.touch .tipbox p { font-size: 13px; }
+#hud:has(.tipbox:not([hidden])) #hint { display: none; }
+/* while you are new, parts of the HUD wait for their tip */
+body.rk-abil #hotbar #slot0, body.rk-abil #hotbar #slot1, body.rk-abil #hotbar #slot2, body.rk-abil #hotbar .sep { display: none; }
+body.rk-moves #hotbar #slot-c, body.rk-moves #hotbar #slot-s { display: none; }
+body.rk-flow #flowbar, body.rk-flow #hotbar #slot-g { display: none; }
+body.rk-abil #touch [data-act="ab0"], body.rk-abil #touch [data-act="ab1"], body.rk-abil #touch [data-act="ab2"], body.rk-flow #touch [data-act="flow"] { display: none; }
 #touch .tb.tut-glow { background: var(--gold); animation: fsPulse .7s steps(2) infinite; }
 .tut-gate { position: absolute; inset: 0; z-index: 40; display: grid; place-content: center; justify-items: center; gap: 14px; background: rgba(9,11,22,.55); cursor: pointer; text-align: center; pointer-events: auto; }
 .tut-gate[hidden] { display: none; }

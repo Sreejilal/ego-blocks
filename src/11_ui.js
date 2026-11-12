@@ -308,6 +308,7 @@ const UI = {
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
       <canvas id="minimap" width="132" height="200"></canvas>
       <div class="tutbox panel" id="tutbox" hidden><span class="label" id="tut-n"></span><b id="tut-title"></b><div class="tut-keys" id="tut-keys" hidden></div><p id="tut-text"></p><button class="btn ghost tiny tut-skip" id="tut-skip" type="button">SKIP <span class="key">ENTER</span></button></div>
+      <div class="tipbox panel" id="tipbox" hidden><div class="tut-keys" id="tip-keys" hidden></div><div class="tip-words"><b id="tip-title"></b><p id="tip-text"></p></div></div>
       <div class="tut-gate" id="tut-gate" hidden><b class="tg-title">SCOR<em>Z</em></b><span class="tg-go" id="tg-go">CLICK TO PLAY</span><span class="label">A QUICK START: MOVE, PASS, SCORE</span></div>
       <div class="dock">
         <div class="fkpanel panel" id="fkpanel" hidden>
@@ -644,6 +645,7 @@ const UI = {
     this.hudCache = {};
     $('banner').hidden = true; $('toasts').innerHTML = '';
     this.hintT = Save.data.stats.played < 2 ? 9 : 0;
+    Tips.start(m); // new players: the HUD fills in as each part comes up
     if (Touch.on && window.innerHeight > window.innerWidth) this.hintT = Math.max(this.hintT, 6);
     Touch.build(m);
     this.lockHint();
@@ -651,7 +653,7 @@ const UI = {
   setText(id, v) { const c = this.hudCache; if (c[id] !== v) { c[id] = v; $(id).textContent = v; } },
   updateHud(m, dt) {
     const p = m.human; if (!p) return;
-    FKHud.update(m); TutHud.update(m); ShotHud.update(m);
+    FKHud.update(m); TutHud.update(m); ShotHud.update(m); Tips.update(m, dt);
     this.setText('sc0', String(m.score[0])); this.setText('sc1', String(m.score[1]));
     if (m.tut) { this.setText('clock', Math.min(m.tut.step + 1, TUT_STEPS.length) + '/' + TUT_STEPS.length); this.setText('clock-sub', 'TUTORIAL'); }
     else if (m.fk && m.fk.battle) { this.setText('clock', m.fk.bs[0] + '-' + m.fk.bs[1]); this.setText('clock-sub', 'FK BATTLE'); }
@@ -739,7 +741,7 @@ const UI = {
       }
     } else if (Input.lockFailed && !Input.usingPad) txt = 'MOUSE LOCK IS BLOCKED HERE. TURN THE CAMERA WITH THE ARROW KEYS.';
     else if (!Input.locked && !Input.usingPad) txt = 'CLICK THE PITCH TO LOCK THE MOUSE';
-    else if (this.hintT > 0) txt = 'HOLD LMB TO SHOOT · RMB TO PASS · C TO FEINT · F TO SLIDE';
+    else if (this.hintT > 0 && !Tips.active) txt = 'HOLD LMB TO SHOOT · RMB TO PASS · C TO FEINT · F TO SLIDE'; // new players get one tip at a time instead
     h.textContent = txt; h.hidden = !txt;
   },
   drawMinimap(m) {

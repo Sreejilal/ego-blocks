@@ -75,6 +75,81 @@ const ShotHud = {
   },
 };
 
+/** pictures of the controls, shared by the tutorial and the first-match tips */
+const KeyPics = {
+  cap(c, lb) { return `<span class="kc" data-code="${c}">${lb || KeyNames.of(c)}</span>`; },
+  mouse(side) { return `<span class="mouse ${side}"><i></i><i></i></span>`; },
+  pad(b) { return `<span class="kc pad">${b}</span>`; },
+  /** the keys and mouse buttons inside `el` light up while held */
+  light(el) {
+    el.querySelectorAll('.kc[data-code]').forEach((k) => k.classList.toggle('on', Input.down.has(k.dataset.code)));
+    const m = el.querySelector('.mouse'); if (m) m.classList.toggle('on', m.classList.contains('l') ? Input.mouseL : Input.mouseR);
+  },
+  /** on phones, the touch button to press glows */
+  glow(act) {
+    document.querySelectorAll('#touch .tb.tut-glow').forEach((b) => b.classList.remove('tut-glow'));
+    if (act) { const b = document.querySelector('#touch [data-act="' + act + '"]'); if (b) b.classList.add('tut-glow'); }
+  },
+};
+
+/* First-match tips (CrazyGames: "focus on the core, avoid explaining every feature", "make sure the UI is clear"):
+   while you are new, the match screen shows only what you need (move, pass, shoot). Each extra part of the HUD comes
+   in the first time it matters, with one short tip and a picture of the key. Seen tips are kept (Save.data.tips);
+   after ROOKIE_MATCHES matches, or once every tip has been seen, the whole HUD shows. Not online, not in tests. */
+const ROOKIE_MATCHES = 6;
+const TIP_LIST = [
+  { id: 'shoot', title: 'SHOOT', k: () => KeyPics.mouse('l'), pad: 'RT', touch: 'shoot', text: 'HOLD TO POWER UP, LET GO TO SHOOT', tText: 'HOLD SHOOT, LET GO', when: (c) => c.own },
+  { id: 'pass', title: 'PASS', k: () => KeyPics.mouse('r'), pad: 'LT', touch: 'pass', text: 'PASS TO A TEAMMATE. HOLD IT FOR A HIGH BALL', tText: 'TAP PASS. HOLD IT FOR A HIGH BALL', when: (c) => c.own && c.since('shoot') > 6 },
+  { id: 'sprint', title: 'SPRINT', k: () => KeyPics.cap('ShiftLeft', 'SHIFT'), pad: 'LB', touch: null, text: 'HOLD TO RUN FAST. IT USES STAMINA', tText: 'PUSH THE STICK ALL THE WAY TO RUN FAST', when: (c) => c.walkT > 2.5 },
+  { id: 'tackle', title: 'TACKLE', k: () => KeyPics.cap('KeyF'), pad: 'X', touch: 'dt', text: 'GET CLOSE AND SLIDE IN TO WIN THE BALL', tText: 'GET CLOSE AND TAP TACKLE', when: (c) => c.theirs && c.near < 7 },
+  { id: 'feint', title: 'FEINT', k: () => KeyPics.cap('KeyC'), pad: 'B', touch: 'dt', text: 'STEP PAST THEM. TAP IT TWICE FOR SLOW-MO', tText: 'TAP FEINT. TWICE FOR SLOW-MO', reveal: 'moves', when: (c) => c.own && c.near < 4.5 },
+  { id: 'ability', title: 'YOUR POWERS', k: () => KeyPics.cap('KeyQ') + KeyPics.cap('KeyE') + KeyPics.cap('KeyR'), pad: 'D-PAD', touch: 'ab0', text: 'YOUR STYLE HAS 3 POWERS. TRY THEM', tText: 'YOUR STYLE HAS 3 POWERS. TRY THEM', reveal: 'abil', when: (c) => c.playT > 25 },
+  { id: 'flow', title: 'FLOW', k: () => KeyPics.cap('KeyG'), pad: 'Y', touch: 'flow', text: 'BIG PLAYS FILL THE FLOW BAR. WHEN IT IS FULL, PRESS IT', tText: 'BIG PLAYS FILL FLOW. TAP IT WHEN FULL', reveal: 'flow', when: (c) => c.flow >= 40 },
+];
+const Tips = {
+  shownAt: {}, t: 0, gap: 0, playT: 0, walkT: 0, cur: null,
+  seen(id) { return Save.data.tips.includes(id); },
+  /** still new: some parts of the HUD wait for their tip */
+  rookie() { return !navigator.webdriver && Save.data.stats.played < ROOKIE_MATCHES && TIP_LIST.some((t) => !this.seen(t.id)); },
+  /** a fresh match: hide what has not been shown yet */
+  start(m) {
+    this.t = 0; this.gap = 4; this.playT = 0; this.walkT = 0; this.cur = null; this.shownAt = {};
+    this.active = !m.online && !m.tut && !m.fk && this.rookie();
+    $('tipbox').hidden = true;
+    this.applyHud();
+  },
+  applyHud() {
+    const B = document.body.classList, on = this.active;
+    for (const t of TIP_LIST) if (t.reveal) B.toggle('rk-' + t.reveal, on && !this.seen(t.id));
+  },
+  update(m, dt) {
+    if (!this.active || m.phase !== 'play' || !m.human) { if (this.cur && m.phase !== 'play') this.hide(); return; }
+    const h = m.human, b = m.ball, me = this;
+    this.playT += dt; this.gap -= dt;
+    this.walkT = len2D(h.mx, h.mz) > 0.5 && !h.sprint && b.owner !== h ? this.walkT + dt : 0;
+    if (this.cur) { this.t -= dt; KeyPics.light($('tip-keys')); if (this.t <= 0) this.hide(); return; }
+    if (this.gap > 0) return;
+    let near = 99;
+    for (const o of m.opponents(h)) if (!o.isGK) near = Math.min(near, dist2D(o.pos, h.pos));
+    const c = { own: b.owner === h, theirs: !!(b.owner && b.owner.team !== h.team && !b.owner.isGK), near: b.owner && b.owner.team !== h.team ? dist2D(b.owner.pos, h.pos) : near, flow: h.flow, playT: this.playT, walkT: this.walkT, since: (id) => (me.shownAt[id] != null ? me.playT - me.shownAt[id] : me.seen(id) ? 99 : -1) };
+    const tip = TIP_LIST.find((t) => !this.seen(t.id) && t.when(c));
+    if (tip) this.show(tip);
+  },
+  show(tip) {
+    const d = Save.data, how = Touch.on && !Input.usingPad ? 'touch' : Input.usingPad ? 'pad' : 'k';
+    d.tips.push(tip.id); Save.save();
+    this.shownAt[tip.id] = this.playT; this.cur = tip; this.t = 4.5; this.gap = 7;
+    const keys = how === 'k' ? tip.k() : how === 'pad' ? KeyPics.pad(tip.pad) : '';
+    $('tip-keys').innerHTML = keys; $('tip-keys').hidden = !keys;
+    UI.setText('tip-title', tip.title); UI.setText('tip-text', how === 'touch' ? tip.tText : tip.text);
+    const box = $('tipbox'); box.hidden = false; box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop');
+    if (how === 'touch') KeyPics.glow(tip.touch);
+    this.applyHud(); Sfx.coin();
+    if (tip.reveal === 'abil' && Touch.on) Touch.layout();
+  },
+  hide() { this.cur = null; $('tipbox').hidden = true; KeyPics.glow(null); },
+};
+
 const TutHud = {
   mark: null, step: -2,
   update(m) {
@@ -96,9 +171,7 @@ const TutHud = {
   },
   /** pictures of the controls for this step (CrazyGames: "show the user how to control the game with a keyboard overlay") */
   drawKeys(id, how) {
-    const el = $('tut-keys'), cap = (c, lb) => `<span class="kc" data-code="${c}">${lb || KeyNames.of(c)}</span>`;
-    const mouse = (side) => `<span class="mouse ${side}"><i></i><i></i></span>`;
-    const pad = (b) => `<span class="kc pad">${b}</span>`;
+    const el = $('tut-keys'), cap = (c, lb) => KeyPics.cap(c, lb), mouse = (side) => KeyPics.mouse(side), pad = (b) => KeyPics.pad(b);
     let html = '';
     if (how === 'k') {
       if (id === 'move' || id === 'ball') html = `<span class="kcross">${cap('KeyW')}<span>${cap('KeyA')}${cap('KeyS')}${cap('KeyD')}</span></span>`;
@@ -108,15 +181,8 @@ const TutHud = {
       html = { move: pad('L STICK'), ball: pad('L STICK'), pass: pad('LT'), shoot: pad('R STICK') + pad('RT') }[id] || '';
     }
     el.innerHTML = html; el.hidden = !html;
-    // phones: the button to press glows
-    document.querySelectorAll('#touch .tb.tut-glow').forEach((b) => b.classList.remove('tut-glow'));
-    const glow = how === 'touch' ? { pass: 'pass', shoot: 'shoot' }[id] : null;
-    if (glow) { const b = document.querySelector('#touch [data-act="' + glow + '"]'); if (b) b.classList.add('tut-glow'); }
+    KeyPics.glow(how === 'touch' ? { pass: 'pass', shoot: 'shoot' }[id] : null); // phones: the button to press glows
   },
   /** the keys light up while you hold them */
-  lightKeys(how) {
-    if (how !== 'k') return;
-    document.querySelectorAll('#tut-keys .kc[data-code]').forEach((k) => k.classList.toggle('on', Input.down.has(k.dataset.code)));
-    const m = document.querySelector('#tut-keys .mouse'); if (m) m.classList.toggle('on', m.classList.contains('l') ? Input.mouseL : Input.mouseR);
-  },
+  lightKeys(how) { if (how === 'k') KeyPics.light($('tut-keys')); },
 };

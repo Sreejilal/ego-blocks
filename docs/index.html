@@ -540,6 +540,20 @@ body.touch #hud .awakebar .track { height: 6px; }
 .tutbox .tut-skip .key { font-size: 9px; }
 body.touch .tutbox .tut-skip .key { display: none; }
 body.touch .kc { min-width: 32px; height: 32px; font-size: 18px; }
+/* first-match tips: one at a time under the score bar, with a picture of the key */
+.tipbox { position: absolute; left: 50%; top: calc(84px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 10px 16px; box-sizing: border-box; max-width: min(560px, calc(100vw - 32px)); z-index: 6; box-shadow: 0 0 0 3px var(--gold), 6px 6px 0 rgba(0,0,0,.45); }
+.tipbox.pop { animation: tutpop .35s ease-out; }
+.tipbox .tut-keys { margin: 0; flex: none; }
+.tip-words { display: grid; gap: 2px; }
+.tipbox b { font-family: var(--font-display); font-weight: 400; font-size: 28px; line-height: 1; color: var(--gold); }
+.tipbox p { margin: 0; font-size: 16px; color: var(--text); }
+body.touch .tipbox { top: calc(108px + env(safe-area-inset-top, 0px)); max-width: min(380px, calc(100vw - 160px)); padding: 6px 10px; } body.touch .tipbox b { font-size: 20px; } body.touch .tipbox p { font-size: 13px; }
+#hud:has(.tipbox:not([hidden])) #hint { display: none; }
+/* while you are new, parts of the HUD wait for their tip */
+body.rk-abil #hotbar #slot0, body.rk-abil #hotbar #slot1, body.rk-abil #hotbar #slot2, body.rk-abil #hotbar .sep { display: none; }
+body.rk-moves #hotbar #slot-c, body.rk-moves #hotbar #slot-s { display: none; }
+body.rk-flow #flowbar, body.rk-flow #hotbar #slot-g { display: none; }
+body.rk-abil #touch [data-act="ab0"], body.rk-abil #touch [data-act="ab1"], body.rk-abil #touch [data-act="ab2"], body.rk-flow #touch [data-act="flow"] { display: none; }
 #touch .tb.tut-glow { background: var(--gold); animation: fsPulse .7s steps(2) infinite; }
 .tut-gate { position: absolute; inset: 0; z-index: 40; display: grid; place-content: center; justify-items: center; gap: 14px; background: rgba(9,11,22,.55); cursor: pointer; text-align: center; pointer-events: auto; }
 .tut-gate[hidden] { display: none; }
@@ -1013,7 +1027,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false,
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false, tips: [],
       fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null },
       howto: false,
@@ -1059,6 +1073,7 @@ const Save = {
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
     out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
+    out.tips = Array.isArray(out.tips) ? out.tips.filter((t) => typeof t === 'string' && t.length < 16).slice(0, 20) : []; // the first-match tips you have seen
     out.goalSteps = out.goalSteps && typeof out.goalSteps === 'object' ? out.goalSteps : {};
     out.settings = Object.assign({}, def.settings, out.settings || {});
     const st = out.settings;
@@ -7614,6 +7629,7 @@ const Touch = {
       turned it off. Browsers only allow it straight after a tap or click, so this is called from those */
   autoFs() {
     if (!Save.data.settings.autoFs || !this.fsAvailable() || this.isFs() || (!this.on && navigator.webdriver)) return; // laptops: not in automated tests and the video tools
+    const ua = navigator.userActivation; if (ua && !ua.isActive) return; // only right after a click or tap (otherwise the browser refuses and complains)
     this.toggleFs();
   },
   /** the phone reminder: once per visit on the start screen, when the game is not filling the screen */
@@ -7995,6 +8011,81 @@ const ShotHud = {
   },
 };
 
+/** pictures of the controls, shared by the tutorial and the first-match tips */
+const KeyPics = {
+  cap(c, lb) { return `<span class="kc" data-code="${c}">${lb || KeyNames.of(c)}</span>`; },
+  mouse(side) { return `<span class="mouse ${side}"><i></i><i></i></span>`; },
+  pad(b) { return `<span class="kc pad">${b}</span>`; },
+  /** the keys and mouse buttons inside `el` light up while held */
+  light(el) {
+    el.querySelectorAll('.kc[data-code]').forEach((k) => k.classList.toggle('on', Input.down.has(k.dataset.code)));
+    const m = el.querySelector('.mouse'); if (m) m.classList.toggle('on', m.classList.contains('l') ? Input.mouseL : Input.mouseR);
+  },
+  /** on phones, the touch button to press glows */
+  glow(act) {
+    document.querySelectorAll('#touch .tb.tut-glow').forEach((b) => b.classList.remove('tut-glow'));
+    if (act) { const b = document.querySelector('#touch [data-act="' + act + '"]'); if (b) b.classList.add('tut-glow'); }
+  },
+};
+
+/* First-match tips (CrazyGames: "focus on the core, avoid explaining every feature", "make sure the UI is clear"):
+   while you are new, the match screen shows only what you need (move, pass, shoot). Each extra part of the HUD comes
+   in the first time it matters, with one short tip and a picture of the key. Seen tips are kept (Save.data.tips);
+   after ROOKIE_MATCHES matches, or once every tip has been seen, the whole HUD shows. Not online, not in tests. */
+const ROOKIE_MATCHES = 6;
+const TIP_LIST = [
+  { id: 'shoot', title: 'SHOOT', k: () => KeyPics.mouse('l'), pad: 'RT', touch: 'shoot', text: 'HOLD TO POWER UP, LET GO TO SHOOT', tText: 'HOLD SHOOT, LET GO', when: (c) => c.own },
+  { id: 'pass', title: 'PASS', k: () => KeyPics.mouse('r'), pad: 'LT', touch: 'pass', text: 'PASS TO A TEAMMATE. HOLD IT FOR A HIGH BALL', tText: 'TAP PASS. HOLD IT FOR A HIGH BALL', when: (c) => c.own && c.since('shoot') > 6 },
+  { id: 'sprint', title: 'SPRINT', k: () => KeyPics.cap('ShiftLeft', 'SHIFT'), pad: 'LB', touch: null, text: 'HOLD TO RUN FAST. IT USES STAMINA', tText: 'PUSH THE STICK ALL THE WAY TO RUN FAST', when: (c) => c.walkT > 2.5 },
+  { id: 'tackle', title: 'TACKLE', k: () => KeyPics.cap('KeyF'), pad: 'X', touch: 'dt', text: 'GET CLOSE AND SLIDE IN TO WIN THE BALL', tText: 'GET CLOSE AND TAP TACKLE', when: (c) => c.theirs && c.near < 7 },
+  { id: 'feint', title: 'FEINT', k: () => KeyPics.cap('KeyC'), pad: 'B', touch: 'dt', text: 'STEP PAST THEM. TAP IT TWICE FOR SLOW-MO', tText: 'TAP FEINT. TWICE FOR SLOW-MO', reveal: 'moves', when: (c) => c.own && c.near < 4.5 },
+  { id: 'ability', title: 'YOUR POWERS', k: () => KeyPics.cap('KeyQ') + KeyPics.cap('KeyE') + KeyPics.cap('KeyR'), pad: 'D-PAD', touch: 'ab0', text: 'YOUR STYLE HAS 3 POWERS. TRY THEM', tText: 'YOUR STYLE HAS 3 POWERS. TRY THEM', reveal: 'abil', when: (c) => c.playT > 25 },
+  { id: 'flow', title: 'FLOW', k: () => KeyPics.cap('KeyG'), pad: 'Y', touch: 'flow', text: 'BIG PLAYS FILL THE FLOW BAR. WHEN IT IS FULL, PRESS IT', tText: 'BIG PLAYS FILL FLOW. TAP IT WHEN FULL', reveal: 'flow', when: (c) => c.flow >= 40 },
+];
+const Tips = {
+  shownAt: {}, t: 0, gap: 0, playT: 0, walkT: 0, cur: null,
+  seen(id) { return Save.data.tips.includes(id); },
+  /** still new: some parts of the HUD wait for their tip */
+  rookie() { return !navigator.webdriver && Save.data.stats.played < ROOKIE_MATCHES && TIP_LIST.some((t) => !this.seen(t.id)); },
+  /** a fresh match: hide what has not been shown yet */
+  start(m) {
+    this.t = 0; this.gap = 4; this.playT = 0; this.walkT = 0; this.cur = null; this.shownAt = {};
+    this.active = !m.online && !m.tut && !m.fk && this.rookie();
+    $('tipbox').hidden = true;
+    this.applyHud();
+  },
+  applyHud() {
+    const B = document.body.classList, on = this.active;
+    for (const t of TIP_LIST) if (t.reveal) B.toggle('rk-' + t.reveal, on && !this.seen(t.id));
+  },
+  update(m, dt) {
+    if (!this.active || m.phase !== 'play' || !m.human) { if (this.cur && m.phase !== 'play') this.hide(); return; }
+    const h = m.human, b = m.ball, me = this;
+    this.playT += dt; this.gap -= dt;
+    this.walkT = len2D(h.mx, h.mz) > 0.5 && !h.sprint && b.owner !== h ? this.walkT + dt : 0;
+    if (this.cur) { this.t -= dt; KeyPics.light($('tip-keys')); if (this.t <= 0) this.hide(); return; }
+    if (this.gap > 0) return;
+    let near = 99;
+    for (const o of m.opponents(h)) if (!o.isGK) near = Math.min(near, dist2D(o.pos, h.pos));
+    const c = { own: b.owner === h, theirs: !!(b.owner && b.owner.team !== h.team && !b.owner.isGK), near: b.owner && b.owner.team !== h.team ? dist2D(b.owner.pos, h.pos) : near, flow: h.flow, playT: this.playT, walkT: this.walkT, since: (id) => (me.shownAt[id] != null ? me.playT - me.shownAt[id] : me.seen(id) ? 99 : -1) };
+    const tip = TIP_LIST.find((t) => !this.seen(t.id) && t.when(c));
+    if (tip) this.show(tip);
+  },
+  show(tip) {
+    const d = Save.data, how = Touch.on && !Input.usingPad ? 'touch' : Input.usingPad ? 'pad' : 'k';
+    d.tips.push(tip.id); Save.save();
+    this.shownAt[tip.id] = this.playT; this.cur = tip; this.t = 4.5; this.gap = 7;
+    const keys = how === 'k' ? tip.k() : how === 'pad' ? KeyPics.pad(tip.pad) : '';
+    $('tip-keys').innerHTML = keys; $('tip-keys').hidden = !keys;
+    UI.setText('tip-title', tip.title); UI.setText('tip-text', how === 'touch' ? tip.tText : tip.text);
+    const box = $('tipbox'); box.hidden = false; box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop');
+    if (how === 'touch') KeyPics.glow(tip.touch);
+    this.applyHud(); Sfx.coin();
+    if (tip.reveal === 'abil' && Touch.on) Touch.layout();
+  },
+  hide() { this.cur = null; $('tipbox').hidden = true; KeyPics.glow(null); },
+};
+
 const TutHud = {
   mark: null, step: -2,
   update(m) {
@@ -8016,9 +8107,7 @@ const TutHud = {
   },
   /** pictures of the controls for this step (CrazyGames: "show the user how to control the game with a keyboard overlay") */
   drawKeys(id, how) {
-    const el = $('tut-keys'), cap = (c, lb) => `<span class="kc" data-code="${c}">${lb || KeyNames.of(c)}</span>`;
-    const mouse = (side) => `<span class="mouse ${side}"><i></i><i></i></span>`;
-    const pad = (b) => `<span class="kc pad">${b}</span>`;
+    const el = $('tut-keys'), cap = (c, lb) => KeyPics.cap(c, lb), mouse = (side) => KeyPics.mouse(side), pad = (b) => KeyPics.pad(b);
     let html = '';
     if (how === 'k') {
       if (id === 'move' || id === 'ball') html = `<span class="kcross">${cap('KeyW')}<span>${cap('KeyA')}${cap('KeyS')}${cap('KeyD')}</span></span>`;
@@ -8028,17 +8117,10 @@ const TutHud = {
       html = { move: pad('L STICK'), ball: pad('L STICK'), pass: pad('LT'), shoot: pad('R STICK') + pad('RT') }[id] || '';
     }
     el.innerHTML = html; el.hidden = !html;
-    // phones: the button to press glows
-    document.querySelectorAll('#touch .tb.tut-glow').forEach((b) => b.classList.remove('tut-glow'));
-    const glow = how === 'touch' ? { pass: 'pass', shoot: 'shoot' }[id] : null;
-    if (glow) { const b = document.querySelector('#touch [data-act="' + glow + '"]'); if (b) b.classList.add('tut-glow'); }
+    KeyPics.glow(how === 'touch' ? { pass: 'pass', shoot: 'shoot' }[id] : null); // phones: the button to press glows
   },
   /** the keys light up while you hold them */
-  lightKeys(how) {
-    if (how !== 'k') return;
-    document.querySelectorAll('#tut-keys .kc[data-code]').forEach((k) => k.classList.toggle('on', Input.down.has(k.dataset.code)));
-    const m = document.querySelector('#tut-keys .mouse'); if (m) m.classList.toggle('on', m.classList.contains('l') ? Input.mouseL : Input.mouseR);
-  },
+  lightKeys(how) { if (how === 'k') KeyPics.light($('tut-keys')); },
 };
 
 /* ---- 11_friends.js ---- */
@@ -9668,6 +9750,7 @@ const UI = {
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
       <canvas id="minimap" width="132" height="200"></canvas>
       <div class="tutbox panel" id="tutbox" hidden><span class="label" id="tut-n"></span><b id="tut-title"></b><div class="tut-keys" id="tut-keys" hidden></div><p id="tut-text"></p><button class="btn ghost tiny tut-skip" id="tut-skip" type="button">SKIP <span class="key">ENTER</span></button></div>
+      <div class="tipbox panel" id="tipbox" hidden><div class="tut-keys" id="tip-keys" hidden></div><div class="tip-words"><b id="tip-title"></b><p id="tip-text"></p></div></div>
       <div class="tut-gate" id="tut-gate" hidden><b class="tg-title">SCOR<em>Z</em></b><span class="tg-go" id="tg-go">CLICK TO PLAY</span><span class="label">A QUICK START: MOVE, PASS, SCORE</span></div>
       <div class="dock">
         <div class="fkpanel panel" id="fkpanel" hidden>
@@ -10004,6 +10087,7 @@ const UI = {
     this.hudCache = {};
     $('banner').hidden = true; $('toasts').innerHTML = '';
     this.hintT = Save.data.stats.played < 2 ? 9 : 0;
+    Tips.start(m); // new players: the HUD fills in as each part comes up
     if (Touch.on && window.innerHeight > window.innerWidth) this.hintT = Math.max(this.hintT, 6);
     Touch.build(m);
     this.lockHint();
@@ -10011,7 +10095,7 @@ const UI = {
   setText(id, v) { const c = this.hudCache; if (c[id] !== v) { c[id] = v; $(id).textContent = v; } },
   updateHud(m, dt) {
     const p = m.human; if (!p) return;
-    FKHud.update(m); TutHud.update(m); ShotHud.update(m);
+    FKHud.update(m); TutHud.update(m); ShotHud.update(m); Tips.update(m, dt);
     this.setText('sc0', String(m.score[0])); this.setText('sc1', String(m.score[1]));
     if (m.tut) { this.setText('clock', Math.min(m.tut.step + 1, TUT_STEPS.length) + '/' + TUT_STEPS.length); this.setText('clock-sub', 'TUTORIAL'); }
     else if (m.fk && m.fk.battle) { this.setText('clock', m.fk.bs[0] + '-' + m.fk.bs[1]); this.setText('clock-sub', 'FK BATTLE'); }
@@ -10099,7 +10183,7 @@ const UI = {
       }
     } else if (Input.lockFailed && !Input.usingPad) txt = 'MOUSE LOCK IS BLOCKED HERE. TURN THE CAMERA WITH THE ARROW KEYS.';
     else if (!Input.locked && !Input.usingPad) txt = 'CLICK THE PITCH TO LOCK THE MOUSE';
-    else if (this.hintT > 0) txt = 'HOLD LMB TO SHOOT · RMB TO PASS · C TO FEINT · F TO SLIDE';
+    else if (this.hintT > 0 && !Tips.active) txt = 'HOLD LMB TO SHOOT · RMB TO PASS · C TO FEINT · F TO SLIDE'; // new players get one tip at a time instead
     h.textContent = txt; h.hidden = !txt;
   },
   drawMinimap(m) {
@@ -10692,7 +10776,7 @@ const Game = {
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Account, Portal, Player, TEAM, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
   CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
