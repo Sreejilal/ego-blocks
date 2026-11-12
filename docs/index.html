@@ -2001,6 +2001,7 @@ const SUN_LOBBY = new THREE.Vector3(0.3, 0.2, 0.93).normalize(); // low behind t
 const SUN_MATCH = SUN_DIR.clone();
 const QUALITY = {
   low: { pr: 0.75, shadows: false, map: 512 },
+  lite: { pr: 1, shadows: false, map: 512 }, // auto graphics only: no shadows, but still sharp
   med: { pr: 1, shadows: true, map: 1024 },
   high: { pr: 1.5, shadows: true, map: 2048 },
 };
@@ -10625,11 +10626,12 @@ const UI = {
 /* =====================================================================
    Game: state machine, main loop, rewards, auto quality
    ===================================================================== */
-// the auto graphics ladder: [quality, pixel scale]
-const AUTO_STEPS = [['med', 1], ['med', 0.85], ['low', 1], ['low', 0.8]];
+// the auto graphics ladder: [quality, pixel scale]. Shadows go first and the picture stays sharp; fewer pixels (a softer
+// picture) only at the very end (CrazyGames: "consistent resolution throughout the game")
+const AUTO_STEPS = [['med', 1], ['lite', 1], ['lite', 0.9], ['low', 1]];
 const Game = {
   state: 'boot', match: null, lastMode: null, last: 0, time: 0, ended: false, pausedAt: 0,
-  perf: { t: 0, frames: 0, long: 0, min: 1, skip: 0, told: false }, autoStep: 0, crowdT: 0,
+  perf: { t: 0, frames: 0, long: 0, min: 1, skip: 0 }, autoStep: 0, autoWant: null, autoWait: 0, crowdT: 0,
   /** a match is being played here, offline or online */
   playing() { return this.state === 'match' || this.state === 'online'; },
   start() {
@@ -10818,16 +10820,22 @@ const Game = {
   perfCheck(rdt) {
     const P = this.perf;
     if (Save.data.settings.quality !== 'auto' || this.autoStep >= AUTO_STEPS.length - 1) return;
+    if (this.autoWant != null) { // switching shadows off rebuilds every material (a short stop): wait for a break in play, 6s at most
+      this.autoWait += rdt;
+      const m = this.match;
+      if (!m || m.phase !== 'play' || this.autoWait > 6) { this.autoStep = this.autoWant; this.autoWant = null; World.setQuality(...AUTO_STEPS[this.autoStep]); P.skip = 1.5; }
+      return;
+    }
     if (P.skip > 0) { P.skip -= rdt; return; } // the first moments of a match load things; do not judge them
     P.t += rdt; P.frames++; P.min = Math.min(P.min, rdt);
     if (rdt > Math.max(P.min * 1.5, 0.021)) P.long++;
     if (P.t < 3) return;
     const fps = P.frames / P.t, dropped = P.long / P.frames;
     P.t = 0; P.frames = 0; P.long = 0; P.min = 1;
-    if (fps < 40 || dropped > 0.1) {
-      this.autoStep++; World.setQuality(...AUTO_STEPS[this.autoStep]);
-      P.skip = 1.5; // let it settle before judging again
-      if (!P.told) { P.told = true; UI.toast('GRAPHICS LOWERED TO KEEP IT SMOOTH', 'gold'); }
+    if (fps < 40 || dropped > 0.1) { // quietly: no message (it only made the game look heavy)
+      const next = this.autoStep + 1;
+      if (QUALITY[AUTO_STEPS[next][0]].shadows !== QUALITY[AUTO_STEPS[this.autoStep][0]].shadows) { this.autoWant = next; this.autoWait = 0; }
+      else { this.autoStep = next; World.setQuality(...AUTO_STEPS[next]); P.skip = 1.5; } // let it settle before judging again
     }
   },
   loop(now, doRender = true) {

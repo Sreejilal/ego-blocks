@@ -50,6 +50,7 @@ const SUN_LOBBY = new THREE.Vector3(0.3, 0.2, 0.93).normalize(); // low behind t
 const SUN_MATCH = SUN_DIR.clone();
 const QUALITY = {
   low: { pr: 0.75, shadows: false, map: 512 },
+  lite: { pr: 1, shadows: false, map: 512 }, // auto graphics only: no shadows, but still sharp
   med: { pr: 1, shadows: true, map: 1024 },
   high: { pr: 1.5, shadows: true, map: 2048 },
 };

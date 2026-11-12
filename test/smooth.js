@@ -83,20 +83,20 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     const G = EGO.Game, W = EGO.World, d = EGO.Save.data; d.settings.quality = 'auto';
     G.startMatch('quick'); G.autoStep = 0; G.applyQuality(); G.matchReady();
     const pr0 = W.renderer.getPixelRatio(), mat = G.match.ball.mesh.material, v0 = mat.version;
-    const run = (pattern, secs) => { let t = 0, i = 0; while (t < secs) { const ms = pattern[i++ % pattern.length]; G.loop(G.last + ms, false); t += ms / 1000; } };
+    const run = (pattern, secs, stop) => { let t = 0, i = 0; while (t < secs && !(stop && stop())) { const ms = pattern[i++ % pattern.length]; G.loop(G.last + ms, false); t += ms / 1000; } };
     run([16.7], 7); const smooth60 = G.autoStep;
-    G.matchReady(); run([16.7, 16.7, 33.4], 7); const judder = G.autoStep, pr1 = W.renderer.getPixelRatio(), toast = document.getElementById('toasts').textContent, rebuilt = mat.version !== v0;
+    G.matchReady(); run([16.7, 16.7, 33.4], 20, () => G.autoStep > 0); const judder = G.autoStep, pr1 = W.renderer.getPixelRatio(), q1 = W.quality, sh1 = W.renderer.shadowMap.enabled, toast = document.getElementById('toasts').textContent;
     G.autoStep = 0; G.applyQuality(); G.matchReady();
     run([6.9, 13.9], 7); const hz144 = G.autoStep;
     G.autoStep = 0; G.applyQuality(); G.matchReady();
-    run([16.7, 16.7, 33.4], 30); const worst = { step: G.autoStep, quality: W.quality, shadows: W.renderer.shadowMap.enabled };
+    run([16.7, 16.7, 33.4], 45); const worst = { step: G.autoStep, quality: W.quality, shadows: W.renderer.shadowMap.enabled };
     d.settings.quality = 'med'; G.autoStep = 0; G.applyQuality(); G.matchReady();
     run([16.7, 33.4], 8); const manual = { step: G.autoStep, quality: W.quality };
     G.forfeit(); d.settings.quality = 'auto'; G.applyQuality();
-    return { pr0, smooth60, judder, pr1, toast: /GRAPHICS LOWERED/.test(toast), rebuilt, hz144, worst, manual };
+    return { pr0, smooth60, judder, pr1, q1, sh1, toast: /GRAPHICS LOWERED/.test(toast), hz144, worst, manual };
   });
-  check('auto graphics: smooth 60 and 144 fps stay, stutter lowers the pixels first (no shader rebuild), then shadows; a picked setting stays',
-    auto.smooth60 === 0 && auto.judder === 1 && Math.abs(auto.pr1 - auto.pr0 * 0.85) < 0.01 && auto.toast && !auto.rebuilt && auto.hz144 === 0 && auto.worst.step === 3 && auto.worst.quality === 'low' && !auto.worst.shadows && auto.manual.step === 0 && auto.manual.quality === 'med', auto);
+  check('auto graphics: smooth 60 and 144 fps stay; stutter turns shadows off first and the picture stays sharp (fewer pixels only at the end), quietly; a picked setting stays',
+    auto.smooth60 === 0 && auto.judder === 1 && auto.q1 === 'lite' && !auto.sh1 && Math.abs(auto.pr1 - auto.pr0) < 0.01 && !auto.toast && auto.hz144 === 0 && auto.worst.step === 3 && auto.worst.quality === 'low' && !auto.worst.shadows && auto.manual.step === 0 && auto.manual.quality === 'med', auto);
 
   const pass = await page.evaluate(() => {
     const G = EGO.Game, I = EGO.Input; G.startMatch('quick'); const m = G.match, h = m.human;
