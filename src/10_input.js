@@ -120,6 +120,14 @@ const Input = {
 };
 
 const CAM_EYE = 1.55; // first person: eye height above the feet
+/** the letter printed on the key at a position (`code`): W A S D on QWERTY, Z Q S D on a French AZERTY keyboard.
+    Chrome and Edge can tell (navigator.keyboard); elsewhere the QWERTY letter */
+const KeyNames = {
+  map: null,
+  init() { try { const k = navigator.keyboard; if (k && k.getLayoutMap) k.getLayoutMap().then((m) => { this.map = m; if (typeof UI !== 'undefined' && UI.relabelKeys) UI.relabelKeys(); }, () => {}); } catch (e) {} },
+  of(code) { const v = this.map && this.map.get(code); return String(v || code.replace(/^Key|^Digit/, '')).toUpperCase(); },
+  move() { return ['KeyW', 'KeyA', 'KeyS', 'KeyD'].map((c) => this.of(c)).join(''); },
+};
 const Cam = {
   yaw: 0, pitch: -0.13, dist: 7.0, hidden: null, pos: V3(0, 5, -10), pivotY: 1.7, aim: V3(), onTarget: false, fwd: V3(0, 0, 1), snapYaw: null, punchT: 0, punchDur: 1, punchK: 0,
   /** a quick zoom in and back out for the cut-ins */

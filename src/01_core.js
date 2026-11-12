@@ -93,9 +93,9 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false,
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false,
       fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
-      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null },
+      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null },
       howto: false,
     };
   },
@@ -137,7 +137,7 @@ const Save = {
     out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
     out.tone = clamp(Math.floor(Number(out.tone)), 0, 7); if (!Number.isFinite(out.tone)) out.tone = 1;
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
-    out.tutorial = !!out.tutorial;
+    out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
     out.goalSteps = out.goalSteps && typeof out.goalSteps === 'object' ? out.goalSteps : {};
     out.settings = Object.assign({}, def.settings, out.settings || {});
@@ -152,7 +152,7 @@ const Save = {
     st.frOpen = typeof st.frOpen === 'boolean' ? st.frOpen : null; // the FRIENDS panel open or hidden (null: open on wide screens)
     out.fid = typeof out.fid === 'string' && /^[a-z0-9]{16}$/.test(out.fid) ? out.fid : Array.from({ length: 16 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
     out.friends = Array.isArray(out.friends) ? out.friends.filter((f) => f && typeof f.f === 'string' && /^[a-z0-9]{16}$/.test(f.f) && f.f !== out.fid).map((f) => ({ f: f.f, n: String(f.n || 'FRIEND').toUpperCase().replace(/[^A-Z0-9 ]/g, '').slice(0, 12) || 'FRIEND' })).slice(0, 60) : [];
-    st.camPicked = !!st.camPicked; st.cam = !st.camPicked ? 'first' : st.cam === 'third' ? 'third' : 'first'; st.autoFs = st.autoFs !== false; st.shiftLock = !!st.shiftLock; // first person until you pick
+    st.camPicked = !!st.camPicked; st.cam = !st.camPicked ? 'third' : st.cam === 'third' ? 'third' : 'first'; st.autoFs = st.autoFs !== false; st.shiftLock = !!st.shiftLock; // third person until you pick (owner, Nov 2026: new players see their own player; V still switches)
     out.account = out.account && typeof out.account === 'object' && typeof out.account.token === 'string' && typeof out.account.user === 'string' ? { user: out.account.user.slice(0, 12), token: out.account.token.slice(0, 128) } : null;
     out.name = String(out.name || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12);
     if (!Array.isArray(out.styles)) out.styles = ['ROOKIE'];

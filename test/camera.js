@@ -18,7 +18,7 @@ const URL = 'file:///' + path.join(__dirname, '..', 'docs', 'index.html').replac
     return { cam: EGO.Save.data.settings.cam, d: Math.hypot(c.x - h.pos.x, c.y - (h.pos.y + 1.55), c.z - h.pos.z), seen: h.P.root.visible, aim: !!m.aim && Number.isFinite(m.aim.x) };
   });
   const A = await mk({ viewport: { width: 1280, height: 720 } });
-  check('first person is the default', await A.evaluate(() => EGO.Save.data.settings.cam) === 'first');
+  check('third person is the default (new players see their own player)', await A.evaluate(() => EGO.Save.data.settings.cam) === 'third');
   // laptops get the FULLSCREEN button too (owner: "why is there not a full screen thing for laptop"), on the start screen and in the pause menu
   const lap = await A.evaluate(() => { EGO.UI.renderLobby(); const b = document.getElementById('btn-fs'); return { lobby: !b.hidden && !!b.offsetParent, text: b.textContent, touch: EGO.Touch.on }; });
   check('a laptop has a FULLSCREEN button on the start screen', lap.lobby && lap.text === 'FULLSCREEN' && !lap.touch, lap);
@@ -79,7 +79,7 @@ const URL = 'file:///' + path.join(__dirname, '..', 'docs', 'index.html').replac
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await P.evaluate(() => EGO.Game.stepManual(4, true));
   const pv = await view(P);
-  check('phone: the camera button next to pause switches the view (first person to third)', btn.shown && btn.gap >= 0 && pv.cam === 'third' && pv.d > 4, Object.assign(pv, { gap: btn.gap }));
+  check('phone: the camera button next to pause switches the view (third person to first)', btn.shown && btn.gap >= 0 && pv.cam === 'first' && pv.d < 1, Object.assign(pv, { gap: btn.gap }));
   await P.screenshot({ path: __dirname + '/shots/cam5_phone_first.png' });
   // Fullscreen OFF in the menu: no more automatic fullscreen
   await P.evaluate(() => { EGO.Game.pause(); document.querySelector('#set-fs [data-v="0"]').click(); });

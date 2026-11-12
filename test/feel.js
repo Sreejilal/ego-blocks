@@ -17,7 +17,7 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
     await p.goto(URL, { timeout: 120000 }); await p.waitForFunction(() => window.EGO && EGO.Game.state === 'lobby', null, { timeout: 120000 }); return p;
   };
   const A = await mk({ viewport: { width: 1280, height: 720 } });
-  check('first person is the starting camera', await A.evaluate(() => EGO.Save.data.settings.cam) === 'first');
+  check('third person is the starting camera (Nov 2026: new players see their own player)', await A.evaluate(() => EGO.Save.data.settings.cam) === 'third');
   // a match in play with the ball at your feet
   const setup = () => A.evaluate(() => {
     if (EGO.Game.match) EGO.Game.toLobby();
@@ -41,7 +41,8 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
     const won = m.tryTackleHit ? null : null;
     EGO.Game.stepManual(20, false);
     const moved = Math.hypot(h.pos.x - x0, h.pos.z - z0);
-    // again straight away: not ready
+    // again a moment later (after the C C window, which would be SLOW-MO): not ready
+    EGO.Game.stepManual(10, false);
     EGO.Input.edges.add('KeyC'); EGO.Game.stepManual(2, false);
     const again = h.feint !== 0 || h.state === 'dash';
     return { mid, moved: +moved.toFixed(2), keep: m.ball.owner === h, again, cd: h.dodgeCharges, label: document.getElementById('slot-c').textContent };

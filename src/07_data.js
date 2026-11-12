@@ -702,18 +702,14 @@ function matchSides(homeId, awayId) {
 /** who plays where. 3v3: a keeper, a defender and a midfielder; 4v4 adds a striker; 5v5 picks a setup at random for
     each team: ultra defensive (two defenders) or ultra attacking (two strikers). FW is the second striker */
 /** the tutorial: one thing at a time, each done when you do it. k: keyboard and mouse, pad: controller, touch: phone */
+/** the first thing a new player does (they land in it on their first visit, CrazyGames onboarding): only the core, with
+    pictures of the keys (TutHud). Sprint, feint, tackles and abilities are taught by tips in the first matches (MatchTips) */
 const TUT_STEPS = [
-  { id: 'move', title: 'MOVE', k: 'W A S D MOVES YOU. RUN TO THE GOLD SQUARE', pad: 'THE LEFT STICK MOVES YOU. RUN TO THE GOLD SQUARE', touch: 'YOUR LEFT THUMB MOVES YOU. RUN TO THE GOLD SQUARE' },
-  { id: 'look', title: 'LOOK AROUND', k: 'MOVE THE MOUSE TO TURN THE CAMERA. LOOK LEFT AND RIGHT', pad: 'THE RIGHT STICK TURNS THE CAMERA. LOOK LEFT AND RIGHT', touch: 'DRAG ON THE RIGHT SIDE TO TURN THE CAMERA. LOOK LEFT AND RIGHT' },
-  { id: 'sprint', title: 'SPRINT', k: 'HOLD SHIFT WHILE YOU MOVE TO SPRINT. IT USES STAMINA', pad: 'HOLD LB WHILE YOU MOVE TO SPRINT. IT USES STAMINA', touch: 'PUSH THE STICK ALL THE WAY OUT TO SPRINT. IT USES STAMINA' },
-  { id: 'ball', title: 'GET THE BALL', k: 'RUN INTO THE BALL TO TAKE IT', pad: 'RUN INTO THE BALL TO TAKE IT', touch: 'RUN INTO THE BALL TO TAKE IT' },
-  { id: 'pass', title: 'PASS', k: 'RIGHT MOUSE PASSES TO YOUR TEAMMATE. HOLD IT FOR A LOB', pad: 'LT PASSES TO YOUR TEAMMATE. HOLD IT FOR A LOB', touch: 'TAP PASS TO PASS TO YOUR TEAMMATE. HOLD IT FOR A LOB' },
-  { id: 'back', title: 'ONE MORE TIME', k: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT', pad: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT', touch: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT' },
-  { id: 'shoot', title: 'SHOOT', k: 'AIM AT THE GOAL WITH THE MOUSE. HOLD LEFT MOUSE FOR POWER, LET GO TO SHOOT. HOLD A OR D AS WELL TO CURVE IT', pad: 'AIM WITH THE RIGHT STICK. HOLD RT FOR POWER, LET GO TO SHOOT. PUSH THE LEFT STICK SIDEWAYS TO CURVE IT', touch: 'DRAG TO AIM. HOLD SHOOT FOR POWER, LET GO TO FIRE. PUSH THE STICK SIDEWAYS TO CURVE IT' },
-  { id: 'feint', title: 'FEINT', k: 'WITH THE BALL, PRESS C TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO', pad: 'WITH THE BALL, PRESS B TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO', touch: 'WITH THE BALL, TAP FEINT TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO' },
-  { id: 'tackle', title: 'TACKLE', k: 'THEY HAVE THE BALL. GET CLOSE AND PRESS F TO SLIDE IN AND WIN IT', pad: 'THEY HAVE THE BALL. GET CLOSE AND PRESS X TO SLIDE IN AND WIN IT', touch: 'THEY HAVE THE BALL. GET CLOSE AND TAP TACKLE TO SLIDE IN AND WIN IT' },
-  { id: 'ability', title: 'ABILITIES', k: 'YOUR STYLE HAS 3 ABILITIES. PRESS Q, E OR R TO USE ONE', pad: 'YOUR STYLE HAS 3 ABILITIES. PRESS THE D-PAD LEFT, UP OR RIGHT', touch: 'YOUR STYLE HAS 3 ABILITIES. TAP ONE OF THE ROUND ABILITY BUTTONS' },
-  { id: 'done', title: 'YOU ARE READY', k: 'NOW TRY A QUICK MATCH, THEN CLIMB THE RANKS. HAVE FUN!', pad: 'NOW TRY A QUICK MATCH, THEN CLIMB THE RANKS. HAVE FUN!', touch: 'NOW TRY A QUICK MATCH, THEN CLIMB THE RANKS. HAVE FUN!' },
+  { id: 'move', title: 'MOVE', k: 'RUN TO THE GOLD SQUARE', pad: 'LEFT STICK: RUN TO THE GOLD SQUARE', touch: 'LEFT THUMB: RUN TO THE GOLD SQUARE' },
+  { id: 'ball', title: 'GET THE BALL', k: 'RUN INTO THE BALL', pad: 'RUN INTO THE BALL', touch: 'RUN INTO THE BALL' },
+  { id: 'pass', title: 'PASS', k: 'RIGHT CLICK PASSES TO YOUR TEAMMATE', pad: 'LT PASSES TO YOUR TEAMMATE', touch: 'TAP PASS' },
+  { id: 'shoot', title: 'SCORE!', k: 'AIM WITH THE MOUSE. HOLD LEFT CLICK, LET GO TO SHOOT', pad: 'AIM WITH THE RIGHT STICK. HOLD RT, LET GO', touch: 'DRAG TO AIM. HOLD SHOOT, LET GO' },
+  { id: 'done', title: 'YOU ARE READY', k: 'NOW YOUR FIRST MATCH!', pad: 'NOW YOUR FIRST MATCH!', touch: 'NOW YOUR FIRST MATCH!' },
 ];
 const TUT_REWARD = 100; // emeralds, the first time you finish it
 /** free kicks: how many in practice, and the three kick types. sp: speed at no and full power, curve: how hard

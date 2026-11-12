@@ -79,7 +79,7 @@ const TutHud = {
   mark: null, step: -2,
   update(m) {
     const T = m && m.tut, box = $('tutbox');
-    if (!T || m.phase === 'end') { box.hidden = true; if (this.mark) this.mark.visible = false; this.step = -2; return; }
+    if (!T || m.phase === 'end') { box.hidden = true; if (this.mark) this.mark.visible = false; if (this.step !== -2) document.querySelectorAll('#touch .tb.tut-glow').forEach((b) => b.classList.remove('tut-glow')); this.step = -2; return; }
     if (!this.mark) {
       const mat = new THREE.MeshBasicMaterial({ color: 0xffcb3d, transparent: true, opacity: 0.9, depthTest: false });
       const g = new THREE.Group();
@@ -91,6 +91,32 @@ const TutHud = {
     const S = TUT_STEPS[T.step], how = Touch.on && !Input.usingPad ? 'touch' : Input.usingPad ? 'pad' : 'k';
     box.hidden = false;
     UI.setText('tut-n', 'STEP ' + (T.step + 1) + ' OF ' + TUT_STEPS.length); UI.setText('tut-title', S.title); UI.setText('tut-text', S[how]);
-    if (this.step !== T.step) { this.step = T.step; box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop'); } // a little bounce for each new step
+    if (this.step !== T.step || this.how !== how) { this.step = T.step; this.how = how; this.drawKeys(S.id, how); box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop'); } // a little bounce for each new step
+    this.lightKeys(how);
+  },
+  /** pictures of the controls for this step (CrazyGames: "show the user how to control the game with a keyboard overlay") */
+  drawKeys(id, how) {
+    const el = $('tut-keys'), cap = (c, lb) => `<span class="kc" data-code="${c}">${lb || KeyNames.of(c)}</span>`;
+    const mouse = (side) => `<span class="mouse ${side}"><i></i><i></i></span>`;
+    const pad = (b) => `<span class="kc pad">${b}</span>`;
+    let html = '';
+    if (how === 'k') {
+      if (id === 'move' || id === 'ball') html = `<span class="kcross">${cap('KeyW')}<span>${cap('KeyA')}${cap('KeyS')}${cap('KeyD')}</span></span>`;
+      else if (id === 'pass') html = mouse('r') + '<span class="kl">PASS</span>';
+      else if (id === 'shoot') html = mouse('l') + '<span class="kl">HOLD · LET GO</span>';
+    } else if (how === 'pad') {
+      html = { move: pad('L STICK'), ball: pad('L STICK'), pass: pad('LT'), shoot: pad('R STICK') + pad('RT') }[id] || '';
+    }
+    el.innerHTML = html; el.hidden = !html;
+    // phones: the button to press glows
+    document.querySelectorAll('#touch .tb.tut-glow').forEach((b) => b.classList.remove('tut-glow'));
+    const glow = how === 'touch' ? { pass: 'pass', shoot: 'shoot' }[id] : null;
+    if (glow) { const b = document.querySelector('#touch [data-act="' + glow + '"]'); if (b) b.classList.add('tut-glow'); }
+  },
+  /** the keys light up while you hold them */
+  lightKeys(how) {
+    if (how !== 'k') return;
+    document.querySelectorAll('#tut-keys .kc[data-code]').forEach((k) => k.classList.toggle('on', Input.down.has(k.dataset.code)));
+    const m = document.querySelector('#tut-keys .mouse'); if (m) m.classList.toggle('on', m.classList.contains('l') ? Input.mouseL : Input.mouseR);
   },
 };

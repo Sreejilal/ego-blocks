@@ -27,10 +27,30 @@ const Game = {
     window.addEventListener('resize', () => World.resize());
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'match') this.pause(); });
     this.toLobby();
+    KeyNames.init();
     if (Net.joinCode) Net.open(); // opened from an invite link
+    else if (!Save.data.onboarded && !navigator.webdriver) this.onboard(); // a brand-new player lands straight on the pitch
     this.last = performance.now();
     const tick = (t) => { requestAnimationFrame(tick); if (!this.manual) this.loop(t); };
     requestAnimationFrame(tick);
+  },
+  /** the first visit (CrazyGames: "a simple onboarding phase where new users land directly"): straight into the short
+      tutorial behind a CLICK TO PLAY (the click lets the game lock the mouse, start the sound and, on phones, go fullscreen) */
+  onboard() {
+    Save.data.onboarded = true; Save.save();
+    this.startMatch('tutorial');
+    $('tg-go').textContent = Touch.on ? 'TAP TO PLAY' : 'CLICK TO PLAY';
+    $('tut-gate').hidden = false;
+  },
+  gateGo() {
+    $('tut-gate').hidden = true;
+    Sfx.init(); Touch.autoFs(); Input.requestLock();
+  },
+  /** SKIP (the button, ENTER, or the pause menu): straight into a real match, no menus in between */
+  skipTutorial() {
+    if (!this.match || !this.match.cfg.tutorial) return;
+    $('tut-gate').hidden = true;
+    this.startMatch('quick');
   },
   applyQuality() { const q = Save.data.settings.quality; if (q === 'auto') World.setQuality(...AUTO_STEPS[this.autoStep]); else World.setQuality(q); },
   toLobby() {
@@ -49,7 +69,7 @@ const Game = {
     Net.where('menu');
   },
   startMatch(mode) {
-    Touch.autoFs(); Touch.hideTip();
+    Touch.autoFs(); Touch.hideTip(); $('tut-gate').hidden = true;
     if (this.match) { this.match.dispose(); this.match = null; }
     Reveal.stop(); Showcase.hide();
     UI.hideOverlays();
@@ -199,6 +219,7 @@ const Game = {
     const m = this.match;
     if (m && (this.state === 'match' || this.state === 'paused' || this.state === 'results' || this.state === 'replay')) {
       if (this.state === 'match' && Replay.offer && (Input.edges.has('Enter') || Input.edges.has('PadRS'))) { Input.consumeEdges(); Replay.start(); }
+      if (this.state === 'match' && m.cfg && m.cfg.tutorial && m.phase !== 'end' && Input.edges.has('Enter')) { Input.consumeEdges(); this.skipTutorial(); return; }
       if (this.state === 'replay') {
         if (['Enter', 'Space', 'PadA', 'PadB'].some((k) => Input.edges.has(k))) Replay.stop();
         Input.consumeEdges();

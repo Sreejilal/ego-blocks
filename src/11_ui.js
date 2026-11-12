@@ -307,7 +307,8 @@ const UI = {
       <div class="idle-warn" id="idle-warn" hidden role="alert"><b id="idle-big"></b><span id="idle-small"></span></div>
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
       <canvas id="minimap" width="132" height="200"></canvas>
-      <div class="tutbox panel" id="tutbox" hidden><span class="label" id="tut-n"></span><b id="tut-title"></b><p id="tut-text"></p></div>
+      <div class="tutbox panel" id="tutbox" hidden><span class="label" id="tut-n"></span><b id="tut-title"></b><div class="tut-keys" id="tut-keys" hidden></div><p id="tut-text"></p><button class="btn ghost tiny tut-skip" id="tut-skip" type="button">SKIP <span class="key">ENTER</span></button></div>
+      <div class="tut-gate" id="tut-gate" hidden><b class="tg-title">SCOR<em>Z</em></b><span class="tg-go" id="tg-go">CLICK TO PLAY</span><span class="label">A QUICK START: MOVE, PASS, SCORE</span></div>
       <div class="dock">
         <div class="fkpanel panel" id="fkpanel" hidden>
           <div class="fk-row"><span class="label">TYPE</span><b id="fk-type">CURVE</b><span class="label" id="fk-desc"></span><span class="key k" id="fk-typekey">RMB</span></div>
@@ -523,9 +524,12 @@ const UI = {
     click('btn-mute', () => { Save.data.settings.mute = !Save.data.settings.mute; Portal.applyMute(); Save.save(); this.renderLobby(); });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('p-resume', () => Game.resume());
+    click('tut-skip', () => Game.skipTutorial());
+    $('tut-gate').addEventListener('pointerdown', (e) => { e.preventDefault(); Game.gateGo(); });
     $('p-forfeit').addEventListener('click', () => {
       Sfx.click();
       const b = $('p-forfeit');
+      if (Game.match && Game.match.cfg.tutorial && Game.state !== 'online') { UI.showPause(false); Game.skipTutorial(); return; } // no need to confirm a skip
       if (b.dataset.armed) { delete b.dataset.armed; Game.forfeit(); }
       else { b.dataset.armed = '1'; b.textContent = Game.state === 'online' ? 'CONFIRM: A BOT TAKES OVER' : Game.match && Game.match.cfg.ranked ? 'CONFIRM: -15 RP' : 'CONFIRM FORFEIT'; }
     });
@@ -843,7 +847,7 @@ const UI = {
     document.querySelectorAll('#scr-pause .fs-only').forEach((el) => { el.hidden = !fs; });
     $('set-fs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === Touch.isFs()));
     $('p-note').textContent = Touch.on ? 'Tip: double tap the right side of the screen to face the goal you attack.' : 'Click the pitch after resuming to lock the mouse again.';
-    const f = $('p-forfeit'); delete f.dataset.armed; f.textContent = Game.state === 'online' ? 'LEAVE MATCH' : 'FORFEIT';
+    const f = $('p-forfeit'); delete f.dataset.armed; f.textContent = Game.state === 'online' ? 'LEAVE MATCH' : Game.match && Game.match.cfg.tutorial ? 'SKIP TUTORIAL' : 'FORFEIT';
     $('p-note').textContent = Game.state === 'online' ? 'Online matches keep going while this menu is open.' : $('p-note').textContent;
     $('scr-pause').querySelector('h2').textContent = Game.state === 'online' ? 'MENU' : 'PAUSED';
   },

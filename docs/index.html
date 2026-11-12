@@ -514,6 +514,32 @@ body.touch #hud .awakebar .track { height: 6px; }
 .tutbox.pop { animation: tutpop .35s ease-out; }
 @keyframes tutpop { 0% { transform: translateX(-50%) scale(.92); } 60% { transform: translateX(-50%) scale(1.04); } 100% { transform: translateX(-50%) scale(1); } }
 #hud:has(.tutbox:not([hidden])) #hint { display: none; } /* the box says what to do */
+/* the tutorial's pictures of the controls: keycaps that light up while held, a mouse with the button to press, SKIP */
+.tut-keys { display: flex; justify-content: center; align-items: center; gap: 10px; margin: 6px 0 2px; }
+.tut-keys[hidden] { display: none; }
+.kcross { display: grid; justify-items: center; gap: 4px; }
+.kcross > span { display: flex; gap: 4px; }
+.kc { display: inline-grid; place-items: center; min-width: 40px; height: 40px; padding: 0 6px; box-sizing: border-box; background: var(--slate-2); border: 3px solid var(--ink); box-shadow: inset 0 -5px 0 rgba(0,0,0,.4); font-family: var(--font-display); font-size: 24px; line-height: 1; color: var(--text); }
+.kc.on { background: var(--gold); color: var(--ink); box-shadow: inset 0 3px 0 rgba(0,0,0,.25); transform: translateY(2px); }
+.kc.pad { font-family: var(--font-label); font-size: 12px; font-weight: 700; letter-spacing: .06em; }
+.mouse { position: relative; display: grid; grid-template-columns: 1fr 1fr; width: 40px; height: 56px; border: 3px solid var(--ink); background: var(--slate-2); box-sizing: border-box; }
+.mouse i { height: 22px; border-bottom: 3px solid var(--ink); }
+.mouse i:first-child { border-right: 3px solid var(--ink); }
+.mouse.l i:first-child, .mouse.r i:last-child { background: #7d6a2a; animation: kblink 1s steps(2) infinite; }
+.mouse.on.l i:first-child, .mouse.on.r i:last-child { background: var(--gold); animation: none; }
+@keyframes kblink { 50% { background: var(--gold); } }
+.kl { font-family: var(--font-label); font-size: 12px; font-weight: 700; letter-spacing: .1em; color: var(--gold); }
+.tutbox .tut-skip { justify-self: end; margin-top: 2px; font-size: 14px; pointer-events: auto; }
+.tutbox .tut-skip .key { font-size: 9px; }
+body.touch .tutbox .tut-skip .key { display: none; }
+body.touch .kc { min-width: 32px; height: 32px; font-size: 18px; }
+#touch .tb.tut-glow { background: var(--gold); animation: fsPulse .7s steps(2) infinite; }
+.tut-gate { position: absolute; inset: 0; z-index: 40; display: grid; place-content: center; justify-items: center; gap: 14px; background: rgba(9,11,22,.55); cursor: pointer; text-align: center; pointer-events: auto; }
+.tut-gate[hidden] { display: none; }
+#hud:has(.tut-gate:not([hidden])) .tutbox { visibility: hidden; } /* the box shows once you click */
+.tg-title { font-family: var(--font-display); font-weight: 400; font-size: clamp(64px, 12vw, 120px); line-height: .9; color: var(--text); text-shadow: 6px 6px 0 var(--ink); }
+.tg-title em { font-style: normal; color: #3d7dff; }
+.tg-go { font-family: var(--font-display); font-size: clamp(30px, 5vw, 44px); color: var(--gold); text-shadow: 3px 3px 0 var(--ink); animation: fsPulse 1.1s steps(2) infinite; }
 body.touch .tutbox { width: min(340px, calc(100vw - 150px)); padding: 6px 10px 8px; }
 body.touch .tutbox b { font-size: 22px; } body.touch .tutbox p { font-size: 14px; }
 @media (orientation: portrait) { body.touch .tutbox { top: calc(176px + env(safe-area-inset-top, 0px)); width: calc(100vw - 32px); } }
@@ -980,9 +1006,9 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false,
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false,
       fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
-      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'first', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null },
+      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null },
       howto: false,
     };
   },
@@ -1024,7 +1050,7 @@ const Save = {
     out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
     out.tone = clamp(Math.floor(Number(out.tone)), 0, 7); if (!Number.isFinite(out.tone)) out.tone = 1;
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
-    out.tutorial = !!out.tutorial;
+    out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
     out.goalSteps = out.goalSteps && typeof out.goalSteps === 'object' ? out.goalSteps : {};
     out.settings = Object.assign({}, def.settings, out.settings || {});
@@ -1039,7 +1065,7 @@ const Save = {
     st.frOpen = typeof st.frOpen === 'boolean' ? st.frOpen : null; // the FRIENDS panel open or hidden (null: open on wide screens)
     out.fid = typeof out.fid === 'string' && /^[a-z0-9]{16}$/.test(out.fid) ? out.fid : Array.from({ length: 16 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
     out.friends = Array.isArray(out.friends) ? out.friends.filter((f) => f && typeof f.f === 'string' && /^[a-z0-9]{16}$/.test(f.f) && f.f !== out.fid).map((f) => ({ f: f.f, n: String(f.n || 'FRIEND').toUpperCase().replace(/[^A-Z0-9 ]/g, '').slice(0, 12) || 'FRIEND' })).slice(0, 60) : [];
-    st.camPicked = !!st.camPicked; st.cam = !st.camPicked ? 'first' : st.cam === 'third' ? 'third' : 'first'; st.autoFs = st.autoFs !== false; st.shiftLock = !!st.shiftLock; // first person until you pick
+    st.camPicked = !!st.camPicked; st.cam = !st.camPicked ? 'third' : st.cam === 'third' ? 'third' : 'first'; st.autoFs = st.autoFs !== false; st.shiftLock = !!st.shiftLock; // third person until you pick (owner, Nov 2026: new players see their own player; V still switches)
     out.account = out.account && typeof out.account === 'object' && typeof out.account.token === 'string' && typeof out.account.user === 'string' ? { user: out.account.user.slice(0, 12), token: out.account.token.slice(0, 128) } : null;
     out.name = String(out.name || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12);
     if (!Array.isArray(out.styles)) out.styles = ['ROOKIE'];
@@ -4176,18 +4202,14 @@ function matchSides(homeId, awayId) {
 /** who plays where. 3v3: a keeper, a defender and a midfielder; 4v4 adds a striker; 5v5 picks a setup at random for
     each team: ultra defensive (two defenders) or ultra attacking (two strikers). FW is the second striker */
 /** the tutorial: one thing at a time, each done when you do it. k: keyboard and mouse, pad: controller, touch: phone */
+/** the first thing a new player does (they land in it on their first visit, CrazyGames onboarding): only the core, with
+    pictures of the keys (TutHud). Sprint, feint, tackles and abilities are taught by tips in the first matches (MatchTips) */
 const TUT_STEPS = [
-  { id: 'move', title: 'MOVE', k: 'W A S D MOVES YOU. RUN TO THE GOLD SQUARE', pad: 'THE LEFT STICK MOVES YOU. RUN TO THE GOLD SQUARE', touch: 'YOUR LEFT THUMB MOVES YOU. RUN TO THE GOLD SQUARE' },
-  { id: 'look', title: 'LOOK AROUND', k: 'MOVE THE MOUSE TO TURN THE CAMERA. LOOK LEFT AND RIGHT', pad: 'THE RIGHT STICK TURNS THE CAMERA. LOOK LEFT AND RIGHT', touch: 'DRAG ON THE RIGHT SIDE TO TURN THE CAMERA. LOOK LEFT AND RIGHT' },
-  { id: 'sprint', title: 'SPRINT', k: 'HOLD SHIFT WHILE YOU MOVE TO SPRINT. IT USES STAMINA', pad: 'HOLD LB WHILE YOU MOVE TO SPRINT. IT USES STAMINA', touch: 'PUSH THE STICK ALL THE WAY OUT TO SPRINT. IT USES STAMINA' },
-  { id: 'ball', title: 'GET THE BALL', k: 'RUN INTO THE BALL TO TAKE IT', pad: 'RUN INTO THE BALL TO TAKE IT', touch: 'RUN INTO THE BALL TO TAKE IT' },
-  { id: 'pass', title: 'PASS', k: 'RIGHT MOUSE PASSES TO YOUR TEAMMATE. HOLD IT FOR A LOB', pad: 'LT PASSES TO YOUR TEAMMATE. HOLD IT FOR A LOB', touch: 'TAP PASS TO PASS TO YOUR TEAMMATE. HOLD IT FOR A LOB' },
-  { id: 'back', title: 'ONE MORE TIME', k: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT', pad: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT', touch: 'YOUR TEAMMATE PASSES IT BACK. GO AND GET IT' },
-  { id: 'shoot', title: 'SHOOT', k: 'AIM AT THE GOAL WITH THE MOUSE. HOLD LEFT MOUSE FOR POWER, LET GO TO SHOOT. HOLD A OR D AS WELL TO CURVE IT', pad: 'AIM WITH THE RIGHT STICK. HOLD RT FOR POWER, LET GO TO SHOOT. PUSH THE LEFT STICK SIDEWAYS TO CURVE IT', touch: 'DRAG TO AIM. HOLD SHOOT FOR POWER, LET GO TO FIRE. PUSH THE STICK SIDEWAYS TO CURVE IT' },
-  { id: 'feint', title: 'FEINT', k: 'WITH THE BALL, PRESS C TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO', pad: 'WITH THE BALL, PRESS B TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO', touch: 'WITH THE BALL, TAP FEINT TO STEP OVER. NOBODY CAN TACKLE YOU WHILE YOU DO' },
-  { id: 'tackle', title: 'TACKLE', k: 'THEY HAVE THE BALL. GET CLOSE AND PRESS F TO SLIDE IN AND WIN IT', pad: 'THEY HAVE THE BALL. GET CLOSE AND PRESS X TO SLIDE IN AND WIN IT', touch: 'THEY HAVE THE BALL. GET CLOSE AND TAP TACKLE TO SLIDE IN AND WIN IT' },
-  { id: 'ability', title: 'ABILITIES', k: 'YOUR STYLE HAS 3 ABILITIES. PRESS Q, E OR R TO USE ONE', pad: 'YOUR STYLE HAS 3 ABILITIES. PRESS THE D-PAD LEFT, UP OR RIGHT', touch: 'YOUR STYLE HAS 3 ABILITIES. TAP ONE OF THE ROUND ABILITY BUTTONS' },
-  { id: 'done', title: 'YOU ARE READY', k: 'NOW TRY A QUICK MATCH, THEN CLIMB THE RANKS. HAVE FUN!', pad: 'NOW TRY A QUICK MATCH, THEN CLIMB THE RANKS. HAVE FUN!', touch: 'NOW TRY A QUICK MATCH, THEN CLIMB THE RANKS. HAVE FUN!' },
+  { id: 'move', title: 'MOVE', k: 'RUN TO THE GOLD SQUARE', pad: 'LEFT STICK: RUN TO THE GOLD SQUARE', touch: 'LEFT THUMB: RUN TO THE GOLD SQUARE' },
+  { id: 'ball', title: 'GET THE BALL', k: 'RUN INTO THE BALL', pad: 'RUN INTO THE BALL', touch: 'RUN INTO THE BALL' },
+  { id: 'pass', title: 'PASS', k: 'RIGHT CLICK PASSES TO YOUR TEAMMATE', pad: 'LT PASSES TO YOUR TEAMMATE', touch: 'TAP PASS' },
+  { id: 'shoot', title: 'SCORE!', k: 'AIM WITH THE MOUSE. HOLD LEFT CLICK, LET GO TO SHOOT', pad: 'AIM WITH THE RIGHT STICK. HOLD RT, LET GO', touch: 'DRAG TO AIM. HOLD SHOOT, LET GO' },
+  { id: 'done', title: 'YOU ARE READY', k: 'NOW YOUR FIRST MATCH!', pad: 'NOW YOUR FIRST MATCH!', touch: 'NOW YOUR FIRST MATCH!' },
 ];
 const TUT_REWARD = 100; // emeralds, the first time you finish it
 /** free kicks: how many in practice, and the three kick types. sp: speed at no and full power, curve: how hard
@@ -5459,39 +5481,26 @@ class Match {
     const give = () => { if (b.owner !== h) { b.reset(h.pos.x, h.pos.z); this.possess(h, true); } };
     if (id === 'move') T.mark = ahead(12);
     else T.mark = null;
-    if (id === 'look') { T.yaw0 = null; T.turned = 0; }
     if (id === 'ball') { const q = ahead(5); b.reset(q.x, q.z); }
     if (id === 'pass') { give(); mate.pos.set(clamp(h.pos.x + 9, -F.W + 3, F.W - 3), 0, clamp(h.pos.z + 5 * s, -F.L + 4, F.L - 4)); mate.vel.set(0, 0, 0); }
     if (id === 'shoot') { h.pos.set(0, 0, gz - s * 15); h.yaw = s > 0 ? 0 : Math.PI; b.reset(0, gz - s * 14.4); this.possess(h, true); T.goals0 = this.score[h.team]; Hud.freeKick(h.yaw, 15); d.pos.set(-F.W + 3, 0, 0); }
-    if (id === 'feint') give();
-    if (id === 'tackle') { const q = ahead(4); d.pos.set(q.x, 0, q.z); d.speedMul = 0.45; b.reset(q.x, q.z); this.possess(d, true); d.protect = 0; d.tackleProof = 0; }
-    if (id === 'ability') { give(); for (const a of h.abil) a.cd = 0; }
     if (i > 0) Sfx.coin();
   }
   updateTutorial(dt) {
     const T = this.tut, h = this.human, b = this.ball;
     if (!T || !h || this.phase === 'end') return;
     T.t += dt;
-    const mate = this.teams[0].find((p) => p !== h), d = this.teams[1][0], id = TUT_STEPS[T.step].id;
+    const d = this.teams[1][0], id = TUT_STEPS[T.step].id;
     let done = false;
     switch (id) {
       case 'move': done = Math.hypot(h.pos.x - T.mark.x, h.pos.z - T.mark.z) < 2; break;
-      case 'look': if (T.yaw0 == null) T.yaw0 = this.camYaw; T.turned = Math.max(T.turned, Math.abs(wrapA(this.camYaw - T.yaw0))); done = T.turned > 1; break;
-      case 'sprint': T.sprintT = h.sprint && len2D(h.vel.x, h.vel.z) > 6.5 ? T.sprintT + dt : Math.max(0, T.sprintT - dt * 0.5); done = T.sprintT > 0.7; break;
       case 'ball': done = b.owner === h; break;
       case 'pass': done = !!(b.kick && b.kick.by === h && b.kick.type === 'pass') || !!(this.lastPass && this.lastPass.from === h && this.lastPass.t >= T.t0); break;
-      case 'back':
-        if (b.owner === mate) { T.backT += dt; if (T.backT > 0.7) { this.passTo(mate, h); T.backT = -99; } }
-        else if (!b.owner && T.backT >= 0 && T.t > 3) { b.reset(mate.pos.x, mate.pos.z); this.possess(mate, true); } // the pass missed: they fetch it
-        done = b.owner === h; break;
-      case 'shoot': done = this.score[h.team] > T.goals0; break;
-      case 'feint': done = !!h.feint; break;
-      case 'tackle': // they jog slowly round in a circle with the ball
-        if (b.owner === d) { const a = Math.atan2(d.pos.x, d.pos.z) + 0.6, tx = Math.sin(a) * 8, tz = Math.cos(a) * 8, dx = tx - d.pos.x, dz = tz - d.pos.z, l = Math.hypot(dx, dz) || 1; d.mx = dx / l; d.mz = dz / l; }
-        else if (!b.owner && b.lastTouch !== h && T.t > 1 && dist2D(b.pos, d.pos) < 1.5 && b.vel.lengthSq() < 1) this.possess(d, true); // they lost it by themselves: pick it up again
-        done = b.owner === h || (b.owner !== d && b.lastTouch === h); break; // you won it (a tackle knocks it loose)
-      case 'ability': done = h.abil.some((a) => a.cd > 0); break;
-      case 'done': if (T.t > 4) this.endTutorial(); break;
+      case 'shoot':
+        done = this.score[h.team] > T.goals0;
+        if (!done && T.t > 3 && b.owner !== h && !b.owner && b.vel.lengthSq() < 0.5) { b.reset(h.pos.x, h.pos.z); this.possess(h, true); } // a miss: the ball comes back to you
+        break;
+      case 'done': if (T.t > 3) this.endTutorial(); break;
     }
     if (done) { d.speedMul = 1; this.tutStep(T.step + 1); }
   }
@@ -7102,6 +7111,14 @@ const Input = {
 };
 
 const CAM_EYE = 1.55; // first person: eye height above the feet
+/** the letter printed on the key at a position (`code`): W A S D on QWERTY, Z Q S D on a French AZERTY keyboard.
+    Chrome and Edge can tell (navigator.keyboard); elsewhere the QWERTY letter */
+const KeyNames = {
+  map: null,
+  init() { try { const k = navigator.keyboard; if (k && k.getLayoutMap) k.getLayoutMap().then((m) => { this.map = m; if (typeof UI !== 'undefined' && UI.relabelKeys) UI.relabelKeys(); }, () => {}); } catch (e) {} },
+  of(code) { const v = this.map && this.map.get(code); return String(v || code.replace(/^Key|^Digit/, '')).toUpperCase(); },
+  move() { return ['KeyW', 'KeyA', 'KeyS', 'KeyD'].map((c) => this.of(c)).join(''); },
+};
 const Cam = {
   yaw: 0, pitch: -0.13, dist: 7.0, hidden: null, pos: V3(0, 5, -10), pivotY: 1.7, aim: V3(), onTarget: false, fwd: V3(0, 0, 1), snapYaw: null, punchT: 0, punchDur: 1, punchK: 0,
   /** a quick zoom in and back out for the cut-ins */
@@ -7977,7 +7994,7 @@ const TutHud = {
   mark: null, step: -2,
   update(m) {
     const T = m && m.tut, box = $('tutbox');
-    if (!T || m.phase === 'end') { box.hidden = true; if (this.mark) this.mark.visible = false; this.step = -2; return; }
+    if (!T || m.phase === 'end') { box.hidden = true; if (this.mark) this.mark.visible = false; if (this.step !== -2) document.querySelectorAll('#touch .tb.tut-glow').forEach((b) => b.classList.remove('tut-glow')); this.step = -2; return; }
     if (!this.mark) {
       const mat = new THREE.MeshBasicMaterial({ color: 0xffcb3d, transparent: true, opacity: 0.9, depthTest: false });
       const g = new THREE.Group();
@@ -7989,7 +8006,33 @@ const TutHud = {
     const S = TUT_STEPS[T.step], how = Touch.on && !Input.usingPad ? 'touch' : Input.usingPad ? 'pad' : 'k';
     box.hidden = false;
     UI.setText('tut-n', 'STEP ' + (T.step + 1) + ' OF ' + TUT_STEPS.length); UI.setText('tut-title', S.title); UI.setText('tut-text', S[how]);
-    if (this.step !== T.step) { this.step = T.step; box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop'); } // a little bounce for each new step
+    if (this.step !== T.step || this.how !== how) { this.step = T.step; this.how = how; this.drawKeys(S.id, how); box.classList.remove('pop'); void box.offsetWidth; box.classList.add('pop'); } // a little bounce for each new step
+    this.lightKeys(how);
+  },
+  /** pictures of the controls for this step (CrazyGames: "show the user how to control the game with a keyboard overlay") */
+  drawKeys(id, how) {
+    const el = $('tut-keys'), cap = (c, lb) => `<span class="kc" data-code="${c}">${lb || KeyNames.of(c)}</span>`;
+    const mouse = (side) => `<span class="mouse ${side}"><i></i><i></i></span>`;
+    const pad = (b) => `<span class="kc pad">${b}</span>`;
+    let html = '';
+    if (how === 'k') {
+      if (id === 'move' || id === 'ball') html = `<span class="kcross">${cap('KeyW')}<span>${cap('KeyA')}${cap('KeyS')}${cap('KeyD')}</span></span>`;
+      else if (id === 'pass') html = mouse('r') + '<span class="kl">PASS</span>';
+      else if (id === 'shoot') html = mouse('l') + '<span class="kl">HOLD · LET GO</span>';
+    } else if (how === 'pad') {
+      html = { move: pad('L STICK'), ball: pad('L STICK'), pass: pad('LT'), shoot: pad('R STICK') + pad('RT') }[id] || '';
+    }
+    el.innerHTML = html; el.hidden = !html;
+    // phones: the button to press glows
+    document.querySelectorAll('#touch .tb.tut-glow').forEach((b) => b.classList.remove('tut-glow'));
+    const glow = how === 'touch' ? { pass: 'pass', shoot: 'shoot' }[id] : null;
+    if (glow) { const b = document.querySelector('#touch [data-act="' + glow + '"]'); if (b) b.classList.add('tut-glow'); }
+  },
+  /** the keys light up while you hold them */
+  lightKeys(how) {
+    if (how !== 'k') return;
+    document.querySelectorAll('#tut-keys .kc[data-code]').forEach((k) => k.classList.toggle('on', Input.down.has(k.dataset.code)));
+    const m = document.querySelector('#tut-keys .mouse'); if (m) m.classList.toggle('on', m.classList.contains('l') ? Input.mouseL : Input.mouseR);
   },
 };
 
@@ -9619,7 +9662,8 @@ const UI = {
       <div class="idle-warn" id="idle-warn" hidden role="alert"><b id="idle-big"></b><span id="idle-small"></span></div>
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
       <canvas id="minimap" width="132" height="200"></canvas>
-      <div class="tutbox panel" id="tutbox" hidden><span class="label" id="tut-n"></span><b id="tut-title"></b><p id="tut-text"></p></div>
+      <div class="tutbox panel" id="tutbox" hidden><span class="label" id="tut-n"></span><b id="tut-title"></b><div class="tut-keys" id="tut-keys" hidden></div><p id="tut-text"></p><button class="btn ghost tiny tut-skip" id="tut-skip" type="button">SKIP <span class="key">ENTER</span></button></div>
+      <div class="tut-gate" id="tut-gate" hidden><b class="tg-title">SCOR<em>Z</em></b><span class="tg-go" id="tg-go">CLICK TO PLAY</span><span class="label">A QUICK START: MOVE, PASS, SCORE</span></div>
       <div class="dock">
         <div class="fkpanel panel" id="fkpanel" hidden>
           <div class="fk-row"><span class="label">TYPE</span><b id="fk-type">CURVE</b><span class="label" id="fk-desc"></span><span class="key k" id="fk-typekey">RMB</span></div>
@@ -9835,9 +9879,12 @@ const UI = {
     click('btn-mute', () => { Save.data.settings.mute = !Save.data.settings.mute; Portal.applyMute(); Save.save(); this.renderLobby(); });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('p-resume', () => Game.resume());
+    click('tut-skip', () => Game.skipTutorial());
+    $('tut-gate').addEventListener('pointerdown', (e) => { e.preventDefault(); Game.gateGo(); });
     $('p-forfeit').addEventListener('click', () => {
       Sfx.click();
       const b = $('p-forfeit');
+      if (Game.match && Game.match.cfg.tutorial && Game.state !== 'online') { UI.showPause(false); Game.skipTutorial(); return; } // no need to confirm a skip
       if (b.dataset.armed) { delete b.dataset.armed; Game.forfeit(); }
       else { b.dataset.armed = '1'; b.textContent = Game.state === 'online' ? 'CONFIRM: A BOT TAKES OVER' : Game.match && Game.match.cfg.ranked ? 'CONFIRM: -15 RP' : 'CONFIRM FORFEIT'; }
     });
@@ -10155,7 +10202,7 @@ const UI = {
     document.querySelectorAll('#scr-pause .fs-only').forEach((el) => { el.hidden = !fs; });
     $('set-fs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === Touch.isFs()));
     $('p-note').textContent = Touch.on ? 'Tip: double tap the right side of the screen to face the goal you attack.' : 'Click the pitch after resuming to lock the mouse again.';
-    const f = $('p-forfeit'); delete f.dataset.armed; f.textContent = Game.state === 'online' ? 'LEAVE MATCH' : 'FORFEIT';
+    const f = $('p-forfeit'); delete f.dataset.armed; f.textContent = Game.state === 'online' ? 'LEAVE MATCH' : Game.match && Game.match.cfg.tutorial ? 'SKIP TUTORIAL' : 'FORFEIT';
     $('p-note').textContent = Game.state === 'online' ? 'Online matches keep going while this menu is open.' : $('p-note').textContent;
     $('scr-pause').querySelector('h2').textContent = Game.state === 'online' ? 'MENU' : 'PAUSED';
   },
@@ -10398,10 +10445,30 @@ const Game = {
     window.addEventListener('resize', () => World.resize());
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'match') this.pause(); });
     this.toLobby();
+    KeyNames.init();
     if (Net.joinCode) Net.open(); // opened from an invite link
+    else if (!Save.data.onboarded && !navigator.webdriver) this.onboard(); // a brand-new player lands straight on the pitch
     this.last = performance.now();
     const tick = (t) => { requestAnimationFrame(tick); if (!this.manual) this.loop(t); };
     requestAnimationFrame(tick);
+  },
+  /** the first visit (CrazyGames: "a simple onboarding phase where new users land directly"): straight into the short
+      tutorial behind a CLICK TO PLAY (the click lets the game lock the mouse, start the sound and, on phones, go fullscreen) */
+  onboard() {
+    Save.data.onboarded = true; Save.save();
+    this.startMatch('tutorial');
+    $('tg-go').textContent = Touch.on ? 'TAP TO PLAY' : 'CLICK TO PLAY';
+    $('tut-gate').hidden = false;
+  },
+  gateGo() {
+    $('tut-gate').hidden = true;
+    Sfx.init(); Touch.autoFs(); Input.requestLock();
+  },
+  /** SKIP (the button, ENTER, or the pause menu): straight into a real match, no menus in between */
+  skipTutorial() {
+    if (!this.match || !this.match.cfg.tutorial) return;
+    $('tut-gate').hidden = true;
+    this.startMatch('quick');
   },
   applyQuality() { const q = Save.data.settings.quality; if (q === 'auto') World.setQuality(...AUTO_STEPS[this.autoStep]); else World.setQuality(q); },
   toLobby() {
@@ -10420,7 +10487,7 @@ const Game = {
     Net.where('menu');
   },
   startMatch(mode) {
-    Touch.autoFs(); Touch.hideTip();
+    Touch.autoFs(); Touch.hideTip(); $('tut-gate').hidden = true;
     if (this.match) { this.match.dispose(); this.match = null; }
     Reveal.stop(); Showcase.hide();
     UI.hideOverlays();
@@ -10570,6 +10637,7 @@ const Game = {
     const m = this.match;
     if (m && (this.state === 'match' || this.state === 'paused' || this.state === 'results' || this.state === 'replay')) {
       if (this.state === 'match' && Replay.offer && (Input.edges.has('Enter') || Input.edges.has('PadRS'))) { Input.consumeEdges(); Replay.start(); }
+      if (this.state === 'match' && m.cfg && m.cfg.tutorial && m.phase !== 'end' && Input.edges.has('Enter')) { Input.consumeEdges(); this.skipTutorial(); return; }
       if (this.state === 'replay') {
         if (['Enter', 'Space', 'PadA', 'PadB'].some((k) => Input.edges.has(k))) Replay.stop();
         Input.consumeEdges();

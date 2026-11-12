@@ -987,39 +987,26 @@ class Match {
     const give = () => { if (b.owner !== h) { b.reset(h.pos.x, h.pos.z); this.possess(h, true); } };
     if (id === 'move') T.mark = ahead(12);
     else T.mark = null;
-    if (id === 'look') { T.yaw0 = null; T.turned = 0; }
     if (id === 'ball') { const q = ahead(5); b.reset(q.x, q.z); }
     if (id === 'pass') { give(); mate.pos.set(clamp(h.pos.x + 9, -F.W + 3, F.W - 3), 0, clamp(h.pos.z + 5 * s, -F.L + 4, F.L - 4)); mate.vel.set(0, 0, 0); }
     if (id === 'shoot') { h.pos.set(0, 0, gz - s * 15); h.yaw = s > 0 ? 0 : Math.PI; b.reset(0, gz - s * 14.4); this.possess(h, true); T.goals0 = this.score[h.team]; Hud.freeKick(h.yaw, 15); d.pos.set(-F.W + 3, 0, 0); }
-    if (id === 'feint') give();
-    if (id === 'tackle') { const q = ahead(4); d.pos.set(q.x, 0, q.z); d.speedMul = 0.45; b.reset(q.x, q.z); this.possess(d, true); d.protect = 0; d.tackleProof = 0; }
-    if (id === 'ability') { give(); for (const a of h.abil) a.cd = 0; }
     if (i > 0) Sfx.coin();
   }
   updateTutorial(dt) {
     const T = this.tut, h = this.human, b = this.ball;
     if (!T || !h || this.phase === 'end') return;
     T.t += dt;
-    const mate = this.teams[0].find((p) => p !== h), d = this.teams[1][0], id = TUT_STEPS[T.step].id;
+    const d = this.teams[1][0], id = TUT_STEPS[T.step].id;
     let done = false;
     switch (id) {
       case 'move': done = Math.hypot(h.pos.x - T.mark.x, h.pos.z - T.mark.z) < 2; break;
-      case 'look': if (T.yaw0 == null) T.yaw0 = this.camYaw; T.turned = Math.max(T.turned, Math.abs(wrapA(this.camYaw - T.yaw0))); done = T.turned > 1; break;
-      case 'sprint': T.sprintT = h.sprint && len2D(h.vel.x, h.vel.z) > 6.5 ? T.sprintT + dt : Math.max(0, T.sprintT - dt * 0.5); done = T.sprintT > 0.7; break;
       case 'ball': done = b.owner === h; break;
       case 'pass': done = !!(b.kick && b.kick.by === h && b.kick.type === 'pass') || !!(this.lastPass && this.lastPass.from === h && this.lastPass.t >= T.t0); break;
-      case 'back':
-        if (b.owner === mate) { T.backT += dt; if (T.backT > 0.7) { this.passTo(mate, h); T.backT = -99; } }
-        else if (!b.owner && T.backT >= 0 && T.t > 3) { b.reset(mate.pos.x, mate.pos.z); this.possess(mate, true); } // the pass missed: they fetch it
-        done = b.owner === h; break;
-      case 'shoot': done = this.score[h.team] > T.goals0; break;
-      case 'feint': done = !!h.feint; break;
-      case 'tackle': // they jog slowly round in a circle with the ball
-        if (b.owner === d) { const a = Math.atan2(d.pos.x, d.pos.z) + 0.6, tx = Math.sin(a) * 8, tz = Math.cos(a) * 8, dx = tx - d.pos.x, dz = tz - d.pos.z, l = Math.hypot(dx, dz) || 1; d.mx = dx / l; d.mz = dz / l; }
-        else if (!b.owner && b.lastTouch !== h && T.t > 1 && dist2D(b.pos, d.pos) < 1.5 && b.vel.lengthSq() < 1) this.possess(d, true); // they lost it by themselves: pick it up again
-        done = b.owner === h || (b.owner !== d && b.lastTouch === h); break; // you won it (a tackle knocks it loose)
-      case 'ability': done = h.abil.some((a) => a.cd > 0); break;
-      case 'done': if (T.t > 4) this.endTutorial(); break;
+      case 'shoot':
+        done = this.score[h.team] > T.goals0;
+        if (!done && T.t > 3 && b.owner !== h && !b.owner && b.vel.lengthSq() < 0.5) { b.reset(h.pos.x, h.pos.z); this.possess(h, true); } // a miss: the ball comes back to you
+        break;
+      case 'done': if (T.t > 3) this.endTutorial(); break;
     }
     if (done) { d.speedMul = 1; this.tutStep(T.step + 1); }
   }
