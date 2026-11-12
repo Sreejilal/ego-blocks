@@ -1029,7 +1029,7 @@ const Save = {
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
       spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false, tips: [],
       fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
-      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null },
+      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true },
       howto: false,
     };
   },
@@ -1084,6 +1084,7 @@ const Save = {
     st.chat = ['all', 'quick', 'off'].includes(st.chat) ? st.chat : 'all';
     st.sky = st.sky === 'sunset' ? 'sunset' : 'day';
     st.showOnline = st.showOnline !== false; st.invites = ['all', 'friends', 'off'].includes(st.invites) ? st.invites : 'all';
+    st.music = st.music !== false;
     st.frOpen = typeof st.frOpen === 'boolean' ? st.frOpen : null; // the FRIENDS panel open or hidden (null: open on wide screens)
     out.fid = typeof out.fid === 'string' && /^[a-z0-9]{16}$/.test(out.fid) ? out.fid : Array.from({ length: 16 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
     out.friends = Array.isArray(out.friends) ? out.friends.filter((f) => f && typeof f.f === 'string' && /^[a-z0-9]{16}$/.test(f.f) && f.f !== out.fid).map((f) => ({ f: f.f, n: String(f.n || 'FRIEND').toUpperCase().replace(/[^A-Z0-9 ]/g, '').slice(0, 12) || 'FRIEND' })).slice(0, 60) : [];
@@ -1132,7 +1133,7 @@ const Save = {
 
 /* ---------- WebAudio retro sound ---------- */
 const Sfx = (() => {
-  let ctx = null, master = null, bus = null, noiseBuf = null, crowdGain = null, crowdFilter = null;
+  let ctx = null, master = null, bus = null, noiseBuf = null, crowdGain = null, crowdFilter = null, musicOut = null;
   let muted = false, crowdBase = 0, loud = 1, lastPress = -1, lastHover = -1;
   const now = () => ctx.currentTime;
   /** a menu press: a soft wooden tock, lower for BACK and CLOSE, a light two-note blip for tabs.
@@ -1170,6 +1171,7 @@ const Sfx = (() => {
     const lfo = ctx.createOscillator(); lfo.frequency.value = 0.21; const lfoG = ctx.createGain(); lfoG.gain.value = 90;
     lfo.connect(lfoG); lfoG.connect(crowdFilter.frequency); lfo.start();
     lp.connect(swell); swell.connect(crowdGain); crowdGain.connect(bus); src.start();
+    if (typeof Music !== 'undefined') Music.apply(); // the first click or tap: the menu music can start
   }
   function env(g, t0, attack, peak, dur) {
     g.gain.setValueAtTime(0.0001, t0);
@@ -1229,7 +1231,13 @@ const Sfx = (() => {
   return {
     init,
     get muted() { return muted; },
-    setMuted(m) { muted = !!m; if (master) master.gain.value = muted ? 0 : 0.75; },
+    setMuted(m) { muted = !!m; if (master) master.gain.value = muted ? 0 : 0.75; if (typeof Music !== 'undefined') Music.apply(); },
+    /** the music's own way out (11_music.js): straight to the master volume, not through the effects' compressor */
+    music() {
+      if (!ctx) return null;
+      if (!musicOut) { musicOut = ctx.createGain(); musicOut.gain.value = 0.0001; musicOut.connect(master); }
+      return { ctx, out: musicOut, noise: noiseBuf };
+    },
     kick(p = 0.5) {
       tone(150 + 70 * p, 0.11, { type: 'sine', vol: 0.32 + 0.3 * p, slide: 42 });
       noise(0.04 + 0.05 * p, { vol: 0.12 + 0.22 * p, type: 'highpass', freq: 1600 });
@@ -8288,6 +8296,112 @@ const Friends = {
   },
 };
 
+/* ---- 11_music.js ---- */
+/* =====================================================================
+   Music (Nov 2026, CrazyGames quality guidelines: "any music complements the visual experience"). Our own tune,
+   played by the game itself like every other sound (no music files): drums, a synth bass, chord stabs and a lead,
+   116 BPM, A minor (Am F C G), 16 bars that loop (a calm A half, then a fuller B half). It plays on the start screen,
+   in the menus and on the results; in a match it fades out so you hear the crowd. Off with MUSIC OFF / SOUND OFF.
+   ===================================================================== */
+const MUSIC_BPM = 116, MUSIC_VOL = 1.1;
+const MUSIC_CHORDS = [ // each bar: bass root (MIDI) and the chord stab
+  [45, [57, 60, 64]], [41, [57, 60, 65]], [48, [55, 60, 64]], [43, [55, 59, 62]],
+];
+/** the lead: per bar, [16th step, MIDI note, length in 16ths]. Bars 1-8 the A tune, 9-16 the B tune */
+const MUSIC_LEAD = [
+  [[0, 76, 2], [2, 74, 2], [4, 72, 2], [6, 69, 4], [12, 72, 2], [14, 74, 2]],
+  [[0, 72, 3], [3, 69, 3], [6, 65, 2], [8, 69, 4], [14, 72, 2]],
+  [[0, 67, 2], [2, 72, 2], [4, 76, 4], [8, 74, 2], [10, 72, 2], [12, 74, 4]],
+  [[0, 71, 4], [4, 67, 2], [6, 71, 2], [8, 74, 6]],
+  [[0, 76, 2], [2, 74, 2], [4, 72, 2], [6, 69, 4], [12, 72, 2], [14, 74, 2]],
+  [[0, 72, 3], [3, 69, 3], [6, 65, 2], [8, 69, 4], [14, 72, 2]],
+  [[0, 79, 2], [2, 76, 2], [4, 72, 4], [8, 76, 2], [10, 79, 2], [12, 81, 4]],
+  [[0, 79, 4], [4, 74, 4], [8, 71, 8]],
+  [[0, 81, 2], [3, 81, 1], [4, 79, 2], [6, 76, 2], [8, 76, 2], [10, 79, 2], [12, 76, 4]],
+  [[0, 77, 2], [3, 77, 1], [4, 76, 2], [6, 72, 2], [8, 72, 4], [12, 69, 4]],
+  [[0, 79, 2], [2, 76, 2], [4, 79, 2], [6, 84, 4], [10, 83, 2], [12, 79, 4]],
+  [[0, 83, 4], [4, 81, 2], [6, 79, 2], [8, 74, 8]],
+  [[0, 81, 2], [3, 81, 1], [4, 79, 2], [6, 76, 2], [8, 76, 2], [10, 79, 2], [12, 76, 4]],
+  [[0, 77, 2], [3, 77, 1], [4, 76, 2], [6, 72, 2], [8, 72, 4], [12, 69, 4]],
+  [[0, 79, 2], [2, 76, 2], [4, 79, 2], [6, 84, 4], [10, 83, 2], [12, 79, 4]],
+  [[0, 79, 2], [2, 81, 2], [4, 83, 4], [8, 84, 8]],
+];
+const midiHz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+
+const Music = {
+  on: false, step: 0, next: 0, timer: null, out: null, ctx: null,
+  /** the menus want music, a match does not (called from UI.show, the results and settings) */
+  set(want) {
+    this.want = !!want;
+    this.apply();
+  },
+  allowed() { const s = Save.data.settings; return this.want && s.music !== false && !s.mute && !Sfx.muted && !document.hidden && (!navigator.webdriver || this.test); }, // automated tests and the video tools: no music unless a test asks
+  apply() {
+    const A = Sfx.music && Sfx.music(); // null until the first click or tap starts the sound
+    if (!A) return;
+    this.ctx = A.ctx; this.out = A.out;
+    const t = A.ctx.currentTime, g = A.out.gain;
+    g.cancelScheduledValues(t); g.setValueAtTime(Math.max(0.0001, g.value), t);
+    if (this.allowed()) {
+      g.exponentialRampToValueAtTime(MUSIC_VOL, t + 1.2);
+      if (!this.timer) { this.next = t + 0.1; this.timer = setInterval(() => this.tick(), 50); }
+      this.on = true;
+    } else if (this.on) {
+      g.exponentialRampToValueAtTime(0.0001, t + 0.9);
+      this.on = false;
+      clearTimeout(this.stopT); this.stopT = setTimeout(() => { if (!this.on) { clearInterval(this.timer); this.timer = null; } }, 1000);
+    }
+  },
+  /** schedule the 16th notes due in the next quarter second */
+  tick() {
+    const ctx = this.ctx; if (!ctx) return;
+    const s16 = 60 / MUSIC_BPM / 4;
+    if (this.next < ctx.currentTime - 0.2) this.next = ctx.currentTime + 0.05; // the tab was asleep: start again from now
+    while (this.next < ctx.currentTime + 0.25) { this.play(this.step, this.next); this.step = (this.step + 1) % 256; this.next += s16; }
+  },
+  play(step, t) {
+    const bar = Math.floor(step / 16), s = step % 16, B = bar >= 8, [root, chord] = MUSIC_CHORDS[bar % 4];
+    // drums: kick on 1 and 3 (every beat in the B half), clap on 2 and 4, hats on the 8ths (16ths in B)
+    if (s % 8 === 0 || (B && s % 4 === 0)) this.kick(t);
+    if (s === 4 || s === 12) this.clap(t, bar % 4 === 3 && s === 12 ? 1.3 : 1);
+    if (s % 2 === 0 || B) this.hat(t, s % 4 === 2 ? 0.032 : 0.016);
+    if (bar === 15 && s >= 12) this.clap(t, 0.6); // a little fill into the loop
+    // bass: a bouncing root, an octave up on the offbeats
+    if ([0, 3, 6, 8, 11, 14].includes(s)) this.bass(midiHz(s === 6 || s === 14 ? root + 12 : root), t);
+    // chord stabs on the offbeats; the B half adds a soft pad
+    if (s % 4 === 2) for (const n of chord) this.stab(midiHz(n), t);
+    if (B && s === 0) for (const n of chord) this.pad(midiHz(n - 12), t, 16 * 60 / MUSIC_BPM / 4);
+    // the lead
+    for (const [at, n, len] of MUSIC_LEAD[bar]) if (at === s) this.lead(midiHz(n), t, len * 60 / MUSIC_BPM / 4);
+  },
+  voice(type, f, t, dur, vol, cut, a = 0.005) {
+    const ctx = this.ctx, o = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(cut, t);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + dur);
+    o.connect(lp); lp.connect(g); g.connect(this.out); o.start(t); o.stop(t + a + dur + 0.05);
+    return o;
+  },
+  kick(t) { const o = this.voice('sine', 150, t, 0.16, 0.5, 4000, 0.002); o.frequency.exponentialRampToValueAtTime(45, t + 0.12); },
+  clap(t, k) { this.hiss(t, 0.09, 0.09 * k, 'bandpass', 1700, 1.1); this.hiss(t + 0.012, 0.06, 0.06 * k, 'bandpass', 2300, 1.4); },
+  hat(t, vol) { this.hiss(t, 0.03, vol, 'highpass', 7000, 0.8); },
+  hiss(t, dur, vol, type, f, q) {
+    const ctx = this.ctx, A = Sfx.music(), src = ctx.createBufferSource(), fl = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = A.noise; fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(fl); fl.connect(g); g.connect(this.out); src.start(t, Math.random()); src.stop(t + dur + 0.05);
+  },
+  bass(f, t) { this.voice('square', f, t, 0.13, 0.085, 520); this.voice('sine', f, t, 0.16, 0.09, 2000); },
+  stab(f, t) { this.voice('sawtooth', f, t, 0.09, 0.022, 1900); },
+  pad(f, t, dur) { this.voice('triangle', f, t, dur, 0.03, 1200, 0.25); },
+  lead(f, t, dur) {
+    const o = this.voice('square', f, t, Math.max(0.08, dur * 0.85), 0.045, 2600);
+    const v = this.ctx.createOscillator(), vg = this.ctx.createGain(); // a little vibrato on long notes
+    v.frequency.value = 5.5; vg.gain.value = dur > 0.3 ? f * 0.006 : 0; v.connect(vg); vg.connect(o.frequency); v.start(t); v.stop(t + dur + 0.1);
+  },
+};
+document.addEventListener('visibilitychange', () => Music.apply()); // quiet while the tab is hidden
+
 /* ---- 11_net.js ---- */
 /* =====================================================================
    Net: playing online with friends. The server runs the match (same
@@ -9868,6 +9982,7 @@ const UI = {
           <span>Chat</span><div class="seg" id="set-chat">${CHAT_SHOW.map(([v, n]) => `<button type="button" data-v="${v}">${n}</button>`).join('')}</div>
           <span>Cut-ins</span><div class="seg" id="set-cut"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Sound</span><div class="seg" id="set-snd"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
+          <span>Music</span><div class="seg" id="set-music"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span class="fs-only" hidden>Fullscreen</span><div class="seg fs-only" id="set-fs" hidden><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
         </div>
         <div class="p-people" id="p-people" hidden></div>
@@ -9964,7 +10079,11 @@ const UI = {
     click('ltab-club', () => { this.lockerTab = 'club'; this.lockerSel = Save.data.club; this.renderLocker(); });
     click('ltab-skin', () => { this.lockerTab = 'skin'; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
     $('lk-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); this.skinSlot = b.dataset.slot; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
-    click('btn-mute', () => { Save.data.settings.mute = !Save.data.settings.mute; Portal.applyMute(); Save.save(); this.renderLobby(); });
+    click('btn-mute', () => { // SOUND ON, then MUSIC OFF (sounds but no music), then SOUND OFF
+      const s = Save.data.settings;
+      if (s.mute) { s.mute = false; s.music = true; } else if (s.music) s.music = false; else s.mute = true;
+      Portal.applyMute(); Music.apply(); Save.save(); this.renderLobby();
+    });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('p-resume', () => Game.resume());
     click('tut-skip', () => Game.skipTutorial());
@@ -9984,6 +10103,7 @@ const UI = {
     $('set-chat').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Net.setChatShow(v); this.renderPause(); });
     $('set-sky').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v) return; Save.data.settings.sky = v; World.setLook(v); Save.save(); this.renderPause(); });
     $('set-cut').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.cutins = v === '1'; Save.save(); this.renderPause(); });
+    $('set-music').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.music = v === '1'; Music.apply(); Save.save(); this.renderPause(); });
     $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Portal.applyMute(); Save.save(); this.renderPause(); });
     $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
     $('set-assist').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.assist = v === '1'; Save.save(); this.renderPause(); });
@@ -10013,13 +10133,14 @@ const UI = {
     if (name === 'pass') this.renderPass();
     if (name === 'goals') this.renderGoals();
     Friends.place(); // the FRIENDS panel on the side: start screen, room screen and pause menu only
+    Music.set(name !== 'hud'); // music in the menus; a match has the crowd
   },
   /* ---------- lobby ---------- */
   renderLobby() {
     const d = Save.data, tier = tierOf(d.rp);
     const em = iconURL('emerald');
     $('lob-em-ico').src = em; $('lob-em').textContent = d.emeralds;
-    $('btn-mute').textContent = d.settings.mute ? 'SOUND OFF' : 'SOUND ON';
+    $('btn-mute').textContent = d.settings.mute ? 'SOUND OFF' : d.settings.music === false ? 'MUSIC OFF' : 'SOUND ON';
     $('btn-gfx').textContent = 'GRAPHICS: ' + d.settings.quality.toUpperCase();
     const sz = teamSizeFor('ranked', d.rp);
     $('rank-sub').textContent = TIER_NAMES[tier] + ' · ' + sz + 'V' + sz;
@@ -10273,6 +10394,7 @@ const UI = {
     $('set-q').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.q === s.quality));
     $('set-inv').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !!s.invertY));
     $('set-snd').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !s.mute));
+    $('set-music').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.music !== false)));
     $('set-cut').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.cutins !== false)));
     $('set-sky').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.sky));
     $('set-chat').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.chat));
@@ -10323,7 +10445,7 @@ const UI = {
       : `<span class="label">DAILY CHALLENGE · ${esc(D.name)} · ${D.done ? 'DONE' : D.prog + ' / ' + D.goal}</span>`;
     if (r.goalsDone && r.goalsDone.length) $('r-daily').innerHTML += r.goalsDone.map((t) => `<span class="label pl-tier">GOAL DONE: ${esc(t)}</span>`).join('');
     $('hint').hidden = true;
-    $('scr-results').hidden = false;
+    $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
   },
   /** the tutorial is done: a first-time reward and a button straight into a quick match */
   showTutorialDone(first) {
@@ -10334,7 +10456,7 @@ const UI = {
     $('r-earn').innerHTML = first ? `<div class="tot"><span>FIRST TIME BONUS</span><span>+${TUT_REWARD}</span></div>` : '<div class="idle-note"><span>YOU CAN PLAY IT AGAIN ANY TIME FROM HOW TO PLAY</span></div>';
     $('r-rank').hidden = true; $('r-xp').innerHTML = ''; $('r-pass').innerHTML = ''; $('r-daily').innerHTML = '';
     $('hint').hidden = true;
-    $('scr-results').hidden = false;
+    $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
   },
   /** free kick practice: your score, your best, what happened to each kick */
   showPractice(r) {
@@ -10346,7 +10468,7 @@ const UI = {
     $('r-earn').innerHTML = '<div class="idle-note"><span>PRACTICE GIVES NO REWARDS. JUST GET BETTER</span></div>';
     $('r-rank').hidden = true; $('r-xp').innerHTML = ''; $('r-pass').innerHTML = ''; $('r-daily').innerHTML = '';
     $('hint').hidden = true;
-    $('scr-results').hidden = false;
+    $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
   },
   hideOverlays() { $('scr-results').hidden = true; $('scr-pause').hidden = true; },
   /* ---------- spins ---------- */
@@ -10777,7 +10899,7 @@ const Game = {
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, Account, Portal, Player, TEAM, rollRarity, poolFor,
-  Goals, GOALS, BP_COST, SKIN_SLOTS,
+  Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
   CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */

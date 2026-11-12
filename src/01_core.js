@@ -95,7 +95,7 @@ const Save = {
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
       spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false, tips: [],
       fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
-      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null },
+      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true },
       howto: false,
     };
   },
@@ -150,6 +150,7 @@ const Save = {
     st.chat = ['all', 'quick', 'off'].includes(st.chat) ? st.chat : 'all';
     st.sky = st.sky === 'sunset' ? 'sunset' : 'day';
     st.showOnline = st.showOnline !== false; st.invites = ['all', 'friends', 'off'].includes(st.invites) ? st.invites : 'all';
+    st.music = st.music !== false;
     st.frOpen = typeof st.frOpen === 'boolean' ? st.frOpen : null; // the FRIENDS panel open or hidden (null: open on wide screens)
     out.fid = typeof out.fid === 'string' && /^[a-z0-9]{16}$/.test(out.fid) ? out.fid : Array.from({ length: 16 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
     out.friends = Array.isArray(out.friends) ? out.friends.filter((f) => f && typeof f.f === 'string' && /^[a-z0-9]{16}$/.test(f.f) && f.f !== out.fid).map((f) => ({ f: f.f, n: String(f.n || 'FRIEND').toUpperCase().replace(/[^A-Z0-9 ]/g, '').slice(0, 12) || 'FRIEND' })).slice(0, 60) : [];
@@ -198,7 +199,7 @@ const Save = {
 
 /* ---------- WebAudio retro sound ---------- */
 const Sfx = (() => {
-  let ctx = null, master = null, bus = null, noiseBuf = null, crowdGain = null, crowdFilter = null;
+  let ctx = null, master = null, bus = null, noiseBuf = null, crowdGain = null, crowdFilter = null, musicOut = null;
   let muted = false, crowdBase = 0, loud = 1, lastPress = -1, lastHover = -1;
   const now = () => ctx.currentTime;
   /** a menu press: a soft wooden tock, lower for BACK and CLOSE, a light two-note blip for tabs.
@@ -236,6 +237,7 @@ const Sfx = (() => {
     const lfo = ctx.createOscillator(); lfo.frequency.value = 0.21; const lfoG = ctx.createGain(); lfoG.gain.value = 90;
     lfo.connect(lfoG); lfoG.connect(crowdFilter.frequency); lfo.start();
     lp.connect(swell); swell.connect(crowdGain); crowdGain.connect(bus); src.start();
+    if (typeof Music !== 'undefined') Music.apply(); // the first click or tap: the menu music can start
   }
   function env(g, t0, attack, peak, dur) {
     g.gain.setValueAtTime(0.0001, t0);
@@ -295,7 +297,13 @@ const Sfx = (() => {
   return {
     init,
     get muted() { return muted; },
-    setMuted(m) { muted = !!m; if (master) master.gain.value = muted ? 0 : 0.75; },
+    setMuted(m) { muted = !!m; if (master) master.gain.value = muted ? 0 : 0.75; if (typeof Music !== 'undefined') Music.apply(); },
+    /** the music's own way out (11_music.js): straight to the master volume, not through the effects' compressor */
+    music() {
+      if (!ctx) return null;
+      if (!musicOut) { musicOut = ctx.createGain(); musicOut.gain.value = 0.0001; musicOut.connect(master); }
+      return { ctx, out: musicOut, noise: noiseBuf };
+    },
     kick(p = 0.5) {
       tone(150 + 70 * p, 0.11, { type: 'sine', vol: 0.32 + 0.3 * p, slide: 42 });
       noise(0.04 + 0.05 * p, { vol: 0.12 + 0.22 * p, type: 'highpass', freq: 1600 });

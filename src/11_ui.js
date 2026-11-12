@@ -426,6 +426,7 @@ const UI = {
           <span>Chat</span><div class="seg" id="set-chat">${CHAT_SHOW.map(([v, n]) => `<button type="button" data-v="${v}">${n}</button>`).join('')}</div>
           <span>Cut-ins</span><div class="seg" id="set-cut"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Sound</span><div class="seg" id="set-snd"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
+          <span>Music</span><div class="seg" id="set-music"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span class="fs-only" hidden>Fullscreen</span><div class="seg fs-only" id="set-fs" hidden><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
         </div>
         <div class="p-people" id="p-people" hidden></div>
@@ -522,7 +523,11 @@ const UI = {
     click('ltab-club', () => { this.lockerTab = 'club'; this.lockerSel = Save.data.club; this.renderLocker(); });
     click('ltab-skin', () => { this.lockerTab = 'skin'; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
     $('lk-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); this.skinSlot = b.dataset.slot; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
-    click('btn-mute', () => { Save.data.settings.mute = !Save.data.settings.mute; Portal.applyMute(); Save.save(); this.renderLobby(); });
+    click('btn-mute', () => { // SOUND ON, then MUSIC OFF (sounds but no music), then SOUND OFF
+      const s = Save.data.settings;
+      if (s.mute) { s.mute = false; s.music = true; } else if (s.music) s.music = false; else s.mute = true;
+      Portal.applyMute(); Music.apply(); Save.save(); this.renderLobby();
+    });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('p-resume', () => Game.resume());
     click('tut-skip', () => Game.skipTutorial());
@@ -542,6 +547,7 @@ const UI = {
     $('set-chat').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Net.setChatShow(v); this.renderPause(); });
     $('set-sky').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v) return; Save.data.settings.sky = v; World.setLook(v); Save.save(); this.renderPause(); });
     $('set-cut').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.cutins = v === '1'; Save.save(); this.renderPause(); });
+    $('set-music').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.music = v === '1'; Music.apply(); Save.save(); this.renderPause(); });
     $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Portal.applyMute(); Save.save(); this.renderPause(); });
     $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
     $('set-assist').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.assist = v === '1'; Save.save(); this.renderPause(); });
@@ -571,13 +577,14 @@ const UI = {
     if (name === 'pass') this.renderPass();
     if (name === 'goals') this.renderGoals();
     Friends.place(); // the FRIENDS panel on the side: start screen, room screen and pause menu only
+    Music.set(name !== 'hud'); // music in the menus; a match has the crowd
   },
   /* ---------- lobby ---------- */
   renderLobby() {
     const d = Save.data, tier = tierOf(d.rp);
     const em = iconURL('emerald');
     $('lob-em-ico').src = em; $('lob-em').textContent = d.emeralds;
-    $('btn-mute').textContent = d.settings.mute ? 'SOUND OFF' : 'SOUND ON';
+    $('btn-mute').textContent = d.settings.mute ? 'SOUND OFF' : d.settings.music === false ? 'MUSIC OFF' : 'SOUND ON';
     $('btn-gfx').textContent = 'GRAPHICS: ' + d.settings.quality.toUpperCase();
     const sz = teamSizeFor('ranked', d.rp);
     $('rank-sub').textContent = TIER_NAMES[tier] + ' · ' + sz + 'V' + sz;
@@ -831,6 +838,7 @@ const UI = {
     $('set-q').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.q === s.quality));
     $('set-inv').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !!s.invertY));
     $('set-snd').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !s.mute));
+    $('set-music').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.music !== false)));
     $('set-cut').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.cutins !== false)));
     $('set-sky').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.sky));
     $('set-chat').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.chat));
@@ -881,7 +889,7 @@ const UI = {
       : `<span class="label">DAILY CHALLENGE · ${esc(D.name)} · ${D.done ? 'DONE' : D.prog + ' / ' + D.goal}</span>`;
     if (r.goalsDone && r.goalsDone.length) $('r-daily').innerHTML += r.goalsDone.map((t) => `<span class="label pl-tier">GOAL DONE: ${esc(t)}</span>`).join('');
     $('hint').hidden = true;
-    $('scr-results').hidden = false;
+    $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
   },
   /** the tutorial is done: a first-time reward and a button straight into a quick match */
   showTutorialDone(first) {
@@ -892,7 +900,7 @@ const UI = {
     $('r-earn').innerHTML = first ? `<div class="tot"><span>FIRST TIME BONUS</span><span>+${TUT_REWARD}</span></div>` : '<div class="idle-note"><span>YOU CAN PLAY IT AGAIN ANY TIME FROM HOW TO PLAY</span></div>';
     $('r-rank').hidden = true; $('r-xp').innerHTML = ''; $('r-pass').innerHTML = ''; $('r-daily').innerHTML = '';
     $('hint').hidden = true;
-    $('scr-results').hidden = false;
+    $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
   },
   /** free kick practice: your score, your best, what happened to each kick */
   showPractice(r) {
@@ -904,7 +912,7 @@ const UI = {
     $('r-earn').innerHTML = '<div class="idle-note"><span>PRACTICE GIVES NO REWARDS. JUST GET BETTER</span></div>';
     $('r-rank').hidden = true; $('r-xp').innerHTML = ''; $('r-pass').innerHTML = ''; $('r-daily').innerHTML = '';
     $('hint').hidden = true;
-    $('scr-results').hidden = false;
+    $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
   },
   hideOverlays() { $('scr-results').hidden = true; $('scr-pause').hidden = true; },
   /* ---------- spins ---------- */
