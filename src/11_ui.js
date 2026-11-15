@@ -13,6 +13,7 @@ const UI = {
     app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
+    this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
     this.bind();
     Hud.toast = (t, c) => this.toast(t, c);
@@ -570,7 +571,7 @@ const UI = {
     if (was && was !== name && was !== 'hud' && name !== 'hud') { if (name === 'lobby') Sfx.close(); else Sfx.open(); } // menus whoosh in and out (matches have their own sounds)
     const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
-    if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
+    if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const t of this.ntags) t.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
     if (name !== 'spins') Reveal.stop();
     if (name === 'lobby') { this.renderLobby(); Showcase.ensure(); }
@@ -800,6 +801,17 @@ const UI = {
       l.el.style.left = s.x.toFixed(0) + 'px'; l.el.style.top = s.y.toFixed(0) + 'px';
       l.el.style.opacity = Math.min(1, l.t * 3).toFixed(2);
     }
+    // online: every other real player wears their name, in their team's colour, so you can tell friends from bots
+    let nt = 0;
+    if (m.online) for (const p of m.players) {
+      if (!p.netId || p === m.human || nt >= this.ntags.length) continue;
+      const s = proj(p, 2.2); if (!s.ok) continue;
+      const el = this.ntags[nt++];
+      if (el.textContent !== p.name) el.textContent = p.name;
+      el.dataset.t = p.team; el.hidden = false;
+      el.style.left = s.x.toFixed(0) + 'px'; el.style.top = s.y.toFixed(0) + 'px';
+    }
+    for (; nt < this.ntags.length; nt++) if (!this.ntags[nt].hidden) this.ntags[nt].hidden = true;
     const hp = m.human;
     if (hp && (m.phase === 'kickoff' || m.phase === 'out')) {
       const s = proj(hp, 2.5);
