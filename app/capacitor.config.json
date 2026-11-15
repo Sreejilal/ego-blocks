@@ -1,0 +1,9 @@
+{
+  "appId": "com.scorz.football",
+  "appName": "SCORZ",
+  "webDir": "www",
+  "backgroundColor": "#090b16",
+  "android": {
+    "backgroundColor": "#090b16"
+  }
+}

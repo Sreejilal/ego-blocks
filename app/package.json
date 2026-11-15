@@ -1,0 +1,16 @@
+{
+  "name": "scorz-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SCORZ as an Android app (Capacitor wraps app/www/index.html)",
+  "scripts": {
+    "sync": "cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/core": "^8.6.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.0"
+  }
+}

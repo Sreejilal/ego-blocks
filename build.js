@@ -103,6 +103,15 @@ if (!process.env.SCORZ_CG_OUT) fs.writeFileSync(path.join(ROOT, 'docs', 'index.h
 if (!process.env.SCORZ_CG_OUT) console.log(CF_TOKEN ? 'visitor counting: Cloudflare Web Analytics is ON' : 'visitor counting: off (no Cloudflare token yet)');
 if (!process.env.SCORZ_CG_OUT) console.log('built docs/index.html', (page.length / 1024).toFixed(0) + ' KB,', modules.length, 'modules,', inlined.length ? 'inlined: ' + inlined.join(' + ') : 'using CDN (run npm install to inline)');
 
+// ---- 5b. the phone app (node build.js --app): the same page for the Android app in app/ (Capacitor). portal 'app' means
+// no fullscreen button or phone tip (the app is always full screen) and no visitor counting
+if (process.argv.includes('--app')) {
+  const out = path.join(ROOT, 'app', 'www');
+  fs.mkdirSync(out, { recursive: true });
+  fs.writeFileSync(path.join(out, 'index.html'), pageFor(gameFor({ portal: 'app', server: SERVER }), ''));
+  console.log('built app/www/index.html');
+}
+
 // ---- 6. the CrazyGames page: their SDK in <head>, nothing else changes ------
 if (process.argv.includes('--crazygames')) {
   const cg = pageFor(gameFor({ portal: 'crazygames', server: SERVER }), '\n<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>');
