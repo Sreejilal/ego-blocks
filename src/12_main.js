@@ -55,6 +55,10 @@ const Game = {
     keys.hidden = Touch.on;
     $('tut-gate').hidden = false;
   },
+  /** the gentle start for this mode's next match ([team size, skill]), or null once it is over. Tests keep the normal sizes */
+  rampFor(mode) { return MODES[mode] && MODES[mode].rewards && (!navigator.webdriver || this.rampTest) ? rookieRamp(Save.data.stats.played) : null; },
+  /** the team size the next match in this mode will really have (the start screen's buttons say it) */
+  sizeFor(mode) { const r = this.rampFor(mode), s = teamSizeFor(mode, Save.data.rp); return r ? Math.min(s, r[0]) : s; },
   gateGo() {
     this.gate = false;
     $('tut-gate').hidden = true;
@@ -90,7 +94,7 @@ const Game = {
     Sfx.init();
     TimeCtl.reset(); FX.clear();
     let skill = difficultyFor(Save.data.rp), size = teamSizeFor(mode, Save.data.rp);
-    const ramp = MODES[mode] && MODES[mode].rewards && (!navigator.webdriver || this.rampTest) ? rookieRamp(Save.data.stats.played) : null; // tests keep the normal sizes
+    const ramp = this.rampFor(mode);
     if (ramp) { size = Math.min(size, ramp[0]); skill = Math.min(skill, ramp[1]); }
     this.match = new Match(mode, skill, { size });
     this.lastMode = mode; this.ended = false;

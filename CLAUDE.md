@@ -160,3 +160,8 @@ file in file-name order into ONE function scope. There are no imports or exports
 - The owner is learning. Explain what you changed in simple words, and do one feature at a time.
 - If an idea would make the game worse, harder to play or unsafe for players, say so and suggest a better version before building it.
 - Their feature list, in order, is in `ROADMAP.md`.
+
+## The app page played on a phone (`test/app_phone.js`)
+- `npm run build:app` then `node test/app_phone.js [w] [h]`: a brand-new player on a 844x390 phone plays the whole first match on `app/www/index.html` with real touches (stick, camera drag, SHOOT, PASS, TACKLE) and takes a picture of every screen (`test/shots/app_*.png`). It checks the buttons are on screen, 36px or more and not overlapping, that nothing asks for the internet during a bot match, that the online screen reaches the game server, and that every menu fits sideways.
+- Chrome DevTools `touchEnd`: `touchPoints` is the fingers that LIFT, not the ones still down. Listing the remaining fingers lifts those instead and leaves the button "held" (it looked like a stuck PASS button; it was the test).
+- `Game.rampFor(mode)` / `Game.sizeFor(mode)`: the gentle start for the next match. The start screen's PLAY (`#quick-sub`) and RANKED (`#rank-sub`) buttons show `sizeFor`, so a new player reads 2V2, not 4V4.

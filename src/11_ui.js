@@ -42,7 +42,7 @@ const UI = {
         <h1 class="title"><span class="t1">SCOR<em class="t2">Z</em></span></h1>
         <p class="tagline">Voxel football, 3v3 up to 5v5. Pick a style, find your Flow, climb from Wood to Obsidian.</p>
         <nav class="menu" aria-label="Main menu">
-          <button class="btn blue play" id="go-quick" type="button">PLAY <span class="sub">QUICK MATCH &middot; 4V4</span></button>
+          <button class="btn blue play" id="go-quick" type="button">PLAY <span class="sub" id="quick-sub">QUICK MATCH &middot; 4V4</span></button>
           <button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
           <button class="btn friends" id="go-online" type="button">PLAY WITH FRIENDS <span class="sub">ONLINE ROOM</span></button>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
@@ -588,7 +588,8 @@ const UI = {
     $('lob-em-ico').src = em; $('lob-em').textContent = d.emeralds;
     $('btn-mute').textContent = d.settings.mute ? 'SOUND OFF' : d.settings.music === false ? 'MUSIC OFF' : 'SOUND ON';
     $('btn-gfx').textContent = 'GRAPHICS: ' + d.settings.quality.toUpperCase();
-    const sz = teamSizeFor('ranked', d.rp);
+    const sz = Game.sizeFor('ranked'), qs = Game.sizeFor('quick'); // a new player's first matches are smaller, and the buttons say so
+    $('quick-sub').textContent = 'QUICK MATCH · ' + qs + 'V' + qs;
     $('rank-sub').textContent = TIER_NAMES[tier] + ' · ' + sz + 'V' + sz;
     $('locker-sub').textContent = STYLES[d.style].name + (d.flow ? ' · ' + FLOWS[d.flow].name : '');
     $('bp-n').textContent = d.bp; // blueprints: earned on this screen's GOALS, spent in the Locker
