@@ -98,6 +98,7 @@ const KeyPics = {
    after ROOKIE_MATCHES matches, or once every tip has been seen, the whole HUD shows. Not online, not in tests. */
 const ROOKIE_MATCHES = 6;
 const TIP_LIST = [
+  { id: 'move', title: 'MOVE', k: () => `<span class="kcross">${KeyPics.cap('KeyW')}<span>${KeyPics.cap('KeyA')}${KeyPics.cap('KeyS')}${KeyPics.cap('KeyD')}</span></span>`, pad: 'L STICK', touch: null, text: 'RUN TO THE BALL. THE MOUSE TURNS YOU', tText: 'LEFT THUMB MOVES. DRAG THE RIGHT SIDE TO LOOK', when: (c) => c.playT > 0.2 && c.playT < 20 && !c.own },
   { id: 'shoot', title: 'SHOOT', k: () => KeyPics.mouse('l'), pad: 'RT', touch: 'shoot', text: 'HOLD TO POWER UP, LET GO TO SHOOT', tText: 'HOLD SHOOT, LET GO', when: (c) => c.own },
   { id: 'pass', title: 'PASS', k: () => KeyPics.mouse('r'), pad: 'LT', touch: 'pass', text: 'PASS TO A TEAMMATE. HOLD IT FOR A HIGH BALL', tText: 'TAP PASS. HOLD IT FOR A HIGH BALL', when: (c) => c.own && c.since('shoot') > 6 },
   { id: 'sprint', title: 'SPRINT', k: () => KeyPics.cap('ShiftLeft', 'SHIFT'), pad: 'LB', touch: null, text: 'HOLD TO RUN FAST. IT USES STAMINA', tText: 'PUSH THE STICK ALL THE WAY TO RUN FAST', when: (c) => c.walkT > 2.5 },
@@ -113,7 +114,7 @@ const Tips = {
   rookie() { return !navigator.webdriver && Save.data.stats.played < ROOKIE_MATCHES && TIP_LIST.some((t) => !this.seen(t.id)); },
   /** a fresh match: hide what has not been shown yet */
   start(m) {
-    this.t = 0; this.gap = 4; this.playT = 0; this.walkT = 0; this.cur = null; this.shownAt = {};
+    this.t = 0; this.gap = this.seen('move') ? 4 : 0; this.playT = 0; this.walkT = 0; this.cur = null; this.shownAt = {};
     this.active = !m.online && !m.tut && !m.fk && this.rookie();
     $('tipbox').hidden = true;
     this.applyHud();

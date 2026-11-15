@@ -6,7 +6,7 @@
 const AUTO_STEPS = [['med', 1], ['lite', 1], ['lite', 0.9], ['low', 1]];
 const Game = {
   state: 'boot', match: null, lastMode: null, last: 0, time: 0, ended: false, pausedAt: 0,
-  perf: { t: 0, frames: 0, long: 0, min: 1, skip: 0 }, autoStep: 0, autoWant: null, autoWait: 0, crowdT: 0,
+  perf: { t: 0, frames: 0, long: 0, min: 1, skip: 0 }, autoStep: 0, autoWant: null, autoWait: 0, crowdT: 0, gate: false,
   /** a match is being played here, offline or online */
   playing() { return this.state === 'match' || this.state === 'online'; },
   start() {
@@ -21,29 +21,42 @@ const Game = {
     Replay.init();
     Net.init();
     Friends.init();
+    BallCue.init();
     Account.init();
     Input.init($('gl'));
     Touch.init();
     this.applyQuality();
     window.addEventListener('resize', () => World.resize());
+    // CrazyGames common fixes: the page never scrolls under a match and the right-click menu stays away (right click is PASS)
+    window.addEventListener('wheel', (e) => { if (this.playing()) e.preventDefault(); }, { passive: false });
+    document.addEventListener('contextmenu', (e) => { if (!(e.target && e.target.closest && e.target.closest('input, textarea'))) e.preventDefault(); });
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'match') this.pause(); });
     this.toLobby();
     KeyNames.init();
     if (Net.joinCode) Net.open(); // opened from an invite link
-    else if (!Save.data.onboarded && !navigator.webdriver) this.onboard(); // a brand-new player lands straight on the pitch
+    else if (!Save.data.onboarded && !navigator.webdriver && !Portal.party()) this.onboard(); // a brand-new player lands straight on the pitch
     this.last = performance.now();
     const tick = (t) => { requestAnimationFrame(tick); if (!this.manual) this.loop(t); };
     requestAnimationFrame(tick);
   },
-  /** the first visit (CrazyGames: "a simple onboarding phase where new users land directly"): straight into the short
-      tutorial behind a CLICK TO PLAY (the click lets the game lock the mouse, start the sound and, on phones, go fullscreen) */
+  /** the first visit (CrazyGames: "games should land new users in gameplay immediately", one click at most): straight
+      into a real quick match against the easiest bots, waiting at kickoff behind a CLICK TO PLAY with a picture of the
+      keys (the click lets the game lock the mouse, start the sound and, on phones, go fullscreen). The first-match tips
+      (Tips) and the ball marker (BallCue) teach the rest while you play. Owner, Nov 2026: "the first match they get
+      thrown into a match". The tutorial is still on the start screen */
   onboard() {
     Save.data.onboarded = true; Save.save();
-    this.startMatch('tutorial');
+    this.startMatch('quick');
+    this.gate = true; // the match waits at kickoff until the click
+    Touch.tipShown = false; // the phone tip shows the first time they reach the start screen instead
     $('tg-go').textContent = Touch.on ? 'TAP TO PLAY' : 'CLICK TO PLAY';
+    const K = KeyPics, keys = $('tg-keys');
+    keys.innerHTML = Touch.on ? '' : `<span class="tg-k"><span class="kcross">${K.cap('KeyW')}<span>${K.cap('KeyA')}${K.cap('KeyS')}${K.cap('KeyD')}</span></span><span class="kl">MOVE</span></span><span class="tg-k">${K.mouse('l')}<span class="kl">SHOOT</span></span><span class="tg-k">${K.mouse('r')}<span class="kl">PASS</span></span>`;
+    keys.hidden = Touch.on;
     $('tut-gate').hidden = false;
   },
   gateGo() {
+    this.gate = false;
     $('tut-gate').hidden = true;
     Sfx.init(); Touch.autoFs(); Input.requestLock();
   },
@@ -57,7 +70,7 @@ const Game = {
   toLobby() {
     Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false); UI.toggleEmotes(false); FKHud.hide(); ShotHud.hide();
     if (this.match) { this.match.dispose(); this.match = null; }
-    Net.nm = null; Net.paused = false;
+    Net.nm = null; Net.paused = false; this.gate = false; $('tut-gate').hidden = true;
     Input.releaseLock();
     this.state = 'lobby';
     World.setSun(SUN_LOBBY);
@@ -70,13 +83,16 @@ const Game = {
     Net.where('menu');
   },
   startMatch(mode) {
-    Touch.autoFs(); Touch.hideTip(); $('tut-gate').hidden = true;
+    Touch.autoFs(); Touch.hideTip(); $('tut-gate').hidden = true; this.gate = false;
     if (this.match) { this.match.dispose(); this.match = null; }
     Reveal.stop(); Showcase.hide();
     UI.hideOverlays();
     Sfx.init();
     TimeCtl.reset(); FX.clear();
-    this.match = new Match(mode, difficultyFor(Save.data.rp), { size: teamSizeFor(mode, Save.data.rp) });
+    let skill = difficultyFor(Save.data.rp), size = teamSizeFor(mode, Save.data.rp);
+    const ramp = MODES[mode] && MODES[mode].rewards && (!navigator.webdriver || this.rampTest) ? rookieRamp(Save.data.stats.played) : null; // tests keep the normal sizes
+    if (ramp) { size = Math.min(size, ramp[0]); skill = Math.min(skill, ramp[1]); }
+    this.match = new Match(mode, skill, { size });
     this.lastMode = mode; this.ended = false;
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
@@ -236,7 +252,7 @@ const Game = {
         UI.emoteKeys();
         Cam.look(rdt);
         m.ctl = Input.controls();
-        const sdt = TimeCtl.step(rdt);
+        const sdt = this.gate ? 0 : TimeCtl.step(rdt); // the first visit waits at kickoff for the click
         if (sdt > 0) {
           let rem = sdt, first = true;
           while (rem > 1e-5) {
@@ -272,6 +288,7 @@ const Game = {
     Account.tick(rdt);
     World.update(rdt);
     Input.endFrame();
+    BallCue.frame(rdt);
     if (doRender) World.render();
   },
   /** test hook: advance n frames at a fixed 60fps without waiting on the GPU */
@@ -281,7 +298,7 @@ const Game = {
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, Account, Portal, Player, TEAM, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
   CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,

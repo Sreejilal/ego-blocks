@@ -977,6 +977,10 @@ const TIER_SKILL = [0.15, 0.33, 0.5, 0.65, 0.8, 1.0];
 const TIER_FANS = [0.25, 0.36, 0.48, 0.62, 0.8, 1];
 const TIER_LOUD = [0.7, 0.8, 0.9, 1.0, 1.15, 1.3];
 const difficultyFor = (rp) => TIER_SKILL[tierOf(rp)];
+/* A gentle start (owner, Nov 2026: first-time players said it is too hard): your first matches against bots are small
+   and easy, and grow in even steps: [team size, bot skill] for match 1, 2, 3... After that the normal size and skill. */
+const ROOKIE_RAMP = [[2, 0.03], [2, 0.06], [3, 0.09], [3, 0.12], [4, 0.15]];
+const rookieRamp = (played) => ROOKIE_RAMP[played] || null;
 
 function rollRarity(pity) {
   if (pity >= 29) { const r = Math.random() * 17; return r < 12 ? 2 : r < 16.5 ? 3 : 4; }

@@ -23,13 +23,14 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
   // a brand-new player (a real browser, not a test robot) lands on the pitch, behind CLICK TO PLAY
   {
     const N = await mk({ viewport: { width: 1280, height: 720 } }, () => Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false }), 'match');
-    const r = await N.evaluate(() => ({ mode: EGO.Game.match.mode, gate: !document.getElementById('tut-gate').hidden, go: document.getElementById('tg-go').textContent, onboarded: EGO.Save.data.onboarded, cam: EGO.Save.data.settings.cam }));
+    const r = await N.evaluate(() => ({ size: EGO.Game.match.size, ramp: EGO.ROOKIE_RAMP.map((x) => x[0]).join(''), t0: EGO.Game.match.phaseT, keys: document.querySelectorAll('#tg-keys .kc').length, frozen: (EGO.Game.stepManual(30), EGO.Game.match.phase === 'kickoff' && EGO.Game.match.phaseT), mode: EGO.Game.match.mode, gate: !document.getElementById('tut-gate').hidden, go: document.getElementById('tg-go').textContent, onboarded: EGO.Save.data.onboarded, cam: EGO.Save.data.settings.cam }));
     await N.screenshot({ path: __dirname + '/shots/tut0_gate.png', timeout: 120000 });
-    check('a brand-new player lands straight in the tutorial, behind a big CLICK TO PLAY', r.mode === 'tutorial' && r.gate && r.go === 'CLICK TO PLAY' && r.onboarded, r);
+    check('a brand-new player lands straight in a real match that waits at kickoff, behind a big CLICK TO PLAY with the keys pictured', r.mode === 'quick' && r.size === 2 && r.ramp === '22334' && r.frozen === r.t0 && r.keys === 4 && r.gate && r.go === 'CLICK TO PLAY' && r.onboarded, r);
     check('and sees their own player (third person)', r.cam === 'third', r.cam);
     await N.mouse.click(640, 360);
     const g = await N.evaluate(() => document.getElementById('tut-gate').hidden);
-    check('one click and you are playing', g);
+    const go = await N.evaluate(() => { const G = EGO.Game, m = G.match, t = m.phaseT; G.stepManual(20); const b = EGO.BallCue; return { runs: m.phaseT > t, gate: G.gate, help: b.help(), ghost: !!b.ghost && b.ghost.visible, big: m.ball.mesh.scale.x }; });
+    check('one click and you are playing, with the ball marked for a new player', g && go.runs && !go.gate && go.help && go.ghost && go.big > 1.2, go);
     await N.reload(); await N.waitForFunction(() => window.EGO && EGO.Game.state === 'lobby', null, { timeout: 120000 });
     check('only the first time: the next visit opens the start screen', await N.evaluate(() => EGO.Game.state === 'lobby' && !document.getElementById('go-tut').hidden));
     await N.context().close();

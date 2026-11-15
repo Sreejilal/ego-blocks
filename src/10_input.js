@@ -46,6 +46,7 @@ const Input = {
       const was = this.locked;
       this.locked = document.pointerLockElement === canvas;
       if (this.locked) { this.everLocked = true; this.lockFailed = false; }
+      if (this.locked && !Game.playing()) { document.exitPointerLock(); return; } // a lock that arrives late, after you left the match, would trap the mouse in the menus
       if (was && !this.locked && Game.playing() && !Net.paused && !this.releasing) Game.pause();
       this.releasing = false;
       Hud.lockHint && Hud.lockHint();

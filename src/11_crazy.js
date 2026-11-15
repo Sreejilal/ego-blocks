@@ -38,7 +38,7 @@ const Portal = {
   },
   /** right after Game.start */
   ready() {
-    if (BUILD.portal) { const adv = document.querySelector('.on-adv'); if (adv) adv.remove(); if (!BUILD.server) $('go-online').hidden = true; }
+    if (BUILD.portal) { const adv = document.querySelector('.on-adv'); if (adv) adv.remove(); if (!BUILD.server || this.offline()) $('go-online').hidden = true; }
     this.applyMute();
     if (!this.on) return;
     this.try(() => this.sdk.game.loadingStop());
@@ -49,12 +49,17 @@ const Portal = {
     if (inv && inv.room && BUILD.server) this.joinFrom(inv);
     else if (this.try(() => this.sdk.game.isInstantMultiplayer) && BUILD.server) { Net.open(); Net.connect(() => Net.send({ t: 'create' })); }
   },
+  /** opened from a friend's invite or their play-together button: no first-match onboarding, straight to the room
+      (CrazyGames multiplayer: "avoid onboarding scenes for players joining like this") */
+  party() { if (!this.on || !BUILD.server) return false; const inv = this.try(() => this.sdk.game.inviteParams); return !!((inv && inv.room) || this.try(() => this.sdk.game.isInstantMultiplayer)); },
+  /** the CrazyGames app can play a downloaded game with no internet: online play is hidden then */
+  offline() { return this.on && !!(this.try(() => this.sdk.isOfflineMode) || this.try(() => this.sdk.game.isOfflineMode) || this.try(() => this.sdk.user.isOfflineMode)); },
   try(fn) { try { return fn(); } catch (e) { return undefined; } },
   async tryAsync(fn) { try { return await fn(); } catch (e) { return undefined; } },
   /** every frame: tell them when a match is being played, and when it stops (menu, results, replays) */
   tick() {
     if (!this.on) return;
-    const live = Game.state === 'match' || (Game.state === 'online' && !Net.paused);
+    const live = (Game.state === 'match' && !Game.gate) || (Game.state === 'online' && !Net.paused);
     if (live === this.live) return;
     this.live = live;
     this.try(() => (live ? this.sdk.game.gameplayStart() : this.sdk.game.gameplayStop()));

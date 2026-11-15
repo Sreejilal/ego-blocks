@@ -309,7 +309,7 @@ const UI = {
       <canvas id="minimap" width="132" height="200"></canvas>
       <div class="tutbox panel" id="tutbox" hidden><span class="label" id="tut-n"></span><b id="tut-title"></b><div class="tut-keys" id="tut-keys" hidden></div><p id="tut-text"></p><button class="btn ghost tiny tut-skip" id="tut-skip" type="button">SKIP <span class="key">ENTER</span></button></div>
       <div class="tipbox panel" id="tipbox" hidden><div class="tut-keys" id="tip-keys" hidden></div><div class="tip-words"><b id="tip-title"></b><p id="tip-text"></p></div></div>
-      <div class="tut-gate" id="tut-gate" hidden><b class="tg-title">SCOR<em>Z</em></b><span class="tg-go" id="tg-go">CLICK TO PLAY</span><span class="label">A QUICK START: MOVE, PASS, SCORE</span></div>
+      <div class="tut-gate" id="tut-gate" hidden><b class="tg-title">SCOR<em>Z</em></b><span class="tg-go" id="tg-go">CLICK TO PLAY</span><div class="tut-keys tg-keys" id="tg-keys" hidden></div><span class="label">YOUR FIRST MATCH. SCORE MORE GOALS THAN THEM</span></div>
       <div class="dock">
         <div class="fkpanel panel" id="fkpanel" hidden>
           <div class="fk-row"><span class="label">TYPE</span><b id="fk-type">CURVE</b><span class="label" id="fk-desc"></span><span class="key k" id="fk-typekey">RMB</span></div>
@@ -422,6 +422,7 @@ const UI = {
           <span>Camera</span><div class="seg" id="set-cam"><button type="button" data-v="third">3RD PERSON</button><button type="button" data-v="first">1ST PERSON</button></div>
           <span>Invert camera Y</span><div class="seg" id="set-inv"><button type="button" data-v="0">OFF</button><button type="button" data-v="1">ON</button></div>
           <span class="t-only">Button size</span><div class="seg t-only" id="set-btn"><button type="button" data-v="0.85">S</button><button type="button" data-v="1">M</button><button type="button" data-v="1.15">L</button></div>
+          <span>Ball marker</span><div class="seg" id="set-ball"><button type="button" data-v="auto">AUTO</button><button type="button" data-v="on">ON</button><button type="button" data-v="off">OFF</button></div>
           <span>Aim assist</span><div class="seg" id="set-assist"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Chat</span><div class="seg" id="set-chat">${CHAT_SHOW.map(([v, n]) => `<button type="button" data-v="${v}">${n}</button>`).join('')}</div>
           <span>Cut-ins</span><div class="seg" id="set-cut"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
@@ -550,6 +551,7 @@ const UI = {
     $('set-music').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.music = v === '1'; Music.apply(); Save.save(); this.renderPause(); });
     $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Portal.applyMute(); Save.save(); this.renderPause(); });
     $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
+    $('set-ball').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.ballCue = v; Save.save(); this.renderPause(); });
     $('set-assist').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.assist = v === '1'; Save.save(); this.renderPause(); });
     $('set-sl').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null || (v === '1') === !!Save.data.settings.shiftLock) return; Cam.toggleShiftLock(); this.renderPause(); });
     $('set-cam').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v || v === Save.data.settings.cam) return; Cam.toggle(); this.renderPause(); });
@@ -847,6 +849,7 @@ const UI = {
     Net.renderPeople();
     $('set-sens').value = s.sens;
     $('set-btn').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', Math.abs(parseFloat(b.dataset.v) - (s.btn || 1)) < 0.01));
+    $('set-ball').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === (s.ballCue || 'auto')));
     $('set-assist').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.assist !== false)));
     const fs = Touch.fsAvailable();
     document.querySelectorAll('#scr-pause .fs-only').forEach((el) => { el.hidden = !fs; });

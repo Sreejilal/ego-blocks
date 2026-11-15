@@ -70,8 +70,9 @@ if (want('sim')) { // C C: the feint stops at the second tap
   }
   if (want('laptopfs')) {
     const { browser, page } = await open({ init: notTest });
+    await page.evaluate(() => { if (EGO.Game.state !== 'lobby') EGO.Game.toLobby(); }); // a brand-new player lands in a first match now; these checks start from the start screen
     const fs0 = await page.evaluate(() => ({ fs: EGO.Touch.isFs(), touch: EGO.Touch.on, tip: !!document.getElementById('fs-tip') && !document.getElementById('fs-tip').hidden }));
-    await page.click('#go-quick'); await sleep(1200);
+    { const bb = await page.locator('#go-quick').boundingBox(); await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2); } await sleep(1200); // after a match Playwright's own hit check fails here (a real click works)
     const fs1 = await page.evaluate(() => ({ fs: EGO.Touch.isFs(), state: EGO.Game.state }));
     check('laptop: clicking QUICK MATCH goes fullscreen (no web address or tabs while you play)', !fs0.fs && !fs0.touch && fs1.fs && fs1.state === 'match', { before: fs0, after: fs1 });
     check('laptop: no phone tip on a laptop', !fs0.tip, fs0);
@@ -88,6 +89,7 @@ if (want('sim')) { // C C: the feint stops at the second tap
   // ---- a phone that can go fullscreen (Android) ----
   if (want('phone')) {
     const { browser, page, logs } = await open({ viewport: { width: 844, height: 390 }, mobile: true, init: notTest });
+    await page.evaluate(() => { if (EGO.Game.state !== 'lobby') EGO.Game.toLobby(); }); // a brand-new player lands in a first match now; these checks start from the start screen
     await page.evaluate(() => { EGO.Game.toLobby(); });
     await sleep(300);
     const tip = await page.evaluate(() => { const t = document.getElementById('fs-tip'); return t && { shown: !t.hidden, h: document.getElementById('fst-h').textContent, go: !document.getElementById('fst-go').hidden, gold: document.getElementById('btn-fs').classList.contains('nag') }; });
@@ -132,6 +134,7 @@ if (want('sim')) { // C C: the feint stops at the second tap
     const iphone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
     const noFs = () => { Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false }); for (const k of ['fullscreenEnabled', 'webkitFullscreenEnabled']) Object.defineProperty(Document.prototype, k, { get: () => false }); };
     const { browser, page } = await open({ viewport: { width: 390, height: 844 }, mobile: true, userAgent: iphone, init: noFs });
+    await page.evaluate(() => { if (EGO.Game.state !== 'lobby') EGO.Game.toLobby(); }); // a brand-new player lands in a first match now; these checks start from the start screen
     await page.evaluate(() => { EGO.Game.toLobby(); });
     await sleep(300);
     const tip = await page.evaluate(() => { const t = document.getElementById('fs-tip'), r = t && t.getBoundingClientRect(); return t && { shown: !t.hidden, way: EGO.Touch.fsWay(), text: t.textContent, go: !document.getElementById('fst-go').hidden, ok: document.getElementById('fst-no').textContent, fits: r.left >= 0 && r.right <= innerWidth && r.bottom <= innerHeight }; });
@@ -149,6 +152,7 @@ if (want('sim')) { // C C: the feint stops at the second tap
     const iphone = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
     const app = () => { Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false }); Object.defineProperty(Navigator.prototype, 'standalone', { get: () => true }); for (const k of ['fullscreenEnabled', 'webkitFullscreenEnabled']) Object.defineProperty(Document.prototype, k, { get: () => false }); };
     const { browser, page } = await open({ viewport: { width: 844, height: 390 }, mobile: true, userAgent: iphone, init: app });
+    await page.evaluate(() => { if (EGO.Game.state !== 'lobby') EGO.Game.toLobby(); }); // a brand-new player lands in a first match now; these checks start from the start screen
     await page.evaluate(() => { EGO.Game.toLobby(); });
     await sleep(300);
     const t = await page.evaluate(() => ({ way: EGO.Touch.fsWay(), tip: !!document.getElementById('fs-tip') && !document.getElementById('fs-tip').hidden }));

@@ -149,7 +149,7 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 /* ---------- screens ---------- */
 .screen {
   position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-left: max(16px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); padding-right: max(16px, var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
   padding-block: 16px;
   box-sizing: border-box;
 }
@@ -351,12 +351,12 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 #hud .balltag { left: 50%; top: calc(50% + 26px); transform: translateX(-50%); font-family: var(--font-label); font-size: 11px; letter-spacing: .14em; color: #ffe9a8; text-shadow: 2px 2px 0 var(--ink); }
 
 /* the emote wheel */
-#emote-pop { position: absolute; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(520px, calc(100% - 32px)); padding: 12px; display: grid; gap: 8px; box-sizing: border-box; z-index: 30; }
+#emote-pop { position: absolute; left: 50%; bottom: calc(24px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); transform: translateX(-50%); width: min(520px, calc(100% - 32px)); padding: 12px; display: grid; gap: 8px; box-sizing: border-box; z-index: 30; }
 #emote-pop .em-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 #emote-pop .em-grid .btn { font-size: 20px; padding: 6px 8px 9px; }
 #emote-pop .em-grid .btn.sel { outline: 3px solid #fff; outline-offset: 1px; }
 body.touch #emote-pop .em-grid .btn.sel { outline: none; }
-body.touch #emote-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0px)); }
+body.touch #emote-pop { bottom: auto; top: calc(56px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); }
 body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 
 /* GOALS and blueprints */
@@ -407,13 +407,13 @@ body.touch .chat-quick .key { display: none; }
 .btn.ghost.tiny { font-size: 16px; padding: 2px 5px; }
 .p-people { display: grid; gap: 4px; }
 .p-people .on-p { font-size: 22px; }
-#hud .chatfeed { left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(232px + env(safe-area-inset-bottom, 0px)); width: min(360px, 40vw); display: grid; justify-items: start; gap: 3px; }
+#hud .chatfeed { left: max(16px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); bottom: calc(232px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); width: min(360px, 40vw); display: grid; justify-items: start; gap: 3px; }
 #hud .chatfeed .cl { background: rgba(9,11,22,.74); padding: 3px 8px; font-size: 16px; animation: toastIn .18s steps(3); }
 #hud .chatfeed .cl b { font-size: 19px; }
-body.touch #hud .chatfeed { bottom: auto; top: calc(112px + env(safe-area-inset-top, 0px)); left: max(10px, env(safe-area-inset-left, 0px)); width: min(300px, 36vw); }
-#chat-pop { position: absolute; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(540px, calc(100% - 32px)); padding: 12px; display: grid; gap: 8px; box-sizing: border-box; z-index: 30; }
-body.touch #chat-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0px)); }
-@media (orientation: portrait) { body.touch #hud .chatfeed { top: calc(220px + env(safe-area-inset-top, 0px)); width: min(300px, 64vw); } }
+body.touch #hud .chatfeed { bottom: auto; top: calc(112px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); left: max(10px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); width: min(300px, 36vw); }
+#chat-pop { position: absolute; left: 50%; bottom: calc(24px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); transform: translateX(-50%); width: min(540px, calc(100% - 32px)); padding: 12px; display: grid; gap: 8px; box-sizing: border-box; z-index: 30; }
+body.touch #chat-pop { bottom: auto; top: calc(56px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); }
+@media (orientation: portrait) { body.touch #hud .chatfeed { top: calc(220px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); width: min(300px, 64vw); } }
 
 /* account and friends (on the Profile screen) */
 .pf-acc { padding: 16px; display: grid; gap: 10px; }
@@ -435,7 +435,7 @@ body.touch #chat-pop { bottom: auto; top: calc(56px + env(safe-area-inset-top, 0
 .who-row.friend { box-shadow: inset 4px 0 0 var(--gold); }
 .label.gold { color: var(--gold); }
 .who-set { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-#invite-pop { position: fixed; top: calc(16px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); width: min(460px, calc(100% - 32px)); box-sizing: border-box;
+#invite-pop { position: fixed; top: calc(16px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); left: 50%; transform: translateX(-50%); width: min(460px, calc(100% - 32px)); box-sizing: border-box;
   padding: 14px 16px; display: grid; gap: 6px; z-index: 60; box-shadow: 0 0 0 3px var(--gold), 6px 6px 0 rgba(0,0,0,.5); animation: ipIn .25s steps(4); }
 #invite-pop .ip-text { margin: 0; font-family: var(--font-display); font-size: 28px; line-height: 1; }
 #invite-pop .row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -464,10 +464,10 @@ body.touch #invite-pop .key, body.touch #ip-pad { display: none; }
 .scorebar .orange { background: var(--orange); box-shadow: inset 0 -5px 0 var(--orange-deep); color: var(--ink); }
 .scorebar .clock { display: grid; place-items: center; min-width: 96px; padding: 2px 12px 5px; background: var(--ink); font-family: var(--font-display); font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
 .scorebar .clock small { display: block; font-family: var(--font-label); font-size: 10px; letter-spacing: .1em; color: var(--gold); }
-.hud-em { top: calc(12px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); }
-.hud-mode { top: calc(14px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); display: flex; gap: 8px; align-items: center; }
+.hud-em { top: calc(12px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); right: max(16px, var(--safe-area-inset-right, env(safe-area-inset-right, 0px))); }
+.hud-mode { top: calc(14px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); left: max(16px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); display: flex; gap: 8px; align-items: center; }
 .hud-mode img { width: 32px; height: 32px; }
-#minimap { left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: 132px; height: 200px; border: var(--px) solid var(--ink); background: rgba(9,11,22,.6); box-shadow: 4px 4px 0 rgba(0,0,0,.4); }
+#minimap { left: max(16px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); bottom: calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); width: 132px; height: 200px; border: var(--px) solid var(--ink); background: rgba(9,11,22,.6); box-shadow: 4px 4px 0 rgba(0,0,0,.4); }
 .crosshair { left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; }
 .crosshair::before, .crosshair::after { content: ""; position: absolute; background: var(--text); box-shadow: 0 0 0 2px rgba(9,11,22,.7); }
 .crosshair::before { left: 9px; top: 0; width: 4px; height: 22px; }
@@ -480,7 +480,7 @@ body.touch #invite-pop .key, body.touch #ip-pad { display: none; }
 .charge.curl .cmark { display: block; }
 .charge.curl i { background: #7cf2ff; }
 .charge span { position: absolute; top: 14px; left: 0; right: 0; text-align: center; font-family: var(--font-label); font-size: 10px; letter-spacing: .1em; }
-.dock { left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: grid; justify-items: center; gap: 8px; }
+.dock { left: 50%; bottom: calc(14px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); transform: translateX(-50%); display: grid; justify-items: center; gap: 8px; }
 .flowbar { width: 420px; max-width: 70vw; display: grid; gap: 3px; }
 .flowbar .lbl { display: flex; justify-content: space-between; font-family: var(--font-label); font-size: 11px; letter-spacing: .1em; text-shadow: 2px 2px 0 var(--ink); }
 .flowbar .track { height: 12px; background: var(--ink); border: 2px solid var(--ink); position: relative; }
@@ -491,7 +491,7 @@ body.touch #invite-pop .key, body.touch #ip-pad { display: none; }
 /* computers: the Awakening gauge stands on the right side, its key under it; the bar at the top is for phones */
 body:not(.touch) #hud .awakebar { display: none; }
 body.touch #hud .awakeside { display: none; }
-#hud .awakeside { right: max(18px, env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); display: grid; justify-items: center; gap: 6px; width: 76px; text-align: center; }
+#hud .awakeside { right: max(18px, var(--safe-area-inset-right, env(safe-area-inset-right, 0px))); top: 50%; transform: translateY(-50%); display: grid; justify-items: center; gap: 6px; width: 76px; text-align: center; }
 .awakeside .aw-name { font-family: var(--font-label); font-size: 10px; letter-spacing: .1em; line-height: 1.2; text-shadow: 2px 2px 0 var(--ink); }
 .awakeside .aw-track { position: relative; width: 20px; height: 170px; background: var(--ink); border: 2px solid var(--ink); box-shadow: 3px 3px 0 rgba(0,0,0,.4); }
 .awakeside .aw-track i { position: absolute; left: 0; right: 0; bottom: 0; height: 0%; background: linear-gradient(0deg, var(--aura, #fff), #ffffff); }
@@ -520,7 +520,7 @@ body.touch #hud .awakebar .track { height: 6px; }
 @keyframes tired { 50% { filter: sepia(1) saturate(6) hue-rotate(-40deg) brightness(.9); } }
 .hotbar { display: flex; gap: 8px; align-items: flex-end; padding-bottom: 12px; }
 /* the tutorial's instructions, under the scoreboard */
-.tutbox { position: absolute; left: 50%; top: calc(84px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 14px 12px; display: grid; gap: 2px; text-align: center; z-index: 6; }
+.tutbox { position: absolute; left: 50%; top: calc(84px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); transform: translateX(-50%); width: min(560px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px 14px 12px; display: grid; gap: 2px; text-align: center; z-index: 6; }
 .tutbox b { font-family: var(--font-display); font-weight: 400; font-size: 32px; line-height: 1; color: #ffcb3d; }
 .tutbox p { margin: 0; font-size: 18px; color: var(--text); }
 .tutbox.pop { animation: tutpop .35s ease-out; }
@@ -546,13 +546,13 @@ body.touch #hud .awakebar .track { height: 6px; }
 body.touch .tutbox .tut-skip .key { display: none; }
 body.touch .kc { min-width: 32px; height: 32px; font-size: 18px; }
 /* first-match tips: one at a time under the score bar, with a picture of the key */
-.tipbox { position: absolute; left: 50%; top: calc(84px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 10px 16px; box-sizing: border-box; max-width: min(560px, calc(100vw - 32px)); z-index: 6; box-shadow: 0 0 0 3px var(--gold), 6px 6px 0 rgba(0,0,0,.45); }
+.tipbox { position: absolute; left: 50%; top: calc(84px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); transform: translateX(-50%); display: flex; align-items: center; gap: 14px; padding: 10px 16px; box-sizing: border-box; max-width: min(560px, calc(100vw - 32px)); z-index: 6; box-shadow: 0 0 0 3px var(--gold), 6px 6px 0 rgba(0,0,0,.45); }
 .tipbox.pop { animation: tutpop .35s ease-out; }
 .tipbox .tut-keys { margin: 0; flex: none; }
 .tip-words { display: grid; gap: 2px; }
 .tipbox b { font-family: var(--font-display); font-weight: 400; font-size: 28px; line-height: 1; color: var(--gold); }
 .tipbox p { margin: 0; font-size: 16px; color: var(--text); }
-body.touch .tipbox { top: calc(108px + env(safe-area-inset-top, 0px)); max-width: min(380px, calc(100vw - 160px)); padding: 6px 10px; } body.touch .tipbox b { font-size: 20px; } body.touch .tipbox p { font-size: 13px; }
+body.touch .tipbox { top: calc(108px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); max-width: min(380px, calc(100vw - 160px)); padding: 6px 10px; } body.touch .tipbox b { font-size: 20px; } body.touch .tipbox p { font-size: 13px; }
 #hud:has(.tipbox:not([hidden])) #hint { display: none; }
 /* while you are new, parts of the HUD wait for their tip */
 body.rk-abil #hotbar #slot0, body.rk-abil #hotbar #slot1, body.rk-abil #hotbar #slot2, body.rk-abil #hotbar .sep { display: none; }
@@ -565,11 +565,19 @@ body.rk-abil #touch [data-act="ab0"], body.rk-abil #touch [data-act="ab1"], body
 #hud:has(.tut-gate:not([hidden])) .tutbox { visibility: hidden; } /* the box shows once you click */
 .tg-title { font-family: var(--font-display); font-weight: 400; font-size: clamp(64px, 12vw, 120px); line-height: .9; color: var(--text); text-shadow: 6px 6px 0 var(--ink); }
 .tg-title em { font-style: normal; color: #3d7dff; }
+.tg-keys { display: flex; gap: 34px; align-items: flex-end; justify-content: center; margin: 4px 0; }
+.tg-keys[hidden] { display: none; }
+.tg-k { display: grid; justify-items: center; gap: 6px; }
+/* BallCue: the yellow arrow over the ball and the one at the edge of the screen */
+.ballcue { position: absolute; left: 0; top: 0; width: 28px; height: 16px; pointer-events: none; will-change: transform; }
+.ballcue[hidden] { display: none; }
+.ballcue i { display: block; width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 16px solid #ffd23d; filter: drop-shadow(2px 2px 0 var(--ink)) drop-shadow(-1px -1px 0 var(--ink)); }
+.balledge i { border-left-width: 16px; border-right-width: 16px; border-top-width: 20px; margin: -2px; }
 .tg-go { font-family: var(--font-display); font-size: clamp(30px, 5vw, 44px); color: var(--gold); text-shadow: 3px 3px 0 var(--ink); animation: fsPulse 1.1s steps(2) infinite; }
 body.touch .tutbox { width: min(340px, calc(100vw - 150px)); padding: 6px 10px 8px; }
 body.touch .tutbox b { font-size: 22px; } body.touch .tutbox p { font-size: 14px; }
-@media (orientation: portrait) { body.touch .tutbox { top: calc(176px + env(safe-area-inset-top, 0px)); width: calc(100vw - 32px); } }
-@media (max-height: 520px) and (orientation: landscape) { body.touch .tutbox { top: calc(64px + env(safe-area-inset-top, 0px)); } }
+@media (orientation: portrait) { body.touch .tutbox { top: calc(176px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); width: calc(100vw - 32px); } }
+@media (max-height: 520px) and (orientation: landscape) { body.touch .tutbox { top: calc(64px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); } }
 .tut-btn { justify-self: start; margin-bottom: 12px; }
 .topbar .left { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
 @media (max-height: 520px) and (orientation: landscape) { #go-tut .tut-long { display: none; } #go-tut { padding: 3px 8px 5px; } }
@@ -590,8 +598,8 @@ body.touch .tutbox b { font-size: 22px; } body.touch .tutbox p { font-size: 14px
 body.touch .fkpanel .key { display: none; }
 #touch.fk [data-act="ab0"], #touch.fk [data-act="ab1"], #touch.fk [data-act="ab2"], #touch.fk [data-act="dt"], #touch.fk [data-act="jump"], #touch.fk [data-act="flow"], #touch.fk [data-act="item"] { display: none !important; }
 #touch.wall [data-act="shoot"], #touch.wall [data-act="pass"], #touch.wall [data-act="ab0"], #touch.wall [data-act="ab1"], #touch.wall [data-act="ab2"], #touch.wall [data-act="dt"], #touch.wall [data-act="flow"], #touch.wall [data-act="item"], #touch.wall #t-stick { display: none !important; }
-@media (orientation: portrait) { body.touch #hud.fk .dock { top: calc(176px + env(safe-area-inset-top, 0px)); } } /* below the minimap and the corner buttons */
-@media (max-height: 520px) and (orientation: landscape) { body.touch #hud.fk .dock { top: calc(64px + env(safe-area-inset-top, 0px)); } } /* below the scoreboard's tap area */
+@media (orientation: portrait) { body.touch #hud.fk .dock { top: calc(176px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); } } /* below the minimap and the corner buttons */
+@media (max-height: 520px) and (orientation: landscape) { body.touch #hud.fk .dock { top: calc(64px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); } } /* below the scoreboard's tap area */
 body.touch .fkpanel { width: 300px; padding: 6px 8px; gap: 4px; margin-bottom: 0; }
 body.touch .fk-row b { font-size: 20px; }
 .slot { position: relative; width: 62px; height: 62px; background: rgba(9,11,22,.78); border: var(--px) solid var(--ink); box-shadow: inset 0 0 0 3px var(--slate-3); display: grid; place-items: center; }
@@ -609,7 +617,7 @@ body.touch .fk-row b { font-size: 20px; }
 .slot .pips i { width: 8px; height: 5px; background: var(--slate-3); }
 .slot .pips i.on { background: var(--text); }
 .hotbar .sep { width: 6px; }
-.toasts { top: calc(168px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); display: grid; justify-items: center; gap: 4px; }
+.toasts { top: calc(168px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); left: 50%; transform: translateX(-50%); display: grid; justify-items: center; gap: 4px; }
 .toast { font-family: var(--font-label); font-size: 13px; font-weight: 700; letter-spacing: .08em; padding: 4px 10px; background: rgba(9,11,22,.82); border: 2px solid var(--ink); animation: toastIn .18s steps(3); }
 .toast.good { color: var(--emerald); }
 .toast.bad { color: var(--danger); }
@@ -620,8 +628,8 @@ body.touch .fk-row b { font-size: 20px; }
 .banner .small { margin-top: 12px; font-family: var(--font-label); font-size: clamp(12px, 1.6vw, 18px); letter-spacing: .16em; text-shadow: 2px 2px 0 var(--ink); }
 .banner.pop .big { animation: pop .5s steps(5); }
 @keyframes pop { 0% { transform: scale(2.2); opacity: 0; } 60% { transform: scale(.9); opacity: 1; } 100% { transform: scale(1); } }
-.itemslot { right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
-.hint { left: 50%; top: calc(124px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); max-width: calc(100% - 32px); box-sizing: border-box; font-family: var(--font-label); font-size: 12px; letter-spacing: .08em; padding: 6px 10px; background: rgba(9,11,22,.8); text-align: center; }
+.itemslot { right: max(16px, var(--safe-area-inset-right, env(safe-area-inset-right, 0px))); bottom: calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
+.hint { left: 50%; top: calc(124px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); transform: translateX(-50%); max-width: calc(100% - 32px); box-sizing: border-box; font-family: var(--font-label); font-size: 12px; letter-spacing: .08em; padding: 6px 10px; background: rgba(9,11,22,.8); text-align: center; }
 #labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .flabel { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font-family: var(--font-display); font-size: 24px; line-height: 1; padding: 2px 6px 4px; color: var(--ink); background: var(--c, var(--text)); border: 2px solid var(--ink); }
 .flabel.call { background: var(--emerald); font-size: 22px; }
@@ -630,7 +638,7 @@ body.touch .fk-row b { font-size: 20px; }
 .flabel.me { background: transparent; border: 0; color: var(--text); font-size: 18px; text-shadow: 2px 2px 0 var(--ink); }
 
 /* overlays */
-.overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(9,11,22,.66); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px; box-sizing: border-box; overflow-y: auto; }
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(9,11,22,.66); padding-left: max(16px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); padding-right: max(16px, var(--safe-area-inset-right, env(safe-area-inset-right, 0px))); padding-block: 16px; box-sizing: border-box; overflow-y: auto; }
 .dialog { width: min(560px, 100%); padding: 22px; display: grid; gap: 16px; box-sizing: border-box; }
 .dialog h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 72px; line-height: .85; text-shadow: 4px 4px 0 var(--ink); }
 .dialog .row { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -673,12 +681,12 @@ input[type="range"] { accent-color: var(--gold); width: 160px; }
 #flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: #fff; }
 /* replays: an offer button after big moments, then letterbox bars, a REPLAY badge, SKIP and SAVE CLIP */
 #replay { position: absolute; inset: 0; pointer-events: none; }
-#replay .rp-offer { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(72px + env(safe-area-inset-top, 0px)); pointer-events: auto; }
+#replay .rp-offer { position: absolute; right: max(16px, var(--safe-area-inset-right, env(safe-area-inset-right, 0px))); top: calc(72px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); pointer-events: auto; }
 #replay .rp-offer.pop { animation: riseIn .3s steps(3); }
 #replay .rp-on { position: absolute; inset: 0; }
 #replay .rp-on::before, #replay .rp-on::after { content: ""; position: absolute; left: 0; right: 0; height: 9%; background: #000; }
 #replay .rp-on::before { top: 0; } #replay .rp-on::after { bottom: 0; }
-#replay .rp-badge { position: absolute; z-index: 1; left: max(16px, env(safe-area-inset-left, 0px)); top: calc(9% + 10px); font-size: 13px; padding: 6px 10px; background: var(--danger); color: var(--text); }
+#replay .rp-badge { position: absolute; z-index: 1; left: max(16px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); top: calc(9% + 10px); font-size: 13px; padding: 6px 10px; background: var(--danger); color: var(--text); }
 #replay .rp-badge b { animation: blink 1s steps(2) infinite; }
 #replay .rp-ctl { position: absolute; z-index: 1; left: 50%; bottom: calc(9% + 12px); transform: translateX(-50%); display: flex; gap: 10px; pointer-events: auto; }
 #replay .rp-note { position: absolute; z-index: 1; left: 50%; bottom: calc(9% + 70px); transform: translateX(-50%); white-space: nowrap; color: var(--text); text-shadow: 1px 1px 0 var(--ink); }
@@ -769,11 +777,11 @@ body { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 /* the FRIENDS panel on the side (11_friends.js): a tab on the right edge, or the open panel with a HIDE button */
 #fr-side { position: fixed; right: 0; top: 0; bottom: 0; z-index: 50; pointer-events: none; }
 #fr-side > * { pointer-events: auto; }
-.fr-tab { position: absolute; right: 0; top: 50%; transform: translateY(-50%); writing-mode: vertical-rl; display: flex; align-items: center; gap: 8px; padding: 14px 8px; margin-right: env(safe-area-inset-right, 0px);
+.fr-tab { position: absolute; right: 0; top: 50%; transform: translateY(-50%); writing-mode: vertical-rl; display: flex; align-items: center; gap: 8px; padding: 14px 8px; margin-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
   font-family: var(--font-label); font-weight: 700; font-size: 12px; letter-spacing: .14em; color: var(--gold); background: var(--slate); border: var(--px) solid var(--ink); border-right: 0; cursor: pointer; box-shadow: -4px 4px 0 rgba(0,0,0,.4); }
 .fr-tab.live { color: var(--text); }
 .fr-tab-n { writing-mode: horizontal-tb; min-width: 20px; padding: 2px 4px; background: var(--emerald); color: var(--ink); font-size: 12px; text-align: center; }
-.fr-panel { position: absolute; right: max(12px, env(safe-area-inset-right, 0px)); top: calc(76px + env(safe-area-inset-top, 0px)); width: min(300px, calc(100vw - 24px)); max-height: calc(100% - 96px - env(safe-area-inset-top, 0px));
+.fr-panel { position: absolute; right: max(12px, var(--safe-area-inset-right, env(safe-area-inset-right, 0px))); top: calc(76px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); width: min(300px, calc(100vw - 24px)); max-height: calc(100% - 96px - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   box-sizing: border-box; padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; box-shadow: 0 0 0 3px var(--ink), 6px 6px 0 rgba(0,0,0,.45); }
 .fr-head { display: flex; align-items: center; gap: 8px; }
 .fr-head h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 26px; line-height: 1; letter-spacing: .04em; }
@@ -796,12 +804,12 @@ body { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 .fr-foot .label { font-size: 10px; }
 @media (min-width: 1000px) and (min-height: 600px) { body.fr-lobby .fr-panel { max-height: calc(100% - 365px); min-height: 300px; } } /* stops above the rank card */
 @media (min-width: 1180px) { body.fr-open #scr-pause { padding-right: 330px; } body.fr-open.fr-online #scr-online { padding-right: 330px; } } /* the pause menu and the room screen move over to make room */
-@media (max-height: 500px) { .fr-panel { top: calc(8px + env(safe-area-inset-top, 0px)); max-height: calc(100% - 16px); padding: 10px; gap: 6px; } .fr-foot .label { display: none; } }
+@media (max-height: 500px) { .fr-panel { top: calc(8px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); max-height: calc(100% - 16px); padding: 10px; gap: 6px; } .fr-foot .label { display: none; } }
 #btn-fs.nag { background: var(--gold); color: var(--ink); box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); }
 #touch .tb .ic { z-index: 1; }
 #touch .tb .cd { z-index: 2; }
 #touch .tb .lb, #touch .tb .num, #touch .tb .pips { z-index: 3; }
-#touch .tboard { position: absolute; left: 50%; top: 0; width: 280px; height: calc(60px + env(safe-area-inset-top, 0px)); transform: translateX(-50%); }
+#touch .tboard { position: absolute; left: 50%; top: 0; width: 280px; height: calc(60px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); transform: translateX(-50%); }
 #touch .stick { position: absolute; inset: 0; pointer-events: none; }
 #touch .stick > div { position: absolute; left: 0; top: 0; -webkit-clip-path: var(--pxc); clip-path: var(--pxc); }
 #touch .stick .ring { width: calc(var(--R, 56px) * 2.6); height: calc(var(--R, 56px) * 2.6); transform: translate(calc(var(--bx, 0px) - 50%), calc(var(--by, 0px) - 50%)); background: rgba(245,239,224,.08); }
@@ -814,27 +822,27 @@ body { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 #touch .stick.idle { opacity: .5; }
 /* HUD rearranged for thumbs: stats move up top, the desktop hotbar gives way to the arc */
 body.touch #hud .hotbar, body.touch #hud .itemslot, body.touch #hud .hud-em, body.touch #hud .hud-mode { display: none; }
-body.touch #hud .scorebar { top: calc(8px + env(safe-area-inset-top, 0px)); }
-body.touch #hud .dock { top: calc(64px + env(safe-area-inset-top, 0px)); bottom: auto; gap: 3px; }
+body.touch #hud .scorebar { top: calc(8px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); }
+body.touch #hud .dock { top: calc(64px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); bottom: auto; gap: 3px; }
 body.touch #hud .flowbar { width: min(230px, 46vw); }
 body.touch #hud .stamina { width: min(230px, 46vw); } body.touch #hud .stamina img { width: 15px; height: 15px; } body.touch #hud .stamina .st-track { height: 8px; } body.touch #hud .stamina .st-lbl { display: none; }
-body.touch #hud #minimap { display: block; left: max(10px, env(safe-area-inset-left, 0px)); top: calc(10px + env(safe-area-inset-top, 0px)); bottom: auto; width: 62px; height: 94px; border-width: 2px; }
-body.touch #hud .toasts { top: calc(118px + env(safe-area-inset-top, 0px)); }
-body.touch #hud .hint { top: auto; left: max(16px, env(safe-area-inset-left, 0px)); bottom: var(--thb, 180px); transform: none; max-width: min(36vw, 320px); font-size: 10px; padding: 5px 8px; text-align: left; }
+body.touch #hud #minimap { display: block; left: max(10px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); top: calc(10px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); bottom: auto; width: 62px; height: 94px; border-width: 2px; }
+body.touch #hud .toasts { top: calc(118px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); }
+body.touch #hud .hint { top: auto; left: max(16px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); bottom: var(--thb, 180px); transform: none; max-width: min(36vw, 320px); font-size: 10px; padding: 5px 8px; text-align: left; }
 body:not(.touch) .t-only { display: none !important; }
 .howto .touchsec { order: 9; }
 body.touch .howto .touchsec { order: -1; }
 @media (orientation: portrait) {
-  body.touch #hud .hint { bottom: auto; top: calc(118px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); max-width: calc(100% - 32px); text-align: center; }
-  body.touch #hud .toasts { top: calc(176px + env(safe-area-inset-top, 0px)); }
+  body.touch #hud .hint { bottom: auto; top: calc(118px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); left: 50%; transform: translateX(-50%); max-width: calc(100% - 32px); text-align: center; }
+  body.touch #hud .toasts { top: calc(176px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); }
 }
 /* short screens: a phone on its side */
 @media (max-height: 520px) {
   .scorebar .team { font-size: 32px; padding: 2px 10px 4px; }
   .scorebar .team .nm { display: none; }
   .scorebar .clock { font-size: 28px; min-width: 70px; padding: 1px 8px 3px; }
-  body.touch #hud .dock { top: calc(50px + env(safe-area-inset-top, 0px)); }
-  body.touch #hud .toasts { top: calc(100px + env(safe-area-inset-top, 0px)); }
+  body.touch #hud .dock { top: calc(50px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); }
+  body.touch #hud .toasts { top: calc(100px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); }
   .banner { top: 22%; }
   .banner .big { font-size: clamp(48px, 21vh, 120px); }
   .banner .small { font-size: 11px; margin-top: 8px; }
@@ -1035,7 +1043,7 @@ const Save = {
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
       spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false, tips: [],
       fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
-      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true },
+      name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
     };
   },
@@ -1094,7 +1102,7 @@ const Save = {
     st.frOpen = typeof st.frOpen === 'boolean' ? st.frOpen : null; // the FRIENDS panel open or hidden (null: open on wide screens)
     out.fid = typeof out.fid === 'string' && /^[a-z0-9]{16}$/.test(out.fid) ? out.fid : Array.from({ length: 16 }, () => 'abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 36)]).join('');
     out.friends = Array.isArray(out.friends) ? out.friends.filter((f) => f && typeof f.f === 'string' && /^[a-z0-9]{16}$/.test(f.f) && f.f !== out.fid).map((f) => ({ f: f.f, n: String(f.n || 'FRIEND').toUpperCase().replace(/[^A-Z0-9 ]/g, '').slice(0, 12) || 'FRIEND' })).slice(0, 60) : [];
-    st.camPicked = !!st.camPicked; st.cam = !st.camPicked ? 'third' : st.cam === 'third' ? 'third' : 'first'; st.autoFs = st.autoFs !== false; st.shiftLock = !!st.shiftLock; // third person until you pick (owner, Nov 2026: new players see their own player; V still switches)
+    st.camPicked = !!st.camPicked; st.cam = !st.camPicked ? 'third' : st.cam === 'third' ? 'third' : 'first'; st.autoFs = st.autoFs !== false; st.ballCue = ['auto', 'on', 'off'].includes(st.ballCue) ? st.ballCue : 'auto'; st.shiftLock = !!st.shiftLock; // third person until you pick (owner, Nov 2026: new players see their own player; V still switches)
     out.account = out.account && typeof out.account === 'object' && typeof out.account.token === 'string' && typeof out.account.user === 'string' ? { user: out.account.user.slice(0, 12), token: out.account.token.slice(0, 128) } : null;
     out.name = String(out.name || '').toUpperCase().replace(/[^A-Z0-9 ]/g, '').trim().slice(0, 12);
     if (!Array.isArray(out.styles)) out.styles = ['ROOKIE'];
@@ -4512,6 +4520,10 @@ const TIER_SKILL = [0.15, 0.33, 0.5, 0.65, 0.8, 1.0];
 const TIER_FANS = [0.25, 0.36, 0.48, 0.62, 0.8, 1];
 const TIER_LOUD = [0.7, 0.8, 0.9, 1.0, 1.15, 1.3];
 const difficultyFor = (rp) => TIER_SKILL[tierOf(rp)];
+/* A gentle start (owner, Nov 2026: first-time players said it is too hard): your first matches against bots are small
+   and easy, and grow in even steps: [team size, bot skill] for match 1, 2, 3... After that the normal size and skill. */
+const ROOKIE_RAMP = [[2, 0.03], [2, 0.06], [3, 0.09], [3, 0.12], [4, 0.15]];
+const rookieRamp = (played) => ROOKIE_RAMP[played] || null;
 
 function rollRarity(pity) {
   if (pity >= 29) { const r = Math.random() * 17; return r < 12 ? 2 : r < 16.5 ? 3 : 4; }
@@ -7072,6 +7084,7 @@ const Input = {
       const was = this.locked;
       this.locked = document.pointerLockElement === canvas;
       if (this.locked) { this.everLocked = true; this.lockFailed = false; }
+      if (this.locked && !Game.playing()) { document.exitPointerLock(); return; } // a lock that arrives late, after you left the match, would trap the mouse in the menus
       if (was && !this.locked && Game.playing() && !Net.paused && !this.releasing) Game.pause();
       this.releasing = false;
       Hud.lockHint && Hud.lockHint();
@@ -7825,6 +7838,107 @@ const Account = {
   },
 };
 
+/* ---- 11_ballcue.js ---- */
+/* =====================================================================
+   BallCue: helps you see the ball (playtest, Nov 2026: "new players
+   cannot see the ball"). In third person your own player stands between
+   the camera and the ball you dribble, and far away the ball is a small
+   white dot on a bright pitch. So:
+   - the ball shows through anything in front of it (your own player,
+     the net, a crowd of players) as a yellow shape
+   - while you are new (your first BALL_CUE_MATCHES matches, or Ball
+     marker ON in the pause menu) the ball also looks bigger, a yellow
+     arrow floats over it (over the player who has it), a yellow ring
+     sits on the grass under a loose ball, and an arrow at the edge of
+     the screen points to it when it is off screen
+   Only the picture changes: the ball's real size for the physics stays.
+   ===================================================================== */
+const BALL_CUE_MATCHES = 10;
+const BALL_BIG = 1.3;
+const BALL_CUE_COLOR = '#ffd23d';
+const _bc1 = V3(), _bc2 = V3();
+const BallCue = {
+  ghost: null, ring: null, mark: null, edge: null, t: 0,
+  init() {
+    const L = $('labels');
+    this.mark = document.createElement('div'); this.mark.className = 'ballcue ballmark'; this.mark.id = 'ballmark';
+    this.edge = document.createElement('div'); this.edge.className = 'ballcue balledge'; this.edge.id = 'balledge';
+    for (const el of [this.mark, this.edge]) { el.innerHTML = '<i></i>'; el.hidden = true; L.appendChild(el); }
+  },
+  /** settings.ballCue: 'auto' (help while you are new), 'on' or 'off' */
+  mode() { return Save.data.settings.ballCue || 'auto'; },
+  /** the bigger ball, the arrows and the ring */
+  help() { const v = this.mode(); return v === 'on' || (v === 'auto' && Save.data.stats.played < BALL_CUE_MATCHES); },
+  build() {
+    const ghostMat = new THREE.MeshBasicMaterial({ color: lin(BALL_CUE_COLOR), transparent: true, opacity: 0.8, depthWrite: false, depthFunc: THREE.GreaterDepth, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, toneMapped: false });
+    this.ghost = new THREE.Mesh(BALL_GEO || makeBallGeometry(), ghostMat); // only drawn where something is in front of the ball
+    this.ghost.renderOrder = 40; this.ghost.frustumCulled = false;
+    const ringMat = new THREE.MeshBasicMaterial({ color: lin(BALL_CUE_COLOR), transparent: true, opacity: 0.85, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide });
+    this.ring = new THREE.Mesh(new THREE.RingGeometry(0.72, 0.98, 28), ringMat);
+    this.ring.rotation.x = -Math.PI / 2; this.ring.renderOrder = 6;
+    this.ghost.visible = this.ring.visible = false;
+    World.scene.add(this.ghost, this.ring);
+  },
+  /** the match on screen now (offline or online), or null */
+  cur() {
+    const s = Game.state;
+    if (s === 'online') return Net.nm || null;
+    if ((s === 'match' || s === 'paused' || s === 'results' || s === 'replay') && Game.match) return Game.match;
+    return null;
+  },
+  /** the ball's picture at size s, still sitting on the grass. Safe to call every frame, also when nothing moved it */
+  size(mesh, s) {
+    const ud = mesh.userData;
+    let y = mesh.position.y;
+    if (ud.cueY === y) y -= ud.cueOff || 0;
+    const off = BALL_R * (s - 1);
+    mesh.position.y = y + off; ud.cueY = mesh.position.y; ud.cueOff = off;
+    if (mesh.scale.x !== s) mesh.scale.setScalar(s);
+  },
+  hide() {
+    if (this.ghost) this.ghost.visible = this.ring.visible = false;
+    if (this.mark && !this.mark.hidden) this.mark.hidden = true;
+    if (this.edge && !this.edge.hidden) this.edge.hidden = true;
+  },
+  /** every drawn frame, just before the picture is drawn */
+  frame(rdt) {
+    const m = this.cur(), b = m && m.ball;
+    if (!b || !b.mesh || !this.mark) { this.hide(); return; }
+    const mode = this.mode(), help = mode !== 'off' && this.help();
+    this.size(b.mesh, help ? BALL_BIG : 1);
+    if (!this.ghost) this.build();
+    this.t += rdt || 0;
+    const bp = b.mesh.position, shown = b.mesh.visible !== false;
+    this.ghost.visible = mode !== 'off' && shown;
+    if (this.ghost.visible) { this.ghost.position.copy(bp); this.ghost.quaternion.copy(b.mesh.quaternion); this.ghost.scale.copy(b.mesh.scale); }
+    const live = Game.playing() && !(Game.state === 'online' && Net.paused) && !Game.gate && m.phase !== 'goal' && m.phase !== 'end' && !m.fk && shown;
+    const owner = b.owner, mine = !!owner && owner === m.human;
+    this.ring.visible = help && live && !owner;
+    if (this.ring.visible) { this.ring.position.set(bp.x, 0.04, bp.z); const k = 1 + Math.sin(this.t * 5) * 0.06; this.ring.scale.set(k, k, 1); }
+    if (!help || !live || mine) { this.mark.hidden = true; this.edge.hidden = true; return; }
+    // the arrow over the ball, or over the head of the player who has it
+    const cam = World.camera, W = window.innerWidth, H = window.innerHeight;
+    if (owner) _bc1.set(owner.pos.x, owner.pos.y + 2.75, owner.pos.z); else _bc1.set(bp.x, bp.y + BALL_R * BALL_BIG + 0.45, bp.z);
+    _bc2.copy(_bc1).project(cam);
+    if (_bc2.z < 1 && Math.abs(_bc2.x) < 0.97 && Math.abs(_bc2.y) < 0.94) {
+      const x = (_bc2.x * 0.5 + 0.5) * W, y = (-_bc2.y * 0.5 + 0.5) * H - 6 - Math.abs(Math.sin(this.t * 4)) * 6;
+      this.mark.hidden = false; this.edge.hidden = true;
+      this.mark.style.transform = `translate(${(x - 14).toFixed(0)}px, ${(y - 16).toFixed(0)}px)`;
+      return;
+    }
+    // off screen: an arrow at the edge points the way (down when it is behind you)
+    _bc2.set(bp.x, bp.y, bp.z).applyMatrix4(cam.matrixWorldInverse);
+    let dx = _bc2.x, dy = _bc2.y;
+    if (_bc2.z > 0) dy -= _bc2.z + Math.abs(dx) * 0.2; // behind the camera
+    const sx = dx, sy = -dy, n = Math.hypot(sx, sy) || 1, ux = sx / n, uy = sy / n;
+    const mx = 40, hw = W / 2 - mx, hh = H / 2 - mx;
+    const k = Math.min(hw / Math.max(Math.abs(ux), 1e-4), hh / Math.max(Math.abs(uy), 1e-4));
+    const x = W / 2 + ux * k, y = H / 2 + uy * k, ang = Math.atan2(uy, ux) * 180 / Math.PI - 90;
+    this.mark.hidden = true; this.edge.hidden = false;
+    this.edge.style.transform = `translate(${(x - 14).toFixed(0)}px, ${(y - 8).toFixed(0)}px) rotate(${ang.toFixed(0)}deg)`;
+  },
+};
+
 /* ---- 11_crazy.js ---- */
 /* =====================================================================
    Portal: the CrazyGames SDK. Only the CrazyGames build loads it
@@ -7866,7 +7980,7 @@ const Portal = {
   },
   /** right after Game.start */
   ready() {
-    if (BUILD.portal) { const adv = document.querySelector('.on-adv'); if (adv) adv.remove(); if (!BUILD.server) $('go-online').hidden = true; }
+    if (BUILD.portal) { const adv = document.querySelector('.on-adv'); if (adv) adv.remove(); if (!BUILD.server || this.offline()) $('go-online').hidden = true; }
     this.applyMute();
     if (!this.on) return;
     this.try(() => this.sdk.game.loadingStop());
@@ -7877,12 +7991,17 @@ const Portal = {
     if (inv && inv.room && BUILD.server) this.joinFrom(inv);
     else if (this.try(() => this.sdk.game.isInstantMultiplayer) && BUILD.server) { Net.open(); Net.connect(() => Net.send({ t: 'create' })); }
   },
+  /** opened from a friend's invite or their play-together button: no first-match onboarding, straight to the room
+      (CrazyGames multiplayer: "avoid onboarding scenes for players joining like this") */
+  party() { if (!this.on || !BUILD.server) return false; const inv = this.try(() => this.sdk.game.inviteParams); return !!((inv && inv.room) || this.try(() => this.sdk.game.isInstantMultiplayer)); },
+  /** the CrazyGames app can play a downloaded game with no internet: online play is hidden then */
+  offline() { return this.on && !!(this.try(() => this.sdk.isOfflineMode) || this.try(() => this.sdk.game.isOfflineMode) || this.try(() => this.sdk.user.isOfflineMode)); },
   try(fn) { try { return fn(); } catch (e) { return undefined; } },
   async tryAsync(fn) { try { return await fn(); } catch (e) { return undefined; } },
   /** every frame: tell them when a match is being played, and when it stops (menu, results, replays) */
   tick() {
     if (!this.on) return;
-    const live = Game.state === 'match' || (Game.state === 'online' && !Net.paused);
+    const live = (Game.state === 'match' && !Game.gate) || (Game.state === 'online' && !Net.paused);
     if (live === this.live) return;
     this.live = live;
     this.try(() => (live ? this.sdk.game.gameplayStart() : this.sdk.game.gameplayStop()));
@@ -8049,6 +8168,7 @@ const KeyPics = {
    after ROOKIE_MATCHES matches, or once every tip has been seen, the whole HUD shows. Not online, not in tests. */
 const ROOKIE_MATCHES = 6;
 const TIP_LIST = [
+  { id: 'move', title: 'MOVE', k: () => `<span class="kcross">${KeyPics.cap('KeyW')}<span>${KeyPics.cap('KeyA')}${KeyPics.cap('KeyS')}${KeyPics.cap('KeyD')}</span></span>`, pad: 'L STICK', touch: null, text: 'RUN TO THE BALL. THE MOUSE TURNS YOU', tText: 'LEFT THUMB MOVES. DRAG THE RIGHT SIDE TO LOOK', when: (c) => c.playT > 0.2 && c.playT < 20 && !c.own },
   { id: 'shoot', title: 'SHOOT', k: () => KeyPics.mouse('l'), pad: 'RT', touch: 'shoot', text: 'HOLD TO POWER UP, LET GO TO SHOOT', tText: 'HOLD SHOOT, LET GO', when: (c) => c.own },
   { id: 'pass', title: 'PASS', k: () => KeyPics.mouse('r'), pad: 'LT', touch: 'pass', text: 'PASS TO A TEAMMATE. HOLD IT FOR A HIGH BALL', tText: 'TAP PASS. HOLD IT FOR A HIGH BALL', when: (c) => c.own && c.since('shoot') > 6 },
   { id: 'sprint', title: 'SPRINT', k: () => KeyPics.cap('ShiftLeft', 'SHIFT'), pad: 'LB', touch: null, text: 'HOLD TO RUN FAST. IT USES STAMINA', tText: 'PUSH THE STICK ALL THE WAY TO RUN FAST', when: (c) => c.walkT > 2.5 },
@@ -8064,7 +8184,7 @@ const Tips = {
   rookie() { return !navigator.webdriver && Save.data.stats.played < ROOKIE_MATCHES && TIP_LIST.some((t) => !this.seen(t.id)); },
   /** a fresh match: hide what has not been shown yet */
   start(m) {
-    this.t = 0; this.gap = 4; this.playT = 0; this.walkT = 0; this.cur = null; this.shownAt = {};
+    this.t = 0; this.gap = this.seen('move') ? 4 : 0; this.playT = 0; this.walkT = 0; this.cur = null; this.shownAt = {};
     this.active = !m.online && !m.tut && !m.fk && this.rookie();
     $('tipbox').hidden = true;
     this.applyHud();
@@ -9872,7 +9992,7 @@ const UI = {
       <canvas id="minimap" width="132" height="200"></canvas>
       <div class="tutbox panel" id="tutbox" hidden><span class="label" id="tut-n"></span><b id="tut-title"></b><div class="tut-keys" id="tut-keys" hidden></div><p id="tut-text"></p><button class="btn ghost tiny tut-skip" id="tut-skip" type="button">SKIP <span class="key">ENTER</span></button></div>
       <div class="tipbox panel" id="tipbox" hidden><div class="tut-keys" id="tip-keys" hidden></div><div class="tip-words"><b id="tip-title"></b><p id="tip-text"></p></div></div>
-      <div class="tut-gate" id="tut-gate" hidden><b class="tg-title">SCOR<em>Z</em></b><span class="tg-go" id="tg-go">CLICK TO PLAY</span><span class="label">A QUICK START: MOVE, PASS, SCORE</span></div>
+      <div class="tut-gate" id="tut-gate" hidden><b class="tg-title">SCOR<em>Z</em></b><span class="tg-go" id="tg-go">CLICK TO PLAY</span><div class="tut-keys tg-keys" id="tg-keys" hidden></div><span class="label">YOUR FIRST MATCH. SCORE MORE GOALS THAN THEM</span></div>
       <div class="dock">
         <div class="fkpanel panel" id="fkpanel" hidden>
           <div class="fk-row"><span class="label">TYPE</span><b id="fk-type">CURVE</b><span class="label" id="fk-desc"></span><span class="key k" id="fk-typekey">RMB</span></div>
@@ -9985,6 +10105,7 @@ const UI = {
           <span>Camera</span><div class="seg" id="set-cam"><button type="button" data-v="third">3RD PERSON</button><button type="button" data-v="first">1ST PERSON</button></div>
           <span>Invert camera Y</span><div class="seg" id="set-inv"><button type="button" data-v="0">OFF</button><button type="button" data-v="1">ON</button></div>
           <span class="t-only">Button size</span><div class="seg t-only" id="set-btn"><button type="button" data-v="0.85">S</button><button type="button" data-v="1">M</button><button type="button" data-v="1.15">L</button></div>
+          <span>Ball marker</span><div class="seg" id="set-ball"><button type="button" data-v="auto">AUTO</button><button type="button" data-v="on">ON</button><button type="button" data-v="off">OFF</button></div>
           <span>Aim assist</span><div class="seg" id="set-assist"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Chat</span><div class="seg" id="set-chat">${CHAT_SHOW.map(([v, n]) => `<button type="button" data-v="${v}">${n}</button>`).join('')}</div>
           <span>Cut-ins</span><div class="seg" id="set-cut"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
@@ -10113,6 +10234,7 @@ const UI = {
     $('set-music').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.music = v === '1'; Music.apply(); Save.save(); this.renderPause(); });
     $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Portal.applyMute(); Save.save(); this.renderPause(); });
     $('set-btn').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.btn = parseFloat(v) || 1; Save.save(); Touch.layout(); this.renderPause(); });
+    $('set-ball').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.ballCue = v; Save.save(); this.renderPause(); });
     $('set-assist').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.assist = v === '1'; Save.save(); this.renderPause(); });
     $('set-sl').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null || (v === '1') === !!Save.data.settings.shiftLock) return; Cam.toggleShiftLock(); this.renderPause(); });
     $('set-cam').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v || v === Save.data.settings.cam) return; Cam.toggle(); this.renderPause(); });
@@ -10410,6 +10532,7 @@ const UI = {
     Net.renderPeople();
     $('set-sens').value = s.sens;
     $('set-btn').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', Math.abs(parseFloat(b.dataset.v) - (s.btn || 1)) < 0.01));
+    $('set-ball').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === (s.ballCue || 'auto')));
     $('set-assist').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.assist !== false)));
     const fs = Touch.fsAvailable();
     document.querySelectorAll('#scr-pause .fs-only').forEach((el) => { el.hidden = !fs; });
@@ -10639,7 +10762,7 @@ const UI = {
 const AUTO_STEPS = [['med', 1], ['lite', 1], ['lite', 0.9], ['low', 1]];
 const Game = {
   state: 'boot', match: null, lastMode: null, last: 0, time: 0, ended: false, pausedAt: 0,
-  perf: { t: 0, frames: 0, long: 0, min: 1, skip: 0 }, autoStep: 0, autoWant: null, autoWait: 0, crowdT: 0,
+  perf: { t: 0, frames: 0, long: 0, min: 1, skip: 0 }, autoStep: 0, autoWant: null, autoWait: 0, crowdT: 0, gate: false,
   /** a match is being played here, offline or online */
   playing() { return this.state === 'match' || this.state === 'online'; },
   start() {
@@ -10654,29 +10777,42 @@ const Game = {
     Replay.init();
     Net.init();
     Friends.init();
+    BallCue.init();
     Account.init();
     Input.init($('gl'));
     Touch.init();
     this.applyQuality();
     window.addEventListener('resize', () => World.resize());
+    // CrazyGames common fixes: the page never scrolls under a match and the right-click menu stays away (right click is PASS)
+    window.addEventListener('wheel', (e) => { if (this.playing()) e.preventDefault(); }, { passive: false });
+    document.addEventListener('contextmenu', (e) => { if (!(e.target && e.target.closest && e.target.closest('input, textarea'))) e.preventDefault(); });
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === 'match') this.pause(); });
     this.toLobby();
     KeyNames.init();
     if (Net.joinCode) Net.open(); // opened from an invite link
-    else if (!Save.data.onboarded && !navigator.webdriver) this.onboard(); // a brand-new player lands straight on the pitch
+    else if (!Save.data.onboarded && !navigator.webdriver && !Portal.party()) this.onboard(); // a brand-new player lands straight on the pitch
     this.last = performance.now();
     const tick = (t) => { requestAnimationFrame(tick); if (!this.manual) this.loop(t); };
     requestAnimationFrame(tick);
   },
-  /** the first visit (CrazyGames: "a simple onboarding phase where new users land directly"): straight into the short
-      tutorial behind a CLICK TO PLAY (the click lets the game lock the mouse, start the sound and, on phones, go fullscreen) */
+  /** the first visit (CrazyGames: "games should land new users in gameplay immediately", one click at most): straight
+      into a real quick match against the easiest bots, waiting at kickoff behind a CLICK TO PLAY with a picture of the
+      keys (the click lets the game lock the mouse, start the sound and, on phones, go fullscreen). The first-match tips
+      (Tips) and the ball marker (BallCue) teach the rest while you play. Owner, Nov 2026: "the first match they get
+      thrown into a match". The tutorial is still on the start screen */
   onboard() {
     Save.data.onboarded = true; Save.save();
-    this.startMatch('tutorial');
+    this.startMatch('quick');
+    this.gate = true; // the match waits at kickoff until the click
+    Touch.tipShown = false; // the phone tip shows the first time they reach the start screen instead
     $('tg-go').textContent = Touch.on ? 'TAP TO PLAY' : 'CLICK TO PLAY';
+    const K = KeyPics, keys = $('tg-keys');
+    keys.innerHTML = Touch.on ? '' : `<span class="tg-k"><span class="kcross">${K.cap('KeyW')}<span>${K.cap('KeyA')}${K.cap('KeyS')}${K.cap('KeyD')}</span></span><span class="kl">MOVE</span></span><span class="tg-k">${K.mouse('l')}<span class="kl">SHOOT</span></span><span class="tg-k">${K.mouse('r')}<span class="kl">PASS</span></span>`;
+    keys.hidden = Touch.on;
     $('tut-gate').hidden = false;
   },
   gateGo() {
+    this.gate = false;
     $('tut-gate').hidden = true;
     Sfx.init(); Touch.autoFs(); Input.requestLock();
   },
@@ -10690,7 +10826,7 @@ const Game = {
   toLobby() {
     Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false); UI.toggleEmotes(false); FKHud.hide(); ShotHud.hide();
     if (this.match) { this.match.dispose(); this.match = null; }
-    Net.nm = null; Net.paused = false;
+    Net.nm = null; Net.paused = false; this.gate = false; $('tut-gate').hidden = true;
     Input.releaseLock();
     this.state = 'lobby';
     World.setSun(SUN_LOBBY);
@@ -10703,13 +10839,16 @@ const Game = {
     Net.where('menu');
   },
   startMatch(mode) {
-    Touch.autoFs(); Touch.hideTip(); $('tut-gate').hidden = true;
+    Touch.autoFs(); Touch.hideTip(); $('tut-gate').hidden = true; this.gate = false;
     if (this.match) { this.match.dispose(); this.match = null; }
     Reveal.stop(); Showcase.hide();
     UI.hideOverlays();
     Sfx.init();
     TimeCtl.reset(); FX.clear();
-    this.match = new Match(mode, difficultyFor(Save.data.rp), { size: teamSizeFor(mode, Save.data.rp) });
+    let skill = difficultyFor(Save.data.rp), size = teamSizeFor(mode, Save.data.rp);
+    const ramp = MODES[mode] && MODES[mode].rewards && (!navigator.webdriver || this.rampTest) ? rookieRamp(Save.data.stats.played) : null; // tests keep the normal sizes
+    if (ramp) { size = Math.min(size, ramp[0]); skill = Math.min(skill, ramp[1]); }
+    this.match = new Match(mode, skill, { size });
     this.lastMode = mode; this.ended = false;
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
@@ -10869,7 +11008,7 @@ const Game = {
         UI.emoteKeys();
         Cam.look(rdt);
         m.ctl = Input.controls();
-        const sdt = TimeCtl.step(rdt);
+        const sdt = this.gate ? 0 : TimeCtl.step(rdt); // the first visit waits at kickoff for the click
         if (sdt > 0) {
           let rem = sdt, first = true;
           while (rem > 1e-5) {
@@ -10905,6 +11044,7 @@ const Game = {
     Account.tick(rdt);
     World.update(rdt);
     Input.endFrame();
+    BallCue.frame(rdt);
     if (doRender) World.render();
   },
   /** test hook: advance n frames at a fixed 60fps without waiting on the GPU */
@@ -10914,7 +11054,7 @@ const Game = {
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, Account, Portal, Player, TEAM, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
   CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,

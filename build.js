@@ -89,10 +89,18 @@ ${safeScript(code)}</script>
 </body>
 </html>
 `;
-const page = pageFor(game, '');
+// visitor counting with Cloudflare Web Analytics (free, no cookies): the site token from the owner's Cloudflare account,
+// in analytics.json ({ "cloudflare": "token" }) or SCORZ_CF_TOKEN. Website only: never the CrazyGames page (their rules),
+// and only on a real https site (not localhost, not a file, so tests stay offline)
+let CF_TOKEN = String(process.env.SCORZ_CF_TOKEN || '').trim();
+try { if (!CF_TOKEN) CF_TOKEN = String(JSON.parse(fs.readFileSync(path.join(ROOT, 'analytics.json'), 'utf8')).cloudflare || '').trim(); } catch (e) {}
+if (CF_TOKEN && !/^[a-f0-9]{20,64}$/i.test(CF_TOKEN)) { console.error('The Cloudflare token should be the long code of letters and numbers from the Web Analytics snippet'); process.exit(1); }
+const cfTag = CF_TOKEN ? "\n<script>if (location.protocol === 'https:' && !navigator.webdriver) { var s = document.createElement('script'); s.defer = true; s.src = 'https://static.cloudflareinsights.com/beacon.min.js'; s.setAttribute('data-cf-beacon', JSON.stringify({ token: '" + CF_TOKEN + "' })); document.head.appendChild(s); }</script>" : '';
+const page = pageFor(game, cfTag);
 fs.mkdirSync(path.join(ROOT, 'docs'), { recursive: true });
 // a test build into a temp folder (SCORZ_CG_OUT) leaves the public page alone, so its test server address never ends up on the website
 if (!process.env.SCORZ_CG_OUT) fs.writeFileSync(path.join(ROOT, 'docs', 'index.html'), page);
+if (!process.env.SCORZ_CG_OUT) console.log(CF_TOKEN ? 'visitor counting: Cloudflare Web Analytics is ON' : 'visitor counting: off (no Cloudflare token yet)');
 if (!process.env.SCORZ_CG_OUT) console.log('built docs/index.html', (page.length / 1024).toFixed(0) + ' KB,', modules.length, 'modules,', inlined.length ? 'inlined: ' + inlined.join(' + ') : 'using CDN (run npm install to inline)');
 
 // ---- 6. the CrazyGames page: their SDK in <head>, nothing else changes ------

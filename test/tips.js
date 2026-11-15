@@ -12,7 +12,7 @@ const real = () => Object.defineProperty(Navigator.prototype, 'webdriver', { get
   await page.evaluate(() => { EGO.Game.toLobby(); EGO.Save.data.settings.cutins = false; });
   const shown = (sel) => `(() => { const e = document.querySelector('${sel}'); return !!e && getComputedStyle(e).display !== 'none' && e.offsetParent !== null; })()`;
   const r0 = await page.evaluate(`(() => {
-    const G = EGO.Game; G.startMatch('quick');
+    EGO.Save.data.tips = ['move']; const G = EGO.Game; G.startMatch('quick');
     for (let i = 0; i < 60 && G.match.phase !== 'play'; i++) G.stepManual(10);
     G.stepManual(1, true);
     return { rookie: EGO.Tips.active, abil: ${shown('#slot0')}, feint: ${shown('#slot-c')}, slow: ${shown('#slot-s')}, flow: ${shown('#flowbar')}, flowSlot: ${shown('#slot-g')}, stamina: ${shown('#stamina')}, hint: document.getElementById('hint').textContent };
@@ -26,7 +26,7 @@ const real = () => Object.defineProperty(Navigator.prototype, 'webdriver', { get
     const tip = () => ({ shown: !document.getElementById('tipbox').hidden, title: document.getElementById('tip-title').textContent, keys: document.getElementById('tip-keys').innerHTML });
     const wait = () => { T.hide(); T.gap = 0; };
     const opp = m.opponents(h).find((q) => !q.isGK), away = () => m.ball.reset(h.pos.x > 0 ? -10 : 10, 0);
-    T.gap = 0; m.possess(h, true); G.stepManual(2, true); out.shoot = tip(); out.seen1 = EGO.Save.data.tips.slice();
+    wait(); m.possess(h, true); G.stepManual(2, true); out.shoot = tip(); out.seen1 = EGO.Save.data.tips.slice();
     wait(); T.shownAt.shoot = T.playT - 7; m.possess(h, true); G.stepManual(2, true); out.pass = tip();
     wait(); opp.pos.set(h.pos.x + 2, 0, h.pos.z + 1); m.possess(h, true); G.stepManual(1, true); out.feint = Object.assign(tip(), { slots: ${shown('#slot-c')} && ${shown('#slot-s')} });
     wait(); m.ball.owner && m.ball.release && m.ball.release(); opp.pos.set(h.pos.x + 4, 0, h.pos.z + 3); m.possess(opp, true); G.stepManual(1, true); out.tackle = tip();
@@ -37,14 +37,14 @@ const real = () => Object.defineProperty(Navigator.prototype, 'webdriver', { get
     G.toLobby();
     return out;
   })()`);
-  check('with the ball for the first time: SHOOT, with the left mouse button pictured', run.shoot.shown && run.shoot.title === 'SHOOT' && /mouse l/.test(run.shoot.keys) && run.seen1.join() === 'shoot', run.shoot);
+  check('with the ball for the first time: SHOOT, with the left mouse button pictured', run.shoot.shown && run.shoot.title === 'SHOOT' && /mouse l/.test(run.shoot.keys) && run.seen1.filter((x) => x !== 'move').join() === 'shoot', run.shoot);
   check('a little later with the ball: PASS (right mouse button)', run.pass.title === 'PASS' && /mouse r/.test(run.pass.keys), run.pass);
   check('a defender close while you have the ball: FEINT (C), and the FEINT and SLOW-MO boxes appear', run.feint.title === 'FEINT' && /data-code="KeyC"/.test(run.feint.keys) && run.feint.slots, run.feint);
   check('they have the ball near you: TACKLE (F)', run.tackle.title === 'TACKLE' && /data-code="KeyF"/.test(run.tackle.keys), run.tackle);
   check('after a while: YOUR POWERS (Q E R), and the ability boxes appear', run.ability.title === 'YOUR POWERS' && /KeyQ/.test(run.ability.keys) && run.ability.slots, run.ability);
   check('the Flow bar fills: FLOW (G), and the Flow bar appears', run.flow.title === 'FLOW' && run.flow.bar, run.flow);
   check('walking a while: SPRINT (SHIFT)', run.sprint.title === 'SPRINT' && /SHIFT/.test(run.sprint.keys), run.sprint);
-  check('each tip is kept, so it never repeats', run.all.length === 7 && new Set(run.all).size === 7, run.all);
+  check('each tip is kept, so it never repeats', run.all.length === 8 && new Set(run.all).size === 8, run.all);
   await page.screenshot({ path: __dirname + '/shots/tips.png', timeout: 120000 }).catch(() => {});
 
   const after = await page.evaluate(`(() => {
@@ -72,7 +72,7 @@ const real = () => Object.defineProperty(Navigator.prototype, 'webdriver', { get
   // a phone: the ability buttons wait for their tip, and the button to press glows
   const p = await open({ init: real, viewport: { width: 844, height: 390 }, mobile: true });
   const ph = await p.page.evaluate(`(() => {
-    EGO.Touch.setOn(true); EGO.Save.data.settings.autoFs = false; EGO.Save.data.tips = ['shoot', 'pass', 'sprint', 'tackle', 'feint', 'flow']; const G = EGO.Game; G.startMatch('quick');
+    EGO.Touch.setOn(true); EGO.Save.data.settings.autoFs = false; EGO.Save.data.tips = ['move', 'shoot', 'pass', 'sprint', 'tackle', 'feint', 'flow']; const G = EGO.Game; G.startMatch('quick');
     for (let i = 0; i < 60 && G.match.phase !== 'play'; i++) G.stepManual(10);
     G.stepManual(1, true);
     const before = ${shown('#touch [data-act="ab0"]')};
