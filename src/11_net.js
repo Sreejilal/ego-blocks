@@ -7,7 +7,7 @@
    ===================================================================== */
 const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken', 'emote'];
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
-const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
+const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL'], ['golden', 'GOLDEN GOAL'], ['nokeep', 'NO KEEPERS'], ['turbo', 'TURBO'], ['moon', 'MOON BALL']];
 const NET_DELAY = 0.12; // the least the picture runs behind the server (more on a jittery connection: Net.delay)
 const NET_COAST = 0.1; // a late snapshot: everything keeps moving the way it was going for up to this long instead of freezing
 const CHAT_SHOW = [['all', 'ALL'], ['quick', 'QUICK'], ['off', 'OFF']];

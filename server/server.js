@@ -20,7 +20,7 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 
 const PORT = Number(process.env.PORT) || 8787;
 const STEP = 1 / 60, SNAP_EVERY = 3;
-const MODES_OK = ['quick', 'koth', 'volleys', 'duel'];
+const MODES_OK = ['quick', 'koth', 'volleys', 'duel', 'golden', 'nokeep', 'turbo', 'moon'];
 const STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken', 'emote'];
 const KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
 const FX_SENT = ['burst', 'turbo', 'shuffle', 'lockdown', 'skyTrap', 'vision', 'scent', 'loaded', 'call', 'bubble', 'feathers', 'slowmo', 'slowed'];

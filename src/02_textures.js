@@ -263,6 +263,40 @@ function boxAtlas(w, h, d, rects, S = 64) {
   uv.needsUpdate = true;
   return geo;
 }
+/** paint a face: put(x, y, colour) with x, y from 0 to 7 on the front of the head (row 0 is the hairline).
+    The same painter draws the player and the Locker card, so they always match. */
+function drawFace(put, face, o) {
+  const sk = hexRGB(o.skin), dark = rgbStr(shadeRGB(sk, 0.62)), deep = rgbStr(shadeRGB(sk, 0.45)), brow = rgbStr(shadeRGB(hexRGB(o.hair), 0.65));
+  const W = "#f7f7f2", eye = o.eye || "#2b1d14", pink = "#f08a9a", hair = rgbStr(shadeRGB(hexRGB(o.hair), 0.9));
+  const row = (y, xs, c) => { for (const x of xs) put(x, y, c); };
+  const brows = () => row(3, [1, 2, 5, 6], brow), eyes = () => { put(1, 4, W); put(2, 4, eye); put(5, 4, eye); put(6, 4, W); };
+  const mouth = () => row(6, [3, 4], dark), smile = () => { put(2, 5, dark); put(5, 5, dark); row(6, [3, 4], dark); };
+  switch (face) {
+    case "smile": brows(); eyes(); smile(); break;
+    case "grin": brows(); eyes(); put(1, 5, dark); put(6, 5, dark); row(6, [2, 3, 4, 5], W); break;
+    case "fierce": put(1, 2, brow); put(2, 3, brow); put(5, 3, brow); put(6, 2, brow); eyes(); row(6, [2, 3, 4, 5], deep); break;
+    case "wink": brows(); put(1, 4, W); put(2, 4, eye); row(4, [5, 6], brow); smile(); break;
+    case "freckles": brows(); eyes(); row(5, [1, 3, 4, 6], rgbStr(shadeRGB(sk, 0.78))); mouth(); break;
+    case "stache": brows(); eyes(); row(5, [2, 3, 4, 5], hair); put(1, 6, hair); put(6, 6, hair); mouth(); break;
+    case "beard": brows(); eyes(); put(0, 5, hair); put(7, 5, hair); row(5, [2, 5], hair); row(6, [0, 1, 2, 5, 6, 7], hair); row(7, [0, 1, 2, 3, 4, 5, 6, 7], hair); row(6, [3, 4], deep); break;
+    case "blush": brows(); eyes(); row(5, [1, 6], pink); row(6, [3, 4], dark); put(2, 5, dark); put(5, 5, dark); break;
+    case "wide": row(2, [1, 2, 5, 6], brow); row(3, [1, 6], W); row(4, [1, 6], W); row(3, [2, 5], eye); row(4, [2, 5], eye); row(6, [3, 4], deep); break;
+    case "sleepy": row(2, [1, 2, 5, 6], brow); row(4, [1, 2, 5, 6], deep); put(4, 6, dark); break;
+    case "cheeky": brows(); eyes(); smile(); put(4, 7, pink); break;
+    default: brows(); eyes(); mouth();
+  }
+}
+/** Locker card for a face: the front of a head with that face */
+function faceCanvas(face, size = 96) {
+  const c = mkCanvas(12, 12), g = c.getContext("2d"), o = { skin: "#e8b48a", hair: "#3b2a22", eye: "#2b1d14" };
+  g.fillStyle = "#0a0c17"; g.fillRect(1, 1, 10, 10);
+  g.fillStyle = o.skin; g.fillRect(2, 2, 8, 8);
+  g.fillStyle = o.hair; g.fillRect(2, 2, 8, 1); g.fillRect(2, 3, 1, 1); g.fillRect(9, 3, 1, 1);
+  drawFace((x, y, hex) => { g.fillStyle = hex; g.fillRect(2 + x, 2 + y, 1, 1); }, face, o);
+  const out = mkCanvas(size, size), og = out.getContext("2d");
+  og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size); out.className = "px";
+  return out;
+}
 function makePlayerSkin(o) {
   const c = mkCanvas(64, 64), g = c.getContext('2d');
   const R = mulberry32(o.seed || 1);
@@ -283,10 +317,7 @@ function makePlayerSkin(o) {
   fillN(8, 8, 8, 8, skin, 0.96, 1.03);                       // face
   fillN(8, 8, 8, 1, hair, 0.8, 1.05);
   if (!crop) for (let x = 0; x < 8; x++) if (R() < 0.55 || x === 0 || x === 7) px(8 + x, 9, rgbStr(shadeRGB(hexRGB(hair), lerp(0.8, 1, R()))));
-  const brow = rgbStr(shadeRGB(hexRGB(hair), 0.65));
-  px(9, 11, brow); px(10, 11, brow); px(13, 11, brow); px(14, 11, brow);
-  px(9, 12, '#f7f7f2'); px(10, 12, eye); px(13, 12, eye); px(14, 12, '#f7f7f2');
-  px(11, 14, rgbStr(shadeRGB(hexRGB(skin), 0.62))); px(12, 14, rgbStr(shadeRGB(hexRGB(skin), 0.62)));
+  drawFace((x, y, hex) => px(8 + x, 8 + y, hex), o.face, { skin, hair, eye });
   // shirt: the strip x 16..39, rows 20..29 wraps round the body (left side, front, right side, back)
   const shirt = hexRGB(K.shirt), alt = hexRGB(K.alt);
   const onAlt = (x, y) => {
@@ -573,6 +604,7 @@ function kitCanvas(k, size = 48) {
 const SKIN_ICON = { boots: 'boot', gloves: 'glove', band: 'band', mask: 'mask', shades: 'shades', chain: 'chain', celeb: 'celeb' };
 function skinCanvas(id, size = 96) {
   const sk = SKINS[id];
+  if (sk.slot === 'face') return faceCanvas(sk.face, size);
   if (sk.slot === 'hair') return portraitCanvas('ROOKIE', size, { hairShape: sk.shape || 'short', hair: '#6b3e22' });
   if (sk.slot === 'color') return portraitCanvas('ROOKIE', size, { hair: sk.hex || '#3b2a22', prism: sk.prism });
   if (sk.slot === 'kit') { // your club's shirt with this skin's pattern and trim

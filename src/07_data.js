@@ -482,11 +482,24 @@ const ITEM_IDS = Object.keys(ITEMS);
 /* ---------- skins: looks only, they never change stats ----------
    Every slot has a free base skin that everyone owns. The rest come from Skin Spins (and later the game pass). */
 const SKIN_SLOTS = [
-  { id: 'hair', name: 'HAIR', base: 'STYLE_HAIR' }, { id: 'color', name: 'COLOUR', base: 'STYLE_COLOR' }, { id: 'kit', name: 'KIT', base: 'TEAM_KIT' },
+  { id: 'face', name: 'FACE', base: 'FACE_CALM' }, { id: 'hair', name: 'HAIR', base: 'STYLE_HAIR' }, { id: 'color', name: 'COLOUR', base: 'STYLE_COLOR' }, { id: 'kit', name: 'KIT', base: 'TEAM_KIT' },
   { id: 'boots', name: 'BOOTS', base: 'TEAM_BOOTS' }, { id: 'gloves', name: 'GLOVES', base: 'NO_GLOVES' },
   { id: 'acc', name: 'EXTRA', base: 'NO_ACC' }, { id: 'celeb', name: 'GOAL', base: 'JUMP' },
 ];
 const SKINS = {
+  // faces (owner, Nov 2026: "add different faces"): every one is free, so everyone can look different from day one
+  FACE_CALM: { slot: 'face', name: 'CALM', rarity: 'Rare', base: true, face: 'calm', desc: 'The face everyone starts with.' },
+  FACE_SMILE: { slot: 'face', name: 'SMILE', rarity: 'Rare', base: true, face: 'smile', desc: 'Happy to be here.' },
+  FACE_GRIN: { slot: 'face', name: 'BIG GRIN', rarity: 'Rare', base: true, face: 'grin', desc: 'All teeth.' },
+  FACE_FIERCE: { slot: 'face', name: 'GAME FACE', rarity: 'Rare', base: true, face: 'fierce', desc: 'Angry eyebrows. Means business.' },
+  FACE_WINK: { slot: 'face', name: 'WINK', rarity: 'Rare', base: true, face: 'wink', desc: 'One eye shut, one on the ball.' },
+  FACE_FRECKLES: { slot: 'face', name: 'FRECKLES', rarity: 'Rare', base: true, face: 'freckles', desc: 'A row of freckles.' },
+  FACE_STACHE: { slot: 'face', name: 'MOUSTACHE', rarity: 'Rare', base: true, face: 'stache', desc: 'A proper moustache in your hair colour.' },
+  FACE_BEARD: { slot: 'face', name: 'BEARD', rarity: 'Rare', base: true, face: 'beard', desc: 'A full beard in your hair colour.' },
+  FACE_BLUSH: { slot: 'face', name: 'BLUSH', rarity: 'Rare', base: true, face: 'blush', desc: 'Rosy cheeks.' },
+  FACE_WIDE: { slot: 'face', name: 'WIDE EYES', rarity: 'Rare', base: true, face: 'wide', desc: 'Big surprised eyes.' },
+  FACE_SLEEPY: { slot: 'face', name: 'SLEEPY', rarity: 'Rare', base: true, face: 'sleepy', desc: 'Half asleep, still scoring.' },
+  FACE_CHEEKY: { slot: 'face', name: 'CHEEKY', rarity: 'Rare', base: true, face: 'cheeky', desc: 'Tongue out.' },
   STYLE_HAIR: { slot: 'hair', name: 'STYLE CUT', rarity: 'Rare', base: true, desc: 'The haircut that comes with your style.' },
   CROP: { slot: 'hair', name: 'CROP', rarity: 'Rare', shape: 'crop' },
   MANE: { slot: 'hair', name: 'MANE', rarity: 'Rare', shape: 'long' },
@@ -611,6 +624,7 @@ function lookFor(styleId, look = {}) {
   const st = STYLES[styleId] || STYLES.ROOKIE, S = (slot) => SKINS[look[slot]] || {};
   const acc = S('acc');
   return {
+    face: S('face').face || 'calm',
     hairShape: S('hair').shape || st.hairShape, hair: S('color').hex || st.hair, prism: !!S('color').prism,
     boots: S('boots').hex || null, sparkle: !!S('boots').sparkle, gloves: S('gloves').hex || null,
     kitPattern: S('kit').pattern || null, kitTrim: S('kit').trim || null,
@@ -618,9 +632,10 @@ function lookFor(styleId, look = {}) {
   };
 }
 /** bots wear a few skins too, so matches show them off */
+const FACE_IDS = Object.keys(SKINS).filter((k) => SKINS[k].slot === 'face');
 function botLook() {
   const any = (slot, p) => (chance(p) ? pick(SKIN_IDS.filter((k) => SKINS[k].slot === slot)) : null);
-  return { boots: any('boots', 0.4), color: any('color', 0.2), kit: any('kit', 0.15), acc: any('acc', 0.22), gloves: any('gloves', 0.15), celeb: any('celeb', 0.6) };
+  return { face: pick(FACE_IDS), boots: any('boots', 0.4), color: any('color', 0.2), kit: any('kit', 0.15), acc: any('acc', 0.22), gloves: any('gloves', 0.15), celeb: any('celeb', 0.6) };
 }
 
 /* ---------- clubs and kits ----------

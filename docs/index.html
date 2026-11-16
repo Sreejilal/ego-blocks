@@ -55,6 +55,7 @@ canvas#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block
 #app { position: fixed; inset: 0; pointer-events: none; }
 #app > * { pointer-events: auto; }
 button { font: inherit; color: inherit; }
+body.padnav .padfocus { outline: 4px solid var(--gold); outline-offset: 3px; box-shadow: 0 0 0 7px rgba(255, 203, 61, .28); }
 button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 [hidden] { display: none !important; }
@@ -1024,7 +1025,7 @@ function standTop(x, z) {
   return Math.max(ax >= S.SIDE ? row(ax - S.SIDE) : 0, az >= S.END ? row(az - S.END) : 0);
 }
 const BALL_R = 0.3;
-const BALL_G = 16;
+const BALL_G0 = 16; let BALL_G = BALL_G0; // Moon Ball sets its own at the start of every match step (Match.update)
 const P_R = 0.42;
 const P_H = 1.9;
 const GRAV = 22;
@@ -1628,6 +1629,40 @@ function boxAtlas(w, h, d, rects, S = 64) {
   uv.needsUpdate = true;
   return geo;
 }
+/** paint a face: put(x, y, colour) with x, y from 0 to 7 on the front of the head (row 0 is the hairline).
+    The same painter draws the player and the Locker card, so they always match. */
+function drawFace(put, face, o) {
+  const sk = hexRGB(o.skin), dark = rgbStr(shadeRGB(sk, 0.62)), deep = rgbStr(shadeRGB(sk, 0.45)), brow = rgbStr(shadeRGB(hexRGB(o.hair), 0.65));
+  const W = "#f7f7f2", eye = o.eye || "#2b1d14", pink = "#f08a9a", hair = rgbStr(shadeRGB(hexRGB(o.hair), 0.9));
+  const row = (y, xs, c) => { for (const x of xs) put(x, y, c); };
+  const brows = () => row(3, [1, 2, 5, 6], brow), eyes = () => { put(1, 4, W); put(2, 4, eye); put(5, 4, eye); put(6, 4, W); };
+  const mouth = () => row(6, [3, 4], dark), smile = () => { put(2, 5, dark); put(5, 5, dark); row(6, [3, 4], dark); };
+  switch (face) {
+    case "smile": brows(); eyes(); smile(); break;
+    case "grin": brows(); eyes(); put(1, 5, dark); put(6, 5, dark); row(6, [2, 3, 4, 5], W); break;
+    case "fierce": put(1, 2, brow); put(2, 3, brow); put(5, 3, brow); put(6, 2, brow); eyes(); row(6, [2, 3, 4, 5], deep); break;
+    case "wink": brows(); put(1, 4, W); put(2, 4, eye); row(4, [5, 6], brow); smile(); break;
+    case "freckles": brows(); eyes(); row(5, [1, 3, 4, 6], rgbStr(shadeRGB(sk, 0.78))); mouth(); break;
+    case "stache": brows(); eyes(); row(5, [2, 3, 4, 5], hair); put(1, 6, hair); put(6, 6, hair); mouth(); break;
+    case "beard": brows(); eyes(); put(0, 5, hair); put(7, 5, hair); row(5, [2, 5], hair); row(6, [0, 1, 2, 5, 6, 7], hair); row(7, [0, 1, 2, 3, 4, 5, 6, 7], hair); row(6, [3, 4], deep); break;
+    case "blush": brows(); eyes(); row(5, [1, 6], pink); row(6, [3, 4], dark); put(2, 5, dark); put(5, 5, dark); break;
+    case "wide": row(2, [1, 2, 5, 6], brow); row(3, [1, 6], W); row(4, [1, 6], W); row(3, [2, 5], eye); row(4, [2, 5], eye); row(6, [3, 4], deep); break;
+    case "sleepy": row(2, [1, 2, 5, 6], brow); row(4, [1, 2, 5, 6], deep); put(4, 6, dark); break;
+    case "cheeky": brows(); eyes(); smile(); put(4, 7, pink); break;
+    default: brows(); eyes(); mouth();
+  }
+}
+/** Locker card for a face: the front of a head with that face */
+function faceCanvas(face, size = 96) {
+  const c = mkCanvas(12, 12), g = c.getContext("2d"), o = { skin: "#e8b48a", hair: "#3b2a22", eye: "#2b1d14" };
+  g.fillStyle = "#0a0c17"; g.fillRect(1, 1, 10, 10);
+  g.fillStyle = o.skin; g.fillRect(2, 2, 8, 8);
+  g.fillStyle = o.hair; g.fillRect(2, 2, 8, 1); g.fillRect(2, 3, 1, 1); g.fillRect(9, 3, 1, 1);
+  drawFace((x, y, hex) => { g.fillStyle = hex; g.fillRect(2 + x, 2 + y, 1, 1); }, face, o);
+  const out = mkCanvas(size, size), og = out.getContext("2d");
+  og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size); out.className = "px";
+  return out;
+}
 function makePlayerSkin(o) {
   const c = mkCanvas(64, 64), g = c.getContext('2d');
   const R = mulberry32(o.seed || 1);
@@ -1648,10 +1683,7 @@ function makePlayerSkin(o) {
   fillN(8, 8, 8, 8, skin, 0.96, 1.03);                       // face
   fillN(8, 8, 8, 1, hair, 0.8, 1.05);
   if (!crop) for (let x = 0; x < 8; x++) if (R() < 0.55 || x === 0 || x === 7) px(8 + x, 9, rgbStr(shadeRGB(hexRGB(hair), lerp(0.8, 1, R()))));
-  const brow = rgbStr(shadeRGB(hexRGB(hair), 0.65));
-  px(9, 11, brow); px(10, 11, brow); px(13, 11, brow); px(14, 11, brow);
-  px(9, 12, '#f7f7f2'); px(10, 12, eye); px(13, 12, eye); px(14, 12, '#f7f7f2');
-  px(11, 14, rgbStr(shadeRGB(hexRGB(skin), 0.62))); px(12, 14, rgbStr(shadeRGB(hexRGB(skin), 0.62)));
+  drawFace((x, y, hex) => px(8 + x, 8 + y, hex), o.face, { skin, hair, eye });
   // shirt: the strip x 16..39, rows 20..29 wraps round the body (left side, front, right side, back)
   const shirt = hexRGB(K.shirt), alt = hexRGB(K.alt);
   const onAlt = (x, y) => {
@@ -1938,6 +1970,7 @@ function kitCanvas(k, size = 48) {
 const SKIN_ICON = { boots: 'boot', gloves: 'glove', band: 'band', mask: 'mask', shades: 'shades', chain: 'chain', celeb: 'celeb' };
 function skinCanvas(id, size = 96) {
   const sk = SKINS[id];
+  if (sk.slot === 'face') return faceCanvas(sk.face, size);
   if (sk.slot === 'hair') return portraitCanvas('ROOKIE', size, { hairShape: sk.shape || 'short', hair: '#6b3e22' });
   if (sk.slot === 'color') return portraitCanvas('ROOKIE', size, { hair: sk.hex || '#3b2a22', prism: sk.prism });
   if (sk.slot === 'kit') { // your club's shirt with this skin's pattern and trim
@@ -2970,7 +3003,7 @@ class Player {
     }
     this.skinTex = makePlayerSkin({
       kit, crest: side.crest, boots: L.boots || (this.team === 0 ? '#1a1a1f' : '#f4efe0'), sparkle: L.sparkle,
-      skin: this.skin, hair: L.hair, hairShape: L.hairShape, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: pick(EYE_COLS),
+      skin: this.skin, hair: L.hair, hairShape: L.hairShape, face: L.face, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: pick(EYE_COLS),
       seed: this.team * 97 + this.number * 13 + 7,
     });
     this.mat = new THREE.MeshLambertMaterial({ map: this.skinTex });
@@ -4028,11 +4061,24 @@ const ITEM_IDS = Object.keys(ITEMS);
 /* ---------- skins: looks only, they never change stats ----------
    Every slot has a free base skin that everyone owns. The rest come from Skin Spins (and later the game pass). */
 const SKIN_SLOTS = [
-  { id: 'hair', name: 'HAIR', base: 'STYLE_HAIR' }, { id: 'color', name: 'COLOUR', base: 'STYLE_COLOR' }, { id: 'kit', name: 'KIT', base: 'TEAM_KIT' },
+  { id: 'face', name: 'FACE', base: 'FACE_CALM' }, { id: 'hair', name: 'HAIR', base: 'STYLE_HAIR' }, { id: 'color', name: 'COLOUR', base: 'STYLE_COLOR' }, { id: 'kit', name: 'KIT', base: 'TEAM_KIT' },
   { id: 'boots', name: 'BOOTS', base: 'TEAM_BOOTS' }, { id: 'gloves', name: 'GLOVES', base: 'NO_GLOVES' },
   { id: 'acc', name: 'EXTRA', base: 'NO_ACC' }, { id: 'celeb', name: 'GOAL', base: 'JUMP' },
 ];
 const SKINS = {
+  // faces (owner, Nov 2026: "add different faces"): every one is free, so everyone can look different from day one
+  FACE_CALM: { slot: 'face', name: 'CALM', rarity: 'Rare', base: true, face: 'calm', desc: 'The face everyone starts with.' },
+  FACE_SMILE: { slot: 'face', name: 'SMILE', rarity: 'Rare', base: true, face: 'smile', desc: 'Happy to be here.' },
+  FACE_GRIN: { slot: 'face', name: 'BIG GRIN', rarity: 'Rare', base: true, face: 'grin', desc: 'All teeth.' },
+  FACE_FIERCE: { slot: 'face', name: 'GAME FACE', rarity: 'Rare', base: true, face: 'fierce', desc: 'Angry eyebrows. Means business.' },
+  FACE_WINK: { slot: 'face', name: 'WINK', rarity: 'Rare', base: true, face: 'wink', desc: 'One eye shut, one on the ball.' },
+  FACE_FRECKLES: { slot: 'face', name: 'FRECKLES', rarity: 'Rare', base: true, face: 'freckles', desc: 'A row of freckles.' },
+  FACE_STACHE: { slot: 'face', name: 'MOUSTACHE', rarity: 'Rare', base: true, face: 'stache', desc: 'A proper moustache in your hair colour.' },
+  FACE_BEARD: { slot: 'face', name: 'BEARD', rarity: 'Rare', base: true, face: 'beard', desc: 'A full beard in your hair colour.' },
+  FACE_BLUSH: { slot: 'face', name: 'BLUSH', rarity: 'Rare', base: true, face: 'blush', desc: 'Rosy cheeks.' },
+  FACE_WIDE: { slot: 'face', name: 'WIDE EYES', rarity: 'Rare', base: true, face: 'wide', desc: 'Big surprised eyes.' },
+  FACE_SLEEPY: { slot: 'face', name: 'SLEEPY', rarity: 'Rare', base: true, face: 'sleepy', desc: 'Half asleep, still scoring.' },
+  FACE_CHEEKY: { slot: 'face', name: 'CHEEKY', rarity: 'Rare', base: true, face: 'cheeky', desc: 'Tongue out.' },
   STYLE_HAIR: { slot: 'hair', name: 'STYLE CUT', rarity: 'Rare', base: true, desc: 'The haircut that comes with your style.' },
   CROP: { slot: 'hair', name: 'CROP', rarity: 'Rare', shape: 'crop' },
   MANE: { slot: 'hair', name: 'MANE', rarity: 'Rare', shape: 'long' },
@@ -4157,6 +4203,7 @@ function lookFor(styleId, look = {}) {
   const st = STYLES[styleId] || STYLES.ROOKIE, S = (slot) => SKINS[look[slot]] || {};
   const acc = S('acc');
   return {
+    face: S('face').face || 'calm',
     hairShape: S('hair').shape || st.hairShape, hair: S('color').hex || st.hair, prism: !!S('color').prism,
     boots: S('boots').hex || null, sparkle: !!S('boots').sparkle, gloves: S('gloves').hex || null,
     kitPattern: S('kit').pattern || null, kitTrim: S('kit').trim || null,
@@ -4164,9 +4211,10 @@ function lookFor(styleId, look = {}) {
   };
 }
 /** bots wear a few skins too, so matches show them off */
+const FACE_IDS = Object.keys(SKINS).filter((k) => SKINS[k].slot === 'face');
 function botLook() {
   const any = (slot, p) => (chance(p) ? pick(SKIN_IDS.filter((k) => SKINS[k].slot === slot)) : null);
-  return { boots: any('boots', 0.4), color: any('color', 0.2), kit: any('kit', 0.15), acc: any('acc', 0.22), gloves: any('gloves', 0.15), celeb: any('celeb', 0.6) };
+  return { face: pick(FACE_IDS), boots: any('boots', 0.4), color: any('color', 0.2), kit: any('kit', 0.15), acc: any('acc', 0.22), gloves: any('gloves', 0.15), celeb: any('celeb', 0.6) };
 }
 
 /* ---------- clubs and kits ----------
@@ -4555,6 +4603,11 @@ const MODES = {
   lawless: { name: 'LAWLESS', ranked: false, items: true, rewards: true },
   koth: { name: 'KING OF THE HILL', ranked: false, items: false, hill: true, tip: 'HOLD THE BALL IN THE RING FOR POINTS \u00b7 GOALS ARE WORTH 3' },
   volleys: { name: 'VOLLEYS ONLY', ranked: false, items: false, aerialOnly: true, tip: 'ONLY VOLLEYS AND HEADERS COUNT' },
+  // more ways to play with friends (owner, Nov 2026); they also work against bots from MORE MODES
+  golden: { name: 'GOLDEN GOAL', ranked: false, items: false, firstTo: 1, tip: 'NEXT GOAL WINS' },
+  nokeep: { name: 'NO KEEPERS', ranked: false, items: false, noKeeper: true, tip: 'NO KEEPERS · SHOOT FROM ANYWHERE' },
+  turbo: { name: 'TURBO', ranked: false, items: false, speed: 1.25, tip: 'EVERYTHING IS FASTER' },
+  moon: { name: 'MOON BALL', ranked: false, items: false, ballG: 6.5, tip: 'THE BALL FLOATS · JUMP FOR IT' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
   freekick: { name: 'FREE KICKS', ranked: false, items: false, practice: true },
   tutorial: { name: 'TUTORIAL', ranked: false, items: false, tutorial: true },
@@ -4612,6 +4665,7 @@ class Match {
     for (let team = 0; team < 2; team++) {
       const roles = this.rolesFor(team), lead = leadRole(roles);
       for (const role of roles) {
+        if (this.cfg.noKeeper && role === 'GK') continue; // No Keepers: open goals
         const net = opts.humans ? seat[team + role] : null;
         // online with bots off: only the friends play ('keepers': computer keepers stay, 'none': no keepers either)
         if (opts.humans && !net && opts.bots && opts.bots !== 'fill' && !(role === 'GK' && opts.bots === 'keepers')) continue;
@@ -4717,6 +4771,8 @@ class Match {
   /* ---------- main update ---------- */
   update(dt) {
     if (this.paused) return;
+    BALL_G = this.cfg.ballG || BALL_G0; // Moon Ball: a floaty ball (set every step: the server runs many rooms at once)
+    if (this.cfg.speed) dt *= this.cfg.speed; // Turbo: the whole match runs faster, the clock too
     this.time += dt; this.phaseT += dt;
     const ph = this.phase;
     if (ph === 'kickoff' && this.phaseT >= this.kickDelay) this.startPlay();
@@ -8542,7 +8598,7 @@ document.addEventListener('visibilitychange', () => Music.apply()); // quiet whi
    ===================================================================== */
 const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken', 'emote'];
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
-const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL']];
+const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL'], ['golden', 'GOLDEN GOAL'], ['nokeep', 'NO KEEPERS'], ['turbo', 'TURBO'], ['moon', 'MOON BALL']];
 const NET_DELAY = 0.12; // the least the picture runs behind the server (more on a jittery connection: Net.delay)
 const NET_COAST = 0.1; // a late snapshot: everything keeps moving the way it was going for up to this long instead of freezing
 const CHAT_SHOW = [['all', 'ALL'], ['quick', 'QUICK'], ['off', 'OFF']];
@@ -9182,6 +9238,126 @@ const Net = {
   },
   /** leave the match early: a bot takes over your player */
   leaveMatch() { this.send({ t: 'leave' }); this.room = null; this.paused = false; Game.toLobby(); },
+};
+
+/* ---- 11_padnav.js ---- */
+/* ---------- controller in the menus (owner, Nov 2026: "on controller you cannot navigate the menus") ----------
+   The D-pad or the left stick moves a gold box from button to button (the nearest one that way on the screen), A presses
+   it, B goes back, the right stick scrolls a long list. Only what you can really press counts: a button hidden under a
+   dialog is skipped, so dialogs trap the box by themselves. Off while you are playing (the match uses the same buttons). */
+const PadNav = {
+  cur: null, rep: 0, dir: null, shown: false,
+  SEL: 'button, input, select, summary, a[href], [role="button"]',
+  /** menus are up: not in live play (a paused match and the first-visit TAP TO PLAY screen count as menus) */
+  active() {
+    const s = Game.state;
+    if (s === 'replay') return false;
+    if (s === 'match') return !!Game.gate;
+    if (s === 'online' && Net.nm) return !!Net.paused;
+    return true;
+  },
+  scroller(el) { for (let p = el && el.parentElement; p && p !== document.body; p = p.parentElement) { const o = getComputedStyle(p).overflowY; if ((o === 'auto' || o === 'scroll') && p.scrollHeight > p.clientHeight + 4) return p; } return null; },
+  onTop(el, x, y) { const t = document.elementFromPoint(x, y); return !!t && (t === el || el.contains(t)); },
+  /** every control you could press right now, with its box on screen */
+  list() {
+    const W = window.innerWidth, H = window.innerHeight, out = [];
+    for (const el of document.querySelectorAll(this.SEL)) {
+      if (el.disabled || el.closest('[hidden], #touch, #hud, #labels') || el.type === 'hidden') continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 4 || r.height < 4) continue;
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || cs.pointerEvents === 'none') continue;
+      const x = r.left + r.width / 2, y = r.top + r.height / 2;
+      let ok;
+      if (x >= 0 && x < W && y >= 0 && y < H) ok = this.onTop(el, x, y) || this.onTop(el, r.left + 4, r.top + 4);
+      if (!ok) { // scrolled out of sight in a list: it still counts when the list itself is the thing on top
+        const sc = this.scroller(el);
+        if (!sc) continue;
+        const b = sc.getBoundingClientRect(), bx = clamp(x, b.left + 6, b.right - 6), by = clamp(b.top + b.height / 2, 0, H - 1);
+        if (x < Math.max(0, b.left) || x > Math.min(W, b.right) || b.bottom < 0 || b.top > H) continue; // off to the side (a panel that slid away) is not in a list
+        if (y > Math.max(0, b.top) && y < Math.min(H, b.bottom)) continue; // in view but covered by something
+        const t = document.elementFromPoint(clamp(bx, 0, W - 1), by);
+        if (!t || !(sc === t || sc.contains(t))) continue;
+      }
+      out.push({ el, r, x, y });
+    }
+    return out;
+  },
+  /** the first box: what the screen wants pressed (the blue button), else the first control */
+  first(L) { return (L.find((c) => c.el.matches('.btn.blue, [data-padfirst]')) || L[0] || {}).el || null; },
+  focus(el) {
+    if (this.cur && this.cur !== el) this.cur.classList.remove('padfocus');
+    this.cur = el;
+    if (!el) return;
+    el.classList.add('padfocus');
+    try { el.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (e) {}
+    const a = document.activeElement; if (a && a !== el && a.blur && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) a.blur();
+  },
+  clear() { if (this.cur) this.cur.classList.remove('padfocus'); this.cur = null; },
+  /** move the box one step: dx, dy is -1, 0 or 1 */
+  move(dx, dy) {
+    const L = this.list();
+    if (!L.length) { this.clear(); return; }
+    const me = L.find((c) => c.el === this.cur);
+    if (!me) { this.focus(this.first(L)); Sfx.hover && Sfx.hover(); return; }
+    // a slider: left and right change it
+    if (dx && me.el.tagName === 'INPUT' && me.el.type === 'range') {
+      const el = me.el, st = +el.step || 1, v = clamp(+el.value + dx * st * 2, +el.min, +el.max);
+      el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
+    let best = null, bs = Infinity;
+    for (const c of L) {
+      if (c === me) continue;
+      // how far that way (edge to edge), and how far off to the side (0 when the boxes line up)
+      const along = dx ? (dx > 0 ? c.r.left - me.r.right : me.r.left - c.r.right) : (dy > 0 ? c.r.top - me.r.bottom : me.r.top - c.r.bottom);
+      const cAlong = dx ? (c.x - me.x) * dx : (c.y - me.y) * dy;
+      if (cAlong < 6) continue; // not that way
+      const side = dx ? Math.max(0, Math.max(c.r.top - me.r.bottom, me.r.top - c.r.bottom)) : Math.max(0, Math.max(c.r.left - me.r.right, me.r.left - c.r.right));
+      const off = dx ? Math.abs(c.y - me.y) : Math.abs(c.x - me.x);
+      const s = Math.max(0, along) + side * 3 + off * 0.3 + (along < -2 ? 40 : 0);
+      if (s < bs) { bs = s; best = c; }
+    }
+    if (best) { this.focus(best.el); if (Sfx.hover) Sfx.hover(); }
+    else if (dy) { const sc = this.scroller(me.el); if (sc) sc.scrollTop += dy * 140; }
+  },
+  press() {
+    const L = this.list(), me = L.find((c) => c.el === this.cur);
+    if (!me) { this.focus(this.first(L)); return; }
+    const el = me.el;
+    if (el.tagName === 'INPUT' && el.type !== 'range' && el.type !== 'checkbox' && el.type !== 'button' && el.type !== 'submit') { if (!el.readOnly) el.focus(); return; } // a text box: the on-screen or real keyboard types
+    el.click();
+  },
+  /** B: the screen's own way out (BACK, CLOSE, RESUME, NO), else the pause menu closes */
+  back() {
+    const a = document.activeElement; if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) { a.blur(); return; }
+    const L = this.list();
+    const isBack = (el) => /(^|-)(back|close|cancel|no|x)$/.test(el.id || '') || /^(BACK|CLOSE|CANCEL|RESUME|NO|NOT NOW|LATER|X)$/.test((el.textContent || '').trim().toUpperCase());
+    const b = L.filter((c) => isBack(c.el));
+    if (b.length) { b[b.length - 1].el.click(); return; } // the last one in the page is the one on top (dialogs come after screens)
+    if (Game.state === 'paused' || (Game.state === 'online' && Net.paused)) Game.onEscape();
+  },
+  /** every frame, after the controller is read */
+  tick(rdt) {
+    if (!Input.pad || !this.active()) { if (this.shown) { this.shown = false; document.body.classList.remove('padnav'); this.clear(); } this.dir = null; return; }
+    if (this.shown !== Input.usingPad) { this.shown = Input.usingPad; document.body.classList.toggle('padnav', this.shown); if (!this.shown) this.clear(); }
+    if (!Input.usingPad) { this.dir = null; return; }
+    const E = Input.edges;
+    if (Game.state === 'match' && Game.gate) { if (E.has('PadA') || E.has('PadStart')) { E.delete('PadA'); Game.gateGo(); } return; }
+    if (this.cur && !this.cur.isConnected) this.cur = null;
+    // the D-pad or the left stick, with a repeat while held
+    const ax = Input.axis(0), ay = Input.axis(1);
+    const dx = (Input.padHeld(PAD.RIGHT) || ax > 0.6 ? 1 : 0) - (Input.padHeld(PAD.LEFT) || ax < -0.6 ? 1 : 0);
+    const dy = (Input.padHeld(PAD.DOWN) || ay > 0.6 ? 1 : 0) - (Input.padHeld(PAD.UP) || ay < -0.6 ? 1 : 0);
+    const d = dy ? 'y' + dy : dx ? 'x' + dx : null;
+    if (d !== this.dir) { this.dir = d; this.rep = 0.38; if (d) this.move(dy ? 0 : dx, dy); }
+    else if (d) { this.rep -= rdt; if (this.rep <= 0) { this.rep = 0.13; this.move(dy ? 0 : dx, dy); } }
+    // the right stick scrolls the list the box is in (or the screen's own long list)
+    const ry = Input.axis(3);
+    if (ry) { const from = this.cur || (this.list()[0] || {}).el, sc = from && this.scroller(from); if (sc) sc.scrollTop += ry * 900 * rdt; }
+    if (E.has('PadA')) { E.delete('PadA'); this.press(); }
+    else if (E.has('PadB')) { E.delete('PadB'); this.back(); }
+  },
 };
 
 /* ---- 11_replay.js ---- */
@@ -10054,7 +10230,7 @@ const UI = {
     </section>`;
   },
   openModes() {
-    const desc = { koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
+    const desc = { koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', golden: 'THE NEXT GOAL WINS THE MATCH', nokeep: 'NO KEEPERS. SHOOT FROM ANYWHERE', turbo: 'EVERYTHING IS FASTER, THE CLOCK TOO', moon: 'THE BALL FLOATS LIKE ON THE MOON', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
     const feat = featuredAt().mode;
     $('md-grid').innerHTML = Object.keys(desc).map((k) => `<button class="btn md-card" type="button" data-mode="${k}">${MODES[k].name}${k === feat ? '<span class="tag">FEATURED</span>' : ''}<span class="sub">${desc[k]}</span></button>`).join('');
     $('scr-modes').hidden = false;
@@ -10712,7 +10888,7 @@ const UI = {
     const byRar = (M) => (a, b) => RARITIES.indexOf(M[a].rarity) - RARITIES.indexOf(M[b].rarity); // Rare first, Generational last
     const ids = tab === 'club' ? CLUB_IDS : tab === 'style' ? STYLE_IDS.slice().sort(byRar(STYLES)) : tab === 'flow' ? ['NONE'].concat(FLOW_IDS.slice().sort(byRar(FLOWS)))
       : this.skinSlot === 'tone' ? SKIN_TONES.map((t, i) => 'TONE' + i)
-      : [SKIN_SLOTS.find((sl) => sl.id === this.skinSlot).base].concat(LOCKER_SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
+      : Object.keys(SKINS).filter((k) => SKINS[k].base && SKINS[k].slot === this.skinSlot).concat(LOCKER_SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
     const grid = $('locker-grid');
     grid.innerHTML = ids.map((id) => {
       const it = this.lockerItem(id);
@@ -11017,6 +11193,7 @@ const Game = {
     Sfx.crowdTick(rdt);
     Input.pollPad();
     Net.inviteKeys();
+    PadNav.tick(rdt);
     Touch.sync();
     const m = this.match;
     if (m && (this.state === 'match' || this.state === 'paused' || this.state === 'results' || this.state === 'replay')) {
@@ -11077,7 +11254,7 @@ const Game = {
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
   CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,

@@ -73,7 +73,7 @@ function standTop(x, z) {
   return Math.max(ax >= S.SIDE ? row(ax - S.SIDE) : 0, az >= S.END ? row(az - S.END) : 0);
 }
 const BALL_R = 0.3;
-const BALL_G = 16;
+const BALL_G0 = 16; let BALL_G = BALL_G0; // Moon Ball sets its own at the start of every match step (Match.update)
 const P_R = 0.42;
 const P_H = 1.9;
 const GRAV = 22;

@@ -129,7 +129,7 @@ class Player {
     }
     this.skinTex = makePlayerSkin({
       kit, crest: side.crest, boots: L.boots || (this.team === 0 ? '#1a1a1f' : '#f4efe0'), sparkle: L.sparkle,
-      skin: this.skin, hair: L.hair, hairShape: L.hairShape, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: pick(EYE_COLS),
+      skin: this.skin, hair: L.hair, hairShape: L.hairShape, face: L.face, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: pick(EYE_COLS),
       seed: this.team * 97 + this.number * 13 + 7,
     });
     this.mat = new THREE.MeshLambertMaterial({ map: this.skinTex });

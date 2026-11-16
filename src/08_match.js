@@ -11,6 +11,11 @@ const MODES = {
   lawless: { name: 'LAWLESS', ranked: false, items: true, rewards: true },
   koth: { name: 'KING OF THE HILL', ranked: false, items: false, hill: true, tip: 'HOLD THE BALL IN THE RING FOR POINTS \u00b7 GOALS ARE WORTH 3' },
   volleys: { name: 'VOLLEYS ONLY', ranked: false, items: false, aerialOnly: true, tip: 'ONLY VOLLEYS AND HEADERS COUNT' },
+  // more ways to play with friends (owner, Nov 2026); they also work against bots from MORE MODES
+  golden: { name: 'GOLDEN GOAL', ranked: false, items: false, firstTo: 1, tip: 'NEXT GOAL WINS' },
+  nokeep: { name: 'NO KEEPERS', ranked: false, items: false, noKeeper: true, tip: 'NO KEEPERS · SHOOT FROM ANYWHERE' },
+  turbo: { name: 'TURBO', ranked: false, items: false, speed: 1.25, tip: 'EVERYTHING IS FASTER' },
+  moon: { name: 'MOON BALL', ranked: false, items: false, ballG: 6.5, tip: 'THE BALL FLOATS · JUMP FOR IT' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
   freekick: { name: 'FREE KICKS', ranked: false, items: false, practice: true },
   tutorial: { name: 'TUTORIAL', ranked: false, items: false, tutorial: true },
@@ -68,6 +73,7 @@ class Match {
     for (let team = 0; team < 2; team++) {
       const roles = this.rolesFor(team), lead = leadRole(roles);
       for (const role of roles) {
+        if (this.cfg.noKeeper && role === 'GK') continue; // No Keepers: open goals
         const net = opts.humans ? seat[team + role] : null;
         // online with bots off: only the friends play ('keepers': computer keepers stay, 'none': no keepers either)
         if (opts.humans && !net && opts.bots && opts.bots !== 'fill' && !(role === 'GK' && opts.bots === 'keepers')) continue;
@@ -173,6 +179,8 @@ class Match {
   /* ---------- main update ---------- */
   update(dt) {
     if (this.paused) return;
+    BALL_G = this.cfg.ballG || BALL_G0; // Moon Ball: a floaty ball (set every step: the server runs many rooms at once)
+    if (this.cfg.speed) dt *= this.cfg.speed; // Turbo: the whole match runs faster, the clock too
     this.time += dt; this.phaseT += dt;
     const ph = this.phase;
     if (ph === 'kickoff' && this.phaseT >= this.kickDelay) this.startPlay();
