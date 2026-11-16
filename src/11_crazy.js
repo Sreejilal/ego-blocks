@@ -13,14 +13,27 @@ const Portal = {
     const W = window.CrazyGames;
     if (BUILD.portal !== 'crazygames' || !W || !W.SDK) return;
     const sdk = W.SDK;
+    // a slow device or a slow page: the game does not wait for ever, but their SDK still joins in when it is ready
+    // (it gave up for good after 8 seconds before, and then nothing was ever reported: no gameplay start, no ads)
+    const init = Promise.resolve().then(() => sdk.init());
+    let late = false;
     try {
-      await Promise.race([sdk.init(), new Promise((ok, no) => setTimeout(() => no(new Error('the SDK took too long')), 8000))]);
-      if (sdk.environment === 'disabled') return;
-    } catch (e) { console.warn('CrazyGames SDK did not start:', e && e.message); return; }
+      await Promise.race([init, new Promise((ok, no) => setTimeout(() => no(new Error('the SDK took too long')), 8000))]);
+    } catch (e) {
+      console.warn('CrazyGames SDK did not start yet:', e && e.message); late = true;
+      init.then(() => this.attach(sdk, true).then(() => this.lateReady())).catch(() => {});
+      return;
+    }
+    await this.attach(sdk, late);
+  },
+  /** their SDK is up: switch everything on. Late (the game is already running): progress stays where it is */
+  async attach(sdk, late) {
+    if (this.on || sdk.environment === 'disabled') return;
     this.sdk = sdk; this.on = true;
     this.try(() => sdk.game.loadingStart());
+    if (late) this.try(() => sdk.game.loadingStop());
     // progress lives in their Data module (it follows a signed-in player to every device)
-    this.try(() => {
+    if (!late) this.try(() => {
       const data = sdk.data;
       data.getItem(Save.key); // throws if the Data module is off for this game
       if (!data.getItem(Save.key)) {
@@ -35,6 +48,14 @@ const Portal = {
     this.user = (await this.tryAsync(() => sdk.user.getUser())) || null;
     this.try(() => sdk.user.addAuthListener((u) => this.signedIn(u)));
     this.try(() => sdk.game.addJoinRoomListener((p) => this.joinFrom(p)));
+  },
+  /** their SDK came up after the game had started: the same finishing touches as ready() */
+  lateReady() {
+    if (!this.on) return;
+    this.applyMute(); Touch.layout();
+    if (!$('ad-block')) { const blk = document.createElement('div'); blk.id = 'ad-block'; blk.hidden = true; $('app').appendChild(blk); }
+    if (this.user) this.useName();
+    const nameIn = $('on-name'); if (nameIn) nameIn.readOnly = true;
   },
   /** right after Game.start */
   ready() {

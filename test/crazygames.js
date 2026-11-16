@@ -24,7 +24,7 @@ const FAKE_SDK = `(() => {
   const rec = (n) => (...a) => { cg.calls.push(a.length ? n + ':' + JSON.stringify(a[0]) : n); };
   window.CrazyGames = { SDK: {
     environment: 'crazygames',
-    init: () => new Promise((r) => setTimeout(r, 60)),
+    init: () => new Promise((r) => { if (P.slow) cg.go = r; else setTimeout(r, 60); }), // slow: it starts when the test says so
     game: {
       gameplayStart: rec('gameplayStart'), gameplayStop: rec('gameplayStop'), loadingStart: rec('loadingStart'), loadingStop: rec('loadingStop'), happytime: rec('happytime'),
       get settings() { return cg.settings; },
@@ -172,6 +172,16 @@ const FAKE_SDK = `(() => {
 
   check('no page errors', logs.length === 0, logs.slice(0, 4));
   check('no server errors', !/Error/.test(out), out.split('\n').slice(1, 5));
+  // a slow SDK (a weak PC inside their heavy page): the game starts without it, and it still joins in when it is ready
+  const S = await mk({ viewport: { width: 1280, height: 720 } }, { slow: true, user: { username: 'SlowPC' } });
+  await S.waitForFunction(() => window.EGO && EGO.Game.state === 'lobby', null, { timeout: 120000 }); // the game gave up waiting (8 seconds) and started
+  const s0 = await S.evaluate(() => ({ on: EGO.Portal.on, state: EGO.Game.state }));
+  await S.evaluate(() => window.__cg.go());
+  await S.waitForFunction(() => EGO.Portal.on, null, { timeout: 30000 });
+  await S.click('#go-quick'); await sleep(1500);
+  const s1 = await S.evaluate(() => ({ on: EGO.Portal.on, state: EGO.Game.state, name: EGO.Save.data.name, ro: document.getElementById('on-name').readOnly })), cs = await calls(S);
+  check('a slow SDK: the game does not wait for it, then it joins in late and gameplay start is still reported', s0.on === false && s0.state === 'lobby' && s1.on && s1.state === 'match' && cs.includes('loadingStop') && cs.includes('gameplayStart') && s1.ro, { s0, s1, cs: cs.filter((c) => /^(loading|gameplay)/.test(c)) });
+  await S.context().close();
   await browser.close(); srv.kill();
   fs.rmSync(OUT, { recursive: true, force: true }); fs.rmSync(OUT2, { recursive: true, force: true });
   console.log(results.join('\n'));
