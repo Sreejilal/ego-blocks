@@ -636,6 +636,32 @@ body.touch .fk-row b { font-size: 20px; }
 .dialog .row .btn { flex: 1 1 160px; }
 .adm { width: min(680px, 100%); max-height: 100%; overflow-y: auto; gap: 10px; }
 .adm h2 { font-size: 52px; }
+.intro { position: absolute; inset: 0; z-index: 25; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; align-items: center; box-sizing: border-box; padding: max(14px, env(safe-area-inset-top, 0px)) 16px max(12px, env(safe-area-inset-bottom, 0px)); }
+.intro[hidden] { display: none; }
+#app > .intro { pointer-events: none; }
+.in-top { display: grid; justify-items: center; gap: 6px; text-align: center; animation: inDrop .7s cubic-bezier(.2,1.4,.4,1) both; }
+.in-vs { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center; font-family: var(--font-display); font-size: clamp(28px, 5.4vw, 60px); line-height: .95; text-shadow: 4px 4px 0 var(--ink); }
+.in-vs b { color: var(--gold); font-weight: 400; font-size: .62em; }
+.in-mode { text-shadow: 2px 2px 0 var(--ink); }
+.in-pick { pointer-events: auto; display: grid; justify-items: center; gap: 9px; width: min(780px, 100%); box-sizing: border-box; padding: 12px 14px; animation: inFade .45s .4s ease-out both; } /* a fade, not a slide: the buttons are in place (and work) from the first moment */
+.in-roles { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; width: 100%; }
+.in-role { flex: 1 1 130px; display: grid; gap: 3px; font-size: 21px; padding-block: 8px 10px; }
+.in-role .sub { font-size: 11px; display: block; }
+.in-role[aria-pressed="true"] { background: var(--gold); color: var(--ink); }
+.in-role[aria-pressed="true"] .sub { color: var(--ink); }
+#in-go { min-width: 220px; }
+.in-keys:empty { display: none; }
+body.intro #touch, body.intro #hud, body.intro #labels { visibility: hidden; }
+@keyframes inDrop { from { transform: translateY(-120%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes inFade { from { opacity: 0; } to { opacity: 1; } }
+@media (max-height: 430px) { .in-vs { font-size: 30px; } .in-role { font-size: 17px; padding-block: 5px 7px; } .in-role .sub { font-size: 9px; } .in-pick { gap: 6px; padding: 8px 10px; } }
+.on-pub { display: grid; gap: 4px; padding: 8px 10px; background: rgba(61,125,255,.16); border: var(--px) solid var(--ink); }
+.on-pub[hidden] { display: none; }
+.on-pub b { font-family: var(--font-display); font-weight: 400; font-size: 28px; color: var(--gold); text-shadow: 2px 2px 0 var(--ink); }
+.cg-acct { display: inline-flex; align-items: center; gap: 6px; }
+.cg-acct[data-in="1"] { padding: 4px 10px 4px 4px; }
+.cg-pic { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 2px solid var(--ink); background: var(--slate); flex: none; }
+.on-row .cg-pic { width: 34px; height: 34px; }
 body.adm-open #fr-side { display: none; }
 #adm-body { display: grid; gap: 10px; }
 .adm-g { display: grid; gap: 5px; }

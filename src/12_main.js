@@ -46,7 +46,7 @@ const Game = {
       thrown into a match". The tutorial is still on the start screen */
   onboard() {
     Save.data.onboarded = true; Save.save();
-    this.startMatch('quick');
+    this.startMatch('quick', { noIntro: true }); // straight in: no intro or position picker on the very first match
     this.gate = true; // the match waits at kickoff until the click
     Touch.tipShown = false; // the phone tip shows the first time they reach the start screen instead
     $('tg-go').textContent = Touch.on ? 'TAP TO PLAY' : 'CLICK TO PLAY';
@@ -74,7 +74,7 @@ const Game = {
   toLobby() {
     Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false); UI.toggleEmotes(false); FKHud.hide(); ShotHud.hide();
     if (this.match) { this.match.dispose(); this.match = null; }
-    Net.nm = null; Net.paused = false; this.gate = false; $('tut-gate').hidden = true;
+    Net.nm = null; Net.paused = false; this.gate = false; $('tut-gate').hidden = true; this.stopIntro();
     Input.releaseLock();
     this.state = 'lobby';
     World.setSun(SUN_LOBBY);
@@ -86,8 +86,61 @@ const Game = {
     Sfx.setCrowd(0.2);
     Net.where('menu');
   },
-  startMatch(mode) {
-    Touch.autoFs(); Touch.hideTip(); $('tut-gate').hidden = true; this.gate = false;
+  /* ---------- the match intro (owner, Nov 2026: "when a match starts there is an animation and you can actually take a position, so not always the same")
+     The camera flies in over the stadium to your player while both teams stand at kickoff; meanwhile you pick your
+     position. PLAY (or ENTER, or the countdown) starts the kickoff. Not on the very first match, the tutorial or free kicks.
+     Tests skip it unless introTest is set (they drive matches frame by frame). */
+  introOn(mode) { const c = MODES[mode] || {}; return !c.tutorial && !c.practice && (!navigator.webdriver || !!this.introTest); },
+  beginIntro() {
+    const m = this.match;
+    if (!m || !m.human) return;
+    this.intro = { t: 0, left: INTRO_AUTO };
+    document.body.classList.add('intro');
+    Input.releaseLock();
+    Sfx.setCrowd(0.9);
+    UI.showIntro(m);
+  },
+  /** tap a position: you swap places with the bot who had it (they take yours) */
+  pickRole(r) {
+    const m = this.match;
+    if (!m || !this.intro || !m.human) return false;
+    const h = m.human;
+    if (h.role === r) return true;
+    const o = m.teams[h.team].find((p) => p.role === r && !p.isHuman && !p.isGK);
+    if (!o) return false;
+    o.role = h.role; h.role = r;
+    m.setupKickoff(0, true, true);
+    Save.data.pos = r; Save.save();
+    UI.renderIntro(m);
+    return true;
+  },
+  endIntro() {
+    if (!this.intro) return;
+    this.stopIntro();
+    const m = this.match;
+    if (!m) return;
+    m.setupKickoff(0, true); // the real kickoff: the banner, everyone on their spot
+    Cam.reset(0);
+    Sfx.init(); Sfx.setCrowd(0.55); Touch.autoFs(); Input.consumeEdges(); Input.requestLock(); UI.lockHint();
+  },
+  stopIntro() { this.intro = null; document.body.classList.remove('intro'); UI.hideIntro(); },
+  introTick(rdt, m) {
+    const I = this.intro, E = Input.edges;
+    I.t += rdt; I.left -= rdt;
+    if (Input.locked) Input.releaseLock(); // a lock that arrived late (it is asked for asynchronously)
+    if (E.has('Enter') || E.has('Space') || I.left <= 0) { Input.consumeEdges(); this.endIntro(); return; }
+    const roles = UI.introRoles || [];
+    for (let i = 0; i < roles.length; i++) if (E.has('Digit' + (i + 1)) || E.has('Numpad' + (i + 1))) { Sfx.click(); this.pickRole(roles[i]); }
+    for (const k of ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5']) E.delete(k);
+    m.phaseT = 0; // hold the kickoff: everyone breathes and looks around, nobody plays
+    m.update(rdt);
+    FX.update(rdt);
+    Cam.intro(rdt, m, I.t);
+    UI.updateHud(m, rdt);
+    UI.introCount(I.left);
+  },
+  startMatch(mode, o = {}) {
+    Touch.autoFs(); Touch.hideTip(); $('tut-gate').hidden = true; this.gate = false; this.stopIntro();
     if (this.match) { this.match.dispose(); this.match = null; }
     Reveal.stop(); Showcase.hide();
     UI.hideOverlays();
@@ -96,7 +149,8 @@ const Game = {
     let skill = difficultyFor(Save.data.rp), size = teamSizeFor(mode, Save.data.rp);
     const ramp = this.rampFor(mode);
     if (ramp) { size = Math.min(size, ramp[0]); skill = Math.min(skill, ramp[1]); }
-    this.match = new Match(mode, skill, { size });
+    const intro = !o.noIntro && this.introOn(mode);
+    this.match = new Match(mode, skill, { size, role: Save.data.pos, intro });
     this.lastMode = mode; this.ended = false;
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
@@ -107,9 +161,10 @@ const Game = {
     UI.show('hud'); UI.buildHud(this.match);
     Sfx.setCrowd(0.55);
     Net.where('match');
-    Input.requestLock();
+    if (!intro) Input.requestLock(); // the intro wants the mouse free for the position buttons
     Input.consumeEdges();
     Cam.look(0); Cam.follow(1, this.match);
+    if (intro) this.beginIntro();
     this.matchReady();
   },
   /** a match (offline or online) is set up: build every shader now, not mid-match the first time something shows,
@@ -138,6 +193,7 @@ const Game = {
   onEscape() {
     if (this.state === 'replay') { Replay.stop(); return; }
     if (this.state === 'online') { if (!Net.paused) this.pause(); else if (performance.now() - this.pausedAt > 350) this.resume(); return; }
+    if (this.state === 'match' && this.intro) return; // the intro: PLAY or the countdown starts it
     if (this.state === 'match') this.pause();
     else if (this.state === 'paused' && performance.now() - this.pausedAt > 350) this.resume();
   },
@@ -254,6 +310,8 @@ const Game = {
         Input.consumeEdges();
         Replay.update(rdt);
         Shake.update(rdt);
+      } else if (this.state === 'match' && this.intro) {
+        this.introTick(rdt, m);
       } else if (this.state === 'match') {
         UI.emoteKeys();
         Cam.look(rdt);

@@ -83,6 +83,21 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   await page.evaluate(() => { const m = EGO.Game.match; m.score = [2, 0]; m.endMatch(); EGO.Game.stepManual(260); });
   await tap(B.DOWN);
   r = await reach(); check('results: every button can be reached', r.n >= 2 && r.missed.length === 0, r);
+  // the match intro: the box starts on PLAY, up reaches the positions, A picks one, then PLAY starts the kickoff
+  await page.evaluate(() => { EGO.Game.toLobby(); EGO.Game.introTest = true; EGO.Save.data.pos = null; EGO.Game.startMatch('quick'); });
+  await step(5);
+  await tap(B.DOWN);
+  const in0 = await cur();
+  await tap(B.UP); const in1 = await page.evaluate(() => EGO.PadNav.cur && EGO.PadNav.cur.dataset.r);
+  const was = await page.evaluate(() => EGO.Game.match.human.role);
+  if (in1 === was) { await tap(B.LEFT); }
+  const pickR = await page.evaluate(() => EGO.PadNav.cur && EGO.PadNav.cur.dataset.r);
+  await tap(B.A);
+  const now = await page.evaluate(() => EGO.Game.match.human.role);
+  check('the intro: the box starts on PLAY, up reaches the positions and A picks one', /^in-go$|^PLAY/.test(in0 || '') && !!in1 && now === pickR && now !== was, { in0, in1, was, pickR, now });
+  await tap(B.DOWN); await tap(B.A);
+  check('then PLAY with A starts the match', await page.evaluate(() => !EGO.Game.intro && EGO.Game.state === 'match'));
+  await page.evaluate(() => { EGO.Game.introTest = false; EGO.Game.toLobby(); });
   check('no errors', logs.length === 0, logs.slice(0, 5));
   console.log(results.join('\n'));
   await browser.close();

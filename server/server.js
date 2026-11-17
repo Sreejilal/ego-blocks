@@ -95,6 +95,27 @@ const r2 = (v) => Math.round(v * 100) / 100;
 function newCode() { let c; do { c = ''; for (let i = 0; i < 4; i++) c += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]; } while (rooms.has(c)); return c; }
 function maxPerTeam(room) { return room.size - 1; } // the keeper's spot is never a player's (a computer keeper, or none with bots off)
 const MAX_SIZE = 5, MAX_PLAYERS = 2 * (MAX_SIZE - 1); // 5v5 with computer keepers: 8 friends
+/* random matches (owner, Nov 2026: "add random multiplayer"): RANDOM MATCH puts you in an open public room with other
+   players (the busiest one that has space), or opens a new one. Nobody is the host: the server starts the match after a
+   short wait (bots fill the empty spots, and anyone who arrives later takes a bot's place mid-match), and starts the next
+   one by itself after the results, so the same group keeps playing */
+const PUB_MAX = 6, PUB_WAIT = Number(process.env.PUB_WAIT_MS) || 15000, PUB_JOIN_WAIT = Math.min(5000, PUB_WAIT), PUB_NEXT = Number(process.env.PUB_NEXT_MS) || 20000;
+function findPublic() {
+  let best = null, bs = -1;
+  for (const r of rooms.values()) {
+    if (!r.pub || r.players.length >= PUB_MAX) continue;
+    const s = r.players.length * 2 + (r.match ? 0 : 1); // most players first, then one still waiting to start
+    if (s > bs) { bs = s; best = r; }
+  }
+  return best;
+}
+function joinRandom(me) {
+  leave(me);
+  let r = findPublic();
+  if (!r) { r = { code: newCode(), pub: true, host: null, hostClub: me.club, mode: 'quick', size: 3, bots: 'fill', players: [], match: null, events: [], log: [], reports: new Set(), silenced: new Set(), startAt: Date.now() + PUB_WAIT }; rooms.set(r.code, r); }
+  else if (!r.match && r.startAt && r.startAt - Date.now() < PUB_JOIN_WAIT) r.startAt = Date.now() + PUB_JOIN_WAIT; // just arrived: a moment to see who you play with
+  join(me, r);
+}
 /** the smallest team size that holds everyone in the room, plus one more if `extra` */
 const sizeFor = (room, extra = 0) => Math.max(3, Math.min(MAX_SIZE, Math.ceil((room.players.length + extra) / 2) + 1));
 /** a friend arrives and the room has no spot: it grows (a Duel becomes a normal match) so nobody is turned away */
@@ -103,11 +124,11 @@ function makeRoom(room) {
   if (room.mode === 'duel') { if (room.players.length < 2) return; room.mode = 'quick'; room.size = need; }
   else if (room.size < need) room.size = need;
   else return;
-  broadcast(room, { t: 'info', text: 'A FRIEND JOINED: THE ROOM IS NOW ' + room.size + 'V' + room.size });
+  broadcast(room, { t: 'info', text: (room.pub ? 'A PLAYER' : 'A FRIEND') + ' JOINED: THE ROOM IS NOW ' + room.size + 'V' + room.size });
 }
 const BOTS_OK = ['fill', 'keepers', 'none']; // fill: bots in the empty spots; keepers: only computer keepers; none: only the friends
 function summary(room) {
-  return { t: 'room', code: room.code, host: room.host, mode: room.mode, size: room.size, bots: room.bots, state: room.match ? 'match' : 'room',
+  return { t: 'room', code: room.code, host: room.host, mode: room.mode, size: room.size, bots: room.bots, state: room.match ? 'match' : 'room', pub: !!room.pub, startIn: room.pub && !room.match && room.startAt ? Math.max(0, room.startAt - Date.now()) : null,
     players: room.players.map((p) => ({ id: p.id, name: p.name, team: p.team, rp: p.rp || 0 })) };
 }
 function broadcast(room, msg) { const s = JSON.stringify(msg); for (const p of room.players) if (p.ws.readyState === 1) p.ws.send(s); }
@@ -316,6 +337,7 @@ function endMatch(room) {
   broadcast(room, { t: 'end', score: m.score, players: m.players.map((p) => ({ id: p.netId || null, team: p.team, stats: p.stats, feats: p.feats || null, idle: !!p.wasIdle })) });
   m.dispose();
   room.match = null;
+  if (room.pub) room.startAt = Date.now() + PUB_NEXT; // a random room plays on by itself
   sync(room);
 }
 function tick(room) {
@@ -383,6 +405,7 @@ wss.on('connection', (ws) => {
         rooms.set(r.code, r); join(me, r);
         break;
       }
+      case 'random': joinRandom(me); break;
       case 'join': {
         const r = rooms.get(clean(m.code, 4));
         if (!r) { send(ws, { t: 'error', text: 'NO ROOM WITH THAT CODE' }); break; }
@@ -467,5 +490,11 @@ function leave(me) {
   sync(room);
 }
 
-setInterval(() => { for (const r of rooms.values()) tick(r); }, 1000 / 60);
+setInterval(() => {
+  const now = Date.now();
+  for (const r of rooms.values()) {
+    if (r.pub && !r.match && r.startAt && now >= r.startAt && r.players.length) { r.startAt = 0; startMatch(r); }
+    tick(r);
+  }
+}, 1000 / 60);
 server.listen(PORT, () => console.log('SCORZ server on http://localhost:' + PORT + '  (WebSocket: ws://localhost:' + PORT + '/ws)'));

@@ -37,7 +37,7 @@ const FAKE_SDK = `(() => {
     user: {
       get isUserAccountAvailable() { return true; },
       getUser: async () => cg.user,
-      showAuthPrompt: async () => { cg.user = { username: 'Cool Kid77', profilePictureUrl: '' }; return cg.user; },
+      showAuthPrompt: async () => { cg.user = { username: 'Cool Kid77', profilePictureUrl: 'https://images.crazygames.com/userportal/avatars/1.png' }; return cg.user; },
       addAuthListener: (f) => { cg.listeners.auth = f; },
       systemInfo: { countryCode: 'GB', locale: 'en-GB', device: { type: P.device || 'desktop' } },
     },
@@ -105,6 +105,8 @@ const FAKE_SDK = `(() => {
   await A.evaluate(() => EGO.Game.toLobby()); await sleep(300);
 
   // their account
+  const top0 = await A.evaluate(() => { const b = document.getElementById('cg-acct'), r = b.getBoundingClientRect(); return { shown: !b.hidden, text: b.textContent, right: r.right > innerWidth * 0.6, top: r.top < 80 }; });
+  check('a guest sees LOG IN at the top right of the start screen (their login only)', top0.shown && top0.text === 'LOG IN' && top0.right && top0.top, top0);
   await A.click('#go-profile'); await sleep(300);
   const acc0 = await A.evaluate(() => document.getElementById('pf-acc').textContent);
   check('the profile offers CrazyGames sign in, not our own accounts', /SIGN IN/.test(acc0) && !/CREATE ACCOUNT/.test(acc0) && !/PASSWORD/.test(acc0), acc0.slice(0, 120));
@@ -112,6 +114,9 @@ const FAKE_SDK = `(() => {
   const acc1 = await A.evaluate(() => ({ text: document.getElementById('pf-acc').textContent, name: EGO.Save.data.name }));
   check('after signing in, the game uses the CrazyGames username', /CRAZYGAMES ACCOUNT/.test(acc1.text) && /Cool Kid77/.test(acc1.text) && acc1.name === 'COOL KID77', acc1);
   await A.screenshot({ path: __dirname + '/shots/cg1_profile.png' });
+  await A.evaluate(() => EGO.UI.show('lobby')); await sleep(200);
+  const top1 = await A.evaluate(() => { const b = document.getElementById('cg-acct'), i = b.querySelector('img'); return { text: b.textContent, pic: i && i.getAttribute('src'), inProfile: !!document.querySelector('#pf-acc .cg-pic') }; });
+  check('signed in: your CrazyGames picture and name show at the top right and in the profile', /COOL KID77/i.test(top1.text) && /avatars\/1\.png$/.test(top1.pic || '') && top1.inProfile, top1);
   // their mute setting wins over the in-game sound setting
   await A.evaluate(() => { window.__cg.listeners.settings({ muteAudio: true, disableChat: false }); EGO.Save.data.settings.mute = false; EGO.Portal.applyMute(); });
   const mute = await A.evaluate(() => EGO.Sfx.muted);

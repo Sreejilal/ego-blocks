@@ -57,11 +57,12 @@ const Net = {
   tpl() {
     return `<section id="scr-online" class="screen sub-screen" hidden>
       <div class="sub-wrap">
-        <div class="sub-head"><h2>PLAY WITH FRIENDS</h2><button class="btn small" id="on-back" type="button">BACK</button></div>
+        <div class="sub-head"><h2>PLAY ONLINE</h2><button class="btn small" id="on-back" type="button">BACK</button></div>
         <div class="panel on-box" id="on-start">
           <label class="label" for="on-name">YOUR NAME</label>
           <input class="on-in" id="on-name" maxlength="12" autocomplete="off" spellcheck="false">
-          <button class="btn blue" id="on-create" type="button">CREATE A ROOM <span class="sub">GET A CODE FOR FRIENDS</span></button>
+          <button class="btn blue" id="on-random" type="button">RANDOM MATCH <span class="sub">PLAY WITH ANYONE ONLINE</span></button>
+          <button class="btn" id="on-create" type="button">CREATE A ROOM <span class="sub">GET A CODE FOR FRIENDS</span></button>
           <div class="on-row"><input class="on-in code" id="on-code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false"><button class="btn" id="on-join" type="button">JOIN</button></div>
           <p class="on-status" id="on-status"></p>
           <p class="label on-privacy">TO PLAY ONLINE, YOUR NAME AND YOUR CONTROLS GO TO THE SCORZ SERVER. IT ONLY USES THEM TO RUN THE MATCH.</p>
@@ -69,6 +70,7 @@ const Net = {
         </div>
         <div class="on-split">
         <div class="panel on-box" id="on-room" hidden>
+          <div class="on-pub" id="on-pub" hidden><b>RANDOM MATCH</b><span class="label" id="on-pub-t">FINDING PLAYERS...</span></div>
           <div class="on-code"><span class="label">ROOM CODE</span><b id="on-room-code">----</b><button class="btn small" id="on-copy" type="button">COPY INVITE LINK</button></div>
           <div class="on-teams"><div class="on-team" id="on-t0"></div><div class="on-team" id="on-t1"></div></div>
           <button class="btn small" id="on-switch" type="button">SWITCH TEAM</button>
@@ -109,6 +111,7 @@ const Net = {
     const click = (id, fn) => $(id).addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); });
     click('on-back', () => UI.show('lobby'));
     click('on-create', () => this.connect(() => this.send({ t: 'create' })));
+    click('on-random', () => this.connect(() => this.send({ t: 'random' })));
     click('on-join', () => this.join($('on-code').value));
     $('on-code').addEventListener('keydown', (e) => { if (e.code === 'Enter') this.join($('on-code').value); });
     $('on-name').addEventListener('change', () => { d.name = this.cleanName($('on-name').value) || d.name; $('on-name').value = d.name; Save.save(); this.hello(); });
@@ -365,7 +368,18 @@ const Net = {
     const bots = R.bots || 'fill';
     $('on-bots').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.b === bots));
     $('on-go-sub').textContent = bots === 'fill' ? 'BOTS FILL EMPTY SPOTS' : bots === 'keepers' ? 'JUST YOU AND YOUR FRIENDS, WITH COMPUTER KEEPERS' : 'JUST YOU AND YOUR FRIENDS, NO KEEPERS';
-    $('on-wait').textContent = R.state === 'match' ? 'A MATCH IS ON. YOU PLAY IN THE NEXT ONE.' : host ? 'SHARE THE CODE, THEN PRESS START.' : 'WAITING FOR THE HOST TO START.';
+    $('on-wait').textContent = R.state === 'match' ? 'A MATCH IS ON. YOU PLAY IN THE NEXT ONE.' : host ? 'SHARE THE CODE, THEN PRESS START.' : R.pub ? '' : 'WAITING FOR THE HOST TO START.';
+    // a random match: no host, the server starts it; count down to the kickoff
+    $('on-pub').hidden = !R.pub;
+    clearInterval(this.pubT); this.pubT = null;
+    if (R.pub) {
+      this.pubAt = R.startIn != null ? performance.now() + R.startIn : null;
+      const tick = () => {
+        const left = this.pubAt == null ? null : Math.max(0, Math.ceil((this.pubAt - performance.now()) / 1000)), n = R.players.length;
+        $('on-pub-t').textContent = R.state === 'match' ? 'A MATCH IS ON' : (left ? 'STARTS IN ' + left : 'STARTING...') + ' · ' + n + ' PLAYER' + (n > 1 ? 'S' : '') + (n < 2 ? ' · BOTS FILL THE EMPTY SPOTS, MORE PLAYERS CAN STILL JOIN' : '');
+      };
+      tick(); if (R.state !== 'match') this.pubT = setInterval(() => { if (this.room !== R) { clearInterval(this.pubT); this.pubT = null; return; } tick(); }, 250);
+    }
     // a big rank gap between the teams: say so before the match
     const tiers = [0, 1].map((t) => R.players.filter((p) => p.team === t).map((p) => tierOf(p.rp || 0)));
     if (tiers[0].length && tiers[1].length && Math.abs(Math.max(...tiers[0]) - Math.max(...tiers[1])) >= 2) $('on-wait').textContent += ' BIG RANK GAP: THE HIGHER TEAM GETS NO REWARDS FOR A WIN OR DRAW.';

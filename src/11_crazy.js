@@ -52,7 +52,7 @@ const Portal = {
   /** their SDK came up after the game had started: the same finishing touches as ready() */
   lateReady() {
     if (!this.on) return;
-    this.applyMute(); Touch.layout();
+    this.applyMute(); Touch.layout(); this.renderAcct();
     if (!$('ad-block')) { const blk = document.createElement('div'); blk.id = 'ad-block'; blk.hidden = true; $('app').appendChild(blk); }
     if (this.user) this.useName();
     const nameIn = $('on-name'); if (nameIn) nameIn.readOnly = true;
@@ -63,6 +63,7 @@ const Portal = {
     this.applyMute();
     if (!this.on) return;
     this.try(() => this.sdk.game.loadingStop());
+    this.renderAcct();
     const blk = document.createElement('div'); blk.id = 'ad-block'; blk.hidden = true; $('app').appendChild(blk);
     if (this.user) this.useName();
     const nameIn = $('on-name'); if (nameIn) nameIn.readOnly = true; // their rule: no typed names, guests keep the PLAYER name until they sign in
@@ -80,7 +81,7 @@ const Portal = {
   /** every frame: tell them when a match is being played, and when it stops (menu, results, replays) */
   tick() {
     if (!this.on) return;
-    const live = (Game.state === 'match' && !Game.gate) || (Game.state === 'online' && !Net.paused);
+    const live = (Game.state === 'match' && !Game.gate && !Game.intro) || (Game.state === 'online' && !Net.paused);
     if (live === this.live) return;
     this.live = live;
     this.try(() => (live ? this.sdk.game.gameplayStart() : this.sdk.game.gameplayStop()));
@@ -119,10 +120,22 @@ const Portal = {
     this.user = u || null; if (!this.user) return;
     // their SDK has now loaded this account's progress (or moved the guest progress into it)
     Save.load(); Save.validate(); this.useName(); this.applyMute();
-    UI.renderLobby(); Showcase.ensure(); if (UI.cur === 'profile') UI.renderProfile();
+    UI.renderLobby(); Showcase.ensure(); this.renderAcct(); if (UI.cur === 'profile') UI.renderProfile();
   },
+  /** their profile picture (CrazyGames: "show their username and profile picture in your game") */
+  pic(cls = 'cg-pic') { const u = this.user && this.user.profilePictureUrl; return u && /^https:\/\//.test(u) ? `<img class="${cls}" src="${esc(u)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''; },
+  /** top right of the start screen: your picture and name, or LOG IN for a guest (their rule: only their login, top right, never automatic) */
+  renderAcct() {
+    const b = $('cg-acct'); if (!b) return;
+    const can = this.on && this.try(() => this.sdk.user.isUserAccountAvailable);
+    b.hidden = !this.on || (!this.user && !can);
+    if (b.hidden) return;
+    b.innerHTML = this.user ? this.pic() + '<span>' + esc(Net.cleanName(this.user.username) || this.user.username) + '</span>' : 'LOG IN';
+    b.dataset.in = this.user ? '1' : '';
+  },
+  acctClick() { if (!this.on) return; if (this.user) UI.show('profile'); else this.signIn(); },
   accountHtml() {
-    if (this.user) return `<h3>ACCOUNT</h3><div class="on-row"><span class="label">CRAZYGAMES ACCOUNT</span><b class="ac-name">${esc(this.user.username)}</b></div><p class="pf-note">Your progress is saved to your CrazyGames account, so it follows you to any device.</p>`;
+    if (this.user) return `<h3>ACCOUNT</h3><div class="on-row"><span class="label">CRAZYGAMES ACCOUNT</span>${this.pic()}<b class="ac-name">${esc(this.user.username)}</b></div><p class="pf-note">Your progress is saved to your CrazyGames account, so it follows you to any device.</p>`;
     const can = this.try(() => this.sdk.user.isUserAccountAvailable);
     return `<h3>ACCOUNT</h3><p class="pf-note">You are playing as a guest, and your progress is saved on this device.${can ? ' Sign in to CrazyGames to keep it on every device and play under your CrazyGames name.' : ''}</p>`
       + (can ? '<div class="on-row"><button class="btn small blue" id="cg-in" type="button">SIGN IN</button></div>' : '');

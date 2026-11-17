@@ -9,7 +9,7 @@ const PadNav = {
   active() {
     const s = Game.state;
     if (s === 'replay') return false;
-    if (s === 'match') return !!Game.gate;
+    if (s === 'match') return !!(Game.gate || Game.intro);
     if (s === 'online' && Net.nm) return !!Net.paused;
     return true;
   },

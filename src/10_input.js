@@ -62,6 +62,7 @@ const Input = {
   },
   requestLock() {
     if (Touch.on) return; // touch play never needs the mouse locked
+    if (Game.intro) return; // the match intro: the mouse picks a position
     if (!this.canvas || !this.canvas.requestPointerLock) { this.lockFailed = true; return; }
     try {
       const r = this.canvas.requestPointerLock();
@@ -185,6 +186,25 @@ const Cam = {
     this.yaw = wrapA(this.yaw);
     const cp = Math.cos(this.pitch);
     this.fwd.set(Math.sin(this.yaw) * cp, Math.sin(this.pitch), Math.cos(this.yaw) * cp);
+  },
+  /** the match intro: from high over the far corner, round the stadium and down to just behind you (Game.introTick).
+      After the flight it simply follows you, so picking another position glides the camera to your new spot */
+  intro(realDt, m, t) {
+    this.yaw = 0; this.pitch = -0.13; this.snapYaw = this.snapPitch = null;
+    this.fwd.set(0, Math.sin(this.pitch), Math.cos(this.pitch));
+    const u = clamp(t / INTRO_FLY, 0, 1);
+    if (u >= 1) { this.follow(realDt, m); return; }
+    const p = m.human, cam = World.camera, e = 1 - Math.pow(1 - u, 3), sm = (x) => x * x * (3 - 2 * x);
+    if (this.hidden) this.unhide();
+    // where the normal camera will be once play starts (behind you, looking up the pitch)
+    const d = this.dist, end = _v1.set(p.pos.x, 1.7 + 0.85 - this.fwd.y * d, p.pos.z - this.fwd.z * d);
+    const th = Math.PI * (0.2 + 0.8 * e), R = F.L * (1.45 - 0.5 * e), H = 30 - 21 * e; // round the stadium and down
+    const b = sm(clamp((u - 0.5) / 0.5, 0, 1)); // the second half: settle in behind you
+    this.pos.set(Math.sin(th) * R * (1 - b) + end.x * b, H * (1 - b) + end.y * b, Math.cos(th) * R * (1 - b) + end.z * b);
+    this.pivotY = 1.7;
+    cam.position.copy(this.pos);
+    const lx = end.x * b, lz = (end.z + 20) * b, ly = (1.2 - 0.1 * b) * (1 - b) + (end.y - 20 * Math.sin(-this.pitch)) * b; // from the centre spot to straight ahead of you
+    cam.lookAt(lx, ly, lz);
   },
   follow(realDt, m) {
     const cam = World.camera;

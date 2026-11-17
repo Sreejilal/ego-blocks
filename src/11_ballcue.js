@@ -70,7 +70,7 @@ const BallCue = {
     const bp = b.mesh.position, shown = b.mesh.visible !== false;
     this.ghost.visible = mode !== 'off' && shown;
     if (this.ghost.visible) { this.ghost.position.copy(bp); this.ghost.quaternion.copy(b.mesh.quaternion); this.ghost.scale.copy(b.mesh.scale); }
-    const live = Game.playing() && !(Game.state === 'online' && Net.paused) && !Game.gate && m.phase !== 'goal' && m.phase !== 'end' && !m.fk && shown;
+    const live = Game.playing() && !(Game.state === 'online' && Net.paused) && !Game.gate && !Game.intro && m.phase !== 'goal' && m.phase !== 'end' && !m.fk && shown;
     const owner = b.owner, mine = !!owner && owner === m.human;
     this.ring.visible = help && live && !owner;
     if (this.ring.visible) { this.ring.position.set(bp.x, 0.04, bp.z); const k = 1 + Math.sin(this.t * 5) * 0.06; this.ring.scale.set(k, k, 1); }

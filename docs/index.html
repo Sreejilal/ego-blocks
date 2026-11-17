@@ -649,6 +649,32 @@ body.touch .fk-row b { font-size: 20px; }
 .dialog .row .btn { flex: 1 1 160px; }
 .adm { width: min(680px, 100%); max-height: 100%; overflow-y: auto; gap: 10px; }
 .adm h2 { font-size: 52px; }
+.intro { position: absolute; inset: 0; z-index: 25; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; align-items: center; box-sizing: border-box; padding: max(14px, env(safe-area-inset-top, 0px)) 16px max(12px, env(safe-area-inset-bottom, 0px)); }
+.intro[hidden] { display: none; }
+#app > .intro { pointer-events: none; }
+.in-top { display: grid; justify-items: center; gap: 6px; text-align: center; animation: inDrop .7s cubic-bezier(.2,1.4,.4,1) both; }
+.in-vs { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center; font-family: var(--font-display); font-size: clamp(28px, 5.4vw, 60px); line-height: .95; text-shadow: 4px 4px 0 var(--ink); }
+.in-vs b { color: var(--gold); font-weight: 400; font-size: .62em; }
+.in-mode { text-shadow: 2px 2px 0 var(--ink); }
+.in-pick { pointer-events: auto; display: grid; justify-items: center; gap: 9px; width: min(780px, 100%); box-sizing: border-box; padding: 12px 14px; animation: inFade .45s .4s ease-out both; } /* a fade, not a slide: the buttons are in place (and work) from the first moment */
+.in-roles { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; width: 100%; }
+.in-role { flex: 1 1 130px; display: grid; gap: 3px; font-size: 21px; padding-block: 8px 10px; }
+.in-role .sub { font-size: 11px; display: block; }
+.in-role[aria-pressed="true"] { background: var(--gold); color: var(--ink); }
+.in-role[aria-pressed="true"] .sub { color: var(--ink); }
+#in-go { min-width: 220px; }
+.in-keys:empty { display: none; }
+body.intro #touch, body.intro #hud, body.intro #labels { visibility: hidden; }
+@keyframes inDrop { from { transform: translateY(-120%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes inFade { from { opacity: 0; } to { opacity: 1; } }
+@media (max-height: 430px) { .in-vs { font-size: 30px; } .in-role { font-size: 17px; padding-block: 5px 7px; } .in-role .sub { font-size: 9px; } .in-pick { gap: 6px; padding: 8px 10px; } }
+.on-pub { display: grid; gap: 4px; padding: 8px 10px; background: rgba(61,125,255,.16); border: var(--px) solid var(--ink); }
+.on-pub[hidden] { display: none; }
+.on-pub b { font-family: var(--font-display); font-weight: 400; font-size: 28px; color: var(--gold); text-shadow: 2px 2px 0 var(--ink); }
+.cg-acct { display: inline-flex; align-items: center; gap: 6px; }
+.cg-acct[data-in="1"] { padding: 4px 10px 4px 4px; }
+.cg-pic { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 2px solid var(--ink); background: var(--slate); flex: none; }
+.on-row .cg-pic { width: 34px; height: 34px; }
 body.adm-open #fr-side { display: none; }
 #adm-body { display: grid; gap: 10px; }
 .adm-g { display: grid; gap: 5px; }
@@ -1096,6 +1122,7 @@ const Save = {
     out.spunStyle = typeof out.spunStyle === 'string' ? out.spunStyle : null;
     out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
     out.tone = clamp(Math.floor(Number(out.tone)), 0, 7); if (!Number.isFinite(out.tone)) out.tone = 1;
+    out.pos = typeof out.pos === 'string' && /^(ST|FW|MID|LW|RW|DEF|DEF2)$/.test(out.pos) ? out.pos : null; // the position you like to play (the match intro)
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
     out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
@@ -4334,6 +4361,8 @@ const ROSTERS = { 2: ['GK', 'ST'], 3: ['GK', 'DEF', 'MID'], 4: ['GK', 'DEF', 'MI
 const SETUPS_5 = { defensive: { name: 'ULTRA DEFENSIVE', roles: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] }, attacking: { name: 'ULTRA ATTACKING', roles: ['GK', 'DEF', 'MID', 'ST', 'FW'] } };
 /** the most attacking role first: you play it, and it takes the kickoff */
 const ROLE_ORDER = ['ST', 'FW', 'MID', 'LW', 'RW', 'DEF', 'DEF2'];
+/** what each outfield spot is called on the position picker (the match intro), and what you do there */
+const ROLE_INFO = { ST: ['STRIKER', 'SCORE GOALS'], FW: ['FORWARD', 'SECOND STRIKER'], MID: ['MIDFIELD', 'PASS AND RUN'], LW: ['LEFT WING', 'RUN THE LEFT SIDE'], RW: ['RIGHT WING', 'RUN THE RIGHT SIDE'], DEF: ['DEFENDER', 'STOP THEIR ATTACKS'], DEF2: ['SIDE DEFENDER', 'GUARD THE SIDE'] };
 const leadRole = (roles) => roles.filter((r) => r !== 'GK').sort((a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b))[0];
 const teamSizeFor = (mode, rp) => { if (mode === 'duel') return 2; if (mode === 'quick') return 4; if (mode !== 'ranked') return 3; const t = tierOf(rp); return t >= 4 ? 5 : t >= 2 ? 4 : 3; };
 /* the featured mode changes every 3 hours on a fixed schedule from the clock (UTC), so everyone sees the same one */
@@ -4623,6 +4652,7 @@ const MODES = {
 // kickoff spots on the first pitch's scale (see PITCH_KX / PITCH_KZ)
 const FORM = { GK: [0, -31.0], DEF: [0, -18], DEF2: [-8, -17], MID: [7, -9], LW: [11, -7], RW: [-11, -7], ST: [0, -2.2], FW: [-7, -4] };
 const MATCH_LEN = 240, GOLDEN_LEN = 120;
+const INTRO_FLY = 4, INTRO_AUTO = 10; // the match intro: the camera flight (s), and when the kickoff starts by itself if nobody presses PLAY
 
 class Match {
   constructor(mode, d, opts = {}) {
@@ -4650,7 +4680,7 @@ class Match {
     this.buildTeams(opts);
     // whose PASS calls make teammates look up (the human; in a test match, a bot striker that calls like a human)
     this.caller = opts.caller ? this.teams[0].find((p) => p.role === leadRole(this.rolesFor(0))) : this.autopilot ? null : this.human;
-    if (this.cfg.practice && this.human) this.startFreeKicks(); else if (this.cfg.tutorial && this.human) this.startTutorial(); else this.setupKickoff(0, true);
+    if (this.cfg.practice && this.human) this.startFreeKicks(); else if (this.cfg.tutorial && this.human) this.startTutorial(); else this.setupKickoff(0, true, !!opts.intro); // the intro (Game.beginIntro): no kickoff banner until it is over
   }
   /* ---------- setup ---------- */
   /** 5v5: each team plays ultra defensive or ultra attacking, picked at random (opts.setups to choose) */
@@ -4672,12 +4702,13 @@ class Match {
     }
     for (let team = 0; team < 2; team++) {
       const roles = this.rolesFor(team), lead = leadRole(roles);
+      const mine = team === 0 && opts.role && opts.role !== 'GK' && roles.includes(opts.role) ? opts.role : lead; // the position you picked last time, when this line-up has it
       for (const role of roles) {
         if (this.cfg.noKeeper && role === 'GK') continue; // No Keepers: open goals
         const net = opts.humans ? seat[team + role] : null;
         // online with bots off: only the friends play ('keepers': computer keepers stay, 'none': no keepers either)
         if (opts.humans && !net && opts.bots && opts.bots !== 'fill' && !(role === 'GK' && opts.bots === 'keepers')) continue;
-        const human = opts.humans ? !!net : team === 0 && role === lead && !opts.noHuman; // you play the most attacking spot
+        const human = opts.humans ? !!net : team === 0 && role === mine && !opts.noHuman; // you play the most attacking spot, or the one you picked
         let num = role === 'GK' ? 1 : human && !net ? 10 : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
         const style = net ? net.style : human ? (opts.style || Save.data.style) : opts.teamStyle ? opts.teamStyle[team] : botStyle(); // teamStyle: [home, away] for balance tests
@@ -4745,7 +4776,7 @@ class Match {
   toast(text, cls, to) { Hud.toast(text, cls, to); } // to: the player it is for (online sends it only to them)
   involvesHuman(...ps) { return ps.some((q) => q && q.isHuman); }
 
-  setupKickoff(team, first = false) {
+  setupKickoff(team, first = false, quiet = false) {
     this.kickTeam = team; this.phase = 'kickoff'; this.phaseT = 0; this.kickDelay = first ? 2.6 : 1.7;
     this.ball.reset(0, 0); this.lastPass = null; this.pendingEnd = false;
     for (const p of this.players) {
@@ -4761,6 +4792,7 @@ class Match {
       p.setState('kickoff'); p.onGround = true;
       p.ai.wantShot = null; p.ai.dodgeIn = -1; p.ai.task = 'pos'; p.ai.receive = null; p.ai.runT = 0;
     }
+    if (quiet) return;
     if (first && this.mode === 'ranked') Hud.banner('VS ' + TIER_NAMES[this.tier], TEAM[1].full + ' \u00b7 ' + TIER_NAMES[this.tier] + ' BOTS \u00b7 WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15', TIER_MATS[this.tier].a);
     else if (first && this.cfg.tip) Hud.banner(this.cfg.name, this.cfg.tip, '#b65cff');
     else if (first) Hud.banner(this.cfg.name, this.mode === 'ranked' ? 'WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15' : this.mode === 'lawless' ? (Touch.on ? 'GRAB THE ? BLOCKS \u00b7 TAP ITEM TO USE' : 'GRAB THE ? BLOCKS \u00b7 X USES YOUR ITEM') : 'NO RANK ON THE LINE', TEAM[0].hex);
@@ -7167,6 +7199,7 @@ const Input = {
   },
   requestLock() {
     if (Touch.on) return; // touch play never needs the mouse locked
+    if (Game.intro) return; // the match intro: the mouse picks a position
     if (!this.canvas || !this.canvas.requestPointerLock) { this.lockFailed = true; return; }
     try {
       const r = this.canvas.requestPointerLock();
@@ -7290,6 +7323,25 @@ const Cam = {
     this.yaw = wrapA(this.yaw);
     const cp = Math.cos(this.pitch);
     this.fwd.set(Math.sin(this.yaw) * cp, Math.sin(this.pitch), Math.cos(this.yaw) * cp);
+  },
+  /** the match intro: from high over the far corner, round the stadium and down to just behind you (Game.introTick).
+      After the flight it simply follows you, so picking another position glides the camera to your new spot */
+  intro(realDt, m, t) {
+    this.yaw = 0; this.pitch = -0.13; this.snapYaw = this.snapPitch = null;
+    this.fwd.set(0, Math.sin(this.pitch), Math.cos(this.pitch));
+    const u = clamp(t / INTRO_FLY, 0, 1);
+    if (u >= 1) { this.follow(realDt, m); return; }
+    const p = m.human, cam = World.camera, e = 1 - Math.pow(1 - u, 3), sm = (x) => x * x * (3 - 2 * x);
+    if (this.hidden) this.unhide();
+    // where the normal camera will be once play starts (behind you, looking up the pitch)
+    const d = this.dist, end = _v1.set(p.pos.x, 1.7 + 0.85 - this.fwd.y * d, p.pos.z - this.fwd.z * d);
+    const th = Math.PI * (0.2 + 0.8 * e), R = F.L * (1.45 - 0.5 * e), H = 30 - 21 * e; // round the stadium and down
+    const b = sm(clamp((u - 0.5) / 0.5, 0, 1)); // the second half: settle in behind you
+    this.pos.set(Math.sin(th) * R * (1 - b) + end.x * b, H * (1 - b) + end.y * b, Math.cos(th) * R * (1 - b) + end.z * b);
+    this.pivotY = 1.7;
+    cam.position.copy(this.pos);
+    const lx = end.x * b, lz = (end.z + 20) * b, ly = (1.2 - 0.1 * b) * (1 - b) + (end.y - 20 * Math.sin(-this.pitch)) * b; // from the centre spot to straight ahead of you
+    cam.lookAt(lx, ly, lz);
   },
   follow(realDt, m) {
     const cam = World.camera;
@@ -8058,7 +8110,7 @@ const BallCue = {
     const bp = b.mesh.position, shown = b.mesh.visible !== false;
     this.ghost.visible = mode !== 'off' && shown;
     if (this.ghost.visible) { this.ghost.position.copy(bp); this.ghost.quaternion.copy(b.mesh.quaternion); this.ghost.scale.copy(b.mesh.scale); }
-    const live = Game.playing() && !(Game.state === 'online' && Net.paused) && !Game.gate && m.phase !== 'goal' && m.phase !== 'end' && !m.fk && shown;
+    const live = Game.playing() && !(Game.state === 'online' && Net.paused) && !Game.gate && !Game.intro && m.phase !== 'goal' && m.phase !== 'end' && !m.fk && shown;
     const owner = b.owner, mine = !!owner && owner === m.human;
     this.ring.visible = help && live && !owner;
     if (this.ring.visible) { this.ring.position.set(bp.x, 0.04, bp.z); const k = 1 + Math.sin(this.t * 5) * 0.06; this.ring.scale.set(k, k, 1); }
@@ -8141,7 +8193,7 @@ const Portal = {
   /** their SDK came up after the game had started: the same finishing touches as ready() */
   lateReady() {
     if (!this.on) return;
-    this.applyMute(); Touch.layout();
+    this.applyMute(); Touch.layout(); this.renderAcct();
     if (!$('ad-block')) { const blk = document.createElement('div'); blk.id = 'ad-block'; blk.hidden = true; $('app').appendChild(blk); }
     if (this.user) this.useName();
     const nameIn = $('on-name'); if (nameIn) nameIn.readOnly = true;
@@ -8152,6 +8204,7 @@ const Portal = {
     this.applyMute();
     if (!this.on) return;
     this.try(() => this.sdk.game.loadingStop());
+    this.renderAcct();
     const blk = document.createElement('div'); blk.id = 'ad-block'; blk.hidden = true; $('app').appendChild(blk);
     if (this.user) this.useName();
     const nameIn = $('on-name'); if (nameIn) nameIn.readOnly = true; // their rule: no typed names, guests keep the PLAYER name until they sign in
@@ -8169,7 +8222,7 @@ const Portal = {
   /** every frame: tell them when a match is being played, and when it stops (menu, results, replays) */
   tick() {
     if (!this.on) return;
-    const live = (Game.state === 'match' && !Game.gate) || (Game.state === 'online' && !Net.paused);
+    const live = (Game.state === 'match' && !Game.gate && !Game.intro) || (Game.state === 'online' && !Net.paused);
     if (live === this.live) return;
     this.live = live;
     this.try(() => (live ? this.sdk.game.gameplayStart() : this.sdk.game.gameplayStop()));
@@ -8208,10 +8261,22 @@ const Portal = {
     this.user = u || null; if (!this.user) return;
     // their SDK has now loaded this account's progress (or moved the guest progress into it)
     Save.load(); Save.validate(); this.useName(); this.applyMute();
-    UI.renderLobby(); Showcase.ensure(); if (UI.cur === 'profile') UI.renderProfile();
+    UI.renderLobby(); Showcase.ensure(); this.renderAcct(); if (UI.cur === 'profile') UI.renderProfile();
   },
+  /** their profile picture (CrazyGames: "show their username and profile picture in your game") */
+  pic(cls = 'cg-pic') { const u = this.user && this.user.profilePictureUrl; return u && /^https:\/\//.test(u) ? `<img class="${cls}" src="${esc(u)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''; },
+  /** top right of the start screen: your picture and name, or LOG IN for a guest (their rule: only their login, top right, never automatic) */
+  renderAcct() {
+    const b = $('cg-acct'); if (!b) return;
+    const can = this.on && this.try(() => this.sdk.user.isUserAccountAvailable);
+    b.hidden = !this.on || (!this.user && !can);
+    if (b.hidden) return;
+    b.innerHTML = this.user ? this.pic() + '<span>' + esc(Net.cleanName(this.user.username) || this.user.username) + '</span>' : 'LOG IN';
+    b.dataset.in = this.user ? '1' : '';
+  },
+  acctClick() { if (!this.on) return; if (this.user) UI.show('profile'); else this.signIn(); },
   accountHtml() {
-    if (this.user) return `<h3>ACCOUNT</h3><div class="on-row"><span class="label">CRAZYGAMES ACCOUNT</span><b class="ac-name">${esc(this.user.username)}</b></div><p class="pf-note">Your progress is saved to your CrazyGames account, so it follows you to any device.</p>`;
+    if (this.user) return `<h3>ACCOUNT</h3><div class="on-row"><span class="label">CRAZYGAMES ACCOUNT</span>${this.pic()}<b class="ac-name">${esc(this.user.username)}</b></div><p class="pf-note">Your progress is saved to your CrazyGames account, so it follows you to any device.</p>`;
     const can = this.try(() => this.sdk.user.isUserAccountAvailable);
     return `<h3>ACCOUNT</h3><p class="pf-note">You are playing as a guest, and your progress is saved on this device.${can ? ' Sign in to CrazyGames to keep it on every device and play under your CrazyGames name.' : ''}</p>`
       + (can ? '<div class="on-row"><button class="btn small blue" id="cg-in" type="button">SIGN IN</button></div>' : '');
@@ -8757,11 +8822,12 @@ const Net = {
   tpl() {
     return `<section id="scr-online" class="screen sub-screen" hidden>
       <div class="sub-wrap">
-        <div class="sub-head"><h2>PLAY WITH FRIENDS</h2><button class="btn small" id="on-back" type="button">BACK</button></div>
+        <div class="sub-head"><h2>PLAY ONLINE</h2><button class="btn small" id="on-back" type="button">BACK</button></div>
         <div class="panel on-box" id="on-start">
           <label class="label" for="on-name">YOUR NAME</label>
           <input class="on-in" id="on-name" maxlength="12" autocomplete="off" spellcheck="false">
-          <button class="btn blue" id="on-create" type="button">CREATE A ROOM <span class="sub">GET A CODE FOR FRIENDS</span></button>
+          <button class="btn blue" id="on-random" type="button">RANDOM MATCH <span class="sub">PLAY WITH ANYONE ONLINE</span></button>
+          <button class="btn" id="on-create" type="button">CREATE A ROOM <span class="sub">GET A CODE FOR FRIENDS</span></button>
           <div class="on-row"><input class="on-in code" id="on-code" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false"><button class="btn" id="on-join" type="button">JOIN</button></div>
           <p class="on-status" id="on-status"></p>
           <p class="label on-privacy">TO PLAY ONLINE, YOUR NAME AND YOUR CONTROLS GO TO THE SCORZ SERVER. IT ONLY USES THEM TO RUN THE MATCH.</p>
@@ -8769,6 +8835,7 @@ const Net = {
         </div>
         <div class="on-split">
         <div class="panel on-box" id="on-room" hidden>
+          <div class="on-pub" id="on-pub" hidden><b>RANDOM MATCH</b><span class="label" id="on-pub-t">FINDING PLAYERS...</span></div>
           <div class="on-code"><span class="label">ROOM CODE</span><b id="on-room-code">----</b><button class="btn small" id="on-copy" type="button">COPY INVITE LINK</button></div>
           <div class="on-teams"><div class="on-team" id="on-t0"></div><div class="on-team" id="on-t1"></div></div>
           <button class="btn small" id="on-switch" type="button">SWITCH TEAM</button>
@@ -8809,6 +8876,7 @@ const Net = {
     const click = (id, fn) => $(id).addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); });
     click('on-back', () => UI.show('lobby'));
     click('on-create', () => this.connect(() => this.send({ t: 'create' })));
+    click('on-random', () => this.connect(() => this.send({ t: 'random' })));
     click('on-join', () => this.join($('on-code').value));
     $('on-code').addEventListener('keydown', (e) => { if (e.code === 'Enter') this.join($('on-code').value); });
     $('on-name').addEventListener('change', () => { d.name = this.cleanName($('on-name').value) || d.name; $('on-name').value = d.name; Save.save(); this.hello(); });
@@ -9065,7 +9133,18 @@ const Net = {
     const bots = R.bots || 'fill';
     $('on-bots').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.b === bots));
     $('on-go-sub').textContent = bots === 'fill' ? 'BOTS FILL EMPTY SPOTS' : bots === 'keepers' ? 'JUST YOU AND YOUR FRIENDS, WITH COMPUTER KEEPERS' : 'JUST YOU AND YOUR FRIENDS, NO KEEPERS';
-    $('on-wait').textContent = R.state === 'match' ? 'A MATCH IS ON. YOU PLAY IN THE NEXT ONE.' : host ? 'SHARE THE CODE, THEN PRESS START.' : 'WAITING FOR THE HOST TO START.';
+    $('on-wait').textContent = R.state === 'match' ? 'A MATCH IS ON. YOU PLAY IN THE NEXT ONE.' : host ? 'SHARE THE CODE, THEN PRESS START.' : R.pub ? '' : 'WAITING FOR THE HOST TO START.';
+    // a random match: no host, the server starts it; count down to the kickoff
+    $('on-pub').hidden = !R.pub;
+    clearInterval(this.pubT); this.pubT = null;
+    if (R.pub) {
+      this.pubAt = R.startIn != null ? performance.now() + R.startIn : null;
+      const tick = () => {
+        const left = this.pubAt == null ? null : Math.max(0, Math.ceil((this.pubAt - performance.now()) / 1000)), n = R.players.length;
+        $('on-pub-t').textContent = R.state === 'match' ? 'A MATCH IS ON' : (left ? 'STARTS IN ' + left : 'STARTING...') + ' · ' + n + ' PLAYER' + (n > 1 ? 'S' : '') + (n < 2 ? ' · BOTS FILL THE EMPTY SPOTS, MORE PLAYERS CAN STILL JOIN' : '');
+      };
+      tick(); if (R.state !== 'match') this.pubT = setInterval(() => { if (this.room !== R) { clearInterval(this.pubT); this.pubT = null; return; } tick(); }, 250);
+    }
     // a big rank gap between the teams: say so before the match
     const tiers = [0, 1].map((t) => R.players.filter((p) => p.team === t).map((p) => tierOf(p.rp || 0)));
     if (tiers[0].length && tiers[1].length && Math.abs(Math.max(...tiers[0]) - Math.max(...tiers[1])) >= 2) $('on-wait').textContent += ' BIG RANK GAP: THE HIGHER TEAM GETS NO REWARDS FOR A WIN OR DRAW.';
@@ -9361,7 +9440,7 @@ const PadNav = {
   active() {
     const s = Game.state;
     if (s === 'replay') return false;
-    if (s === 'match') return !!Game.gate;
+    if (s === 'match') return !!(Game.gate || Game.intro);
     if (s === 'online' && Net.nm) return !!Net.paused;
     return true;
   },
@@ -9984,7 +10063,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
@@ -10007,6 +10086,7 @@ const UI = {
       <div class="topbar">
         <div class="left"><span class="chip">SEASON 1 &middot; VOXEL CUP</span><button class="btn small pass" id="go-tut" type="button" hidden><span><span class="tut-long">NEW? PLAY THE </span>TUTORIAL</span></button></div>
         <div class="right">
+          <button class="iconbtn cg-acct" id="cg-acct" type="button" hidden>LOG IN</button>
           <span class="emer" title="Emeralds"><img class="px" id="lob-em-ico" alt=""><span id="lob-em">0</span></span>
           <button class="iconbtn" id="btn-fs" type="button" hidden>FULLSCREEN</button>
           <button class="iconbtn" id="btn-mute" type="button">SOUND ON</button>
@@ -10019,7 +10099,7 @@ const UI = {
         <nav class="menu" aria-label="Main menu">
           <button class="btn blue play" id="go-quick" type="button">PLAY <span class="sub" id="quick-sub">QUICK MATCH &middot; 4V4</span></button>
           <button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
-          <button class="btn friends" id="go-online" type="button">PLAY WITH FRIENDS <span class="sub">ONLINE ROOM</span></button>
+          <button class="btn friends" id="go-online" type="button">PLAY ONLINE <span class="sub">RANDOM OR FRIENDS</span></button>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
           <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub">HILL &middot; VOLLEYS &middot; DUEL</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
@@ -10146,9 +10226,11 @@ const UI = {
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
+            <li><b>Random match:</b> PLAY ONLINE, then RANDOM MATCH puts you in a match with other players who are online. It starts by itself after a few seconds; bots fill any empty spots, and new players take a bot's place.</li>
             <li><b>Play with friends:</b> create a room, send the code or invite link, pick teams and a mode. The host picks BOTS: FILL puts bots in the empty spots, KEEPERS ONLY is just you and your friends with computer keepers, NONE is only you and your friends. Keyboard, controller and phone players can all join the same room.</li>
-            <li><b>Players online:</b> on PLAY WITH FRIENDS you can see who else has the game open. INVITE asks them into your room (it makes one if you have none), ADD FRIEND asks to be friends (you both need an account), JOIN walks into a friend's room. Friends also show on the Profile screen with an INVITE button. Do not want to be seen or invited? Turn SHOW ME HERE off, or set INVITES FROM to FRIENDS or NOBODY.</li>
+            <li><b>Players online:</b> on PLAY ONLINE you can see who else has the game open. INVITE asks them into your room (it makes one if you have none), ADD FRIEND asks to be friends (you both need an account), JOIN walks into a friend's room. Friends also show on the Profile screen with an INVITE button. Do not want to be seen or invited? Turn SHOW ME HERE off, or set INVITES FROM to FRIENDS or NOBODY.</li>
             <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
+            <li><b>Your position:</b> before each match the camera flies in and you pick where you play: striker, midfield, wing or defence. The game remembers it for next time.</li>
             <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
             <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
@@ -10506,6 +10588,9 @@ const UI = {
       Portal.applyMute(); Music.apply(); Save.save(); this.renderLobby();
     });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
+    click('cg-acct', () => Portal.acctClick());
+    click('in-go', () => Game.endIntro());
+    $('in-roles').addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (b) { Sfx.click(); Game.pickRole(b.dataset.r); } });
     click('p-resume', () => Game.resume());
     Admin.bind();
     click('tut-skip', () => Game.skipTutorial());
@@ -10852,6 +10937,34 @@ const UI = {
   },
   /** the keyboard's own letters are known (KeyNames): relabel the keys already drawn */
   relabelKeys() { document.querySelectorAll('[data-kc]').forEach((el) => { el.textContent = KeyNames.of(el.dataset.kc); }); },
+  /** the match intro: who plays who, and your position (Game.beginIntro) */
+  tplIntro() {
+    return `<section id="intro" class="intro" hidden>
+      <div class="in-top"><div class="in-vs"><span id="in-t0">HOME</span><b>VS</b><span id="in-t1">AWAY</span></div><span class="label in-mode" id="in-mode"></span></div>
+      <div class="in-pick panel">
+        <span class="label">PICK YOUR POSITION</span>
+        <div class="in-roles" id="in-roles"></div>
+        <button class="btn blue" id="in-go" type="button" data-padfirst>PLAY</button>
+        <span class="label in-keys" id="in-keys"></span>
+      </div>
+    </section>`;
+  },
+  introRoles: [],
+  showIntro(m) {
+    const t0 = $('in-t0'), t1 = $('in-t1');
+    t0.textContent = TEAM[0].full; t0.style.color = TEAM[0].hex;
+    t1.textContent = TEAM[1].full; t1.style.color = TEAM[1].hex;
+    $('in-mode').textContent = m.cfg.name + ' · ' + m.size + 'V' + m.size + (m.cfg.tip ? ' · ' + m.cfg.tip : '');
+    // your team's outfield spots, from the back to the front
+    this.introRoles = m.teams[m.human.team].filter((p) => !p.isGK).map((p) => p.role).sort((a, b) => ROLE_ORDER.indexOf(b) - ROLE_ORDER.indexOf(a));
+    $('in-keys').textContent = Touch.on ? '' : 'KEYS 1-' + this.introRoles.length + ' PICK · ENTER PLAYS';
+    $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${ROLE_INFO[r][1]}</span></button>`).join('');
+    this.renderIntro(m);
+    $('intro').hidden = false;
+  },
+  renderIntro(m) { document.querySelectorAll('#in-roles .in-role').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.r === m.human.role))); },
+  introCount(left) { const b = $('in-go'), t = 'PLAY ' + Math.max(1, Math.ceil(left)); if (b.textContent !== t) b.textContent = t; },
+  hideIntro() { const el = $('intro'); if (el) el.hidden = true; },
   showPause(on) {
     if (on && Net.chatOpen) Net.closeChat(false);
     if (on && this.emoteOpen) this.toggleEmotes(false);
@@ -11111,7 +11224,7 @@ const Game = {
       thrown into a match". The tutorial is still on the start screen */
   onboard() {
     Save.data.onboarded = true; Save.save();
-    this.startMatch('quick');
+    this.startMatch('quick', { noIntro: true }); // straight in: no intro or position picker on the very first match
     this.gate = true; // the match waits at kickoff until the click
     Touch.tipShown = false; // the phone tip shows the first time they reach the start screen instead
     $('tg-go').textContent = Touch.on ? 'TAP TO PLAY' : 'CLICK TO PLAY';
@@ -11139,7 +11252,7 @@ const Game = {
   toLobby() {
     Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false); UI.toggleEmotes(false); FKHud.hide(); ShotHud.hide();
     if (this.match) { this.match.dispose(); this.match = null; }
-    Net.nm = null; Net.paused = false; this.gate = false; $('tut-gate').hidden = true;
+    Net.nm = null; Net.paused = false; this.gate = false; $('tut-gate').hidden = true; this.stopIntro();
     Input.releaseLock();
     this.state = 'lobby';
     World.setSun(SUN_LOBBY);
@@ -11151,8 +11264,61 @@ const Game = {
     Sfx.setCrowd(0.2);
     Net.where('menu');
   },
-  startMatch(mode) {
-    Touch.autoFs(); Touch.hideTip(); $('tut-gate').hidden = true; this.gate = false;
+  /* ---------- the match intro (owner, Nov 2026: "when a match starts there is an animation and you can actually take a position, so not always the same")
+     The camera flies in over the stadium to your player while both teams stand at kickoff; meanwhile you pick your
+     position. PLAY (or ENTER, or the countdown) starts the kickoff. Not on the very first match, the tutorial or free kicks.
+     Tests skip it unless introTest is set (they drive matches frame by frame). */
+  introOn(mode) { const c = MODES[mode] || {}; return !c.tutorial && !c.practice && (!navigator.webdriver || !!this.introTest); },
+  beginIntro() {
+    const m = this.match;
+    if (!m || !m.human) return;
+    this.intro = { t: 0, left: INTRO_AUTO };
+    document.body.classList.add('intro');
+    Input.releaseLock();
+    Sfx.setCrowd(0.9);
+    UI.showIntro(m);
+  },
+  /** tap a position: you swap places with the bot who had it (they take yours) */
+  pickRole(r) {
+    const m = this.match;
+    if (!m || !this.intro || !m.human) return false;
+    const h = m.human;
+    if (h.role === r) return true;
+    const o = m.teams[h.team].find((p) => p.role === r && !p.isHuman && !p.isGK);
+    if (!o) return false;
+    o.role = h.role; h.role = r;
+    m.setupKickoff(0, true, true);
+    Save.data.pos = r; Save.save();
+    UI.renderIntro(m);
+    return true;
+  },
+  endIntro() {
+    if (!this.intro) return;
+    this.stopIntro();
+    const m = this.match;
+    if (!m) return;
+    m.setupKickoff(0, true); // the real kickoff: the banner, everyone on their spot
+    Cam.reset(0);
+    Sfx.init(); Sfx.setCrowd(0.55); Touch.autoFs(); Input.consumeEdges(); Input.requestLock(); UI.lockHint();
+  },
+  stopIntro() { this.intro = null; document.body.classList.remove('intro'); UI.hideIntro(); },
+  introTick(rdt, m) {
+    const I = this.intro, E = Input.edges;
+    I.t += rdt; I.left -= rdt;
+    if (Input.locked) Input.releaseLock(); // a lock that arrived late (it is asked for asynchronously)
+    if (E.has('Enter') || E.has('Space') || I.left <= 0) { Input.consumeEdges(); this.endIntro(); return; }
+    const roles = UI.introRoles || [];
+    for (let i = 0; i < roles.length; i++) if (E.has('Digit' + (i + 1)) || E.has('Numpad' + (i + 1))) { Sfx.click(); this.pickRole(roles[i]); }
+    for (const k of ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5']) E.delete(k);
+    m.phaseT = 0; // hold the kickoff: everyone breathes and looks around, nobody plays
+    m.update(rdt);
+    FX.update(rdt);
+    Cam.intro(rdt, m, I.t);
+    UI.updateHud(m, rdt);
+    UI.introCount(I.left);
+  },
+  startMatch(mode, o = {}) {
+    Touch.autoFs(); Touch.hideTip(); $('tut-gate').hidden = true; this.gate = false; this.stopIntro();
     if (this.match) { this.match.dispose(); this.match = null; }
     Reveal.stop(); Showcase.hide();
     UI.hideOverlays();
@@ -11161,7 +11327,8 @@ const Game = {
     let skill = difficultyFor(Save.data.rp), size = teamSizeFor(mode, Save.data.rp);
     const ramp = this.rampFor(mode);
     if (ramp) { size = Math.min(size, ramp[0]); skill = Math.min(skill, ramp[1]); }
-    this.match = new Match(mode, skill, { size });
+    const intro = !o.noIntro && this.introOn(mode);
+    this.match = new Match(mode, skill, { size, role: Save.data.pos, intro });
     this.lastMode = mode; this.ended = false;
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
@@ -11172,9 +11339,10 @@ const Game = {
     UI.show('hud'); UI.buildHud(this.match);
     Sfx.setCrowd(0.55);
     Net.where('match');
-    Input.requestLock();
+    if (!intro) Input.requestLock(); // the intro wants the mouse free for the position buttons
     Input.consumeEdges();
     Cam.look(0); Cam.follow(1, this.match);
+    if (intro) this.beginIntro();
     this.matchReady();
   },
   /** a match (offline or online) is set up: build every shader now, not mid-match the first time something shows,
@@ -11203,6 +11371,7 @@ const Game = {
   onEscape() {
     if (this.state === 'replay') { Replay.stop(); return; }
     if (this.state === 'online') { if (!Net.paused) this.pause(); else if (performance.now() - this.pausedAt > 350) this.resume(); return; }
+    if (this.state === 'match' && this.intro) return; // the intro: PLAY or the countdown starts it
     if (this.state === 'match') this.pause();
     else if (this.state === 'paused' && performance.now() - this.pausedAt > 350) this.resume();
   },
@@ -11319,6 +11488,8 @@ const Game = {
         Input.consumeEdges();
         Replay.update(rdt);
         Shake.update(rdt);
+      } else if (this.state === 'match' && this.intro) {
+        this.introTick(rdt, m);
       } else if (this.state === 'match') {
         UI.emoteKeys();
         Cam.look(rdt);

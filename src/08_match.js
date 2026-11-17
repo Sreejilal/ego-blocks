@@ -23,6 +23,7 @@ const MODES = {
 // kickoff spots on the first pitch's scale (see PITCH_KX / PITCH_KZ)
 const FORM = { GK: [0, -31.0], DEF: [0, -18], DEF2: [-8, -17], MID: [7, -9], LW: [11, -7], RW: [-11, -7], ST: [0, -2.2], FW: [-7, -4] };
 const MATCH_LEN = 240, GOLDEN_LEN = 120;
+const INTRO_FLY = 4, INTRO_AUTO = 10; // the match intro: the camera flight (s), and when the kickoff starts by itself if nobody presses PLAY
 
 class Match {
   constructor(mode, d, opts = {}) {
@@ -50,7 +51,7 @@ class Match {
     this.buildTeams(opts);
     // whose PASS calls make teammates look up (the human; in a test match, a bot striker that calls like a human)
     this.caller = opts.caller ? this.teams[0].find((p) => p.role === leadRole(this.rolesFor(0))) : this.autopilot ? null : this.human;
-    if (this.cfg.practice && this.human) this.startFreeKicks(); else if (this.cfg.tutorial && this.human) this.startTutorial(); else this.setupKickoff(0, true);
+    if (this.cfg.practice && this.human) this.startFreeKicks(); else if (this.cfg.tutorial && this.human) this.startTutorial(); else this.setupKickoff(0, true, !!opts.intro); // the intro (Game.beginIntro): no kickoff banner until it is over
   }
   /* ---------- setup ---------- */
   /** 5v5: each team plays ultra defensive or ultra attacking, picked at random (opts.setups to choose) */
@@ -72,12 +73,13 @@ class Match {
     }
     for (let team = 0; team < 2; team++) {
       const roles = this.rolesFor(team), lead = leadRole(roles);
+      const mine = team === 0 && opts.role && opts.role !== 'GK' && roles.includes(opts.role) ? opts.role : lead; // the position you picked last time, when this line-up has it
       for (const role of roles) {
         if (this.cfg.noKeeper && role === 'GK') continue; // No Keepers: open goals
         const net = opts.humans ? seat[team + role] : null;
         // online with bots off: only the friends play ('keepers': computer keepers stay, 'none': no keepers either)
         if (opts.humans && !net && opts.bots && opts.bots !== 'fill' && !(role === 'GK' && opts.bots === 'keepers')) continue;
-        const human = opts.humans ? !!net : team === 0 && role === lead && !opts.noHuman; // you play the most attacking spot
+        const human = opts.humans ? !!net : team === 0 && role === mine && !opts.noHuman; // you play the most attacking spot, or the one you picked
         let num = role === 'GK' ? 1 : human && !net ? 10 : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
         const style = net ? net.style : human ? (opts.style || Save.data.style) : opts.teamStyle ? opts.teamStyle[team] : botStyle(); // teamStyle: [home, away] for balance tests
@@ -145,7 +147,7 @@ class Match {
   toast(text, cls, to) { Hud.toast(text, cls, to); } // to: the player it is for (online sends it only to them)
   involvesHuman(...ps) { return ps.some((q) => q && q.isHuman); }
 
-  setupKickoff(team, first = false) {
+  setupKickoff(team, first = false, quiet = false) {
     this.kickTeam = team; this.phase = 'kickoff'; this.phaseT = 0; this.kickDelay = first ? 2.6 : 1.7;
     this.ball.reset(0, 0); this.lastPass = null; this.pendingEnd = false;
     for (const p of this.players) {
@@ -161,6 +163,7 @@ class Match {
       p.setState('kickoff'); p.onGround = true;
       p.ai.wantShot = null; p.ai.dodgeIn = -1; p.ai.task = 'pos'; p.ai.receive = null; p.ai.runT = 0;
     }
+    if (quiet) return;
     if (first && this.mode === 'ranked') Hud.banner('VS ' + TIER_NAMES[this.tier], TEAM[1].full + ' \u00b7 ' + TIER_NAMES[this.tier] + ' BOTS \u00b7 WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15', TIER_MATS[this.tier].a);
     else if (first && this.cfg.tip) Hud.banner(this.cfg.name, this.cfg.tip, '#b65cff');
     else if (first) Hud.banner(this.cfg.name, this.mode === 'ranked' ? 'WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15' : this.mode === 'lawless' ? (Touch.on ? 'GRAB THE ? BLOCKS \u00b7 TAP ITEM TO USE' : 'GRAB THE ? BLOCKS \u00b7 X USES YOUR ITEM') : 'NO RANK ON THE LINE', TEAM[0].hex);

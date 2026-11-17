@@ -10,7 +10,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
@@ -33,6 +33,7 @@ const UI = {
       <div class="topbar">
         <div class="left"><span class="chip">SEASON 1 &middot; VOXEL CUP</span><button class="btn small pass" id="go-tut" type="button" hidden><span><span class="tut-long">NEW? PLAY THE </span>TUTORIAL</span></button></div>
         <div class="right">
+          <button class="iconbtn cg-acct" id="cg-acct" type="button" hidden>LOG IN</button>
           <span class="emer" title="Emeralds"><img class="px" id="lob-em-ico" alt=""><span id="lob-em">0</span></span>
           <button class="iconbtn" id="btn-fs" type="button" hidden>FULLSCREEN</button>
           <button class="iconbtn" id="btn-mute" type="button">SOUND ON</button>
@@ -45,7 +46,7 @@ const UI = {
         <nav class="menu" aria-label="Main menu">
           <button class="btn blue play" id="go-quick" type="button">PLAY <span class="sub" id="quick-sub">QUICK MATCH &middot; 4V4</span></button>
           <button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
-          <button class="btn friends" id="go-online" type="button">PLAY WITH FRIENDS <span class="sub">ONLINE ROOM</span></button>
+          <button class="btn friends" id="go-online" type="button">PLAY ONLINE <span class="sub">RANDOM OR FRIENDS</span></button>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
           <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub">HILL &middot; VOLLEYS &middot; DUEL</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
@@ -172,9 +173,11 @@ const UI = {
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
+            <li><b>Random match:</b> PLAY ONLINE, then RANDOM MATCH puts you in a match with other players who are online. It starts by itself after a few seconds; bots fill any empty spots, and new players take a bot's place.</li>
             <li><b>Play with friends:</b> create a room, send the code or invite link, pick teams and a mode. The host picks BOTS: FILL puts bots in the empty spots, KEEPERS ONLY is just you and your friends with computer keepers, NONE is only you and your friends. Keyboard, controller and phone players can all join the same room.</li>
-            <li><b>Players online:</b> on PLAY WITH FRIENDS you can see who else has the game open. INVITE asks them into your room (it makes one if you have none), ADD FRIEND asks to be friends (you both need an account), JOIN walks into a friend's room. Friends also show on the Profile screen with an INVITE button. Do not want to be seen or invited? Turn SHOW ME HERE off, or set INVITES FROM to FRIENDS or NOBODY.</li>
+            <li><b>Players online:</b> on PLAY ONLINE you can see who else has the game open. INVITE asks them into your room (it makes one if you have none), ADD FRIEND asks to be friends (you both need an account), JOIN walks into a friend's room. Friends also show on the Profile screen with an INVITE button. Do not want to be seen or invited? Turn SHOW ME HERE off, or set INVITES FROM to FRIENDS or NOBODY.</li>
             <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
+            <li><b>Your position:</b> before each match the camera flies in and you pick where you play: striker, midfield, wing or defence. The game remembers it for next time.</li>
             <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
             <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
@@ -532,6 +535,9 @@ const UI = {
       Portal.applyMute(); Music.apply(); Save.save(); this.renderLobby();
     });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
+    click('cg-acct', () => Portal.acctClick());
+    click('in-go', () => Game.endIntro());
+    $('in-roles').addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (b) { Sfx.click(); Game.pickRole(b.dataset.r); } });
     click('p-resume', () => Game.resume());
     Admin.bind();
     click('tut-skip', () => Game.skipTutorial());
@@ -878,6 +884,34 @@ const UI = {
   },
   /** the keyboard's own letters are known (KeyNames): relabel the keys already drawn */
   relabelKeys() { document.querySelectorAll('[data-kc]').forEach((el) => { el.textContent = KeyNames.of(el.dataset.kc); }); },
+  /** the match intro: who plays who, and your position (Game.beginIntro) */
+  tplIntro() {
+    return `<section id="intro" class="intro" hidden>
+      <div class="in-top"><div class="in-vs"><span id="in-t0">HOME</span><b>VS</b><span id="in-t1">AWAY</span></div><span class="label in-mode" id="in-mode"></span></div>
+      <div class="in-pick panel">
+        <span class="label">PICK YOUR POSITION</span>
+        <div class="in-roles" id="in-roles"></div>
+        <button class="btn blue" id="in-go" type="button" data-padfirst>PLAY</button>
+        <span class="label in-keys" id="in-keys"></span>
+      </div>
+    </section>`;
+  },
+  introRoles: [],
+  showIntro(m) {
+    const t0 = $('in-t0'), t1 = $('in-t1');
+    t0.textContent = TEAM[0].full; t0.style.color = TEAM[0].hex;
+    t1.textContent = TEAM[1].full; t1.style.color = TEAM[1].hex;
+    $('in-mode').textContent = m.cfg.name + ' · ' + m.size + 'V' + m.size + (m.cfg.tip ? ' · ' + m.cfg.tip : '');
+    // your team's outfield spots, from the back to the front
+    this.introRoles = m.teams[m.human.team].filter((p) => !p.isGK).map((p) => p.role).sort((a, b) => ROLE_ORDER.indexOf(b) - ROLE_ORDER.indexOf(a));
+    $('in-keys').textContent = Touch.on ? '' : 'KEYS 1-' + this.introRoles.length + ' PICK · ENTER PLAYS';
+    $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${ROLE_INFO[r][1]}</span></button>`).join('');
+    this.renderIntro(m);
+    $('intro').hidden = false;
+  },
+  renderIntro(m) { document.querySelectorAll('#in-roles .in-role').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.r === m.human.role))); },
+  introCount(left) { const b = $('in-go'), t = 'PLAY ' + Math.max(1, Math.ceil(left)); if (b.textContent !== t) b.textContent = t; },
+  hideIntro() { const el = $('intro'); if (el) el.hidden = true; },
   showPause(on) {
     if (on && Net.chatOpen) Net.closeChat(false);
     if (on && this.emoteOpen) this.toggleEmotes(false);
