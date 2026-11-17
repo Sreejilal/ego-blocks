@@ -647,6 +647,14 @@ body.touch .fk-row b { font-size: 20px; }
 .dialog h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 72px; line-height: .85; text-shadow: 4px 4px 0 var(--ink); }
 .dialog .row { display: flex; gap: 10px; flex-wrap: wrap; }
 .dialog .row .btn { flex: 1 1 160px; }
+.adm { width: min(680px, 100%); max-height: 100%; overflow-y: auto; gap: 10px; }
+.adm h2 { font-size: 52px; }
+body.adm-open #fr-side { display: none; }
+#adm-body { display: grid; gap: 10px; }
+.adm-g { display: grid; gap: 5px; }
+.adm-r { display: flex; flex-wrap: wrap; gap: 8px; }
+.adm-r .btn { flex: 1 1 130px; }
+.adm-r .btn[aria-pressed="true"] { background: var(--gold); color: var(--ink); }
 .set { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 14px; align-items: center; }
 @media (max-width: 420px) { .seg button { padding: 7px 7px; } .dialog { padding: 18px 16px; } }
 @media (max-height: 780px) and (min-width: 820px) { /* a laptop: the settings side by side, so RESUME is not off the bottom */
@@ -7897,6 +7905,86 @@ const Account = {
   },
 };
 
+/* ---- 11_admin.js ---- */
+/* ---------- the owner's admin panel (owner, Nov 2026: "an admin mode only for me, where I can get everything and control the match") ----------
+   Only a save that used the owner's secret code (the current 'give all' one in CODES, not the retired one) ever sees the ADMIN buttons.
+   On the start screen it gives things; in the pause menu of a match against bots it controls the match.
+   Online it does nothing: the server runs those matches, and friends must get a fair game. */
+const Admin = {
+  is() { return Save.data.codes.some((h) => CODES[h] && CODES[h].give === 'all' && !CODES[h].retired); },
+  /** a match you can control: against bots, not the tutorial, not over yet */
+  inMatch() { const m = Game.match; return !!m && (Game.state === 'paused' || Game.state === 'match') && !m.online && !m.cfg.tutorial && !!m.human && m.phase !== 'end'; },
+  tpl() { return '<section id="admin" class="overlay" hidden><div class="dialog panel adm"><h2>ADMIN</h2><div id="adm-body"></div><p class="label" id="adm-msg">&nbsp;</p><button class="btn" id="adm-close" type="button">CLOSE</button></div></section>'; },
+  bind() {
+    $('adm-close').addEventListener('click', () => this.open(false));
+    $('adm-body').addEventListener('click', (e) => { const b = e.target.closest('[data-a]'); if (b) { Sfx.click(); this.act(b.dataset.a); } });
+    $('p-admin').addEventListener('click', () => this.open(true));
+    $('lob-admin').addEventListener('click', () => this.open(true));
+  },
+  open(on) { if (on && !this.is()) return; $('admin').hidden = !on; document.body.classList.toggle('adm-open', !!on); if (on) { $('adm-msg').innerHTML = '&nbsp;'; this.render(); } },
+  render() {
+    const g = (name, btns) => `<div class="adm-g"><span class="label">${name}</span><div class="adm-r">${btns.map(([a, t, on]) => `<button class="btn small" type="button" data-a="${a}"${on == null ? '' : ` aria-pressed="${!!on}"`}>${t}</button>`).join('')}</div></div>`;
+    let h;
+    if (this.inMatch()) {
+      const m = Game.match, A = m.adm || {}, me = m.human.team;
+      h = g('SCORE ' + m.score[me] + ' : ' + m.score[1 - me] + ' (YOU : THEM)', [['us+', 'MY TEAM +1'], ['us-', 'MY TEAM -1'], ['them+', 'THEM +1'], ['them-', 'THEM -1']])
+        + g('TIME LEFT ' + Math.ceil(m.clock) + ' SEC', [['t+', '+30 SEC'], ['t-', '-30 SEC']])
+        + g('POWERS', [['ball', 'BALL TO ME'], ['awaken', 'AWAKEN NOW'], ['freeze', 'FREEZE THEM', !!A.freeze], ['fast', 'SUPER SPEED', !!A.fast], ['stam', 'NEVER TIRED', !!A.stam]])
+        + g('FINISH', [['win', 'WIN NOW'], ['end', 'END MATCH']]);
+    } else {
+      const d = Save.data;
+      h = g('EMERALDS ' + d.emeralds, [['em', '+10,000']]) + g('BLUEPRINTS ' + d.bp, [['bp', '+100']])
+        + g('LEVEL ' + levelOf(d.xp).level, [['xp', '+1 LEVEL']]) + g('RANK ' + d.rp + ' RP', [['rp+', '+100 RP'], ['rp-', '-100 RP']])
+        + g('ITEMS', [['all', 'UNLOCK EVERYTHING']]);
+    }
+    $('adm-body').innerHTML = h;
+  },
+  say(t) { $('adm-msg').textContent = t; },
+  act(a) {
+    if (!this.is()) return;
+    const d = Save.data;
+    if (this.inMatch()) {
+      const m = Game.match, h = m.human, me = h.team, A = m.adm || (m.adm = {});
+      const sc = (t, by) => { m.score[t] = Math.max(0, m.score[t] + by); };
+      if (a === 'us+') sc(me, 1); else if (a === 'us-') sc(me, -1); else if (a === 'them+') sc(1 - me, 1); else if (a === 'them-') sc(1 - me, -1);
+      else if (a === 't+') m.clock += 30;
+      else if (a === 't-') m.clock = Math.max(1, m.clock - 30);
+      else if (a === 'ball') { if (m.phase !== 'play') { this.say('WAIT FOR THE BALL TO BE IN PLAY'); return; } m.ball.reset(h.pos.x, h.pos.z); m.possess(h, true); this.say('YOU HAVE THE BALL'); }
+      else if (a === 'awaken') { if (!h.style.awaken) { this.say('YOUR STYLE HAS NO AWAKENING'); return; } A.awaken = true; this.say('YOU AWAKEN WHEN YOU RESUME'); }
+      else if (a === 'freeze' || a === 'fast' || a === 'stam') { A[a] = !A[a]; if (a === 'fast') h.speedMul = A.fast ? 1.6 : 1; }
+      else if (a === 'win' || a === 'end') {
+        if (a === 'win' && m.score[me] <= m.score[1 - me]) m.score[me] = m.score[1 - me] + 1;
+        this.open(false); Game.resume(); m.endMatch(); return;
+      } else return;
+      this.render(); return;
+    }
+    if (a === 'em') d.emeralds += 10000;
+    else if (a === 'bp') d.bp += 100;
+    else if (a === 'xp') { const L = levelOf(d.xp).level; let n = 0; while (levelOf(d.xp).level === L && n++ < 2000) d.xp += 25; }
+    else if (a === 'rp+') d.rp += 100;
+    else if (a === 'rp-') d.rp = Math.max(0, d.rp - 100);
+    else if (a === 'all') { const n = unlockAll(d); this.say(n ? n + ' NEW ITEMS UNLOCKED' : 'YOU ALREADY HAVE EVERYTHING'); }
+    else return;
+    Save.save(); UI.renderLobby(); this.render();
+  },
+  /** every frame of a live match: the switches that stay on */
+  tick() {
+    const m = Game.match, A = m && m.adm;
+    if (!A || Game.state !== 'match' || m.online || !m.human) return;
+    const h = m.human;
+    if (A.stam) { h.stamina = 100; h.exhausted = false; }
+    if (A.awaken && m.canAct(h)) { A.awaken = false; m.activateAwaken(h); }
+    if (A.freeze || A.frozen) {
+      const on = !!A.freeze && m.phase === 'play'; // only in open play: a frozen team could never take its own kickoff
+      for (const o of m.teams[1 - h.team]) {
+        if (on && o.state !== 'frozen') { if (m.ball.owner === o) m.ball.release(); o.setState('frozen', 9999); }
+        else if (!on && o.state === 'frozen' && o.stateDur > 999) o.setState('free', 0);
+      }
+      A.frozen = on;
+    }
+  },
+};
+
 /* ---- 11_ballcue.js ---- */
 /* =====================================================================
    BallCue: helps you see the ball (playtest, Nov 2026: "new players
@@ -9896,7 +9984,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
@@ -9948,6 +10036,7 @@ const UI = {
           <div class="label" id="pro-rec" style="grid-column:1/-1">0 W &middot; 0 D &middot; 0 L</div>
         </div>
         <p class="notice" id="lob-notice"></p>
+        <button class="gift" id="lob-admin" type="button" hidden>ADMIN PANEL</button>
         <button class="gift" id="lob-gift" type="button" hidden>FREE GIFT: CODE <b>${GIFT_CODE}</b> IN PROFILE</button>
       </div>
     </section>`;
@@ -10318,7 +10407,7 @@ const UI = {
           <span class="fs-only" hidden>Fullscreen</span><div class="seg fs-only" id="set-fs" hidden><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
         </div>
         <div class="p-people" id="p-people" hidden></div>
-        <div class="row"><button class="btn blue" id="p-resume" type="button">RESUME</button><button class="btn" id="p-forfeit" type="button">FORFEIT</button></div>
+        <div class="row"><button class="btn blue" id="p-resume" type="button">RESUME</button><button class="btn" id="p-forfeit" type="button">FORFEIT</button><button class="btn" id="p-admin" type="button" hidden>ADMIN</button></div>
         <p class="label" id="p-note">Click the pitch after resuming to lock the mouse again.</p>
       </div>
     </section>`;
@@ -10418,6 +10507,7 @@ const UI = {
     });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('p-resume', () => Game.resume());
+    Admin.bind();
     click('tut-skip', () => Game.skipTutorial());
     $('tut-gate').addEventListener('pointerdown', (e) => { e.preventDefault(); Game.gateGo(); });
     $('p-forfeit').addEventListener('click', () => {
@@ -10497,6 +10587,7 @@ const UI = {
     if (!Save.ok) notes.push('<span>This browser is blocking storage, so progress will not be saved after you close the page.</span>');
     if (Touch.on) notes.push('<span class="n-touch">' + (window.innerHeight > window.innerWidth ? 'Touch controls are on. Turn your phone sideways for a much wider view of the pitch.' : 'Touch controls are on. Left thumb moves, right thumb aims and shoots.') + '</span>');
     $('lob-notice').innerHTML = notes.join(' ');
+    $('lob-admin').hidden = !Admin.is();
     $('lob-gift').hidden = Save.data.codes.includes(codeHash(GIFT_CODE)); // gone once you used it
     const fsb = $('btn-fs');
     fsb.hidden = !Touch.fsAvailable(); // phones and laptops alike (not on portals: their page has its own button)
@@ -10754,6 +10845,7 @@ const UI = {
     document.querySelectorAll('#scr-pause .fs-only').forEach((el) => { el.hidden = !fs; });
     $('set-fs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === Touch.isFs()));
     $('p-note').textContent = Touch.on ? 'Tip: double tap the right side of the screen to face the goal you attack.' : 'Click the pitch after resuming to lock the mouse again.';
+    $('p-admin').hidden = !(Admin.is() && Admin.inMatch());
     const f = $('p-forfeit'); delete f.dataset.armed; f.textContent = Game.state === 'online' ? 'LEAVE MATCH' : Game.match && Game.match.cfg.tutorial ? 'SKIP TUTORIAL' : 'FORFEIT';
     $('p-note').textContent = Game.state === 'online' ? 'Online matches keep going while this menu is open.' : $('p-note').textContent;
     $('scr-pause').querySelector('h2').textContent = Game.state === 'online' ? 'MENU' : 'PAUSED';
@@ -10765,6 +10857,7 @@ const UI = {
     if (on && this.emoteOpen) this.toggleEmotes(false);
     if (on) { this.renderPause(); $('scoreboard').hidden = true; Touch.board = false; for (const l of this.labels) { l.t = 0; l.el.hidden = true; } this.youLabel.hidden = true; }
     $('scr-pause').hidden = !on;
+    if (!on) { $('admin').hidden = true; document.body.classList.remove('adm-open'); }
     Friends.place();
   },
   showResults(r) {
@@ -11215,6 +11308,7 @@ const Game = {
     Input.pollPad();
     Net.inviteKeys();
     PadNav.tick(rdt);
+    Admin.tick();
     Touch.sync();
     const m = this.match;
     if (m && (this.state === 'match' || this.state === 'paused' || this.state === 'results' || this.state === 'replay')) {
@@ -11275,7 +11369,7 @@ const Game = {
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
   CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,

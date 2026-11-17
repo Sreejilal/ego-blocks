@@ -175,3 +175,7 @@ file in file-name order into ONE function scope. There are no imports or exports
 ## CrazyGames SDK that starts late (Nov 2026)
 - `Portal.boot` waits 8 seconds for `sdk.init()`. Before, a slower start meant the SDK was off for good (their preview showed "First gameplay start: No"). Now `Portal.attach(sdk, true)` + `lateReady()` switch it on whenever init finishes; only the Data-module save is skipped when late (progress stays in localStorage for that visit).
 - `test/crazygames.js` has a slow-SDK check (the stand-in init waits for `__cg.go()`).
+
+## Owner admin panel (Nov 2026)
+- `src/11_admin.js` `Admin`: shown only when `Save.data.codes` holds the current (not retired) `give: 'all'` code from `CODES`, so only the owner's save sees it. Start screen `#lob-admin` (ADMIN PANEL): emeralds, blueprints, +1 level, RP, unlock everything. Pause menu `#p-admin` in a bot match (not online, not the tutorial): score +/-, clock +/-30s, ball to me, awaken, freeze them / super speed / never tired toggles (`match.adm`, applied in `Admin.tick`), win now, end match.
+- Online it never appears (server-run matches stay fair). `test/admin.js` marks the save from `EGO.CODES` so the secret code is never typed in the repo.
