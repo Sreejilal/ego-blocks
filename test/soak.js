@@ -6,14 +6,16 @@ const results = [];
 const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name + (info !== undefined ? '  ' + JSON.stringify(info) : ''));
 const MODES = (process.env.SOAK_MODES || 'quick,ranked,lawless,koth,volleys,duel,freekick,tutorial').split(',');
 const SECS = +(process.env.SOAK_SECS || 300); // game seconds per mode
+const POS = process.env.SOAK_POS || null; // play a position, e.g. SOAK_POS=GK: you in goal
 
 (async () => {
   const { browser, page, logs } = await open({ wait: 1200, viewport: { width: 960, height: 540 } });
   for (const mode of MODES) {
-    const r = await page.evaluate(({ mode, SECS, seed }) => {
+    const r = await page.evaluate(({ mode, SECS, seed, POS }) => {
       let s = seed; const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
       const G = EGO.Game, I = EGO.Input, F = EGO.PITCH; G.manual = true;
       const st = EGO.Save.data.settings; st.cutins = false; st.camPicked = true; st.autoFs = false;
+      if (POS) EGO.Save.data.pos = POS;
       G.startMatch(mode);
       const m = G.match, bad = [], seen = {};
       const note = (k, info) => { if (!seen[k]) { seen[k] = 1; bad.push(k + ' ' + JSON.stringify(info)); } };
@@ -52,7 +54,7 @@ const SECS = +(process.env.SOAK_SECS || 300); // game seconds per mode
       if (G.state === 'match') G.forfeit();
       G.toLobby && G.state !== 'lobby' && G.toLobby();
       return out;
-    }, { mode, SECS, seed: 1234 + mode.length * 77 });
+    }, { mode, SECS, seed: 1234 + mode.length * 77, POS });
     const ends = r.mode === 'tutorial' ? true : r.state === 'results' || r.phase === 'end';
     check(mode + ': no NaN, nothing outside the stadium or inside the stands, no long stops, the match ends', !r.bad.length && ends, r);
   }

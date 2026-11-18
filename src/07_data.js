@@ -177,7 +177,7 @@ const ABILITIES = {
     use(p, m) {
       if (m.ball.owner === p) return 'ALREADY ON THE BALL';
       const b = m.ball;
-      if (b.owner && b.owner.isGK) return 'THE KEEPER HAS IT';
+      if (m.safeGK(b.owner)) return 'THE KEEPER HAS IT';
       if (b.owner && b.owner.team !== p.team && dist2D(b.owner.pos, p.pos) < 7.5) { m.graveGrab(p, b.owner); return true; }
       if (!b.owner && dist2D(b.pos, p.pos) < 6.5 && b.pos.y < 2.2) { m.graveGrab(p, null); return true; }
       return 'NO TARGET IN RANGE';
@@ -280,7 +280,7 @@ const ABILITIES = {
     use(p, m) {
       const b = m.ball, o = b.owner;
       if (!o || o.team === p.team) return 'NO CARRIER NEAR';
-      if (o.isGK) return 'THE KEEPER HAS IT';
+      if (m.safeGK(o)) return 'THE KEEPER HAS IT';
       if (dist2D(o.pos, p.pos) > 2) return 'TOO FAR';
       if (o.tackleProof > 0 || o.iframes > 0 || o.protect > 0 || o.fx.bubble > 0) return 'THEY KEPT IT';
       b.release(); o.pickBlock = 0.5; m.possess(p); m.label(p, 'POKED', p.aura); Sfx.touch();
@@ -459,6 +459,7 @@ const FLOW_IDS = Object.keys(FLOWS);
 const AWAKEN_TIME = 20;
 /** the feint (C): a step-over cut nobody can tackle you through, once every FEINT_CD seconds */
 const FEINT_CD = 5;
+const KEEP_HOLD = 6; // you in goal: seconds you can hold the ball before it goes to a teammate by itself
 /** SLOW-MO (C twice within SLOWMO_TAP seconds): with the ball, opponents within SLOWMO_RANGE (not keepers) move at SLOWMO_SLOW
     speed and nobody can tackle you, for SLOWMO_TIME or until the ball leaves you. Once every SLOWMO_CD seconds */
 const SLOWMO_CD = 20, SLOWMO_TIME = 2.5, SLOWMO_RANGE = 8, SLOWMO_SLOW = 0.45, SLOWMO_TAP = 0.4;
@@ -748,7 +749,7 @@ const SETUPS_5 = { defensive: { name: 'ULTRA DEFENSIVE', roles: ['GK', 'DEF', 'D
 /** the most attacking role first: you play it, and it takes the kickoff */
 const ROLE_ORDER = ['ST', 'FW', 'MID', 'LW', 'RW', 'DEF', 'DEF2'];
 /** what each outfield spot is called on the position picker (the match intro), and what you do there */
-const ROLE_INFO = { ST: ['STRIKER', 'SCORE GOALS'], FW: ['FORWARD', 'SECOND STRIKER'], MID: ['MIDFIELD', 'PASS AND RUN'], LW: ['LEFT WING', 'RUN THE LEFT SIDE'], RW: ['RIGHT WING', 'RUN THE RIGHT SIDE'], DEF: ['DEFENDER', 'STOP THEIR ATTACKS'], DEF2: ['SIDE DEFENDER', 'GUARD THE SIDE'] };
+const ROLE_INFO = { GK: ['KEEPER', 'SAVE THEIR SHOTS'], ST: ['STRIKER', 'SCORE GOALS'], FW: ['FORWARD', 'SECOND STRIKER'], MID: ['MIDFIELD', 'PASS AND RUN'], LW: ['LEFT WING', 'RUN THE LEFT SIDE'], RW: ['RIGHT WING', 'RUN THE RIGHT SIDE'], DEF: ['DEFENDER', 'STOP THEIR ATTACKS'], DEF2: ['SIDE DEFENDER', 'GUARD THE SIDE'] };
 const leadRole = (roles) => roles.filter((r) => r !== 'GK').sort((a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b))[0];
 const teamSizeFor = (mode, rp) => { if (mode === 'duel') return 2; if (mode === 'quick') return 4; if (mode !== 'ranked') return 3; const t = tierOf(rp); return t >= 4 ? 5 : t >= 2 ? 4 : 3; };
 /* the featured mode changes every 3 hours on a fixed schedule from the clock (UTC), so everyone sees the same one */

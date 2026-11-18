@@ -89,8 +89,9 @@ const Game = {
   /* ---------- the match intro (owner, Nov 2026: "when a match starts there is an animation and you can actually take a position, so not always the same")
      The camera flies in over the stadium to your player while both teams stand at kickoff; meanwhile you pick your
      position. PLAY (or ENTER, or the countdown) starts the kickoff. Not on the very first match, the tutorial or free kicks.
-     Tests skip it unless introTest is set (they drive matches frame by frame). */
-  introOn(mode) { const c = MODES[mode] || {}; return !c.tutorial && !c.practice && (!navigator.webdriver || !!this.introTest); },
+     Tests skip it unless introTest is true (they drive matches frame by frame); introTest false turns it off for a test
+     that pretends to be a real browser. */
+  introOn(mode) { const c = MODES[mode] || {}; return !c.tutorial && !c.practice && (this.introTest != null ? !!this.introTest : !navigator.webdriver); },
   beginIntro() {
     const m = this.match;
     if (!m || !m.human) return;
@@ -106,9 +107,9 @@ const Game = {
     if (!m || !this.intro || !m.human) return false;
     const h = m.human;
     if (h.role === r) return true;
-    const o = m.teams[h.team].find((p) => p.role === r && !p.isHuman && !p.isGK);
+    const o = m.teams[h.team].find((p) => p.role === r && !p.isHuman);
     if (!o) return false;
-    o.role = h.role; h.role = r;
+    m.swapRoles(h, o); // in goal: the keeper's kit and number 1 come with it
     m.setupKickoff(0, true, true);
     Save.data.pos = r; Save.save();
     UI.renderIntro(m);
@@ -121,9 +122,12 @@ const Game = {
     if (!m) return;
     m.setupKickoff(0, true); // the real kickoff: the banner, everyone on their spot
     Cam.reset(0);
+    this.keeperTip(m);
     Sfx.init(); Sfx.setCrowd(0.55); Touch.autoFs(); Input.consumeEdges(); Input.requestLock(); UI.lockHint();
   },
-  stopIntro() { this.intro = null; document.body.classList.remove('intro'); UI.hideIntro(); },
+  /** you are in goal: how to save */
+  keeperTip(m) { if (m && m.human && m.human.isGK && !m.fk) m.toast(Touch.on ? 'YOU ARE IN GOAL · TAP DIVE TO SAVE' : Input.usingPad ? 'YOU ARE IN GOAL · B TO DIVE' : 'YOU ARE IN GOAL · C TO DIVE, HOLD SPACE FOR A HIGH ONE', 'gold', m.human); },
+  stopIntro() { this.intro = null; Net.intro = null; document.body.classList.remove('intro'); UI.hideIntro(); },
   introTick(rdt, m) {
     const I = this.intro, E = Input.edges;
     I.t += rdt; I.left -= rdt;
@@ -164,7 +168,7 @@ const Game = {
     if (!intro) Input.requestLock(); // the intro wants the mouse free for the position buttons
     Input.consumeEdges();
     Cam.look(0); Cam.follow(1, this.match);
-    if (intro) this.beginIntro();
+    if (intro) this.beginIntro(); else this.keeperTip(this.match);
     this.matchReady();
   },
   /** a match (offline or online) is set up: build every shader now, not mid-match the first time something shows,

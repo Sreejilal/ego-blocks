@@ -81,7 +81,7 @@ const Portal = {
   /** every frame: tell them when a match is being played, and when it stops (menu, results, replays) */
   tick() {
     if (!this.on) return;
-    const live = (Game.state === 'match' && !Game.gate && !Game.intro) || (Game.state === 'online' && !Net.paused);
+    const live = (Game.state === 'match' && !Game.gate && !Game.intro) || (Game.state === 'online' && !Net.paused && !Net.intro);
     if (live === this.live) return;
     this.live = live;
     this.try(() => (live ? this.sdk.game.gameplayStart() : this.sdk.game.gameplayStop()));

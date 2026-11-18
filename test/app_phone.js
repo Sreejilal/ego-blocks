@@ -141,6 +141,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   }
   // second match: pause menu
   await tap('#go-quick'); await sleep(500);
+  // the match intro: the camera flies in and you can pick your position; PLAY starts it
+  const intro = await page.evaluate(() => ({ on: !!EGO.Game.intro, roles: document.querySelectorAll('#in-roles .in-role').length }));
+  check('the second match opens with the intro and the position picker', intro.on && intro.roles >= 2, intro);
+  await shot(page, '10b_intro');
+  if (intro.on) { await tap('#in-go'); await sleep(300); }
+  check('PLAY on the intro starts the match', !(await page.evaluate(() => EGO.Game.intro)));
   const m2 = await page.evaluate(() => ({ st: EGO.Game.state, size: EGO.Game.match && EGO.Game.match.size }));
   check('second match is also a small one (2v2)', m2.st === 'match' && m2.size === 2, m2);
   await step(240, true);

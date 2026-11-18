@@ -73,7 +73,7 @@ class Match {
     }
     for (let team = 0; team < 2; team++) {
       const roles = this.rolesFor(team), lead = leadRole(roles);
-      const mine = team === 0 && opts.role && opts.role !== 'GK' && roles.includes(opts.role) ? opts.role : lead; // the position you picked last time, when this line-up has it
+      const mine = team === 0 && opts.role && !this.cfg.tutorial && !this.cfg.practice && roles.includes(opts.role) && !(opts.role === 'GK' && this.cfg.noKeeper) ? opts.role : lead; // the position you picked last time (in goal too), when this line-up has it
       for (const role of roles) {
         if (this.cfg.noKeeper && role === 'GK') continue; // No Keepers: open goals
         const net = opts.humans ? seat[team + role] : null;
@@ -136,6 +136,16 @@ class Match {
   skill(p) { const s = this.teamD[p.team]; return p.isGK ? clamp(s + 0.08 + (5 - this.gkSize()) * 0.11 + Math.max(0, s - 0.6) * 0.8, 0.45, 1.5) : s; }
   /** a team's keeper (null when an online match is played with no keepers) */
   keeperOf(team) { return this.teams[team].find((p) => p.isGK) || null; }
+  /** the keeper's ball is safe: a computer keeper's always, yours only inside your box (no running the length of the pitch untouchable) */
+  safeGK(p) { return !!p && p.isGK && this.ball.owner === p && (!p.isHuman || this.inOwnBox(p)); }
+  /** two players on one team trade positions (the intro's position picker). Whoever goes in goal gets the keeper's kit, gloves and number 1 */
+  swapRoles(a, b) {
+    [a.role, b.role] = [b.role, a.role];
+    if (a.isGK === (a.role === 'GK') && b.isGK === (b.role === 'GK')) return;
+    a.isGK = a.role === 'GK'; b.isGK = b.role === 'GK';
+    [a.number, b.number] = [b.number, a.number];
+    a.repaint(); b.repaint();
+  }
   gkSize() { return this.fk ? 5 : this.size; } // free kicks: no small-team keeper boost (one shot at a time) // keepers get a boost in small teams (they face more shots) and against very good bots (who shoot from far)
   opponents(p) { return this.teams[1 - p.team]; }
   inOwnBox(p, pos = p.pos) {
@@ -276,6 +286,7 @@ class Match {
     if (p.fkHold) { this.freeKickControls(dt, c, p, cy); return; }
     if (p.inWall) { p.mx = p.mz = 0; p.charging = false; p.charge = 0; if (c.jump) this.jump(p); return; } // in the wall for their free kick: jump to block it
     let dodge = c.dodge;
+    if (p.isGK && this.keeperControls(dt, c, p, ml)) dodge = false;
     if (dodge) { // C twice quickly (B, FEINT): SLOW-MO instead of a second feint. Checked here, so it works during the feint's step too
       if (this.time - p.cTapAt < SLOWMO_TAP) { p.cTapAt = -9; dodge = false; if (this.slowMo(p)) this.cutFeint(p); } else p.cTapAt = this.time;
     }
@@ -318,6 +329,41 @@ class Match {
     // the Flow button also awakens you when the Awakening bar is full and Flow is not
     if (c.flow) { if (!this.activateFlow(p) && !(p.awakeT > 0 && !p.awakeMoveUsed && this.tryAwakenMove(p)) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
     if (c.item) this.useItem(p);
+  }
+  /** you are the keeper. The FEINT button (C, B) dives: at a shot coming in it dives to where the ball is going (push the
+      other way to guess the other side), with SPACE held or a high shot it is a high dive. Let go of the stick and you
+      step to the keeper's spot by yourself. The ball in your hands: walk with it in the box, PASS throws it, SHOOT kicks
+      it long; held too long, or taken out of the box, it goes by itself. Returns true when the button was used to dive */
+  keeperControls(dt, c, p, ml) {
+    const b = this.ball;
+    if (p.state === 'hold') {
+      p.holdFor = (p.holdFor || 0) + dt;
+      if (!this.inOwnBox(p)) { p.setState('free'); b.held = false; p.holdFor = 0; } // no hands outside the box: it drops to your feet
+      else if (p.holdFor > KEEP_HOLD) { p.holdFor = 0; AI.distribute(this, p); this.toast('TOO LONG: IT WENT TO A TEAMMATE', 'bad', p); }
+      return true;
+    }
+    p.holdFor = 0;
+    if (b.owner === p) return false; // the ball at your feet: you play like anyone (FEINT is a feint)
+    if (ml < 0.12 && p.state === 'free' && !p.charging) { // hands off the stick: the keeper's spot, facing the ball
+      const t = AI.keeperSpot(this, p), dx = t.x - p.pos.x, dz = t.z - p.pos.z, d = Math.hypot(dx, dz);
+      if (d > 0.3) { const k = Math.min(1, d / 2.5) * 0.85; p.mx = dx / d * k; p.mz = dz / d * k; p.sprint = d > 4; }
+      if (p.faceYaw == null) p.faceYaw = yawTo(p.pos, b.pos);
+    }
+    if (c.dodge) this.keeperDive(p, p.mx, c.jumpHeld);
+    return true; // without the ball the button only ever dives
+  }
+  keeperDive(p, push, high) {
+    if (p.state !== 'free' || !p.onGround || (p.diveAt || -9) > this.time) return false;
+    const b = this.ball, s = this.dir(p.team);
+    let dx = 0, ky = high ? 2.3 : 0.7, tk = 0.4;
+    const K = !b.owner && b.vel.z * s < -0.5 && b.vel.lengthSq() > 49 ? AI.crossAt(b, p.pos.z) : null; // a ball flying this way
+    const want = Math.abs(push) > 0.3 ? sgn(push) : 0;
+    if (K && Math.abs(K.x) < F.GW + 3 && (!want || sgn(K.x - p.pos.x) === want || Math.abs(K.x - p.pos.x) < 0.6)) { dx = K.x - p.pos.x; ky = Math.max(ky, K.y); tk = K.t; }
+    else dx = (want || sgn(b.pos.x - p.pos.x) || 1) * 3.2;
+    if (Math.abs(dx) < 0.5) dx = sgn(dx || 1) * 0.5;
+    AI.dive(this, p, dx, ky, tk, Math.max(0.8, this.skill(p)));
+    p.diveAt = this.time + 1.1;
+    return true;
   }
   pickPassTarget(p) {
     const yaw = p.camYaw != null ? p.camYaw : this.camYaw, fx = Math.sin(yaw), fz = Math.cos(yaw);
@@ -682,7 +728,7 @@ class Match {
         Sfx.kick(0.3);
       }
       for (const o of this.opponents(p)) {
-        if (o.state === 'down' || (o.isGK && this.ball.owner === o)) continue; // nobody takes the keeper's ball
+        if (o.state === 'down' || this.safeGK(o)) continue; // nobody takes the keeper's ball
         if (Math.hypot(o.pos.x - hx, o.pos.z - hz) > R + P_R * 0.5 || Math.abs(o.pos.y - p.pos.y) > 1.3) continue;
         S.hit = true;
         if (o === b.owner) {
@@ -719,7 +765,7 @@ class Match {
     if (this.involvesHuman(tackler, carrier)) TimeCtl.slowMo(0.45, 0.35);
   }
   knockDown(t, dur, dx, dz, power = 3, by = null) {
-    if (t.fx.bubble > 0 || (t.isGK && this.ball.owner === t)) return false;
+    if (t.fx.bubble > 0 || this.safeGK(t)) return false;
     const b = this.ball;
     if (b.owner === t) {
       b.release();
@@ -744,7 +790,7 @@ class Match {
   steal(p, from) {
     const b = this.ball;
     if (b.owner !== from) return false;
-    if (from.iframes > 0 || from.tackleProof > 0 || from.fx.bubble > 0 || from.protect > 0 || from.isGK) { this.ankleBreak(p, from); return false; } // the keeper's ball is safe
+    if (from.iframes > 0 || from.tackleProof > 0 || from.fx.bubble > 0 || from.protect > 0 || this.safeGK(from)) { this.ankleBreak(p, from); return false; } // the keeper's ball is safe
     b.release(); this.possess(p);
     from.pickBlock = 0.8; this.stun(from, 0.45);
     p.stats.tackles++; this.flowAdd(p, 15);
@@ -965,7 +1011,7 @@ class Match {
     // the wall: the other team's outfield players, you first when it is their kick
     this.fkWall = this.teams[1 - t].filter((p) => !p.isGK).sort((a, b) => (b === h) - (a === h));
     this.teams[t].filter((p) => p !== sh && !p.isGK).forEach((p, i) => { p.pos.set(x + (i % 2 ? 1 : -1) * (3 + i), 0, z - s * (5 + i)); p.yaw = yaw; }); // your teammates stand back
-    const og = this.teams[t].find((p) => p.isGK); if (og) { og.pos.set(0, 0, -gz + s * 1.2); og.yaw = s > 0 ? 0 : Math.PI; }
+    const og = this.teams[t].find((p) => p.isGK && p !== sh); if (og) { og.pos.set(0, 0, -gz + s * 1.2); og.yaw = s > 0 ? 0 : Math.PI; }
     const side = Math.abs(x) > 1 ? sgn(x) : pick([-1, 1]); // the near post (a kick from the middle: either one)
     let wx = side * F.GW * 0.5 - x, wz = gz - z; const wl = Math.hypot(wx, wz); wx /= wl; wz /= wl;
     const n = Math.min(this.fkWall.length, dist < 19 ? 4 : dist < 23 ? 3 : 2); // closer in, a bigger wall
@@ -1220,7 +1266,7 @@ class Match {
       case 'pull': {
         if (b.owner === p) return 'YOU HAVE THE BALL';
         if (b.owner && b.owner.team === p.team) return 'A TEAMMATE HAS IT';
-        if (b.owner && b.owner.isGK) return 'THE KEEPER HAS IT';
+        if (this.safeGK(b.owner)) return 'THE KEEPER HAS IT';
         if (dist2D(b.pos, p.pos) > 14) return 'THE BALL IS TOO FAR';
         if (b.owner) { const o = b.owner; b.release(); o.pickBlock = 0.6; }
         FX.trail(b.pos.x, b.pos.y, b.pos.z, p.aura, 0.4, 0.5); this.possess(p); break;
@@ -1228,7 +1274,7 @@ class Match {
       case 'pounce': {
         if (b.owner === p) return 'YOU HAVE THE BALL';
         if (b.owner && b.owner.team === p.team) return 'A TEAMMATE HAS IT';
-        if (b.owner && b.owner.isGK) return 'THE KEEPER HAS IT';
+        if (this.safeGK(b.owner)) return 'THE KEEPER HAS IT';
         const dx = b.pos.x - p.pos.x, dz = b.pos.z - p.pos.z, d = len2D(dx, dz);
         if (d > 16) return 'THE BALL IS TOO FAR';
         p.tackleProof = Math.max(p.tackleProof, 0.6);
@@ -1250,11 +1296,11 @@ class Match {
       case 'steal': {
         const o = b.owner;
         if (!o || o.team === p.team) return 'NO CARRIER NEAR';
-        if (o.isGK) return 'THE KEEPER HAS IT';
+        if (this.safeGK(o)) return 'THE KEEPER HAS IT';
         const dx = o.pos.x - p.pos.x, dz = o.pos.z - p.pos.z, d = len2D(dx, dz);
         if (d > 10) return 'TOO FAR';
         p.tackleProof = Math.max(p.tackleProof, 0.6);
-        this.dashP(p, dx / (d || 1), dz / (d || 1), Math.max(16, d / 0.32), 0.32, { home: o, onEnd: () => { const c = this.ball.owner; if (c && c.team !== p.team && !c.isGK && dist2D(c.pos, p.pos) < 2.8 && !(c.fx.bubble > 0)) { this.ball.release(); c.pickBlock = 0.6; this.possess(p); this.label(p, 'STOLEN', p.aura); } } });
+        this.dashP(p, dx / (d || 1), dz / (d || 1), Math.max(16, d / 0.32), 0.32, { home: o, onEnd: () => { const c = this.ball.owner; if (c && c.team !== p.team && !this.safeGK(c) && dist2D(c.pos, p.pos) < 2.8 && !(c.fx.bubble > 0)) { this.ball.release(); c.pickBlock = 0.6; this.possess(p); this.label(p, 'STOLEN', p.aura); } } });
         break;
       }
       case 'starfall':
@@ -1853,7 +1899,7 @@ class Match {
     for (const p of this.players) {
       if (!(p.fx.magnet > 0)) continue;
       if (Math.random() < 0.6) FX.trail(lerp(p.pos.x, b.pos.x, Math.random()), lerp(1, b.pos.y, Math.random()), lerp(p.pos.z, b.pos.z, Math.random()), '#ff4d5e', 0.12, 0.25);
-      if (b.owner && b.owner.team !== p.team && dist2D(b.owner.pos, p.pos) < 7.5 && !(b.owner.fx.bubble > 0) && !b.owner.isGK) {
+      if (b.owner && b.owner.team !== p.team && dist2D(b.owner.pos, p.pos) < 7.5 && !(b.owner.fx.bubble > 0) && !this.safeGK(b.owner)) {
         const o = b.owner; b.release(); o.pickBlock = 0.8;
         const dx = p.pos.x - b.pos.x, dz = p.pos.z - b.pos.z, l = len2D(dx, dz) || 1;
         b.vel.set(dx / l * 12, 3, dz / l * 12); b.kick = { by: p, type: 'loose', t: this.time };

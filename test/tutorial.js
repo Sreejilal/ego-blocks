@@ -17,7 +17,9 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
     p.on('pageerror', (e) => logs.push(e.message));
     if (init) await p.addInitScript(init);
     await p.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ body: '', contentType: 'text/css' }));
-    await p.goto(URL, { timeout: 120000 }); await p.waitForFunction((s) => window.EGO && EGO.Game.state === s, state, { timeout: 120000 }); return p;
+    await p.goto(URL, { timeout: 120000 }); await p.waitForFunction((s) => window.EGO && EGO.Game.state === s, state, { timeout: 120000 });
+    await p.evaluate(() => { EGO.Game.introTest = false; }); // no match intro here (test/intro.js has it)
+    return p;
   };
 
   // a brand-new player (a real browser, not a test robot) lands on the pitch, behind CLICK TO PLAY

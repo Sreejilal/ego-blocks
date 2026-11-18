@@ -173,11 +173,12 @@ const UI = {
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
             <li><b>Ranked:</b> win +25, draw +5, loss -15. Wood, Stone, Iron, Gold, Diamond, Obsidian. Every tier is a step up: bots react faster, pass and tackle smarter, keepers get better, and the stadium gets bigger, fuller and louder.</li>
-            <li><b>Random match:</b> PLAY ONLINE, then RANDOM MATCH puts you in a match with other players who are online. It starts by itself after a few seconds; bots fill any empty spots, and new players take a bot's place.</li>
+            <li><b>Random match:</b> PLAY ONLINE, then RANDOM MATCH puts you in a match with other players who are online. It starts by itself after a few seconds; bots fill any empty spots, and new players take a bot's place. Each match is a different mode (Quick, Turbo, Moon Ball and more).</li>
             <li><b>Play with friends:</b> create a room, send the code or invite link, pick teams and a mode. The host picks BOTS: FILL puts bots in the empty spots, KEEPERS ONLY is just you and your friends with computer keepers, NONE is only you and your friends. Keyboard, controller and phone players can all join the same room.</li>
             <li><b>Players online:</b> on PLAY ONLINE you can see who else has the game open. INVITE asks them into your room (it makes one if you have none), ADD FRIEND asks to be friends (you both need an account), JOIN walks into a friend's room. Friends also show on the Profile screen with an INVITE button. Do not want to be seen or invited? Turn SHOW ME HERE off, or set INVITES FROM to FRIENDS or NOBODY.</li>
             <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
-            <li><b>Your position:</b> before each match the camera flies in and you pick where you play: striker, midfield, wing or defence. The game remembers it for next time.</li>
+            <li><b>Your position:</b> before each match the camera flies in and you pick where you play: striker, midfield, wing, defence or in goal. The game remembers it for next time.</li>
+            <li><b>In goal:</b> C (B on a controller, DIVE on a phone) dives to save, at a shot it dives to where the ball is going; hold SPACE for a high dive. Let go of the stick and you stand in the right spot by yourself. With the ball in your hands, PASS throws it to a teammate and SHOOT kicks it long.</li>
             <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
             <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
@@ -897,13 +898,17 @@ const UI = {
     </section>`;
   },
   introRoles: [],
-  showIntro(m) {
+  /** online: only the team names (the server picks the positions) */
+  showIntro(m, online = false) {
     const t0 = $('in-t0'), t1 = $('in-t1');
     t0.textContent = TEAM[0].full; t0.style.color = TEAM[0].hex;
     t1.textContent = TEAM[1].full; t1.style.color = TEAM[1].hex;
-    $('in-mode').textContent = m.cfg.name + ' · ' + m.size + 'V' + m.size + (m.cfg.tip ? ' · ' + m.cfg.tip : '');
-    // your team's outfield spots, from the back to the front
-    this.introRoles = m.teams[m.human.team].filter((p) => !p.isGK).map((p) => p.role).sort((a, b) => ROLE_ORDER.indexOf(b) - ROLE_ORDER.indexOf(a));
+    $('in-mode').textContent = (online ? 'ONLINE · ' : '') + m.cfg.name + ' · ' + m.size + 'V' + m.size + (m.cfg.tip ? ' · ' + m.cfg.tip : '');
+    document.querySelector('#intro .in-pick').hidden = online;
+    if (online) { this.introRoles = []; $('intro').hidden = false; return; }
+    // every spot on your team, from the back (in goal) to the front
+    const back = (r) => (r === 'GK' ? 99 : ROLE_ORDER.indexOf(r));
+    this.introRoles = m.teams[m.human.team].map((p) => p.role).sort((a, b) => back(b) - back(a));
     $('in-keys').textContent = Touch.on ? '' : 'KEYS 1-' + this.introRoles.length + ' PICK · ENTER PLAYS';
     $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${ROLE_INFO[r][1]}</span></button>`).join('');
     this.renderIntro(m);

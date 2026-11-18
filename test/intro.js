@@ -1,6 +1,7 @@
 // The match intro: the camera flies in while both teams wait at kickoff, you pick your position (you swap with the bot who
 // had it), PLAY or ENTER or the countdown starts the kickoff, and the next match remembers your position.
 // Not on the very first match, the tutorial or free kicks. Tests normally skip it (EGO.Game.introTest turns it on).
+// Online the camera flies in too, without the picker (test/random.js).
 const { open } = require('./harness');
 const results = [];
 const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name + (info !== undefined ? '  ' + JSON.stringify(info) : ''));
@@ -18,7 +19,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const s0 = await st();
   check('PLAY starts the intro: the picker shows, the match HUD is hidden', s0.intro && s0.shown && s0.state === 'match' && s0.hud === 'hidden', s0);
   const roles = await page.evaluate(() => [...document.querySelectorAll('#in-roles .in-role')].map((b) => ({ r: b.dataset.r, on: b.getAttribute('aria-pressed') === 'true', t: b.textContent })));
-  check('every outfield spot on your team can be picked (no keeper), yours is lit', roles.length === 3 && !roles.some((x) => x.r === 'GK') && roles.filter((x) => x.on).length === 1 && roles.find((x) => x.on).r === s0.role, roles);
+  check('every spot on your team can be picked (the keeper first), yours is lit', roles.length === 4 && roles[0].r === 'GK' && roles.filter((x) => x.on).length === 1 && roles.find((x) => x.on).r === s0.role, roles);
   const cam0 = await page.evaluate(() => EGO.World.camera.position.toArray().map((v) => +v.toFixed(1)));
   await page.evaluate(() => EGO.Game.stepManual(90));
   await settle(); await shot('intro1_fly');
@@ -30,7 +31,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   check('ESC does not pause the intro', (await st()).state === 'match');
 
   // pick another position
-  const other = roles.find((x) => !x.on).r;
+  const other = roles.find((x) => !x.on && x.r !== 'GK').r; // an outfield spot (in goal has its own test: keeper.js)
   const before = await page.evaluate((r) => { const m = EGO.Game.match; const o = m.teams[0].find((p) => p.role === r); return { botName: o.name }; }, other);
   await settle();
   await page.click(`#in-roles [data-r="${other}"]`); await sleep(150);
@@ -68,7 +69,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   check('no intro on the tutorial, free kicks or the first match ever', !none.tutorial && !none.freekick && !none.first && none.gate, none);
   // 5v5 and the duel: the picker matches the line-up
   const five = await page.evaluate(() => { const G = EGO.Game; G.introTest = true; G.startMatch('duel'); const d = document.querySelectorAll('#in-roles .in-role').length; G.toLobby(); EGO.Save.data.rp = 99999; G.startMatch('ranked'); const r = document.querySelectorAll('#in-roles .in-role').length, size = G.match.size; G.toLobby(); EGO.Save.data.rp = 0; return { duel: d, ranked: r, size }; });
-  check('the picker has one spot in a duel and four in 5v5', five.duel === 1 && five.ranked === 4 && five.size === 5, five);
+  check('the picker has two spots in a duel and five in 5v5 (the keeper too)', five.duel === 2 && five.ranked === 5 && five.size === 5, five);
   // a phone
   await page.setViewportSize({ width: 844, height: 390 });
   await page.evaluate(() => { EGO.Game.startMatch('quick'); EGO.Game.stepManual(30); });

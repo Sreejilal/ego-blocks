@@ -158,7 +158,7 @@ const Touch = {
     this.ptrs.set(id, rec);
     btn.classList.add('down');
     if (act === 'pause' || act === 'board' || act === 'chat' || act === 'cam' || act === 'emote' || act === 'fs') return; // these act on release
-    if (act === 'dt') { const m = Game.match, p = m && m.human; act = p && m.ball.owner === p ? 'dodge' : 'tackle'; rec.act = act; }
+    if (act === 'dt') { const m = Game.match, p = m && m.human; act = p && (m.ball.owner === p || p.isGK) ? 'dodge' : 'tackle'; rec.act = act; } // in goal it dives
     this.held.add(act);
     Input.edges.add('T_' + act);
   },
@@ -282,14 +282,15 @@ const Touch = {
     if (this.board) { this.boardT -= dt; if (this.boardT <= 0) this.board = false; }
     if (!this.visible || !m || !m.human) return;
     const p = m.human, c = this.cache, b = this.b;
-    const own = m.ball.owner === p;
-    if (c.own !== own) {
-      c.own = own;
-      this.parts.dt.ic.style.backgroundImage = 'url(' + (own ? iconURL('dash', '#ffffff') : iconURL('tackle', '#e8e1cf')) + ')';
-      this.tog(b.dt, 'dodge', own);
+    const own = m.ball.owner === p, dive = !own && p.isGK; // in goal, without the ball: DIVE
+    if (c.own !== own || c.dive !== dive) {
+      c.own = own; c.dive = dive;
+      this.parts.dt.ic.style.backgroundImage = 'url(' + (own || dive ? iconURL('dash', '#ffffff') : iconURL('tackle', '#e8e1cf')) + ')';
+      this.tog(b.dt, 'dodge', own || dive);
     }
-    this.setLabel('dt', own ? 'FEINT' : 'TACKLE');
-    if (own) {
+    this.setLabel('dt', own ? 'FEINT' : dive ? 'DIVE' : 'TACKLE');
+    if (dive) { const w = Math.max(0, (p.diveAt || 0) - m.time); this.setCd('dt', clamp(w / 1.1, 0, 1), ''); this.parts.dt.pips.forEach((pip) => this.tog(pip, 'on', false)); }
+    else if (own) {
       this.setCd('dt', p.dodgeCharges >= 1 ? 0 : clamp(1 - p.dodgeRe / FEINT_CD, 0, 1), p.dodgeCharges >= 1 ? '' : String(Math.ceil(FEINT_CD - p.dodgeRe)));
       this.parts.dt.pips.forEach((pip, i) => this.tog(pip, 'on', i < p.dodgeCharges));
     } else {

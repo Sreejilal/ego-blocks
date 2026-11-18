@@ -8,6 +8,7 @@
 const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken', 'emote'];
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
 const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL'], ['golden', 'GOLDEN GOAL'], ['nokeep', 'NO KEEPERS'], ['turbo', 'TURBO'], ['moon', 'MOON BALL']];
+const NET_FLY = 2.4; // online: the camera flight at the start of a match (inside the server's first kickoff wait, so nobody loses play time)
 const NET_DELAY = 0.12; // the least the picture runs behind the server (more on a jittery connection: Net.delay)
 const NET_COAST = 0.1; // a late snapshot: everything keeps moving the way it was going for up to this long instead of freezing
 const CHAT_SHOW = [['all', 'ALL'], ['quick', 'QUICK'], ['off', 'OFF']];
@@ -376,7 +377,8 @@ const Net = {
       this.pubAt = R.startIn != null ? performance.now() + R.startIn : null;
       const tick = () => {
         const left = this.pubAt == null ? null : Math.max(0, Math.ceil((this.pubAt - performance.now()) / 1000)), n = R.players.length;
-        $('on-pub-t').textContent = R.state === 'match' ? 'A MATCH IS ON' : (left ? 'STARTS IN ' + left : 'STARTING...') + ' · ' + n + ' PLAYER' + (n > 1 ? 'S' : '') + (n < 2 ? ' · BOTS FILL THE EMPTY SPOTS, MORE PLAYERS CAN STILL JOIN' : '');
+        const mode = (NET_MODES.find((x) => x[0] === R.mode) || NET_MODES[0])[1]; // a random room plays a different mode each match
+        $('on-pub-t').textContent = R.state === 'match' ? 'A MATCH IS ON' : 'NEXT: ' + mode + ' · ' + (left ? 'STARTS IN ' + left : 'STARTING...') + ' · ' + n + ' PLAYER' + (n > 1 ? 'S' : '') + (n < 2 ? ' · BOTS FILL THE EMPTY SPOTS, MORE PLAYERS CAN STILL JOIN' : '');
       };
       tick(); if (R.state !== 'match') this.pubT = setInterval(() => { if (this.room !== R) { clearInterval(this.pubT); this.pubT = null; return; } tick(); }, 250);
     }
@@ -499,6 +501,9 @@ const Net = {
     UI.show('hud'); UI.buildHud(nm); $('chatfeed').replaceChildren(); this.idleWarn(null);
     Sfx.init(); Sfx.setCrowd(0.55);
     Input.consumeEdges(); Input.requestLock();
+    // the start of a match: the camera flies in over the stadium while both teams wait for the kickoff (not when you jump in mid-match)
+    this.intro = !msg.live && me && Game.introOn('online') ? { t: 0, yaw: me.team === 1 ? Math.PI : 0, fly: Math.min(NET_FLY, 2.5 / (nm.cfg.speed || 1) - 0.1) } : null; // Turbo's kickoff comes sooner
+    if (this.intro) { document.body.classList.add('intro'); UI.showIntro(nm, true); }
     Game.matchReady();
     if (msg.live) this.note('YOU JUMPED INTO A MATCH THAT WAS ALREADY ON'); // a friend's invite, mid-match
   },
@@ -629,7 +634,7 @@ const Net = {
     const nm = this.nm; if (!nm) return;
     const busy = this.paused || this.typing();
     if (!busy) UI.emoteKeys();
-    if (!busy) Cam.look(rdt);
+    if (!busy && !this.intro) Cam.look(rdt);
     this.collect(busy ? null : Input.controls());
     const me = nm.human, hc = this.held; // the curve you are putting on a shot, for the power bar (the server works out the real one)
     if (me) me.shotCurve = me.charging && hc ? damp(me.shotCurve || 0, clamp(hc.moveX || 0, -1, 1), 12, rdt) : 0;
@@ -640,9 +645,12 @@ const Net = {
     this.applySnapshots(rdt);
     for (const p of nm.players) { if (p.flowT > 0) FX.flow(p, p.flowId, rdt); if (p.awakeT > 0) FX.awaken(p, rdt); }
     FX.update(rdt); Shake.update(rdt);
-    Cam.follow(rdt, nm);
+    const I = this.intro;
+    if (I) { I.t += rdt; if (I.t >= I.fly + 0.1 || nm.phase === 'play') this.endIntro(); else Cam.intro(rdt, nm, I.t, I.yaw, I.fly); }
+    if (!this.intro) Cam.follow(rdt, nm);
     UI.updateHud(nm, rdt);
   },
+  endIntro() { if (!this.intro) return; this.intro = null; document.body.classList.remove('intro'); UI.hideIntro(); },
   /** the final whistle: rewards on your side, then the results with BACK TO ROOM */
   end(m) {
     const nm = this.nm; if (!nm) return;
@@ -653,7 +661,7 @@ const Net = {
     // two or more ranks above every real player on the other team: a win or a draw gives nothing (no farming easy wins)
     const them = nm.players.filter((p) => p.netId && nm.human && p.team !== nm.human.team);
     if (them.length && nm.result.res !== 'loss' && tierOf(Save.data.rp) >= Math.max(...them.map((p) => tierOf(p.rp))) + 2) nm.result.noReward = 'rank';
-    this.idleWarn(null);
+    this.idleWarn(null); this.endIntro();
     if (mine && mine.feats) nm.feats = mine.feats;
     this.closeChat(false);
     Game.finishMatch(false);

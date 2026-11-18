@@ -466,7 +466,7 @@ const AI = {
   tryTackle(m, p, dt) {
     const c = m.ball.owner;
     if (!c || c.team === p.team || p.tackleCd > 0 || p.state !== 'free') return;
-    if (c.isGK) return; // nobody takes the keeper's ball
+    if (m.safeGK(c)) return; // nobody takes the keeper's ball (yours: only in your box)
     const d = dist2D(c.pos, p.pos), sk = m.skill(p);
     const trig = (2.2 + 0.6 * sk) * p.mods.tackleRange;
     const away = d > 0.01 ? (c.vel.x * (c.pos.x - p.pos.x) + c.vel.z * (c.pos.z - p.pos.z)) / d : 0;
@@ -538,20 +538,26 @@ const AI = {
       if (myT < oppT + 0.3) { const ip = this.interceptPoint(m, p); a.target.set(ip.x, 0, ip.z); a.sprint = true; this.steer(m, p, dt); return; }
     }
     // 3) narrow the angle; come off the line against a carrier
-    const o = b.owner;
-    let tx = clamp(b.pos.x * 0.36, -3.3, 3.3), tz = gz + s * 1.2;
+    const o = b.owner, spot = this.keeperSpot(m, p);
+    if (o && o.team !== p.team && dist2D(o.pos, p.pos) < 2.1 && p.tackleCd <= 0 && Math.random() < (0.6 + 2.2 * Math.min(1, sk)) * dt) m.tackle(p, o.pos.x - p.pos.x, o.pos.z - p.pos.z);
+    a.target.set(spot.x, 0, spot.z); a.sprint = dist2D(a.target, p.pos) > 3;
+    this.steer(m, p, dt);
+    p.faceYaw = yawTo(p.pos, b.pos);
+  },
+  /** where a keeper stands: on the line in front of the ball, off it to narrow the angle against a carrier close in
+      (also where you step to in goal when you let go of the stick) */
+  keeperSpot(m, p) {
+    const b = m.ball, s = m.dir(p.team), gz = m.ownGoalZ(p.team), o = b.owner;
+    let x = clamp(b.pos.x * 0.36, -3.3, 3.3), z = gz + s * 1.2;
     if (o && o.team !== p.team) {
       const dg = Math.hypot(o.pos.x, gz - o.pos.z);
       if (dg < 16) {
-        const k = clamp((16 - dg) / 16, 0, 1) * (1.4 + 2.6 * Math.min(1, sk)); // extra keeper skill makes saves, not wilder rushes off the line
+        const k = clamp((16 - dg) / 16, 0, 1) * (1.4 + 2.6 * Math.min(1, m.skill(p))); // extra keeper skill makes saves, not wilder rushes off the line
         const dx = o.pos.x, dz = o.pos.z - gz, l = Math.hypot(dx, dz) || 1;
-        tx = dx / l * k; tz = gz + dz / l * k;
+        x = dx / l * k; z = gz + dz / l * k;
       }
-      if (dist2D(o.pos, p.pos) < 2.1 && p.tackleCd <= 0 && Math.random() < (0.6 + 2.2 * Math.min(1, sk)) * dt) m.tackle(p, o.pos.x - p.pos.x, o.pos.z - p.pos.z);
     }
-    a.target.set(tx, 0, tz); a.sprint = dist2D(a.target, p.pos) > 3;
-    this.steer(m, p, dt);
-    p.faceYaw = yawTo(p.pos, b.pos);
+    return { x, z };
   },
   /** where a flying ball crosses the line z = zp within 1.8s: steps its path like Ball.simulate (gravity, curve, air, bounces) */
   crossAt(b, zp) {

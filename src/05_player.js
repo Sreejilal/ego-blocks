@@ -120,18 +120,30 @@ class Player {
   get free() { return this.state === 'free'; }
   get hasBall() { return this.m.ball.owner === this; }
   get aura() { return this.style.aura; }
-  buildModel() {
+  /** the painted skin: kit (the keeper's own kit and gloves), number, face, hair, boots */
+  paintSkin() {
     const side = this.side, L = this.look;
     let kit = this.isGK ? side.keeper : side.kit;
     if (!this.isGK && (L.kitPattern || L.kitTrim)) {
       kit = Object.assign({}, kit, { pattern: L.kitPattern || kit.pattern });
       if (L.kitTrim) Object.assign(kit, { collar: L.kitTrim, cuff: L.kitTrim, number: L.kitTrim, sockTrim: L.kitTrim, shortsTrim: L.kitTrim });
     }
-    this.skinTex = makePlayerSkin({
+    this.eyeCol = this.eyeCol || pick(EYE_COLS);
+    return makePlayerSkin({
       kit, crest: side.crest, boots: L.boots || (this.team === 0 ? '#1a1a1f' : '#f4efe0'), sparkle: L.sparkle,
-      skin: this.skin, hair: L.hair, hairShape: L.hairShape, face: L.face, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: pick(EYE_COLS),
+      skin: this.skin, hair: L.hair, hairShape: L.hairShape, face: L.face, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: this.eyeCol,
       seed: this.team * 97 + this.number * 13 + 7,
     });
+  }
+  /** paint again after a change of job (the intro's position picker: whoever goes in goal wears the keeper's kit) */
+  repaint() {
+    const old = this.skinTex;
+    this.skinTex = this.paintSkin(); this.mat.map = this.skinTex; this.mat.needsUpdate = true;
+    if (old) old.dispose();
+  }
+  buildModel() {
+    const L = this.look;
+    this.skinTex = this.paintSkin();
     this.mat = new THREE.MeshLambertMaterial({ map: this.skinTex });
     const G = PlayerGeo.get();
     const mk = (geo, mat, parent, x, y, z) => { const me = new THREE.Mesh(geo, mat); me.position.set(x, y, z); me.castShadow = true; parent.add(me); return me; };

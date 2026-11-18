@@ -256,7 +256,7 @@ const World = {
       const top = mkNet(gw * 2, F.GD - P, gw * 2, F.GD - P); top.rotation.x = -Math.PI / 2; top.position.set(0, gh + P / 2, s * (L + (F.GD - P) / 2)); grp.add(top);
       for (const sx of [1, -1]) { const side = mkNet(F.GD - P, gh, F.GD - P, gh); side.rotation.y = Math.PI / 2; side.position.set(sx * (gw + P / 2), gh / 2, s * (L + (F.GD - P) / 2)); grp.add(side); }
       this.scene.add(grp);
-      this.nets.push({ s, back: backNet, baseZ: backNet.position.z });
+      this.nets.push({ s, back: backNet, baseZ: backNet.position.z, grp });
     }
   },
   buildStands() {
@@ -530,7 +530,10 @@ const World = {
     this.excite[0] = Math.max(0, this.excite[0] - dt * 0.22);
     this.excite[1] = Math.max(0, this.excite[1] - dt * 0.22);
     if (this.fanMat) { this.fanMat.uniforms.uTime.value = this.time; this.fanMat.uniforms.uExcite.value.set(this.excite[0], this.excite[1]); }
+    const cp = cam.position;
     for (const n of this.nets) {
+      // the camera behind this goal (you in goal, or near your own line): its net goes away so it never fills the view (the posts and bar stay)
+      n.grp.visible = !(cp.z * n.s > F.L - 0.3 && Math.abs(cp.x) < F.GW + F.POST + 7 && cp.y < F.GH + 7);
       const i = n.s > 0 ? 0 : 1;
       this.netBulge[i] = damp(this.netBulge[i], 0, 5, dt);
       n.back.position.z = n.baseZ + n.s * this.netBulge[i] * 0.9;

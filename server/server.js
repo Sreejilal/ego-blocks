@@ -100,6 +100,12 @@ const MAX_SIZE = 5, MAX_PLAYERS = 2 * (MAX_SIZE - 1); // 5v5 with computer keepe
    short wait (bots fill the empty spots, and anyone who arrives later takes a bot's place mid-match), and starts the next
    one by itself after the results, so the same group keeps playing */
 const PUB_MAX = 6, PUB_WAIT = Number(process.env.PUB_WAIT_MS) || 15000, PUB_JOIN_WAIT = Math.min(5000, PUB_WAIT), PUB_NEXT = Number(process.env.PUB_NEXT_MS) || 20000;
+// the modes a random room plays, a different one each match (Quick Match comes up most). Never a Duel: a random room is for a crowd
+const PUB_MODES = (process.env.PUB_MODES || 'quick,quick,turbo,moon,golden,nokeep,koth,volleys').split(',').filter((m) => MODES_OK.includes(m) && m !== 'duel');
+function pubMode(last) {
+  const list = PUB_MODES.length ? PUB_MODES : ['quick'], other = list.filter((m) => m !== last), from = other.length ? other : list;
+  return from[Math.floor(Math.random() * from.length)];
+}
 function findPublic() {
   let best = null, bs = -1;
   for (const r of rooms.values()) {
@@ -112,7 +118,7 @@ function findPublic() {
 function joinRandom(me) {
   leave(me);
   let r = findPublic();
-  if (!r) { r = { code: newCode(), pub: true, host: null, hostClub: me.club, mode: 'quick', size: 3, bots: 'fill', players: [], match: null, events: [], log: [], reports: new Set(), silenced: new Set(), startAt: Date.now() + PUB_WAIT }; rooms.set(r.code, r); }
+  if (!r) { r = { code: newCode(), pub: true, host: null, hostClub: me.club, mode: pubMode(null), size: 3, bots: 'fill', players: [], match: null, events: [], log: [], reports: new Set(), silenced: new Set(), startAt: Date.now() + PUB_WAIT }; rooms.set(r.code, r); }
   else if (!r.match && r.startAt && r.startAt - Date.now() < PUB_JOIN_WAIT) r.startAt = Date.now() + PUB_JOIN_WAIT; // just arrived: a moment to see who you play with
   join(me, r);
 }
@@ -337,7 +343,7 @@ function endMatch(room) {
   broadcast(room, { t: 'end', score: m.score, players: m.players.map((p) => ({ id: p.netId || null, team: p.team, stats: p.stats, feats: p.feats || null, idle: !!p.wasIdle })) });
   m.dispose();
   room.match = null;
-  if (room.pub) room.startAt = Date.now() + PUB_NEXT; // a random room plays on by itself
+  if (room.pub) { room.startAt = Date.now() + PUB_NEXT; room.mode = pubMode(room.mode); } // a random room plays on by itself, in another mode
   sync(room);
 }
 function tick(room) {

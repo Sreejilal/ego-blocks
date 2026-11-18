@@ -9,6 +9,7 @@ const real = () => Object.defineProperty(Navigator.prototype, 'webdriver', { get
 
 (async () => {
   const { browser, page, logs } = await open({ init: real });
+  await page.evaluate(() => { EGO.Game.introTest = false; }); // no match intro here (test/intro.js has it)
   await page.evaluate(() => { EGO.Game.toLobby(); EGO.Save.data.settings.cutins = false; });
   const shown = (sel) => `(() => { const e = document.querySelector('${sel}'); return !!e && getComputedStyle(e).display !== 'none' && e.offsetParent !== null; })()`;
   const r0 = await page.evaluate(`(() => {
@@ -71,6 +72,7 @@ const real = () => Object.defineProperty(Navigator.prototype, 'webdriver', { get
 
   // a phone: the ability buttons wait for their tip, and the button to press glows
   const p = await open({ init: real, viewport: { width: 844, height: 390 }, mobile: true });
+  await p.page.evaluate(() => { EGO.Game.introTest = false; });
   const ph = await p.page.evaluate(`(() => {
     EGO.Touch.setOn(true); EGO.Save.data.settings.autoFs = false; EGO.Save.data.tips = ['move', 'shoot', 'pass', 'sprint', 'tackle', 'feint', 'flow']; const G = EGO.Game; G.startMatch('quick');
     for (let i = 0; i < 60 && G.match.phase !== 'play'; i++) G.stepManual(10);

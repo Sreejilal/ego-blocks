@@ -188,22 +188,26 @@ const Cam = {
     this.fwd.set(Math.sin(this.yaw) * cp, Math.sin(this.pitch), Math.cos(this.yaw) * cp);
   },
   /** the match intro: from high over the far corner, round the stadium and down to just behind you (Game.introTick).
-      After the flight it simply follows you, so picking another position glides the camera to your new spot */
-  intro(realDt, m, t) {
-    this.yaw = 0; this.pitch = -0.13; this.snapYaw = this.snapPitch = null;
-    this.fwd.set(0, Math.sin(this.pitch), Math.cos(this.pitch));
-    const u = clamp(t / INTRO_FLY, 0, 1);
-    if (u >= 1) { this.follow(realDt, m); return; }
-    const p = m.human, cam = World.camera, e = 1 - Math.pow(1 - u, 3), sm = (x) => x * x * (3 - 2 * x);
+      After the flight it simply follows you, so picking another position glides the camera to your new spot.
+      yaw: the way you attack (online, the away team attacks the other way); fly: how long the flight takes */
+  intro(realDt, m, t, yaw = 0, fly = INTRO_FLY) {
+    this.yaw = yaw; this.pitch = -0.13; this.snapYaw = this.snapPitch = null;
+    const sy = Math.sin(yaw), cy = Math.cos(yaw), cp = Math.cos(this.pitch);
+    this.fwd.set(sy * cp, Math.sin(this.pitch), cy * cp);
+    const u = clamp(t / fly, 0, 1);
+    const p = m.human;
+    if (u >= 1 || !p) { this.follow(realDt, m); return; }
+    const cam = World.camera, e = 1 - Math.pow(1 - u, 3), sm = (x) => x * x * (3 - 2 * x);
     if (this.hidden) this.unhide();
     // where the normal camera will be once play starts (behind you, looking up the pitch)
-    const d = this.dist, end = _v1.set(p.pos.x, 1.7 + 0.85 - this.fwd.y * d, p.pos.z - this.fwd.z * d);
+    const d = this.dist, end = _v1.set(p.pos.x - this.fwd.x * d, 1.7 + 0.85 - this.fwd.y * d, p.pos.z - this.fwd.z * d);
     const th = Math.PI * (0.2 + 0.8 * e), R = F.L * (1.45 - 0.5 * e), H = 30 - 21 * e; // round the stadium and down
+    const ox = Math.sin(th) * R, oz = Math.cos(th) * R; // the orbit for a team attacking +z, turned to the way you attack
     const b = sm(clamp((u - 0.5) / 0.5, 0, 1)); // the second half: settle in behind you
-    this.pos.set(Math.sin(th) * R * (1 - b) + end.x * b, H * (1 - b) + end.y * b, Math.cos(th) * R * (1 - b) + end.z * b);
+    this.pos.set((ox * cy + oz * sy) * (1 - b) + end.x * b, H * (1 - b) + end.y * b, (oz * cy - ox * sy) * (1 - b) + end.z * b);
     this.pivotY = 1.7;
     cam.position.copy(this.pos);
-    const lx = end.x * b, lz = (end.z + 20) * b, ly = (1.2 - 0.1 * b) * (1 - b) + (end.y - 20 * Math.sin(-this.pitch)) * b; // from the centre spot to straight ahead of you
+    const lx = (end.x + sy * 20) * b, lz = (end.z + cy * 20) * b, ly = (1.2 - 0.1 * b) * (1 - b) + (end.y - 20 * Math.sin(-this.pitch)) * b; // from the centre spot to straight ahead of you
     cam.lookAt(lx, ly, lz);
   },
   follow(realDt, m) {
