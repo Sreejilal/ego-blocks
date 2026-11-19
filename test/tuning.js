@@ -23,9 +23,10 @@ check('winding up a shot slows you, more for a bigger shot', small < free * 0.55
 
 const m = new G.Match('quick', 0.5, { noHuman: true, autopilot: true, size: G.teamSizeFor('quick', 0) });
 const roles = m.teams.map((t) => t.map((p) => p.role).join(','));
-let wide = 0, n = 0;
-for (let i = 0; i < 60 * 40; i++) { m.update(1 / 60); if (m.phase === 'play' && i % 30 === 0) for (const t of m.teams) { const w = t.find((p) => p.role === 'LW'); if (w) { wide += Math.abs(w.pos.x); n++; } } }
+// the midfielder plays behind the striker (owner: a midfielder that played up front like a striker was confusing)
+let behind = 0, n = 0;
+for (let i = 0; i < 60 * 40; i++) { m.update(1 / 60); if (m.phase === 'play' && i % 30 === 0) for (const t of m.teams) { const md = t.find((p) => p.role === 'MID'), st = t.find((p) => p.role === 'ST'); if (md && st) { behind += (st.pos.z - md.pos.z) * m.dir(st.team); n++; } } }
 m.dispose();
-check('Quick Match: 4v4, each team with a winger on the left who keeps wide', roles.every((r) => r === 'GK,DEF,MID,LW') && wide / n > 6, { roles, avgWidth: +(wide / n).toFixed(1) });
+check('Quick Match: 4v4 with a keeper, defender, midfielder and striker, the midfielder behind the striker', roles.every((r) => r === 'GK,DEF,MID,ST') && behind / n > 2, { roles, behind: +(behind / n).toFixed(1) });
 console.log(results.join('\n'));
 process.exitCode = results.some((r) => r.startsWith('FAIL')) ? 1 : 0;

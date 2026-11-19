@@ -72,7 +72,7 @@ const PORT = 18788, URL = 'http://localhost:' + PORT + '/';
   await sleep(200);
 
   // the final whistle
-  for (let i = 0; i < 160; i++) { const s = await A.evaluate(() => EGO.Game.state); if (s === 'results') break; await sleep(500); }
+  for (let i = 0; i < 180; i++) { const s = await Promise.all([A, B].map((p) => p.evaluate(() => EGO.Game.state))); if (s.every((x) => x === 'results')) break; await sleep(500); } // both screens (the phone can be a moment behind)
   const res = await Promise.all([A, B].map((p) => p.evaluate(() => ({ state: EGO.Game.state, title: document.getElementById('r-title').textContent, again: document.getElementById('r-again').textContent, hist: EGO.Save.data.history.length, played: EGO.Save.data.stats.played }))));
   check('both see the results, saved to their history', res.every((r) => r.state === 'results' && r.again === 'BACK TO ROOM' && r.hist === 1 && r.played === 1), res);
   await B.screenshot({ path: __dirname + '/shots/on4_results_phone.png' });

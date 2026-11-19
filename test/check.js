@@ -14,7 +14,7 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     const m = G.match;
     return { state: G.state, phase: m.phase, players: m.players.length, clock: +m.clock.toFixed(1), roles: m.teams[0].map((p) => p.role + (p.isHuman ? '*' : '')).join(',') };
   });
-  check('a quick match starts and plays 4v4, with a winger (you are the midfielder)', play.state === 'match' && play.phase !== 'kickoff' && play.players === 8 && /LW/.test(play.roles) && /MID\*/.test(play.roles), play);
+  check('a quick match starts and plays 4v4: keeper, defender, midfielder and striker (you are the striker)', play.state === 'match' && play.phase !== 'kickoff' && play.players === 8 && /^GK,DEF,MID,ST\*$/.test(play.roles), play);
 
   const sizes = await page.evaluate(() => [0, 150, 250, 350, 450, 600].map((rp) => { EGO.Save.data.rp = rp; EGO.Game.startMatch('ranked'); const n = EGO.Game.match.teams[0].length; EGO.Game.toLobby(); return n; }));
   await page.evaluate(() => { EGO.Save.data.rp = 0; EGO.Game.startMatch('quick'); EGO.Game.stepManual(5, false); });

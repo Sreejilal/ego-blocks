@@ -5,6 +5,7 @@ const RARITIES = ['Rare', 'Epic', 'Legendary', 'Mythic', 'Generational'];
 const RARITY_ODDS = [55, 28, 12, 4.5, 0.5];
 const RARITY_HEX = { Rare: '#4aa8ff', Epic: '#b65cff', Legendary: '#ffc53a', Mythic: '#ff3d52', Generational: '#ffffff' };
 const NEED_BALL = 'NEED THE BALL';
+const GK_ONLY = 'KEEPERS ONLY: PLAY IN GOAL';
 
 const STYLES = {
   ROOKIE: { name: 'ROOKIE', rarity: 'Rare', hair: '#3b2a22', hairShape: 'short', aura: '#3fd6ff', blurb: 'Reads the whole pitch. The free starter, and it can still win games.', abilities: ['vision', 'quickShot', 'burst'], awaken: { move: { name: 'PERFECT VISION', kind: 'vision', desc: 'See every passing lane for 8s and burst away.' }, name: 'FIRST LIGHT', desc: '+12% speed and shot power.', mods: { speed: 1.12, shot: 1.12 } } },
@@ -39,8 +40,13 @@ const STYLES = {
     awaken: { move: { name: 'LIGHTNING STEP', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'OVERLOAD', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
   TITAN: { name: 'TITAN', rarity: 'Legendary', hair: '#4a2c1a', hairShape: 'mohawk', aura: '#ff8a2a', blurb: 'A battering ram at the back. Charges through anyone in the way, blocks shots and boots the ball clear.', abilities: ['ram', 'bodyBlock', 'clearance'],
     awaken: { move: { name: 'EARTHQUAKE', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'JUGGERNAUT', desc: 'Nobody can tackle you, abilities recharge faster and you are 10% faster.', perk: 'tank', mods: { speed: 1.1, cdRate: 1.3 } } },
+  // keeper characters (owner, Nov 2026): only for you in goal (the Locker's KEEPERS tab, Save.data.gk). Never bots, never spins, no Awakening
+  FORTRESS: { name: 'FORTRESS', rarity: 'Rare', gk: true, hair: '#2b2b33', hairShape: 'short', aura: '#ffb02e', blurb: 'A keeper built like a wall. Giant gloves, hands of iron and a kick that reaches the other box.', abilities: ['bigGloves', 'ironHands', 'cannonKick'] },
+  LYNX: { name: 'LYNX', rarity: 'Epic', gk: true, hair: '#d9d2c5', hairShape: 'spiky', aura: '#7dff9a', blurb: 'Springy reflexes. Leaps right across the goal, slows shots down and throws it out in a flash.', abilities: ['catLeap', 'slowShot', 'quickThrow'] },
 };
-const STYLE_IDS = Object.keys(STYLES);
+const STYLE_IDS = Object.keys(STYLES).filter((k) => !STYLES[k].gk); // outfield styles (spins, bots, the STYLES tab)
+const GK_IDS = Object.keys(STYLES).filter((k) => STYLES[k].gk); // keeper characters
+const GK_FREE = 'FORTRESS'; // everyone has this one
 /** a bot's style: common styles most of the time, the rare ones now and then (like the spins) */
 const BOT_STYLE_ODDS = { Rare: 40, Epic: 30, Legendary: 15, Mythic: 10, Generational: 5 };
 function botStyle() {
@@ -59,6 +65,43 @@ function nearBall(p, m, r = 1.9) {
 function aimFor(p, m, corner = false) { return p.isHuman ? (p.aimV || m.aim).clone() : AI.shotTarget(p, m, null, corner); }
 
 const ABILITIES = {
+  /* keeper characters: only work in goal (bots never have them) */
+  bigGloves: {
+    name: 'GIANT GLOVES', cd: 14, icon: 'glove',
+    desc: 'For 6s your hands reach much further, so shots you could only touch, you catch.',
+    use(p) { if (!p.isGK) return GK_ONLY; p.fx.gloves = 6; return true; },
+    ai() { return false; },
+  },
+  ironHands: {
+    name: 'IRON HANDS', cd: 16, icon: 'fist',
+    desc: 'For 6s you hold every shot you touch, even the hardest ones that would knock your hands away.',
+    use(p) { if (!p.isGK) return GK_ONLY; p.fx.iron = 6; return true; },
+    ai() { return false; },
+  },
+  cannonKick: {
+    name: 'CANNON KICK', cd: 8, icon: 'boot',
+    desc: 'With the ball: a huge kick to your teammate furthest up the pitch.',
+    use(p, m) { if (!p.isGK) return GK_ONLY; if (m.ball.owner !== p) return NEED_BALL; return m.cannonKick(p) || 'NOBODY TO KICK IT TO'; },
+    ai() { return false; },
+  },
+  catLeap: {
+    name: 'CAT LEAP', cd: 9, icon: 'jump',
+    desc: 'A huge dive right across the goal to where the ball is going, much further than a normal dive.',
+    use(p, m) { if (!p.isGK) return GK_ONLY; if (m.ball.owner === p) return 'NOT WITH THE BALL'; return m.keeperDive(p, p.mx, false, true, true) || 'NOT NOW'; },
+    ai() { return false; },
+  },
+  slowShot: {
+    name: 'SLOW SHOT', cd: 16, icon: 'hourglass',
+    desc: 'For 6s, a shot that comes into your box slows right down.',
+    use(p) { if (!p.isGK) return GK_ONLY; p.fx.slowShot = 6; return true; },
+    ai() { return false; },
+  },
+  quickThrow: {
+    name: 'QUICK THROW', cd: 6, icon: 'pass',
+    desc: 'With the ball: it flies straight to your most open teammate.',
+    use(p, m) { if (!p.isGK) return GK_ONLY; if (m.ball.owner !== p) return NEED_BALL; AI.distribute(m, p); return true; },
+    ai() { return false; },
+  },
   vision: {
     name: 'VISION', cd: 14, icon: 'eye',
     desc: '4s of light slow-mo. Glowing block paths show your open teammates and the best shooting lane.',
@@ -459,6 +502,7 @@ const FLOW_IDS = Object.keys(FLOWS);
 const AWAKEN_TIME = 20;
 /** the feint (C): a step-over cut nobody can tackle you through, once every FEINT_CD seconds */
 const FEINT_CD = 5;
+const BOX_FREE = 5; // owner's rule: once you are in their box, their defenders wait outside it this many seconds (bot matches)
 const KEEP_HOLD = 6; // you in goal: seconds you can hold the ball before it goes to a teammate by itself
 /** SLOW-MO (C twice within SLOWMO_TAP seconds): with the ball, opponents within SLOWMO_RANGE (not keepers) move at SLOWMO_SLOW
     speed and nobody can tackle you, for SLOWMO_TIME or until the ball leaves you. Once every SLOWMO_CD seconds */
@@ -744,7 +788,7 @@ const CURVE_ANGLE = 0.26, CURVE_SLOW = 0.08, CURVE_MIN = 0.2;
 const FK_TOL = 0.08; // how far from the perfect power you can be (the green zone on the power bar)
 /** the perfect power for a distance: further out needs more */
 const fkIdeal = (D) => clamp(0.42 + (D - 16) / 12 * 0.36, 0.4, 0.86);
-const ROSTERS = { 2: ['GK', 'ST'], 3: ['GK', 'DEF', 'MID'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] };
+const ROSTERS = { 2: ['GK', 'ST'], 3: ['GK', 'DEF', 'ST'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] };
 const SETUPS_5 = { defensive: { name: 'ULTRA DEFENSIVE', roles: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] }, attacking: { name: 'ULTRA ATTACKING', roles: ['GK', 'DEF', 'MID', 'ST', 'FW'] } };
 /** the most attacking role first: you play it, and it takes the kickoff */
 const ROLE_ORDER = ['ST', 'FW', 'MID', 'LW', 'RW', 'DEF', 'DEF2'];
@@ -813,7 +857,7 @@ const GIFT_CODE = 'KICKOFF';
 function unlockAll(d) {
   const n = d.styles.length + d.flows.length + d.skins.length;
   const add = (have, all) => { for (const k of all) if (!have.includes(k)) have.push(k); };
-  add(d.styles, STYLE_IDS); add(d.flows, FLOW_IDS); add(d.skins, Object.keys(SKINS).filter((k) => !SKINS[k].base));
+  add(d.styles, STYLE_IDS.concat(GK_IDS)); add(d.flows, FLOW_IDS); add(d.skins, Object.keys(SKINS).filter((k) => !SKINS[k].base));
   return d.styles.length + d.flows.length + d.skins.length - n;
 }
 /** a save that used a 'give all' code also gets everything added in later updates (Save.validate runs this on load) */
@@ -1010,5 +1054,5 @@ function poolFor(kind, rarityIdx) {
   const rar = RARITIES[rarityIdx];
   if (kind === 'skin') return SKIN_IDS.filter((k) => SKINS[k].rarity === rar);
   const src = kind === 'style' ? STYLES : FLOWS;
-  return Object.keys(src).filter((k) => src[k].rarity === rar);
+  return Object.keys(src).filter((k) => src[k].rarity === rar && !src[k].gk); // keeper characters never come from spins
 }

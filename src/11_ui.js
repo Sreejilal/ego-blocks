@@ -89,7 +89,7 @@ const UI = {
         <div class="locker">
           <div class="lk-stage"><div class="lk-fit" id="lk-fit" title="Drag to turn your player"><span class="label lk-drag">DRAG TO TURN</span></div><div class="lk-cap panel" id="lk-cap"></div></div>
           <div class="lk-side">
-            <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button><button class="tab" id="ltab-skin" role="tab" type="button">SKINS</button><button class="tab" id="ltab-club" role="tab" type="button">CLUB</button></div>
+            <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button><button class="tab" id="ltab-skin" role="tab" type="button">SKINS</button><button class="tab" id="ltab-gk" role="tab" type="button">KEEPERS</button><button class="tab" id="ltab-club" role="tab" type="button">CLUB</button></div>
             <div class="tabs slots" id="lk-slots" role="tablist" hidden></div>
             <div class="lk-body"><div class="grid-cards" id="locker-grid"></div><div class="panel detail" id="locker-detail"></div></div>
           </div>
@@ -140,7 +140,7 @@ const UI = {
             ${row(key('X'), 'Use item (Lawless)')}
             ${row(key('TAB'), 'Scoreboard')}
             ${row(key('1') + key('2') + key('3') + key('4'), 'Online: quick chat. PASS!, NICE!, GG, ON ME')}
-            ${row(key('T'), 'Online: open chat. Typing needs an account, quick chat works for everyone')}
+            ${row(key('T'), 'Online: open chat (or the CHAT button over the map, and CHAT in the pause menu). Typing needs an account, quick chat works for everyone')}
             ${row(key('ESC') + key('P'), 'Pause')}
             ${row(key('ENTER'), 'Watch the replay after a goal, a nutmeg or an ankle breaker. SAVE CLIP downloads it as a video')}
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
@@ -178,13 +178,15 @@ const UI = {
             <li><b>Players online:</b> on PLAY ONLINE you can see who else has the game open. INVITE asks them into your room (it makes one if you have none), ADD FRIEND asks to be friends (you both need an account), JOIN walks into a friend's room. Friends also show on the Profile screen with an INVITE button. Do not want to be seen or invited? Turn SHOW ME HERE off, or set INVITES FROM to FRIENDS or NOBODY.</li>
             <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
             <li><b>Your position:</b> before each match the camera flies in and you pick where you play: striker, midfield, wing, defence or in goal. The game remembers it for next time.</li>
-            <li><b>In goal:</b> C (B on a controller, DIVE on a phone) dives to save, at a shot it dives to where the ball is going; hold SPACE for a high dive. Let go of the stick and you stand in the right spot by yourself. With the ball in your hands, PASS throws it to a teammate and SHOOT kicks it long.</li>
+            <li><b>In goal:</b> JUMP with A or D held (the stick left or right) dives that way, and C (B on a controller, DIVE on a phone) dives too. At a shot, the dive goes to where the ball is going, as high as it is; press early and you shuffle across and dive at the right moment. Where you stand is up to you, so you can come off your line. With the ball in your hands, PASS throws it and SHOOT kicks it long.</li>
+            <li><b>Keeper characters:</b> in goal you play your keeper character, with three powers made for keepers. FORTRESS is free, LYNX costs blueprints. Pick one in the Locker, KEEPERS tab.</li>
+            <li><b>Their box:</b> against bots, once you get into their box their defenders wait outside it for 5 seconds, so you get a fair go at a shot.</li>
             <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
             <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
             <li><b>More modes</b> (the MORE MODES button): King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3), Free Kicks and the Tutorial. One of them is FEATURED, and it changes every 3 hours.</li>
             <li><b>Rewards</b> (emeralds, XP, pass, GOALS) come from full-time matches: Quick Match, Ranked and Lawless. King of the Hill, Volleys and Duels are just for fun, unless you play them with friends: every friends match gives rewards. Leaving early gives nothing.</li>
-            <li><b>Team size:</b> Quick Match is 4v4 with a winger. Lawless is 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
+            <li><b>Team size:</b> Quick Match is 4v4: a keeper, a defender, a midfielder and a striker. Lawless is 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
           </ul></section>
@@ -309,6 +311,7 @@ const UI = {
       <div class="charge" id="charge" hidden><i id="charge-fill"></i><b class="cmark" id="charge-cmark"></b><span id="charge-txt">POWER</span></div>
       <div class="toasts" id="toasts"></div>
       <div class="chatfeed" id="chatfeed" aria-live="polite"></div>
+      <button class="btn ghost hud-chat" id="hud-chat" type="button" hidden><span class="key">T</span>CHAT</button>
       <div class="awakeside" id="awakeside" hidden><span class="aw-name" id="aws-name"></span><div class="aw-track"><i id="aws-fill"></i></div><b id="aws-txt">0%</b><span class="key k">Z</span></div>
       <div class="idle-warn" id="idle-warn" hidden role="alert"><b id="idle-big"></b><span id="idle-small"></span></div>
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
@@ -437,7 +440,7 @@ const UI = {
           <span class="fs-only" hidden>Fullscreen</span><div class="seg fs-only" id="set-fs" hidden><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
         </div>
         <div class="p-people" id="p-people" hidden></div>
-        <div class="row"><button class="btn blue" id="p-resume" type="button">RESUME</button><button class="btn" id="p-forfeit" type="button">FORFEIT</button><button class="btn" id="p-admin" type="button" hidden>ADMIN</button></div>
+        <div class="row"><button class="btn blue" id="p-resume" type="button">RESUME</button><button class="btn" id="p-forfeit" type="button">FORFEIT</button><button class="btn" id="p-admin" type="button" hidden>ADMIN</button><button class="btn" id="p-chat" type="button" hidden>CHAT</button></div>
         <p class="label" id="p-note">Click the pitch after resuming to lock the mouse again.</p>
       </div>
     </section>`;
@@ -528,6 +531,7 @@ const UI = {
     click('ltab-style', () => { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.renderLocker(); });
     click('ltab-flow', () => { this.lockerTab = 'flow'; this.lockerSel = Save.data.flow || 'NONE'; this.renderLocker(); });
     click('ltab-club', () => { this.lockerTab = 'club'; this.lockerSel = Save.data.club; this.renderLocker(); });
+    click('ltab-gk', () => { this.lockerTab = 'gk'; this.lockerSel = Save.data.gk || 'NONE'; this.renderLocker(); });
     click('ltab-skin', () => { this.lockerTab = 'skin'; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
     $('lk-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); this.skinSlot = b.dataset.slot; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
     click('btn-mute', () => { // SOUND ON, then MUSIC OFF (sounds but no music), then SOUND OFF
@@ -537,6 +541,8 @@ const UI = {
     });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('cg-acct', () => Portal.acctClick());
+    click('hud-chat', () => Net.openChat());
+    click('p-chat', () => { $('p-resume').click(); setTimeout(() => Net.openChat(), 0); });
     click('in-go', () => Game.endIntro());
     $('in-roles').addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (b) { Sfx.click(); Game.pickRole(b.dataset.r); } });
     click('p-resume', () => Game.resume());
@@ -669,6 +675,7 @@ const UI = {
     Tips.start(m); // new players: the HUD fills in as each part comes up
     if (Touch.on && window.innerHeight > window.innerWidth) this.hintT = Math.max(this.hintT, 6);
     Touch.build(m);
+    $('hud-chat').hidden = !(m.online && Portal.chatAllowed()); // online on a computer: shows where the chat is (phones have the bubble button)
     this.lockHint();
   },
   setText(id, v) { const c = this.hudCache; if (c[id] !== v) { c[id] = v; $(id).textContent = v; } },
@@ -879,6 +886,7 @@ const UI = {
     $('set-fs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === Touch.isFs()));
     $('p-note').textContent = Touch.on ? 'Tip: double tap the right side of the screen to face the goal you attack.' : 'Click the pitch after resuming to lock the mouse again.';
     $('p-admin').hidden = !(Admin.is() && Admin.inMatch());
+    $('p-chat').hidden = !(Game.state === 'online' && Portal.chatAllowed()); // online: the chat, one press away
     const f = $('p-forfeit'); delete f.dataset.armed; f.textContent = Game.state === 'online' ? 'LEAVE MATCH' : Game.match && Game.match.cfg.tutorial ? 'SKIP TUTORIAL' : 'FORFEIT';
     $('p-note').textContent = Game.state === 'online' ? 'Online matches keep going while this menu is open.' : $('p-note').textContent;
     $('scr-pause').querySelector('h2').textContent = Game.state === 'online' ? 'MENU' : 'PAUSED';
@@ -910,7 +918,7 @@ const UI = {
     const back = (r) => (r === 'GK' ? 99 : ROLE_ORDER.indexOf(r));
     this.introRoles = m.teams[m.human.team].map((p) => p.role).sort((a, b) => back(b) - back(a));
     $('in-keys').textContent = Touch.on ? '' : 'KEYS 1-' + this.introRoles.length + ' PICK · ENTER PLAYS';
-    $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${ROLE_INFO[r][1]}</span></button>`).join('');
+    $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${r === 'GK' && Save.data.gk && STYLES[Save.data.gk] ? STYLES[Save.data.gk].name + ' · ' : ''}${ROLE_INFO[r][1]}</span></button>`).join('');
     this.renderIntro(m);
     $('intro').hidden = false;
   },
@@ -1046,6 +1054,11 @@ const UI = {
     const d = Save.data, tab = this.lockerTab;
     if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
     if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
+    if (tab === 'gk') { // keeper characters: only used when you play in goal
+      if (id === 'NONE') return { name: 'YOUR OWN STYLE', rarity: 'Rare', base: true, owned: true, equipped: d.gk === null };
+      const st = STYLES[id], free = id === GK_FREE;
+      return { name: st.name, rarity: st.rarity, base: free, owned: free || d.styles.includes(id), equipped: d.gk === id, from: BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] };
+    }
     if (tab === 'flow') { const fl = id === 'NONE' ? null : FLOWS[id]; return { name: fl ? fl.name : 'NO FLOW', rarity: fl ? fl.rarity : 'Rare', base: !fl, owned: !fl || d.flows.includes(id), equipped: (d.flow || 'NONE') === id, from: 'FLOW SPINS' }; }
     if (id.startsWith('TONE')) { const n = +id.slice(4); return { name: 'SKIN ' + (n + 1), rarity: 'Rare', base: true, owned: true, equipped: d.tone === n }; }
     const sk = SKINS[id];
@@ -1054,18 +1067,20 @@ const UI = {
   lockerArt(id, size) {
     const tab = this.lockerTab;
     if (tab === 'club') return crestCanvas(id, size);
+    if (tab === 'gk' && id !== 'NONE') { const st = STYLES[id], im = document.createElement('img'); im.className = 'px'; im.alt = ''; im.src = iconURL(ABILITIES[st.abilities[0]].icon, st.aura); im.style.width = im.style.height = size + 'px'; return im; }
+    if (tab === 'gk') return portraitCanvas(Save.data.style, size, Object.assign(lookFor(Save.data.style, Save.data.look), { skin: SKIN_TONES[Save.data.tone] }));
     const look = Object.assign(lookFor(Save.data.style, Save.data.look), { skin: SKIN_TONES[Save.data.tone] });
     if (id.startsWith && id.startsWith('TONE')) return portraitCanvas(Save.data.style, size, Object.assign(look, { skin: SKIN_TONES[+id.slice(4)] }));
     return tab === 'style' ? portraitCanvas(id, size, Object.assign(lookFor(id, Save.data.look), { skin: SKIN_TONES[Save.data.tone] })) : tab === 'flow' ? flowEmblemCanvas(id === 'NONE' ? null : id, size) : skinCanvas(id, size);
   },
   renderLocker() {
     const d = Save.data, tab = this.lockerTab;
-    for (const t of ['style', 'flow', 'skin', 'club']) $('ltab-' + t).setAttribute('aria-selected', tab === t);
+    for (const t of ['style', 'flow', 'skin', 'gk', 'club']) $('ltab-' + t).setAttribute('aria-selected', tab === t);
     const slots = $('lk-slots');
     slots.hidden = tab !== 'skin';
     if (tab === 'skin') slots.innerHTML = `<button class="tab" type="button" role="tab" data-slot="tone" aria-selected="${this.skinSlot === 'tone'}">SKIN</button>` + SKIN_SLOTS.map((sl) => `<button class="tab" type="button" role="tab" data-slot="${sl.id}" aria-selected="${this.skinSlot === sl.id}">${sl.name}</button>`).join('');
     const byRar = (M) => (a, b) => RARITIES.indexOf(M[a].rarity) - RARITIES.indexOf(M[b].rarity); // Rare first, Generational last
-    const ids = tab === 'club' ? CLUB_IDS : tab === 'style' ? STYLE_IDS.slice().sort(byRar(STYLES)) : tab === 'flow' ? ['NONE'].concat(FLOW_IDS.slice().sort(byRar(FLOWS)))
+    const ids = tab === 'club' ? CLUB_IDS : tab === 'gk' ? ['NONE'].concat(GK_IDS) : tab === 'style' ? STYLE_IDS.slice().sort(byRar(STYLES)) : tab === 'flow' ? ['NONE'].concat(FLOW_IDS.slice().sort(byRar(FLOWS)))
       : this.skinSlot === 'tone' ? SKIN_TONES.map((t, i) => 'TONE' + i)
       : Object.keys(SKINS).filter((k) => SKINS[k].base && SKINS[k].slot === this.skinSlot).concat(LOCKER_SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
     const grid = $('locker-grid');
@@ -1081,6 +1096,7 @@ const UI = {
     // the 3D player tries on whatever card is picked, owned or not
     const id = this.lockerSel, spec = { look: {} };
     if (tab === 'style') spec.style = id;
+    else if (tab === 'gk') { /* a keeper character keeps your own look */ }
     else if (tab === 'club') spec.club = id;
     else if (tab === 'flow') spec.flow = id === 'NONE' ? null : id;
     else if (id.startsWith('TONE')) spec.tone = +id.slice(4);
@@ -1096,6 +1112,11 @@ const UI = {
       det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KeyNames.of(KEYS3[i])}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
         + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)}</p></div></div>` : '')
         + (st.awaken && st.awaken.move ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><div><div class="t"><span class="key">Z</span><b>${esc(st.awaken.move.name)}</b><span class="label">AWAKENED · ONCE</span></div><p>${esc(st.awaken.move.desc)}</p></div></div>` : '') + '</div>';
+    } else if (tab === 'gk') {
+      const st = id === 'NONE' ? null : STYLES[id];
+      det.innerHTML = st ? head('KEEPER CHARACTER · ONLY WHEN YOU PLAY IN GOAL', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KeyNames.of(KEYS3[i])}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}</div>`
+        + '<p style="margin:0;color:var(--muted)">Pick KEEPER before a match to play in goal. You keep your own look and wear the keeper kit.</p>'
+        : head('', 'In goal you keep your own style and its powers. Pick a keeper character for three powers made for goalkeepers.');
     } else if (tab === 'club') {
       const c = CLUBS[id];
       det.innerHTML = head('', 'The club you play for. Your team wears its kit, and its fans fill your stands.') + `<div class="kits">${[['HOME', c.home], ['AWAY', c.away], ['KEEPER', c.keeper]].map(([n]) => `<div class="kitbox"><span class="kv"></span><span class="label">${n}</span></div>`).join('')}</div>
@@ -1116,12 +1137,12 @@ const UI = {
     const cap = $('lk-cap');
     cap.innerHTML = `${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<b>${esc(it.name)}</b>`
       + (it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" data-sfx="equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`)
-      + (tab === 'style' && (it.spun || !it.owned) ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
+      + ((tab === 'style' && (it.spun || !it.owned)) || (tab === 'gk' && !it.owned) ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
     const kp = $('lk-keep');
-    if (kp) kp.addEventListener('click', () => { if (Goals.unlock(d, id)) { d.style = id; Save.save(); Sfx.coin(); this.renderLocker(); this.renderLobby(); } });
+    if (kp) kp.addEventListener('click', () => { if (Goals.unlock(d, id)) { if (tab === 'gk') d.gk = id; else d.style = id; Save.save(); Sfx.coin(); this.renderLocker(); this.renderLobby(); } });
     const eq = $('lk-equip');
     if (eq) eq.addEventListener('click', () => {
-      if (tab === 'style') d.style = id; else if (tab === 'club') d.club = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else if (id.startsWith('TONE')) d.tone = +id.slice(4); else d.look[SKINS[id].slot] = id;
+      if (tab === 'style') d.style = id; else if (tab === 'gk') d.gk = id === 'NONE' ? null : id; else if (tab === 'club') d.club = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else if (id.startsWith('TONE')) d.tone = +id.slice(4); else d.look[SKINS[id].slot] = id;
       Save.save(); this.renderLocker();
     });
   },

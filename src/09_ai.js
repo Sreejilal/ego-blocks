@@ -373,6 +373,8 @@ const AI = {
   },
   /** two defenders split the back: DEF takes one side when DEF2 is there */
   pair(m, p) { return m.teams[p.team].some((q) => q.role === 'DEF2'); },
+  /** a striker with no midfielder behind (3v3: keeper, defender, striker) drops back to help when the other team has it */
+  lone(m, p) { return p.role === 'ST' && !m.teams[p.team].some((q) => q.role === 'MID' || q.role === 'FW') && m.teams[p.team].some((q) => q.role === 'DEF'); },
   /** where a bot stands for its role. Worked out on the first pitch's scale, then stretched to this one */
   formation(m, p, st) {
     if (m.cfg.hill) return this.hillSpot(m, p, st);
@@ -391,7 +393,7 @@ const AI = {
       if (r === 'DEF') { u = bu * 0.5 + (this.pair(m, p) ? 4 : 0); v = clamp(bv - 7, -29, -6); }
       else if (r === 'DEF2') { u = bu * 0.5 - 4; v = clamp(bv - 7, -29, -6); }
       else if (r === 'FW') { u = bu * 0.3 + 5; v = clamp(bv + 1, -6, 10); }
-      else if (r === 'MID') { u = bu * 0.45; v = clamp(bv - 6, -26, 4); }
+      else if (r === 'MID' || this.lone(m, p)) { u = bu * 0.45; v = clamp(bv - 6, -26, 4); }
       else if (r === 'LW') { u = clamp(bu * 0.4 + 7, -14, 15); v = clamp(bv - 4, -24, 8); }
       else if (r === 'RW') { u = clamp(bu * 0.4 - 7, -15, 14); v = clamp(bv - 4, -24, 8); }
       else { u = bu * 0.3; v = clamp(bv + 3, -4, 12); }
@@ -467,6 +469,7 @@ const AI = {
     const c = m.ball.owner;
     if (!c || c.team === p.team || p.tackleCd > 0 || p.state !== 'free') return;
     if (m.safeGK(c)) return; // nobody takes the keeper's ball (yours: only in your box)
+    if (m.boxBlocked(p)) return; // waiting outside the box (BOX_FREE): no sliding in either
     const d = dist2D(c.pos, p.pos), sk = m.skill(p);
     const trig = (2.2 + 0.6 * sk) * p.mods.tackleRange;
     const away = d > 0.01 ? (c.vel.x * (c.pos.x - p.pos.x) + c.vel.z * (c.pos.z - p.pos.z)) / d : 0;

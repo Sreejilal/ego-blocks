@@ -109,8 +109,9 @@ const Game = {
     if (h.role === r) return true;
     const o = m.teams[h.team].find((p) => p.role === r && !p.isHuman);
     if (!o) return false;
-    m.swapRoles(h, o); // in goal: the keeper's kit and number 1 come with it
+    m.swapRoles(h, o); // in goal: the keeper's kit and number 1 come with it, and your keeper character's powers
     m.setupKickoff(0, true, true);
+    UI.buildHud(m); // the power slots follow (a keeper character has its own)
     Save.data.pos = r; Save.save();
     UI.renderIntro(m);
     return true;
@@ -369,7 +370,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {

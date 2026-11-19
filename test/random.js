@@ -62,6 +62,8 @@ const until = async (fn, ms = 15000) => { const t = Date.now(); while (Date.now(
     const st = await A.evaluate(() => ({ state: EGO.Game.state, names: EGO.Net.nm ? EGO.Net.nm.players.map((p) => p.name) : [], intro: window.__intro }));
     check('the match starts by itself, with both players and bots in the empty spots', started && st.names.includes('BOB') && st.names.length === 6 && !!B.last('start'), st.names);
     const I0 = st.intro[0] || {};
+    const chatBtn = await A.evaluate(() => !document.getElementById('hud-chat').hidden);
+    check('online on a computer, a CHAT button shows where the chat is', chatBtn, chatBtn);
     check('it opens with the camera flight and the team names, with no position picker online', st.intro.length === 1 && I0.online && I0.shown && I0.cls && !I0.picker && /^ONLINE · /.test(I0.mode) && I0.fly > 1.5, st.intro);
     const flown = await until(() => A.evaluate(() => !EGO.Net.intro && document.getElementById('intro').hidden && !document.body.classList.contains('intro')), 20000);
     check('the flight ends by itself and the match screen comes back', flown, await A.evaluate(() => ({ intro: !!EGO.Net.intro, phase: EGO.Net.nm && EGO.Net.nm.phase })));

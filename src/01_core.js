@@ -93,7 +93,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false, tips: [],
+      spunStyle: null, gk: 'FORTRESS', bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false, tips: [],
       fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
@@ -137,6 +137,7 @@ const Save = {
     out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
     out.tone = clamp(Math.floor(Number(out.tone)), 0, 7); if (!Number.isFinite(out.tone)) out.tone = 1;
     out.pos = typeof out.pos === 'string' && /^(GK|ST|FW|MID|LW|RW|DEF|DEF2)$/.test(out.pos) ? out.pos : null; // the position you like to play (the match intro)
+    if (!('gk' in out)) out.gk = 'FORTRESS'; // your keeper character (checked in validate, once the styles exist)
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
     out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
@@ -176,7 +177,8 @@ const Save = {
     if (!d.styles.includes('ROOKIE')) d.styles.unshift('ROOKIE');
     d.flows = d.flows.filter((f) => FLOWS[f]);
     if (d.spunStyle && (!STYLES[d.spunStyle] || d.styles.includes(d.spunStyle))) d.spunStyle = null;
-    if (!STYLES[d.style] || (!d.styles.includes(d.style) && d.style !== d.spunStyle)) d.style = 'ROOKIE'; // yours for good, or from your last spin
+    if (!STYLES[d.style] || STYLES[d.style].gk || (!d.styles.includes(d.style) && d.style !== d.spunStyle)) d.style = 'ROOKIE'; // yours for good, or from your last spin (never a keeper character)
+    if (d.gk !== null && (typeof d.gk !== 'string' || !STYLES[d.gk] || !STYLES[d.gk].gk || (d.gk !== GK_FREE && !d.styles.includes(d.gk)))) d.gk = GK_FREE; // your keeper character: the free one, one you own, or none (null: your own style in goal too)
     for (const g of GOALS) d.goalSteps[g.id] = clamp(Math.floor(Number(d.goalSteps[g.id]) || 0), 0, g.steps.length);
     for (const k in d.goalSteps) if (!GOALS.some((g) => g.id === k)) delete d.goalSteps[k];
     if (d.flow && (!FLOWS[d.flow] || !d.flows.includes(d.flow))) d.flow = null;

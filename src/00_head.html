@@ -396,7 +396,9 @@ body.touch .chat-quick .key { display: none; }
 .btn.ghost.tiny { font-size: 16px; padding: 2px 5px; }
 .p-people { display: grid; gap: 4px; }
 .p-people .on-p { font-size: 22px; }
-#hud .chatfeed { left: max(16px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); bottom: calc(232px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); width: min(360px, 40vw); display: grid; justify-items: start; gap: 3px; }
+#hud .hud-chat { left: max(16px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); bottom: calc(230px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); pointer-events: auto; font-size: 15px; padding: 4px 10px; display: flex; gap: 6px; align-items: center; } /* online: where the chat is (T, or click after ESC) */
+body.touch #hud .hud-chat { display: none; }
+#hud .chatfeed { left: max(16px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); bottom: calc(272px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); width: min(360px, 40vw); display: grid; justify-items: start; gap: 3px; }
 #hud .chatfeed .cl { background: rgba(9,11,22,.74); padding: 3px 8px; font-size: 16px; animation: toastIn .18s steps(3); }
 #hud .chatfeed .cl b { font-size: 19px; }
 body.touch #hud .chatfeed { bottom: auto; top: calc(112px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); left: max(10px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); width: min(300px, 36vw); }

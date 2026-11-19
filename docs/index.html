@@ -409,7 +409,9 @@ body.touch .chat-quick .key { display: none; }
 .btn.ghost.tiny { font-size: 16px; padding: 2px 5px; }
 .p-people { display: grid; gap: 4px; }
 .p-people .on-p { font-size: 22px; }
-#hud .chatfeed { left: max(16px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); bottom: calc(232px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); width: min(360px, 40vw); display: grid; justify-items: start; gap: 3px; }
+#hud .hud-chat { left: max(16px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); bottom: calc(230px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); pointer-events: auto; font-size: 15px; padding: 4px 10px; display: flex; gap: 6px; align-items: center; } /* online: where the chat is (T, or click after ESC) */
+body.touch #hud .hud-chat { display: none; }
+#hud .chatfeed { left: max(16px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); bottom: calc(272px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); width: min(360px, 40vw); display: grid; justify-items: start; gap: 3px; }
 #hud .chatfeed .cl { background: rgba(9,11,22,.74); padding: 3px 8px; font-size: 16px; animation: toastIn .18s steps(3); }
 #hud .chatfeed .cl b { font-size: 19px; }
 body.touch #hud .chatfeed { bottom: auto; top: calc(112px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); left: max(10px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px))); width: min(300px, 36vw); }
@@ -1079,7 +1081,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false, tips: [],
+      spunStyle: null, gk: 'FORTRESS', bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false, tips: [],
       fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
@@ -1123,6 +1125,7 @@ const Save = {
     out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
     out.tone = clamp(Math.floor(Number(out.tone)), 0, 7); if (!Number.isFinite(out.tone)) out.tone = 1;
     out.pos = typeof out.pos === 'string' && /^(GK|ST|FW|MID|LW|RW|DEF|DEF2)$/.test(out.pos) ? out.pos : null; // the position you like to play (the match intro)
+    if (!('gk' in out)) out.gk = 'FORTRESS'; // your keeper character (checked in validate, once the styles exist)
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
     out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
@@ -1162,7 +1165,8 @@ const Save = {
     if (!d.styles.includes('ROOKIE')) d.styles.unshift('ROOKIE');
     d.flows = d.flows.filter((f) => FLOWS[f]);
     if (d.spunStyle && (!STYLES[d.spunStyle] || d.styles.includes(d.spunStyle))) d.spunStyle = null;
-    if (!STYLES[d.style] || (!d.styles.includes(d.style) && d.style !== d.spunStyle)) d.style = 'ROOKIE'; // yours for good, or from your last spin
+    if (!STYLES[d.style] || STYLES[d.style].gk || (!d.styles.includes(d.style) && d.style !== d.spunStyle)) d.style = 'ROOKIE'; // yours for good, or from your last spin (never a keeper character)
+    if (d.gk !== null && (typeof d.gk !== 'string' || !STYLES[d.gk] || !STYLES[d.gk].gk || (d.gk !== GK_FREE && !d.styles.includes(d.gk)))) d.gk = GK_FREE; // your keeper character: the free one, one you own, or none (null: your own style in goal too)
     for (const g of GOALS) d.goalSteps[g.id] = clamp(Math.floor(Number(d.goalSteps[g.id]) || 0), 0, g.steps.length);
     for (const k in d.goalSteps) if (!GOALS.some((g) => g.id === k)) delete d.goalSteps[k];
     if (d.flow && (!FLOWS[d.flow] || !d.flows.includes(d.flow))) d.flow = null;
@@ -3634,6 +3638,7 @@ const RARITIES = ['Rare', 'Epic', 'Legendary', 'Mythic', 'Generational'];
 const RARITY_ODDS = [55, 28, 12, 4.5, 0.5];
 const RARITY_HEX = { Rare: '#4aa8ff', Epic: '#b65cff', Legendary: '#ffc53a', Mythic: '#ff3d52', Generational: '#ffffff' };
 const NEED_BALL = 'NEED THE BALL';
+const GK_ONLY = 'KEEPERS ONLY: PLAY IN GOAL';
 
 const STYLES = {
   ROOKIE: { name: 'ROOKIE', rarity: 'Rare', hair: '#3b2a22', hairShape: 'short', aura: '#3fd6ff', blurb: 'Reads the whole pitch. The free starter, and it can still win games.', abilities: ['vision', 'quickShot', 'burst'], awaken: { move: { name: 'PERFECT VISION', kind: 'vision', desc: 'See every passing lane for 8s and burst away.' }, name: 'FIRST LIGHT', desc: '+12% speed and shot power.', mods: { speed: 1.12, shot: 1.12 } } },
@@ -3668,8 +3673,13 @@ const STYLES = {
     awaken: { move: { name: 'LIGHTNING STEP', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'OVERLOAD', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
   TITAN: { name: 'TITAN', rarity: 'Legendary', hair: '#4a2c1a', hairShape: 'mohawk', aura: '#ff8a2a', blurb: 'A battering ram at the back. Charges through anyone in the way, blocks shots and boots the ball clear.', abilities: ['ram', 'bodyBlock', 'clearance'],
     awaken: { move: { name: 'EARTHQUAKE', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'JUGGERNAUT', desc: 'Nobody can tackle you, abilities recharge faster and you are 10% faster.', perk: 'tank', mods: { speed: 1.1, cdRate: 1.3 } } },
+  // keeper characters (owner, Nov 2026): only for you in goal (the Locker's KEEPERS tab, Save.data.gk). Never bots, never spins, no Awakening
+  FORTRESS: { name: 'FORTRESS', rarity: 'Rare', gk: true, hair: '#2b2b33', hairShape: 'short', aura: '#ffb02e', blurb: 'A keeper built like a wall. Giant gloves, hands of iron and a kick that reaches the other box.', abilities: ['bigGloves', 'ironHands', 'cannonKick'] },
+  LYNX: { name: 'LYNX', rarity: 'Epic', gk: true, hair: '#d9d2c5', hairShape: 'spiky', aura: '#7dff9a', blurb: 'Springy reflexes. Leaps right across the goal, slows shots down and throws it out in a flash.', abilities: ['catLeap', 'slowShot', 'quickThrow'] },
 };
-const STYLE_IDS = Object.keys(STYLES);
+const STYLE_IDS = Object.keys(STYLES).filter((k) => !STYLES[k].gk); // outfield styles (spins, bots, the STYLES tab)
+const GK_IDS = Object.keys(STYLES).filter((k) => STYLES[k].gk); // keeper characters
+const GK_FREE = 'FORTRESS'; // everyone has this one
 /** a bot's style: common styles most of the time, the rare ones now and then (like the spins) */
 const BOT_STYLE_ODDS = { Rare: 40, Epic: 30, Legendary: 15, Mythic: 10, Generational: 5 };
 function botStyle() {
@@ -3688,6 +3698,43 @@ function nearBall(p, m, r = 1.9) {
 function aimFor(p, m, corner = false) { return p.isHuman ? (p.aimV || m.aim).clone() : AI.shotTarget(p, m, null, corner); }
 
 const ABILITIES = {
+  /* keeper characters: only work in goal (bots never have them) */
+  bigGloves: {
+    name: 'GIANT GLOVES', cd: 14, icon: 'glove',
+    desc: 'For 6s your hands reach much further, so shots you could only touch, you catch.',
+    use(p) { if (!p.isGK) return GK_ONLY; p.fx.gloves = 6; return true; },
+    ai() { return false; },
+  },
+  ironHands: {
+    name: 'IRON HANDS', cd: 16, icon: 'fist',
+    desc: 'For 6s you hold every shot you touch, even the hardest ones that would knock your hands away.',
+    use(p) { if (!p.isGK) return GK_ONLY; p.fx.iron = 6; return true; },
+    ai() { return false; },
+  },
+  cannonKick: {
+    name: 'CANNON KICK', cd: 8, icon: 'boot',
+    desc: 'With the ball: a huge kick to your teammate furthest up the pitch.',
+    use(p, m) { if (!p.isGK) return GK_ONLY; if (m.ball.owner !== p) return NEED_BALL; return m.cannonKick(p) || 'NOBODY TO KICK IT TO'; },
+    ai() { return false; },
+  },
+  catLeap: {
+    name: 'CAT LEAP', cd: 9, icon: 'jump',
+    desc: 'A huge dive right across the goal to where the ball is going, much further than a normal dive.',
+    use(p, m) { if (!p.isGK) return GK_ONLY; if (m.ball.owner === p) return 'NOT WITH THE BALL'; return m.keeperDive(p, p.mx, false, true, true) || 'NOT NOW'; },
+    ai() { return false; },
+  },
+  slowShot: {
+    name: 'SLOW SHOT', cd: 16, icon: 'hourglass',
+    desc: 'For 6s, a shot that comes into your box slows right down.',
+    use(p) { if (!p.isGK) return GK_ONLY; p.fx.slowShot = 6; return true; },
+    ai() { return false; },
+  },
+  quickThrow: {
+    name: 'QUICK THROW', cd: 6, icon: 'pass',
+    desc: 'With the ball: it flies straight to your most open teammate.',
+    use(p, m) { if (!p.isGK) return GK_ONLY; if (m.ball.owner !== p) return NEED_BALL; AI.distribute(m, p); return true; },
+    ai() { return false; },
+  },
   vision: {
     name: 'VISION', cd: 14, icon: 'eye',
     desc: '4s of light slow-mo. Glowing block paths show your open teammates and the best shooting lane.',
@@ -4088,6 +4135,7 @@ const FLOW_IDS = Object.keys(FLOWS);
 const AWAKEN_TIME = 20;
 /** the feint (C): a step-over cut nobody can tackle you through, once every FEINT_CD seconds */
 const FEINT_CD = 5;
+const BOX_FREE = 5; // owner's rule: once you are in their box, their defenders wait outside it this many seconds (bot matches)
 const KEEP_HOLD = 6; // you in goal: seconds you can hold the ball before it goes to a teammate by itself
 /** SLOW-MO (C twice within SLOWMO_TAP seconds): with the ball, opponents within SLOWMO_RANGE (not keepers) move at SLOWMO_SLOW
     speed and nobody can tackle you, for SLOWMO_TIME or until the ball leaves you. Once every SLOWMO_CD seconds */
@@ -4373,7 +4421,7 @@ const CURVE_ANGLE = 0.26, CURVE_SLOW = 0.08, CURVE_MIN = 0.2;
 const FK_TOL = 0.08; // how far from the perfect power you can be (the green zone on the power bar)
 /** the perfect power for a distance: further out needs more */
 const fkIdeal = (D) => clamp(0.42 + (D - 16) / 12 * 0.36, 0.4, 0.86);
-const ROSTERS = { 2: ['GK', 'ST'], 3: ['GK', 'DEF', 'MID'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] };
+const ROSTERS = { 2: ['GK', 'ST'], 3: ['GK', 'DEF', 'ST'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] };
 const SETUPS_5 = { defensive: { name: 'ULTRA DEFENSIVE', roles: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] }, attacking: { name: 'ULTRA ATTACKING', roles: ['GK', 'DEF', 'MID', 'ST', 'FW'] } };
 /** the most attacking role first: you play it, and it takes the kickoff */
 const ROLE_ORDER = ['ST', 'FW', 'MID', 'LW', 'RW', 'DEF', 'DEF2'];
@@ -4442,7 +4490,7 @@ const GIFT_CODE = 'KICKOFF';
 function unlockAll(d) {
   const n = d.styles.length + d.flows.length + d.skins.length;
   const add = (have, all) => { for (const k of all) if (!have.includes(k)) have.push(k); };
-  add(d.styles, STYLE_IDS); add(d.flows, FLOW_IDS); add(d.skins, Object.keys(SKINS).filter((k) => !SKINS[k].base));
+  add(d.styles, STYLE_IDS.concat(GK_IDS)); add(d.flows, FLOW_IDS); add(d.skins, Object.keys(SKINS).filter((k) => !SKINS[k].base));
   return d.styles.length + d.flows.length + d.skins.length - n;
 }
 /** a save that used a 'give all' code also gets everything added in later updates (Save.validate runs this on load) */
@@ -4639,7 +4687,7 @@ function poolFor(kind, rarityIdx) {
   const rar = RARITIES[rarityIdx];
   if (kind === 'skin') return SKIN_IDS.filter((k) => SKINS[k].rarity === rar);
   const src = kind === 'style' ? STYLES : FLOWS;
-  return Object.keys(src).filter((k) => src[k].rarity === rar);
+  return Object.keys(src).filter((k) => src[k].rarity === rar && !src[k].gk); // keeper characters never come from spins
 }
 
 /* ---- 08_match.js ---- */
@@ -4652,7 +4700,7 @@ const BOT_NAMES = ['BLOK', 'CUBO', 'PIXL', 'VOXX', 'CHUNK', 'BRIK', 'TILE', 'STA
 const MODES = {
   // rewards: offline, only these full-time matches give rewards (online with friends, every mode does)
   ranked: { name: 'RANKED', ranked: true, items: false, rewards: true },
-  quick: { name: 'QUICK MATCH', ranked: false, items: false, rewards: true, roster: ['GK', 'DEF', 'MID', 'LW'] }, // 4v4 with a winger on the left
+  quick: { name: 'QUICK MATCH', ranked: false, items: false, rewards: true }, // 4v4: keeper, defender, midfielder, striker (owner: a midfielder that played up front like a striker was confusing)
   lawless: { name: 'LAWLESS', ranked: false, items: true, rewards: true },
   koth: { name: 'KING OF THE HILL', ranked: false, items: false, hill: true, tip: 'HOLD THE BALL IN THE RING FOR POINTS \u00b7 GOALS ARE WORTH 3' },
   volleys: { name: 'VOLLEYS ONLY', ranked: false, items: false, aerialOnly: true, tip: 'ONLY VOLLEYS AND HEADERS COUNT' },
@@ -4737,7 +4785,7 @@ class Match {
           p.speedMul = 1 + 0.045 * sk; p.fit = 1.1 - 0.25 * sk;
         }
         this.players.push(p); this.teams[team].push(p);
-        if (net) { p.netId = net.id; this.humans.push(p); } else if (human) this.human = p;
+        if (net) { p.netId = net.id; this.humans.push(p); } else if (human) { this.human = p; p.ownStyle = style; p.gkStyle = opts.gkStyle !== undefined ? opts.gkStyle : Save.data.gk; this.styleFor(p); }
       }
     }
     if (!this.human) this.human = null;
@@ -4790,6 +4838,50 @@ class Match {
     a.isGK = a.role === 'GK'; b.isGK = b.role === 'GK';
     [a.number, b.number] = [b.number, a.number];
     a.repaint(); b.repaint();
+    this.styleFor(a); this.styleFor(b);
+  }
+  /** you in goal play your keeper character (the Locker's KEEPERS tab: its three powers), anywhere else your own style.
+      Your look stays yours */
+  styleFor(p) {
+    if (!p || !p.ownStyle) return;
+    const id = p.isGK && p.gkStyle && STYLES[p.gkStyle] ? p.gkStyle : p.ownStyle;
+    if (p.styleId === id) return;
+    p.styleId = id; p.style = STYLES[id]; p.abil = p.style.abilities.map((a) => ({ id: a, def: ABILITIES[a], cd: 0 }));
+  }
+  /** owner's rule (Nov 2026: "a bot just follows me around and I can't shoot"): once you are in their box, their outfield
+      bots wait outside it for BOX_FREE seconds, so the one marking you cannot follow you in and block every shot. Their
+      keeper plays as normal. Bot matches only (online stays the same for everyone), not free kicks or the tutorial */
+  boxFree(dt) {
+    const h = this.human, them = h ? 1 - h.team : 0;
+    const inBox = !!h && !h.isGK && !this.online && !this.fk && !this.tut && !this.hill && this.phase === 'play' && this.inOwnBox({ team: them }, h.pos);
+    this.boxT = inBox ? (this.boxT || 0) + dt : 0;
+    if (!inBox || this.boxT >= BOX_FREE) return;
+    if (!this.boxTold) { this.boxTold = true; this.toast('IN THEIR BOX: ' + BOX_FREE + 'S BEFORE THEIR DEFENDERS CAN COME IN', 'gold', h); }
+    const gz = this.ownGoalZ(them), s = this.dir(them);
+    for (const p of this.teams[them]) {
+      if (p.isGK || p.isHuman || !this.inOwnBox(p)) continue;
+      // step back out by the nearest edge, at a run (so they wait on the line, and anyone already inside backs out)
+      const ez = F.BOX_D - Math.abs(p.pos.z - gz), ex = F.BOX_W - Math.abs(p.pos.x), step = 9 * dt;
+      if (ez <= ex) { p.pos.z += s * Math.min(ez + 0.02, step); if (p.vel.z * s < 0) p.vel.z = 0; }
+      else { const sx = sgn(p.pos.x) || 1; p.pos.x += sx * Math.min(ex + 0.02, step); if (p.vel.x * sx < 0) p.vel.x = 0; }
+    }
+  }
+  boxBlocked(p) { return this.boxT > 0 && this.boxT < BOX_FREE && !!this.human && p.team !== this.human.team && !p.isGK && !p.isHuman; }
+  /** CANNON KICK: a long kick to the teammate furthest up the pitch */
+  cannonKick(p) {
+    const t = this.teams[p.team].filter((q) => q !== p && q.state !== 'down').sort((a, b) => this.prog(b.team, b.pos) - this.prog(a.team, a.pos))[0];
+    if (!t) return false;
+    if (p.state === 'hold') p.setState('free');
+    return this.passTo(p, t, { lob: true }) !== false;
+  }
+  /** SLOW SHOT: a shot coming into the box of a keeper who has it on slows right down, once */
+  keeperFx() {
+    const b = this.ball, k = b.kick;
+    if (b.owner || !k || k.type !== 'shot' || k.slowed || !k.by) return;
+    const g = this.keeperOf(1 - k.by.team);
+    if (!g || !(g.fx.slowShot > 0) || !this.inOwnBox(g, b.pos)) return;
+    k.slowed = true; b.vel.multiplyScalar(0.45); b.curve.multiplyScalar(0.45);
+    this.label(g, 'SLOWED', g.aura); FX.ring(b.pos.x, b.pos.y, b.pos.z, g.aura, 1.2, 18);
   }
   gkSize() { return this.fk ? 5 : this.size; } // free kicks: no small-team keeper boost (one shot at a time) // keepers get a boost in small teams (they face more shots) and against very good bots (who shoot from far)
   opponents(p) { return this.teams[1 - p.team]; }
@@ -4863,7 +4955,9 @@ class Match {
     }
     this.updateAwakening(dt);
     this.updatePending(dt);
+    this.keeperFx();
     for (const p of this.players) p.physics(dt);
+    this.boxFree(dt);
     this.rocketLandings();
     this.slowZones();
     this.separate();
@@ -4930,8 +5024,8 @@ class Match {
     }
     if (p.fkHold) { this.freeKickControls(dt, c, p, cy); return; }
     if (p.inWall) { p.mx = p.mz = 0; p.charging = false; p.charge = 0; if (c.jump) this.jump(p); return; } // in the wall for their free kick: jump to block it
-    let dodge = c.dodge;
-    if (p.isGK && this.keeperControls(dt, c, p, ml)) dodge = false;
+    let dodge = c.dodge, jumpOk = true;
+    if (p.isGK) { const k = this.keeperControls(dt, c, p, ml); if (!k.feint) dodge = false; jumpOk = k.jump; }
     if (dodge) { // C twice quickly (B, FEINT): SLOW-MO instead of a second feint. Checked here, so it works during the feint's step too
       if (this.time - p.cTapAt < SLOWMO_TAP) { p.cTapAt = -9; dodge = false; if (this.slowMo(p)) this.cutFeint(p); } else p.cTapAt = this.time;
     }
@@ -4959,7 +5053,7 @@ class Match {
       if (this.ball.owner === p) { const mate = this.pickPassTarget(p); if (mate) this.passTo(p, mate, { lob }); }
       else { p.callT = 1.6; this.label(p, 'PASS!', '#2ee38f'); }
     }
-    if (c.jump) this.jump(p);
+    if (c.jump && jumpOk) this.jump(p);
     if (dodge) this.dodge(p, mx, mz);
     if (c.tackle) {
       let tx = mx, tz = mz;
@@ -4975,38 +5069,51 @@ class Match {
     if (c.flow) { if (!this.activateFlow(p) && !(p.awakeT > 0 && !p.awakeMoveUsed && this.tryAwakenMove(p)) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
     if (c.item) this.useItem(p);
   }
-  /** you are the keeper. The FEINT button (C, B) dives: at a shot coming in it dives to where the ball is going (push the
-      other way to guess the other side), with SPACE held or a high shot it is a high dive. Let go of the stick and you
-      step to the keeper's spot by yourself. The ball in your hands: walk with it in the box, PASS throws it, SHOOT kicks
-      it long; held too long, or taken out of the box, it goes by itself. Returns true when the button was used to dive */
+  /** you are the keeper. JUMP with the stick pushed left or right (A or D) dives that way, and the FEINT button (C, B,
+      DIVE on a phone) dives too. At a shot coming in, the dive goes to where the ball is going (push the other way to
+      guess the other side) and as high as the ball; pressed early, you shuffle across first and the dive goes at the
+      right moment, so you are still in the air when it arrives. Where you stand is all yours: real keepers come off
+      their line. The ball in your hands: walk with it in the box, PASS throws it, SHOOT kicks it long; held too long,
+      or taken out of the box, it goes by itself. Returns { feint, jump }: false when that press was a dive */
   keeperControls(dt, c, p, ml) {
-    const b = this.ball;
+    const b = this.ball, out = { feint: true, jump: true };
     if (p.state === 'hold') {
-      p.holdFor = (p.holdFor || 0) + dt;
+      p.holdFor = (p.holdFor || 0) + dt; p.diveQ = null;
       if (!this.inOwnBox(p)) { p.setState('free'); b.held = false; p.holdFor = 0; } // no hands outside the box: it drops to your feet
       else if (p.holdFor > KEEP_HOLD) { p.holdFor = 0; AI.distribute(this, p); this.toast('TOO LONG: IT WENT TO A TEAMMATE', 'bad', p); }
-      return true;
+      out.feint = false;
+      return out;
     }
     p.holdFor = 0;
-    if (b.owner === p) return false; // the ball at your feet: you play like anyone (FEINT is a feint)
-    if (ml < 0.12 && p.state === 'free' && !p.charging) { // hands off the stick: the keeper's spot, facing the ball
-      const t = AI.keeperSpot(this, p), dx = t.x - p.pos.x, dz = t.z - p.pos.z, d = Math.hypot(dx, dz);
-      if (d > 0.3) { const k = Math.min(1, d / 2.5) * 0.85; p.mx = dx / d * k; p.mz = dz / d * k; p.sprint = d > 4; }
-      if (p.faceYaw == null) p.faceYaw = yawTo(p.pos, b.pos);
+    if (b.owner === p) { p.diveQ = null; return out; } // the ball at your feet: you play like anyone (FEINT is a feint, JUMP flicks it)
+    if (ml < 0.12 && p.faceYaw == null) p.faceYaw = yawTo(p.pos, b.pos); // standing still: you watch the ball
+    const q = p.diveQ;
+    if (q) { // a dive pressed early: shuffle across, then go
+      const K = this.shotAt(p);
+      if (!K) p.diveQ = null; // it was blocked or stopped: no dive
+      else if (this.time >= q.at) { p.diveQ = null; this.keeperDive(p, q.push, q.high, true); }
+      else { const dx = K.x - p.pos.x; if (Math.abs(dx) > 0.35 && (!q.push || sgn(dx) === sgn(q.push))) { p.mx = sgn(dx) * Math.min(1, Math.abs(dx)); p.mz = 0; } }
     }
-    if (c.dodge) this.keeperDive(p, p.mx, c.jumpHeld);
-    return true; // without the ball the button only ever dives
+    out.feint = false; // without the ball the FEINT button only ever dives
+    const sideways = Math.abs(c.moveX || 0) > 0.3;
+    if (c.jump && sideways) out.jump = false;
+    if (c.dodge || (c.jump && sideways)) this.keeperDive(p, Math.abs(p.mx) > 0.3 ? p.mx : 0, !!c.dodge && c.jumpHeld);
+    return out;
   }
-  keeperDive(p, push, high) {
-    if (p.state !== 'free' || !p.onGround || (p.diveAt || -9) > this.time) return false;
-    const b = this.ball, s = this.dir(p.team);
+  /** a ball flying at your goal: where (and when) it passes the line you stand on */
+  shotAt(p) { const b = this.ball; return !b.owner && b.vel.z * this.dir(p.team) < -0.5 && b.vel.lengthSq() > 49 ? AI.crossAt(b, p.pos.z) : null; }
+  keeperDive(p, push, high, now = false, big = false) {
+    if (p.state !== 'free' || !p.onGround || (!big && (p.diveAt || -9) > this.time) || p.diveQ) return false;
+    const b = this.ball, K = this.shotAt(p);
     let dx = 0, ky = high ? 2.3 : 0.7, tk = 0.4;
-    const K = !b.owner && b.vel.z * s < -0.5 && b.vel.lengthSq() > 49 ? AI.crossAt(b, p.pos.z) : null; // a ball flying this way
     const want = Math.abs(push) > 0.3 ? sgn(push) : 0;
-    if (K && Math.abs(K.x) < F.GW + 3 && (!want || sgn(K.x - p.pos.x) === want || Math.abs(K.x - p.pos.x) < 0.6)) { dx = K.x - p.pos.x; ky = Math.max(ky, K.y); tk = K.t; }
-    else dx = (want || sgn(b.pos.x - p.pos.x) || 1) * 3.2;
+    const aimed = K && Math.abs(K.x) < F.GW + 3 && (!want || sgn(K.x - p.pos.x) === want || Math.abs(K.x - p.pos.x) < 0.6);
+    if (aimed && !now && K.t > 0.42) { p.diveQ = { at: this.time + K.t - 0.36, push, high }; return true; } // early: wait for it
+    if (aimed) { dx = K.x - p.pos.x; ky = Math.max(ky, K.y); tk = K.t; }
+    else dx = (want || sgn(b.pos.x - p.pos.x) || 1) * (big ? 5.5 : 3.2);
     if (Math.abs(dx) < 0.5) dx = sgn(dx || 1) * 0.5;
     AI.dive(this, p, dx, ky, tk, Math.max(0.8, this.skill(p)));
+    if (big && p.dive) { p.dive.vx = clamp(dx / clamp(tk, 0.25, 0.5), -24, 24); p.dive.dur = 0.5; p.dive.big = true; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 2, 20); }
     p.diveAt = this.time + 1.1;
     return true;
   }
@@ -6093,7 +6200,7 @@ class Match {
       const sky = p.fx.skyTrap > 0;
       const reach = sky ? 1.75 : p.isHuman ? 1.0 : 0.92;
       const rv = Math.hypot(b.vel.x - p.vel.x, b.vel.y - p.vel.y, b.vel.z - p.vel.z);
-      const hMax = sky ? 3.4 : rv < 22 ? 1.75 : 1.15;
+      const hMax = sky ? 3.4 : rv < 22 ? (p.isHuman ? 2.05 : 1.75) : 1.15; // you can take a slow ball on the chest or the head
       if (hd < reach && relY < hMax && relY > -0.7) {
         const meant = b.kick && b.kick.type === 'pass' && b.kick.to === p;
         if (rv > 31 && !sky && !meant) continue;
@@ -6105,7 +6212,8 @@ class Match {
       if (p === b.ignore) continue;
       const dx = b.pos.x - p.pos.x, dz = b.pos.z - p.pos.z, hd = Math.hypot(dx, dz), relY = b.pos.y - p.pos.y;
       const R = P_R + BALL_R;
-      if (hd >= R || relY > P_H || relY < -BALL_R || p.state === 'down') continue;
+      const top = p.wall || p.inWall || p.isGK ? P_H : P_H + BALL_R; // the ball's edge, not its middle: a ball at head height hits the head (keepers have their own hands, keeperContact, and a free kick wall keeps the height free kicks were tuned on) // the ball's edge, not its middle: a ball at head height hits the head (keepers have their own hands, keeperContact, and a free kick wall keeps the height free kicks were tuned on)
+      if (hd >= R || relY > top || relY < -BALL_R || p.state === 'down') continue;
       const nx = dx / (hd || 1), nz = dz / (hd || 1);
       b.pos.x = p.pos.x + nx * R; b.pos.z = p.pos.z + nz * R;
       const rvx = b.vel.x - p.vel.x, rvz = b.vel.z - p.vel.z, vn = rvx * nx + rvz * nz;
@@ -6129,13 +6237,14 @@ class Match {
     if (gk.state === 'dive' && gk.dive) {
       const d = gk.dive;
       ax = gk.pos.x - d.ux * 0.4; ay = gk.pos.y + 0.55; az = gk.pos.z - d.uz * 0.4;
-      bx = gk.pos.x + d.ux * 1.45; by = gk.pos.y + (d.high ? 1.5 : 1.0); bz = gk.pos.z + d.uz * 1.45;
+      const far = d.big ? 2.0 : 1.45; // CAT LEAP: stretched right out
+      bx = gk.pos.x + d.ux * far; by = gk.pos.y + (d.high ? 1.5 : 1.0); bz = gk.pos.z + d.uz * far;
     } else { ax = gk.pos.x; ay = gk.pos.y + 0.2; az = gk.pos.z; bx = gk.pos.x; by = gk.pos.y + 2.25; bz = gk.pos.z; }
     const abx = bx - ax, aby = by - ay, abz = bz - az, l2 = abx * abx + aby * aby + abz * abz;
     const t = clamp(((b.pos.x - ax) * abx + (b.pos.y - ay) * aby + (b.pos.z - az) * abz) / l2, 0, 1);
     const cx = ax + abx * t, cy = ay + aby * t, cz = az + abz * t;
     const dist = Math.hypot(b.pos.x - cx, b.pos.y - cy, b.pos.z - cz);
-    const reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.gkSize()) * 0.14; // longer reach in small teams, where keepers face more shots
+    const reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.gkSize()) * 0.14 + (gk.fx.gloves > 0 ? 0.75 : 0); // longer reach in small teams, where keepers face more shots; GIANT GLOVES
     if (dist > BALL_R + reach) return;
     const k = b.kick;
     const shooter = k && k.by && k.by.team !== gk.team && k.type === 'shot' ? k.by : null;
@@ -6143,7 +6252,7 @@ class Match {
     const sk = this.skill(gk);
     const catchMax = 19 + 9 * sk;
     if (shooter && !k.counted) { k.counted = true; shooter.stats.onTarget++; this.flowAdd(shooter, 15); }
-    if (speed < catchMax && !(k && (k.special === 'impact' || k.special === 'bomb'))) { // an impact shot or a long bomb can only be punched away
+    if (gk.fx.iron > 0 || (speed < catchMax && !(k && (k.special === 'impact' || k.special === 'bomb')))) { // an impact shot or a long bomb can only be punched away (IRON HANDS holds anything)
       this.possess(gk);
       if (shooter) { gk.stats.saves++; this.label(gk, 'SAVE', TEAM[gk.team].hex); if (shooter.isHuman) this.toast('SAVED', 'bad', shooter); Sfx.save(); Sfx.ooh(); }
     } else {
@@ -6966,6 +7075,8 @@ const AI = {
   },
   /** two defenders split the back: DEF takes one side when DEF2 is there */
   pair(m, p) { return m.teams[p.team].some((q) => q.role === 'DEF2'); },
+  /** a striker with no midfielder behind (3v3: keeper, defender, striker) drops back to help when the other team has it */
+  lone(m, p) { return p.role === 'ST' && !m.teams[p.team].some((q) => q.role === 'MID' || q.role === 'FW') && m.teams[p.team].some((q) => q.role === 'DEF'); },
   /** where a bot stands for its role. Worked out on the first pitch's scale, then stretched to this one */
   formation(m, p, st) {
     if (m.cfg.hill) return this.hillSpot(m, p, st);
@@ -6984,7 +7095,7 @@ const AI = {
       if (r === 'DEF') { u = bu * 0.5 + (this.pair(m, p) ? 4 : 0); v = clamp(bv - 7, -29, -6); }
       else if (r === 'DEF2') { u = bu * 0.5 - 4; v = clamp(bv - 7, -29, -6); }
       else if (r === 'FW') { u = bu * 0.3 + 5; v = clamp(bv + 1, -6, 10); }
-      else if (r === 'MID') { u = bu * 0.45; v = clamp(bv - 6, -26, 4); }
+      else if (r === 'MID' || this.lone(m, p)) { u = bu * 0.45; v = clamp(bv - 6, -26, 4); }
       else if (r === 'LW') { u = clamp(bu * 0.4 + 7, -14, 15); v = clamp(bv - 4, -24, 8); }
       else if (r === 'RW') { u = clamp(bu * 0.4 - 7, -15, 14); v = clamp(bv - 4, -24, 8); }
       else { u = bu * 0.3; v = clamp(bv + 3, -4, 12); }
@@ -7060,6 +7171,7 @@ const AI = {
     const c = m.ball.owner;
     if (!c || c.team === p.team || p.tackleCd > 0 || p.state !== 'free') return;
     if (m.safeGK(c)) return; // nobody takes the keeper's ball (yours: only in your box)
+    if (m.boxBlocked(p)) return; // waiting outside the box (BOX_FREE): no sliding in either
     const d = dist2D(c.pos, p.pos), sk = m.skill(p);
     const trig = (2.2 + 0.6 * sk) * p.mods.tackleRange;
     const away = d > 0.01 ? (c.vel.x * (c.pos.x - p.pos.x) + c.vel.z * (c.pos.z - p.pos.z)) / d : 0;
@@ -10223,7 +10335,7 @@ const UI = {
         <div class="locker">
           <div class="lk-stage"><div class="lk-fit" id="lk-fit" title="Drag to turn your player"><span class="label lk-drag">DRAG TO TURN</span></div><div class="lk-cap panel" id="lk-cap"></div></div>
           <div class="lk-side">
-            <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button><button class="tab" id="ltab-skin" role="tab" type="button">SKINS</button><button class="tab" id="ltab-club" role="tab" type="button">CLUB</button></div>
+            <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button><button class="tab" id="ltab-skin" role="tab" type="button">SKINS</button><button class="tab" id="ltab-gk" role="tab" type="button">KEEPERS</button><button class="tab" id="ltab-club" role="tab" type="button">CLUB</button></div>
             <div class="tabs slots" id="lk-slots" role="tablist" hidden></div>
             <div class="lk-body"><div class="grid-cards" id="locker-grid"></div><div class="panel detail" id="locker-detail"></div></div>
           </div>
@@ -10274,7 +10386,7 @@ const UI = {
             ${row(key('X'), 'Use item (Lawless)')}
             ${row(key('TAB'), 'Scoreboard')}
             ${row(key('1') + key('2') + key('3') + key('4'), 'Online: quick chat. PASS!, NICE!, GG, ON ME')}
-            ${row(key('T'), 'Online: open chat. Typing needs an account, quick chat works for everyone')}
+            ${row(key('T'), 'Online: open chat (or the CHAT button over the map, and CHAT in the pause menu). Typing needs an account, quick chat works for everyone')}
             ${row(key('ESC') + key('P'), 'Pause')}
             ${row(key('ENTER'), 'Watch the replay after a goal, a nutmeg or an ankle breaker. SAVE CLIP downloads it as a video')}
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
@@ -10312,13 +10424,15 @@ const UI = {
             <li><b>Players online:</b> on PLAY ONLINE you can see who else has the game open. INVITE asks them into your room (it makes one if you have none), ADD FRIEND asks to be friends (you both need an account), JOIN walks into a friend's room. Friends also show on the Profile screen with an INVITE button. Do not want to be seen or invited? Turn SHOW ME HERE off, or set INVITES FROM to FRIENDS or NOBODY.</li>
             <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
             <li><b>Your position:</b> before each match the camera flies in and you pick where you play: striker, midfield, wing, defence or in goal. The game remembers it for next time.</li>
-            <li><b>In goal:</b> C (B on a controller, DIVE on a phone) dives to save, at a shot it dives to where the ball is going; hold SPACE for a high dive. Let go of the stick and you stand in the right spot by yourself. With the ball in your hands, PASS throws it to a teammate and SHOOT kicks it long.</li>
+            <li><b>In goal:</b> JUMP with A or D held (the stick left or right) dives that way, and C (B on a controller, DIVE on a phone) dives too. At a shot, the dive goes to where the ball is going, as high as it is; press early and you shuffle across and dive at the right moment. Where you stand is up to you, so you can come off your line. With the ball in your hands, PASS throws it and SHOOT kicks it long.</li>
+            <li><b>Keeper characters:</b> in goal you play your keeper character, with three powers made for keepers. FORTRESS is free, LYNX costs blueprints. Pick one in the Locker, KEEPERS tab.</li>
+            <li><b>Their box:</b> against bots, once you get into their box their defenders wait outside it for 5 seconds, so you get a fair go at a shot.</li>
             <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
             <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
             <li><b>More modes</b> (the MORE MODES button): King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3), Free Kicks and the Tutorial. One of them is FEATURED, and it changes every 3 hours.</li>
             <li><b>Rewards</b> (emeralds, XP, pass, GOALS) come from full-time matches: Quick Match, Ranked and Lawless. King of the Hill, Volleys and Duels are just for fun, unless you play them with friends: every friends match gives rewards. Leaving early gives nothing.</li>
-            <li><b>Team size:</b> Quick Match is 4v4 with a winger. Lawless is 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
+            <li><b>Team size:</b> Quick Match is 4v4: a keeper, a defender, a midfielder and a striker. Lawless is 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
           </ul></section>
@@ -10443,6 +10557,7 @@ const UI = {
       <div class="charge" id="charge" hidden><i id="charge-fill"></i><b class="cmark" id="charge-cmark"></b><span id="charge-txt">POWER</span></div>
       <div class="toasts" id="toasts"></div>
       <div class="chatfeed" id="chatfeed" aria-live="polite"></div>
+      <button class="btn ghost hud-chat" id="hud-chat" type="button" hidden><span class="key">T</span>CHAT</button>
       <div class="awakeside" id="awakeside" hidden><span class="aw-name" id="aws-name"></span><div class="aw-track"><i id="aws-fill"></i></div><b id="aws-txt">0%</b><span class="key k">Z</span></div>
       <div class="idle-warn" id="idle-warn" hidden role="alert"><b id="idle-big"></b><span id="idle-small"></span></div>
       <div class="banner" id="banner" hidden><div class="big" id="banner-big"></div><div class="small" id="banner-small"></div></div>
@@ -10571,7 +10686,7 @@ const UI = {
           <span class="fs-only" hidden>Fullscreen</span><div class="seg fs-only" id="set-fs" hidden><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
         </div>
         <div class="p-people" id="p-people" hidden></div>
-        <div class="row"><button class="btn blue" id="p-resume" type="button">RESUME</button><button class="btn" id="p-forfeit" type="button">FORFEIT</button><button class="btn" id="p-admin" type="button" hidden>ADMIN</button></div>
+        <div class="row"><button class="btn blue" id="p-resume" type="button">RESUME</button><button class="btn" id="p-forfeit" type="button">FORFEIT</button><button class="btn" id="p-admin" type="button" hidden>ADMIN</button><button class="btn" id="p-chat" type="button" hidden>CHAT</button></div>
         <p class="label" id="p-note">Click the pitch after resuming to lock the mouse again.</p>
       </div>
     </section>`;
@@ -10662,6 +10777,7 @@ const UI = {
     click('ltab-style', () => { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.renderLocker(); });
     click('ltab-flow', () => { this.lockerTab = 'flow'; this.lockerSel = Save.data.flow || 'NONE'; this.renderLocker(); });
     click('ltab-club', () => { this.lockerTab = 'club'; this.lockerSel = Save.data.club; this.renderLocker(); });
+    click('ltab-gk', () => { this.lockerTab = 'gk'; this.lockerSel = Save.data.gk || 'NONE'; this.renderLocker(); });
     click('ltab-skin', () => { this.lockerTab = 'skin'; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
     $('lk-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); this.skinSlot = b.dataset.slot; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
     click('btn-mute', () => { // SOUND ON, then MUSIC OFF (sounds but no music), then SOUND OFF
@@ -10671,6 +10787,8 @@ const UI = {
     });
     click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('cg-acct', () => Portal.acctClick());
+    click('hud-chat', () => Net.openChat());
+    click('p-chat', () => { $('p-resume').click(); setTimeout(() => Net.openChat(), 0); });
     click('in-go', () => Game.endIntro());
     $('in-roles').addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (b) { Sfx.click(); Game.pickRole(b.dataset.r); } });
     click('p-resume', () => Game.resume());
@@ -10803,6 +10921,7 @@ const UI = {
     Tips.start(m); // new players: the HUD fills in as each part comes up
     if (Touch.on && window.innerHeight > window.innerWidth) this.hintT = Math.max(this.hintT, 6);
     Touch.build(m);
+    $('hud-chat').hidden = !(m.online && Portal.chatAllowed()); // online on a computer: shows where the chat is (phones have the bubble button)
     this.lockHint();
   },
   setText(id, v) { const c = this.hudCache; if (c[id] !== v) { c[id] = v; $(id).textContent = v; } },
@@ -11013,6 +11132,7 @@ const UI = {
     $('set-fs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === Touch.isFs()));
     $('p-note').textContent = Touch.on ? 'Tip: double tap the right side of the screen to face the goal you attack.' : 'Click the pitch after resuming to lock the mouse again.';
     $('p-admin').hidden = !(Admin.is() && Admin.inMatch());
+    $('p-chat').hidden = !(Game.state === 'online' && Portal.chatAllowed()); // online: the chat, one press away
     const f = $('p-forfeit'); delete f.dataset.armed; f.textContent = Game.state === 'online' ? 'LEAVE MATCH' : Game.match && Game.match.cfg.tutorial ? 'SKIP TUTORIAL' : 'FORFEIT';
     $('p-note').textContent = Game.state === 'online' ? 'Online matches keep going while this menu is open.' : $('p-note').textContent;
     $('scr-pause').querySelector('h2').textContent = Game.state === 'online' ? 'MENU' : 'PAUSED';
@@ -11044,7 +11164,7 @@ const UI = {
     const back = (r) => (r === 'GK' ? 99 : ROLE_ORDER.indexOf(r));
     this.introRoles = m.teams[m.human.team].map((p) => p.role).sort((a, b) => back(b) - back(a));
     $('in-keys').textContent = Touch.on ? '' : 'KEYS 1-' + this.introRoles.length + ' PICK · ENTER PLAYS';
-    $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${ROLE_INFO[r][1]}</span></button>`).join('');
+    $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${r === 'GK' && Save.data.gk && STYLES[Save.data.gk] ? STYLES[Save.data.gk].name + ' · ' : ''}${ROLE_INFO[r][1]}</span></button>`).join('');
     this.renderIntro(m);
     $('intro').hidden = false;
   },
@@ -11180,6 +11300,11 @@ const UI = {
     const d = Save.data, tab = this.lockerTab;
     if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
     if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
+    if (tab === 'gk') { // keeper characters: only used when you play in goal
+      if (id === 'NONE') return { name: 'YOUR OWN STYLE', rarity: 'Rare', base: true, owned: true, equipped: d.gk === null };
+      const st = STYLES[id], free = id === GK_FREE;
+      return { name: st.name, rarity: st.rarity, base: free, owned: free || d.styles.includes(id), equipped: d.gk === id, from: BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] };
+    }
     if (tab === 'flow') { const fl = id === 'NONE' ? null : FLOWS[id]; return { name: fl ? fl.name : 'NO FLOW', rarity: fl ? fl.rarity : 'Rare', base: !fl, owned: !fl || d.flows.includes(id), equipped: (d.flow || 'NONE') === id, from: 'FLOW SPINS' }; }
     if (id.startsWith('TONE')) { const n = +id.slice(4); return { name: 'SKIN ' + (n + 1), rarity: 'Rare', base: true, owned: true, equipped: d.tone === n }; }
     const sk = SKINS[id];
@@ -11188,18 +11313,20 @@ const UI = {
   lockerArt(id, size) {
     const tab = this.lockerTab;
     if (tab === 'club') return crestCanvas(id, size);
+    if (tab === 'gk' && id !== 'NONE') { const st = STYLES[id], im = document.createElement('img'); im.className = 'px'; im.alt = ''; im.src = iconURL(ABILITIES[st.abilities[0]].icon, st.aura); im.style.width = im.style.height = size + 'px'; return im; }
+    if (tab === 'gk') return portraitCanvas(Save.data.style, size, Object.assign(lookFor(Save.data.style, Save.data.look), { skin: SKIN_TONES[Save.data.tone] }));
     const look = Object.assign(lookFor(Save.data.style, Save.data.look), { skin: SKIN_TONES[Save.data.tone] });
     if (id.startsWith && id.startsWith('TONE')) return portraitCanvas(Save.data.style, size, Object.assign(look, { skin: SKIN_TONES[+id.slice(4)] }));
     return tab === 'style' ? portraitCanvas(id, size, Object.assign(lookFor(id, Save.data.look), { skin: SKIN_TONES[Save.data.tone] })) : tab === 'flow' ? flowEmblemCanvas(id === 'NONE' ? null : id, size) : skinCanvas(id, size);
   },
   renderLocker() {
     const d = Save.data, tab = this.lockerTab;
-    for (const t of ['style', 'flow', 'skin', 'club']) $('ltab-' + t).setAttribute('aria-selected', tab === t);
+    for (const t of ['style', 'flow', 'skin', 'gk', 'club']) $('ltab-' + t).setAttribute('aria-selected', tab === t);
     const slots = $('lk-slots');
     slots.hidden = tab !== 'skin';
     if (tab === 'skin') slots.innerHTML = `<button class="tab" type="button" role="tab" data-slot="tone" aria-selected="${this.skinSlot === 'tone'}">SKIN</button>` + SKIN_SLOTS.map((sl) => `<button class="tab" type="button" role="tab" data-slot="${sl.id}" aria-selected="${this.skinSlot === sl.id}">${sl.name}</button>`).join('');
     const byRar = (M) => (a, b) => RARITIES.indexOf(M[a].rarity) - RARITIES.indexOf(M[b].rarity); // Rare first, Generational last
-    const ids = tab === 'club' ? CLUB_IDS : tab === 'style' ? STYLE_IDS.slice().sort(byRar(STYLES)) : tab === 'flow' ? ['NONE'].concat(FLOW_IDS.slice().sort(byRar(FLOWS)))
+    const ids = tab === 'club' ? CLUB_IDS : tab === 'gk' ? ['NONE'].concat(GK_IDS) : tab === 'style' ? STYLE_IDS.slice().sort(byRar(STYLES)) : tab === 'flow' ? ['NONE'].concat(FLOW_IDS.slice().sort(byRar(FLOWS)))
       : this.skinSlot === 'tone' ? SKIN_TONES.map((t, i) => 'TONE' + i)
       : Object.keys(SKINS).filter((k) => SKINS[k].base && SKINS[k].slot === this.skinSlot).concat(LOCKER_SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
     const grid = $('locker-grid');
@@ -11215,6 +11342,7 @@ const UI = {
     // the 3D player tries on whatever card is picked, owned or not
     const id = this.lockerSel, spec = { look: {} };
     if (tab === 'style') spec.style = id;
+    else if (tab === 'gk') { /* a keeper character keeps your own look */ }
     else if (tab === 'club') spec.club = id;
     else if (tab === 'flow') spec.flow = id === 'NONE' ? null : id;
     else if (id.startsWith('TONE')) spec.tone = +id.slice(4);
@@ -11230,6 +11358,11 @@ const UI = {
       det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KeyNames.of(KEYS3[i])}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
         + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)}</p></div></div>` : '')
         + (st.awaken && st.awaken.move ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><div><div class="t"><span class="key">Z</span><b>${esc(st.awaken.move.name)}</b><span class="label">AWAKENED · ONCE</span></div><p>${esc(st.awaken.move.desc)}</p></div></div>` : '') + '</div>';
+    } else if (tab === 'gk') {
+      const st = id === 'NONE' ? null : STYLES[id];
+      det.innerHTML = st ? head('KEEPER CHARACTER · ONLY WHEN YOU PLAY IN GOAL', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KeyNames.of(KEYS3[i])}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}</div>`
+        + '<p style="margin:0;color:var(--muted)">Pick KEEPER before a match to play in goal. You keep your own look and wear the keeper kit.</p>'
+        : head('', 'In goal you keep your own style and its powers. Pick a keeper character for three powers made for goalkeepers.');
     } else if (tab === 'club') {
       const c = CLUBS[id];
       det.innerHTML = head('', 'The club you play for. Your team wears its kit, and its fans fill your stands.') + `<div class="kits">${[['HOME', c.home], ['AWAY', c.away], ['KEEPER', c.keeper]].map(([n]) => `<div class="kitbox"><span class="kv"></span><span class="label">${n}</span></div>`).join('')}</div>
@@ -11250,12 +11383,12 @@ const UI = {
     const cap = $('lk-cap');
     cap.innerHTML = `${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<b>${esc(it.name)}</b>`
       + (it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" data-sfx="equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`)
-      + (tab === 'style' && (it.spun || !it.owned) ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
+      + ((tab === 'style' && (it.spun || !it.owned)) || (tab === 'gk' && !it.owned) ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
     const kp = $('lk-keep');
-    if (kp) kp.addEventListener('click', () => { if (Goals.unlock(d, id)) { d.style = id; Save.save(); Sfx.coin(); this.renderLocker(); this.renderLobby(); } });
+    if (kp) kp.addEventListener('click', () => { if (Goals.unlock(d, id)) { if (tab === 'gk') d.gk = id; else d.style = id; Save.save(); Sfx.coin(); this.renderLocker(); this.renderLobby(); } });
     const eq = $('lk-equip');
     if (eq) eq.addEventListener('click', () => {
-      if (tab === 'style') d.style = id; else if (tab === 'club') d.club = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else if (id.startsWith('TONE')) d.tone = +id.slice(4); else d.look[SKINS[id].slot] = id;
+      if (tab === 'style') d.style = id; else if (tab === 'gk') d.gk = id === 'NONE' ? null : id; else if (tab === 'club') d.club = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else if (id.startsWith('TONE')) d.tone = +id.slice(4); else d.look[SKINS[id].slot] = id;
       Save.save(); this.renderLocker();
     });
   },
@@ -11373,8 +11506,9 @@ const Game = {
     if (h.role === r) return true;
     const o = m.teams[h.team].find((p) => p.role === r && !p.isHuman);
     if (!o) return false;
-    m.swapRoles(h, o); // in goal: the keeper's kit and number 1 come with it
+    m.swapRoles(h, o); // in goal: the keeper's kit and number 1 come with it, and your keeper character's powers
     m.setupKickoff(0, true, true);
+    UI.buildHud(m); // the power slots follow (a keeper character has its own)
     Save.data.pos = r; Save.save();
     UI.renderIntro(m);
     return true;
@@ -11633,7 +11767,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {

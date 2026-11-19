@@ -68,11 +68,11 @@ const check = (name, ok, info) => { results.push((ok ? 'PASS ' : 'FAIL ') + name
   check('stick release stops', Math.abs(s.mx) < 1e-6 && Math.abs(s.my) < 1e-6 && s.spd < 1.5, s);
   // small push walks, half push jogs
   await tStart(1, g.x, g.y); await tMove(1, g.x + g.R * 0.3, g.y); await step(30);
-  const walk = (await state()).spd;
+  const ws = await state(), walk = ws.spd;
   await tMove(1, g.x + g.R * 0.05, g.y); await step(30);
   const dead = (await state()).spd;
   await tEnd(1); await step(20);
-  check('analog stick: light push is slower, tiny push is dead zone', walk > 2 && walk < 6.5 && dead < 0.5, { walk, dead });
+  check('analog stick: light push is slower, tiny push is dead zone', walk > 2 && walk < 6.5 && dead < 0.5, { walk, dead, at: ws });
   await page.evaluate(() => { EGO.AI.update = window._aiU; });
 
   // ---- shoot ----
