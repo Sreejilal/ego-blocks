@@ -535,9 +535,9 @@ function badgeURL(tier) {
 }
 /** pixel portrait of a style (head front + hair + aura frame); `look` can swap the haircut and colour */
 function portraitCanvas(styleId, size = 96, look = null) {
-  const st = STYLES[styleId] || STYLES.ROOKIE;
+  const st = STYLES[styleId] || STYLES.ROOKIE, sig = !!(look && look.sig); // sig: the style's own face (Locker cards, spins), not your skins
   const c = mkCanvas(16, 16), g = c.getContext('2d');
-  g.fillStyle = st.aura; g.globalAlpha = 0.28; g.fillRect(0, 0, 16, 16); g.globalAlpha = 1;
+  g.fillStyle = st.aura; g.globalAlpha = sig ? 0.45 : 0.28; g.fillRect(0, 0, 16, 16); g.globalAlpha = 1;
   const skin = (look && look.skin) || '#e8b48a', hair = (look && look.hair) || st.hair, shape = (look && look.hairShape) || st.hairShape;
   g.fillStyle = '#0a0c17'; g.fillRect(3, 3, 10, 11);
   g.fillStyle = skin; g.fillRect(4, 4, 8, 9);
@@ -560,6 +560,17 @@ function portraitCanvas(styleId, size = 96, look = null) {
   g.fillStyle = '#f7f7f2'; g.fillRect(5, 8, 2, 1); g.fillRect(9, 8, 2, 1);
   g.fillStyle = st.aura; g.fillRect(6, 8, 1, 1); g.fillRect(9, 8, 1, 1);
   g.fillStyle = '#7a4a30'; g.fillRect(7, 11, 2, 1);
+  if (sig) { // owner: every character looked the same on its card. Each one gets its own look: hair, a face of its own, a shirt in its colour
+    let hs = 0; for (const ch of String(styleId)) hs = (hs * 31 + ch.charCodeAt(0)) >>> 0;
+    const mood = hs % 4;
+    if (mood === 1) { g.fillRect(6, 10, 1, 1); g.fillRect(9, 10, 1, 1); } // a grin
+    if (mood === 2) { g.fillStyle = hair; g.fillRect(5, 7, 2, 1); g.fillRect(9, 7, 2, 1); } // fierce brows
+    if (mood === 3) g.fillRect(9, 10, 1, 1); // a smirk
+    g.fillStyle = '#0a0c17'; g.fillRect(2, 14, 12, 2);
+    g.fillStyle = st.aura; g.fillRect(3, 14, 10, 2);
+    g.fillStyle = skin; g.fillRect(7, 14, 2, 1);
+    if (st.gk) { g.fillStyle = '#f2f2ea'; g.fillRect(1, 12, 2, 2); g.fillRect(13, 12, 2, 2); } // keeper styles: gloves up
+  }
   const out = mkCanvas(size, size), og = out.getContext('2d');
   og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size);
   out.className = 'px';

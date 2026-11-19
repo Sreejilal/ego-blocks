@@ -16,7 +16,8 @@ const Touch = {
   /** first guess before any input arrives: phones and tablets report a coarse primary pointer. On CrazyGames their SDK says which device it is (their rule) */
   detect() {
     const dev = Portal.on ? Portal.try(() => Portal.sdk.user.systemInfo.device.type) : null;
-    this.on = dev ? dev !== 'desktop' : this.mq('(pointer: coarse)');
+    this.dev = dev || null;
+    this.on = dev ? dev !== 'desktop' : this.mq('(pointer: coarse)') || (navigator.maxTouchPoints > 0 && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ''));
     document.body.classList.toggle('touch', this.on);
   },
   tpl() {
@@ -27,6 +28,9 @@ const Touch = {
       + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tb sm" data-act="cam" aria-label="Switch camera"><i class="ic"></i></div><div class="tb sm" data-act="emote" aria-label="Emotes"><i class="ic"></i></div><div class="tb sm fsgo" data-act="fs" aria-label="Full screen" hidden><i class="ic"></i><b class="lb">FULL</b></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
   },
   init() {
+    // owner: "on some phones the game does not work": a phone that did not say it is one got no touch buttons. The first real
+    // touch on the screen switches them on (not on CrazyGames when their SDK says it is a computer: their rule)
+    window.addEventListener('touchstart', () => { if (!this.on && this.dev !== 'desktop') this.setOn(true); }, { passive: true, capture: true });
     const el = document.createElement('div');
     el.id = 'touch'; el.hidden = true;
     el.innerHTML = this.tpl();
@@ -271,7 +275,7 @@ const Touch = {
   },
   tog(el, cls, on) { if (el.classList.contains(cls) !== on) el.classList.toggle(cls, on); },
   setCd(act, frac, num) {
-    const c = this.cache, q = Math.round(frac * 90);
+    const c = this.cache, q = frac > 0 ? Math.ceil(frac * 90) : 0; // exactly 0 only when it is ready (a rounded 0 used to leave a sliver drawn)
     if (c['cd' + act] !== q) { c['cd' + act] = q; this.b[act].style.setProperty('--p', (frac * 360).toFixed(0) + 'deg'); }
     if (c['n' + act] !== num) { c['n' + act] = num; this.parts[act].num.textContent = num; }
   },

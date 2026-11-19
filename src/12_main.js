@@ -13,6 +13,8 @@ const Game = {
     Save.load(); Save.validate();
     Portal.applyMute();
     World.init($('gl'));
+    // a phone short of memory can take the graphics away mid-game: say so, with RELOAD, instead of a frozen black screen
+    $('gl').addEventListener('webglcontextlost', (e) => { e.preventDefault(); try { Save.save(); } catch (er) {} bootFail(new Error('THE GRAPHICS STOPPED. THIS PHONE OR TABLET NEEDED THE MEMORY BACK. CLOSE OTHER APPS AND TABS, THEN RELOAD. YOUR PROGRESS IS SAVED.'), true); }, false);
     FX.init(World.scene);
     Touch.detect();
     UI.init();
@@ -109,9 +111,8 @@ const Game = {
     if (h.role === r) return true;
     const o = m.teams[h.team].find((p) => p.role === r && !p.isHuman);
     if (!o) return false;
-    m.swapRoles(h, o); // in goal: the keeper's kit and number 1 come with it, and your keeper character's powers
+    m.swapRoles(h, o); // in goal: the keeper's kit and number 1 come with it
     m.setupKickoff(0, true, true);
-    UI.buildHud(m); // the power slots follow (a keeper character has its own)
     Save.data.pos = r; Save.save();
     UI.renderIntro(m);
     return true;
@@ -155,7 +156,8 @@ const Game = {
     const ramp = this.rampFor(mode);
     if (ramp) { size = Math.min(size, ramp[0]); skill = Math.min(skill, ramp[1]); }
     const intro = !o.noIntro && this.introOn(mode);
-    this.match = new Match(mode, skill, { size, role: Save.data.pos, intro });
+    const st = STYLES[Save.data.style];
+    this.match = new Match(mode, skill, { size, role: Save.data.pos || (st && st.gk ? 'GK' : null), intro }); // a keeper style with no position picked yet starts in goal
     this.lastMode = mode; this.ended = false;
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
@@ -370,7 +372,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {
@@ -408,8 +410,14 @@ window.addEventListener('load', () => {
     Portal.boot().then(() => { try { Game.start(); Portal.ready(); } catch (err) { bootFail(err); } });
   } catch (err) { bootFail(err); }
 });
-function bootFail(err) {
+function bootFail(err, stopped = false) {
   const b = document.getElementById('boot') || document.getElementById('app');
-  if (b) { b.style.display = 'grid'; b.innerHTML = '<div style="max-width:40ch;text-align:center;font-family:var(--font-body);font-size:18px;padding:16px">SCORZ could not start.<br><br>' + esc(err && err.message ? err.message : String(err)) + '</div>'; }
+  const msg = err && err.message ? err.message : String(err);
+  const gl = /webgl|context/i.test(msg) && !stopped ? '<br><br>This browser could not start 3D graphics. Try Chrome, close other apps and tabs, or restart the device.' : '';
+  if (b) {
+    b.style.display = 'grid'; b.style.zIndex = 999; b.style.position = 'fixed'; b.style.inset = '0'; b.style.placeItems = 'center'; b.style.background = '#090b16';
+    b.innerHTML = '<div style="max-width:40ch;text-align:center;font-family:var(--font-body);font-size:18px;padding:16px;color:#eef1f4">' + (stopped ? '' : 'SCORZ could not start.<br><br>') + esc(msg) + gl + '<br><br><button type="button" class="btn blue" id="boot-reload">RELOAD</button></div>';
+    const rb = document.getElementById('boot-reload'); if (rb) rb.addEventListener('click', () => location.reload());
+  }
   console.error(err);
 }

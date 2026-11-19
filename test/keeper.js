@@ -1,7 +1,7 @@
 // You in goal: the intro's position picker has KEEPER too. Picking it swaps you with the computer keeper (their kit,
-// gloves and number 1 come with the job) and you play your keeper character (FORTRESS is free; LYNX costs blueprints;
-// the Locker's KEEPERS tab picks). JUMP with A or D dives that way, C dives too; a dive pressed early waits for the ball,
-// so you are still in the air when it gets there. Nobody moves you (keepers can come off their line). The ball in your
+// gloves and number 1 come with the job). Keeper styles (FORTRESS, LYNX) are normal styles from spins whose powers work in
+// goal; in goal any other style's moves work too. JUMP with A or D dives that way, C dives too; pressed early it goes at
+// once as a slower, floatier dive (very early: a moment's wait), so you are still in the air when the ball gets there. Nobody moves you (keepers can come off their line). The ball in your
 // hands goes to a teammate by itself if you hold it too long, and outside your box your ball can be taken like anyone's.
 // The next match remembers it; No Keepers, free kicks and the tutorial never put you in goal.
 const { open } = require('./harness');
@@ -12,6 +12,7 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   const shot = (n) => page.screenshot({ path: __dirname + '/shots/' + n + '.png', timeout: 120000 }).catch(() => {});
   await page.evaluate(() => {
     EGO.Game.toLobby(); EGO.Game.introTest = true; EGO.Save.data.pos = null;
+    const d = EGO.Save.data; d.styles.push('FORTRESS', 'LYNX'); d.style = 'FORTRESS'; // a keeper style, from a spin
     // a shot at your goal: from 15 out to (tx, at the line), `T` seconds of flight, starting at height y0
     window.__shoot = (tx, T, y0 = 0.6) => {
       const m = EGO.Game.match, h = m.human, b = m.ball, them = m.teams[1].find((p) => !p.isGK), gz = m.ownGoalZ(0);
@@ -30,8 +31,9 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
 
   const roles = await page.evaluate(() => [...document.querySelectorAll('#in-roles .in-role')].map((b) => b.dataset.r));
   check('Quick Match: keeper, defender, midfielder, striker (the keeper first)', roles.join(',') === 'GK,DEF,MID,ST', roles);
-  const gkLabel = await page.evaluate(() => document.querySelector('#in-roles [data-r="GK"]').textContent);
-  check('the KEEPER button names your keeper character', /FORTRESS/.test(gkLabel), gkLabel);
+  const first = await page.evaluate(() => ({ role: EGO.Game.match.human.role, style: EGO.Game.match.human.styleId }));
+  check('a keeper style with no position picked yet starts you in goal', first.role === 'GK' && first.style === 'FORTRESS', first);
+  await page.evaluate(() => EGO.Game.pickRole('ST'));
   const before = await page.evaluate(() => { const m = EGO.Game.match, g = m.keeperOf(0); return { gk: g.name, tex: m.human.skinTex.uuid, num: m.human.number, style: m.human.styleId }; });
   await page.evaluate(() => EGO.Game.pickRole('GK'));
   const sw = await page.evaluate((b) => {
@@ -39,9 +41,7 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     return { me: h.role, gk: h.isGK, num: h.number, keeper: m.keeperOf(0) === h, oldRole: old.role, oldGK: old.isGK, oldNum: old.number, repainted: h.skinTex.uuid !== b.tex, saved: EGO.Save.data.pos, keepers: m.teams[0].filter((p) => p.isGK).length, style: h.styleId, abil: h.abil.map((a) => a.id), slot: document.querySelector('#slot0 .nm').textContent };
   }, before);
   check('picking KEEPER puts you in goal (number 1, a new kit) and the old keeper takes your spot', sw.me === 'GK' && sw.gk && sw.num === 1 && sw.keeper && sw.oldRole === 'ST' && !sw.oldGK && sw.oldNum === before.num && sw.repainted && sw.keepers === 1 && sw.saved === 'GK', sw);
-  check('in goal you play your keeper character: FORTRESS and its three powers in the power slots', sw.style === 'FORTRESS' && sw.abil.join(',') === 'bigGloves,ironHands,cannonKick' && sw.slot === 'GIANT GLOVES', sw);
-  const back = await page.evaluate(() => { EGO.Game.pickRole('ST'); const h = EGO.Game.match.human, r = { style: h.styleId, slot: document.querySelector('#slot0 .nm').textContent }; EGO.Game.pickRole('GK'); return r; });
-  check('back to an outfield spot, your own style comes back', back.style === before.style && back.slot !== 'GIANT GLOVES', { back, own: before.style });
+  check('FORTRESS (a keeper style) in goal: its three powers in the power slots', sw.style === 'FORTRESS' && sw.abil.join(',') === 'bigGloves,ironHands,cannonKick' && sw.slot === 'GIANT GLOVES', sw);
   await page.evaluate(() => EGO.Game.stepManual(260));
   await shot('keeper1_intro');
   const nets = await page.evaluate(() => ({ mine: EGO.World.nets.find((n) => n.s < 0).grp.visible, theirs: EGO.World.nets.find((n) => n.s > 0).grp.visible }));
@@ -71,7 +71,9 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   check('JUMP with A held dives the other way and saves', ja.dived && ja.side === 1 && ja.saved && !ja.goal, ja);
   // C, pressed early at a high shot: you wait, shuffle across, and are still in the air when it arrives
   const early = await page.evaluate(() => { __shoot(-3.4, 1.0, 1.8); EGO.Game.stepManual(4); __key('KeyC', true); EGO.Game.stepManual(1); __key('KeyC', false); const h = EGO.Game.match.human, waited = h.state === 'free' && !!h.diveQ; const r = __watch(90); return Object.assign(r, { waited }); });
-  check('C pressed early at a high shot: the dive waits for the ball and saves it', early.waited && early.dived && !early.goal, early);
+  check("C pressed very early at a high shot: a moment's wait, then the dive saves it", early.waited && early.dived && !early.goal, early);
+  const soon = await page.evaluate(() => { __shoot(-3.4, 0.9, 1.8); EGO.Game.stepManual(18); __key('KeyC', true); EGO.Game.stepManual(1); __key('KeyC', false); const h = EGO.Game.match.human, now = h.state === 'dive', slow = h.dive ? +h.dive.dur.toFixed(2) : 0; const r = __watch(80); return Object.assign(r, { now, slow }); });
+  check('pressed a little early, the dive goes at once (slower, still stretched out when it arrives) and saves', soon.now && soon.slow > 0.42 && !soon.goal, soon);
   const none = await page.evaluate(() => { __shoot(-3.6, 0.95); return __watch(80); });
   check('without a dive the same kind of shot goes in (the saves are yours)', none.goal && !none.dived, none);
 
@@ -121,7 +123,7 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   // LYNX (blueprints): CAT LEAP reaches much further than a dive, SLOW SHOT slows a shot in your box, QUICK THROW
   const lynx = await page.evaluate(() => {
     const G = EGO.Game, d = EGO.Save.data, out = {};
-    d.styles.push('LYNX'); d.gk = 'LYNX';
+    d.style = 'LYNX';
     G.toLobby(); G.introTest = false; G.startMatch('quick'); const m = G.match, h = m.human;
     out.style = h.styleId; out.abil = h.abil.map((a) => a.id);
     m.phase = 'play'; for (const p of m.players) if (p !== h) p.wall = true;
@@ -138,17 +140,28 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   check('CAT LEAP: a huge dive that reaches a shot a normal dive cannot', lynx.leap === true && lynx.big && Math.abs(lynx.vx) > 12 && lynx.leapSaved, lynx);
   check('SLOW SHOT and QUICK THROW work', lynx.slowUsed === true && lynx.slowed && lynx.throwUsed === true && lynx.thrown, lynx);
 
-  // the Locker's KEEPERS tab
-  const lk = await page.evaluate(() => {
-    const G = EGO.Game, d = EGO.Save.data; G.toLobby(); d.styles = d.styles.filter((s) => s !== 'LYNX'); d.gk = 'FORTRESS';
-    EGO.UI.openLocker(); document.getElementById('ltab-gk').click();
-    const cards = [...document.querySelectorAll('#locker-grid .lcard')].map((c) => c.dataset.id + ':' + c.querySelector('.meta .label').textContent);
-    document.querySelector('#locker-grid [data-id="NONE"]').click(); document.getElementById('lk-equip').click(); const none = d.gk;
-    document.querySelector('#locker-grid [data-id="FORTRESS"]').click(); document.getElementById('lk-equip').click();
-    document.querySelector('#locker-grid [data-id="LYNX"]').click();
-    return { cards, none, back: d.gk, lynx: document.getElementById('lk-cap').textContent, detail: document.getElementById('locker-detail').textContent.slice(0, 120) };
+  // any style in goal: its own moves work there too
+  const rookie = await page.evaluate(() => {
+    const G = EGO.Game, d = EGO.Save.data; d.style = 'ROOKIE'; G.toLobby(); G.startMatch('quick'); const m = G.match, h = m.human;
+    m.phase = 'play'; h.setState('free'); h.abil[2].cd = 0; const used = m.useAbility(h, 2);
+    return { gk: h.isGK, style: h.styleId, abil: h.abil.map((a) => a.id), used, fx: +(h.fx.burst || 0).toFixed(1) };
   });
-  check('the Locker has a KEEPERS tab: your own style, FORTRESS (free) and LYNX (blueprints)', lk.cards.join('|') === 'NONE:OWNED|FORTRESS:EQUIPPED|LYNX:LOCKED' && lk.none === null && lk.back === 'FORTRESS' && /BLUEPRINT/.test(lk.lynx), lk);
+  check("in goal with any style you keep its moves (ROOKIE's BURST works)", rookie.gk && rookie.style === 'ROOKIE' && rookie.used === true && rookie.fx > 0, rookie);
+  // keeper styles come from spins like any style, never for bots; the Locker shows them in STYLES; every card has its own face
+  const lk = await page.evaluate(() => {
+    const G = EGO.Game, d = EGO.Save.data; G.toLobby(); d.look.color = Object.keys(EGO.SKINS).find((k) => EGO.SKINS[k].slot === 'color' && !EGO.SKINS[k].base) || d.look.color;
+    const pools = { rare: EGO.poolFor('style', 0).includes('FORTRESS'), epic: EGO.poolFor('style', 1).includes('LYNX') };
+    let botGK = 0; for (let i = 0; i < 400; i++) if (EGO.STYLES[EGO.botStyle()].gk) botGK++;
+    EGO.UI.openLocker();
+    const cards = [...document.querySelectorAll('#locker-grid .lcard')];
+    const label = (id) => { const c = cards.find((x) => x.dataset.id === id); return c ? c.querySelector('.meta .label').textContent : null; };
+    const art = cards.map((c) => c.querySelector('canvas').toDataURL());
+    document.querySelector('#locker-grid [data-id="FORTRESS"]').click();
+    return { pools, botGK, fortress: label('FORTRESS'), lynx: label('LYNX'), n: cards.length, unique: new Set(art).size, detail: document.getElementById('locker-detail').textContent.slice(0, 80), tabs: [...document.querySelectorAll('.lk-side .tabs .tab')].map((t) => t.textContent).join(',') };
+  });
+  check('keeper styles come from style spins, and bots never get them', lk.pools.rare && lk.pools.epic && lk.botGK === 0, lk);
+  check('the Locker lists them with the other styles, marked KEEPER (no separate tab)', /^KEEPER · /.test(lk.fortress) && /^KEEPER · /.test(lk.lynx) && /KEEPER STYLE/.test(lk.detail) && !/KEEPERS/.test(lk.tabs), lk);
+  check('every character card has its own face (not all your look)', lk.unique === lk.n, { cards: lk.n, different: lk.unique });
   await page.waitForTimeout(400); await shot('keeper3_locker');
 
   // the next match remembers; No Keepers, free kicks and the tutorial do not put you in goal
@@ -161,7 +174,7 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     G.toLobby();
     return out;
   });
-  check('the next match puts you in goal again, as your keeper character', next.quick.gk && next.quick.num === 1 && next.quick.keepers === 1 && next.quick.style === 'FORTRESS', next.quick);
+  check('the next match puts you in goal again', next.quick.gk && next.quick.num === 1 && next.quick.keepers === 1, next.quick);
   check('No Keepers, free kicks and the tutorial never put you in goal', !next.nokeep && !next.fk && !next.tut, next);
 
   // a phone: the button says DIVE
@@ -169,9 +182,13 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     const G = EGO.Game; EGO.Touch.on = true; G.startMatch('quick'); G.stepManual(5);
     EGO.Touch.visible = true; EGO.Touch.update(G.match, 0.016);
     const el = document.querySelector('#touch [data-act="dt"] .lb');
-    const t = el ? el.textContent : null; EGO.Touch.on = false; G.toLobby(); return t;
+    const T = EGO.Touch; T.setCd('ab0', 0.003, ''); T.setCd('ab0', 0, ''); const sliver = T.b.ab0.style.getPropertyValue('--p');
+    const t = el ? el.textContent : null; EGO.Touch.on = false; G.toLobby(); return { t, sliver };
   });
-  check('on a phone the button says DIVE when you are in goal', lbl === 'DIVE', lbl);
+  check('on a phone the button says DIVE when you are in goal', lbl.t === 'DIVE', lbl);
+  check('a power that is ready shows no cooldown sliver on the phone buttons', lbl.sliver === '0deg', lbl);
+  const touch = await page.evaluate(() => { const T = EGO.Touch, was = T.on; window.dispatchEvent(new TouchEvent('touchstart', { bubbles: true })); const now = T.on; T.setOn(false); return { was, now }; });
+  check('a phone that did not say so gets the touch buttons at its first touch', !touch.was && touch.now, touch);
   check('no errors', logs.filter((l) => !/willReadFrequently|GPU stall|WebGL/i.test(l)).length === 0, logs.slice(0, 5));
   await browser.close();
   console.log(results.join('\n'));

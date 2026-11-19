@@ -92,7 +92,7 @@ class Match {
           p.speedMul = 1 + 0.045 * sk; p.fit = 1.1 - 0.25 * sk;
         }
         this.players.push(p); this.teams[team].push(p);
-        if (net) { p.netId = net.id; this.humans.push(p); } else if (human) { this.human = p; p.ownStyle = style; p.gkStyle = opts.gkStyle !== undefined ? opts.gkStyle : Save.data.gk; this.styleFor(p); }
+        if (net) { p.netId = net.id; this.humans.push(p); } else if (human) this.human = p;
       }
     }
     if (!this.human) this.human = null;
@@ -145,15 +145,6 @@ class Match {
     a.isGK = a.role === 'GK'; b.isGK = b.role === 'GK';
     [a.number, b.number] = [b.number, a.number];
     a.repaint(); b.repaint();
-    this.styleFor(a); this.styleFor(b);
-  }
-  /** you in goal play your keeper character (the Locker's KEEPERS tab: its three powers), anywhere else your own style.
-      Your look stays yours */
-  styleFor(p) {
-    if (!p || !p.ownStyle) return;
-    const id = p.isGK && p.gkStyle && STYLES[p.gkStyle] ? p.gkStyle : p.ownStyle;
-    if (p.styleId === id) return;
-    p.styleId = id; p.style = STYLES[id]; p.abil = p.style.abilities.map((a) => ({ id: a, def: ABILITIES[a], cd: 0 }));
   }
   /** owner's rule (Nov 2026: "a bot just follows me around and I can't shoot"): once you are in their box, their outfield
       bots wait outside it for BOX_FREE seconds, so the one marking you cannot follow you in and block every shot. Their
@@ -415,12 +406,16 @@ class Match {
     let dx = 0, ky = high ? 2.3 : 0.7, tk = 0.4;
     const want = Math.abs(push) > 0.3 ? sgn(push) : 0;
     const aimed = K && Math.abs(K.x) < F.GW + 3 && (!want || sgn(K.x - p.pos.x) === want || Math.abs(K.x - p.pos.x) < 0.6);
-    if (aimed && !now && K.t > 0.42) { p.diveQ = { at: this.time + K.t - 0.36, push, high }; return true; } // early: wait for it
+    if (aimed && !now && K.t > 0.85) { p.diveQ = { at: this.time + K.t - 0.8, push, high }; return true; } // very early: a moment's wait (you shuffle across)
     if (aimed) { dx = K.x - p.pos.x; ky = Math.max(ky, K.y); tk = K.t; }
     else dx = (want || sgn(b.pos.x - p.pos.x) || 1) * (big ? 5.5 : 3.2);
     if (Math.abs(dx) < 0.5) dx = sgn(dx || 1) * 0.5;
     AI.dive(this, p, dx, ky, tk, Math.max(0.8, this.skill(p)));
     if (big && p.dive) { p.dive.vx = clamp(dx / clamp(tk, 0.25, 0.5), -24, 24); p.dive.dur = 0.5; p.dive.big = true; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 2, 20); }
+    else if (aimed && tk > 0.42 && p.dive) { // pressed early: it goes at once, a slower and floatier dive that is still stretched out when the ball gets there
+      p.dive.dur = Math.min(tk, 0.85); p.dive.vx = clamp(dx / p.dive.dur, -16, 16);
+      if (!p.onGround) { p.vel.y *= 0.5; p.fx.hang = p.dive.dur + 0.2; } // a high one: half the speed up at a quarter of the gravity, the same height for twice as long
+    }
     p.diveAt = this.time + 1.1;
     return true;
   }

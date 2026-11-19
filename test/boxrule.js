@@ -45,6 +45,20 @@ const inBox = (m, p) => m.inOwnBox(p);
   for (let i = 0; i < 30; i++) m.update(1 / 60);
   check('online matches never have the rule', !m.boxT && !m.human, { boxT: m.boxT || 0 });
 }
+{ // owner: "the striker still rushes": nobody charges at a keeper who has the ball safe (in hand, in the box)
+  const m = new G.Match('quick', 0.5, { size: 4, role: 'GK' });
+  m.phase = 'play'; m.ctl = neutral;
+  const h = m.human, gz = m.ownGoalZ(0), st = m.teams[1].find((p) => p.role === 'ST');
+  h.pos.set(0, 0, gz + 3); m.ball.reset(0, gz + 3.3); m.possess(h);
+  st.pos.set(2, 0, gz + 14);
+  let press = 0, closest = 99;
+  for (let i = 0; i < 60 * 2.5; i++) { m.update(1 / 60); if (m.ball.owner !== h) break; if (m.teams[1].some((p) => p.ai.task === 'press')) press++; closest = Math.min(closest, Math.hypot(st.pos.x - h.pos.x, st.pos.z - h.pos.z)); }
+  check('nobody charges at you while you hold the ball in goal', press === 0 && closest > 5, { pressFrames: press, closest: +closest.toFixed(1) });
+  // the same keeper dribbling out of his box can be pressed
+  h.setState('free'); m.ball.held = false; h.pos.set(0, 0, gz + 16); m.ball.reset(0, gz + 16.3); m.possess(h);
+  let pressed = false; for (let i = 0; i < 30; i++) { m.update(1 / 60); if (m.teams[1].some((p) => p.ai.task === 'press')) { pressed = true; break; } }
+  check('out of your box with the ball, they come for you again', pressed, pressed);
+}
 { // a ball at head height hits the head
   const m = new G.Match('quick', 0.5, { size: 4 });
   m.phase = 'play'; m.ctl = neutral;

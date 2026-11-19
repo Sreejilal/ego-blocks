@@ -26,7 +26,7 @@ const REAL = process.env.SCORZ_TESTER_CODE || '';
   const msg = await redeem('  ' + code.toLowerCase().split('').join(' ') + '!! ');
   const after = await A.evaluate(() => {
     const d = EGO.Save.data;
-    return { styles: d.styles.length, allStyles: EGO.STYLE_IDS.length + EGO.GK_IDS.length, flows: d.flows.length, allFlows: Object.keys(EGO.FLOWS).length, skins: d.skins.length, allSkins: Object.keys(EGO.SKINS).filter((k) => !EGO.SKINS[k].base).length, em: d.emeralds, bp: d.bp, rp: d.rp };
+    return { styles: d.styles.length, allStyles: EGO.STYLE_IDS.length, flows: d.flows.length, allFlows: Object.keys(EGO.FLOWS).length, skins: d.skins.length, allSkins: Object.keys(EGO.SKINS).filter((k) => !EGO.SKINS[k].base).length, em: d.emeralds, bp: d.bp, rp: d.rp };
   });
   check('the code works with any spaces, case or symbols', /TESTER PACK UNLOCKED/.test(msg), msg);
   check('you get every style, Flow and skin, emeralds and blueprints (not rank)', after.styles === after.allStyles && after.flows === after.allFlows && after.skins === after.allSkins && after.em === before.em + 99999 && after.bp >= 999 && after.rp === 0, after);
@@ -41,7 +41,7 @@ const REAL = process.env.SCORZ_TESTER_CODE || '';
   await forget();
   await A.reload(); await A.waitForFunction(() => window.EGO && EGO.Game.state === 'lobby', null, { timeout: 120000 });
   if (!REAL) await A.evaluate(() => { EGO.CODES[EGO.codeHash('STANDINTESTER42')] = { name: 'TESTER PACK', give: 'all' }; EGO.Save.validate(); });
-  const kept = await A.evaluate(() => { const d = EGO.Save.data; return { styles: d.styles.length, all: EGO.STYLE_IDS.length + EGO.GK_IDS.length, flows: d.flows.length, allFlows: Object.keys(EGO.FLOWS).length, skins: d.skins.length, allSkins: Object.keys(EGO.SKINS).filter((k) => !EGO.SKINS[k].base).length, codes: d.codes.length }; });
+  const kept = await A.evaluate(() => { const d = EGO.Save.data; return { styles: d.styles.length, all: EGO.STYLE_IDS.length, flows: d.flows.length, allFlows: Object.keys(EGO.FLOWS).length, skins: d.skins.length, allSkins: Object.keys(EGO.SKINS).filter((k) => !EGO.SKINS[k].base).length, codes: d.codes.length }; });
   check('kept after closing the game, and new things from updates unlock by themselves', kept.styles === kept.all && kept.flows === kept.allFlows && kept.skins === kept.allSkins && kept.codes === 1, kept);
   // a save that never used the code gets nothing
   const plain = await A.evaluate(() => { const d = EGO.Save.defaults(); return EGO.codeTopUp(d) === 0 && d.styles.length === 1 && d.flows.length === 0 && d.skins.length === 0; });

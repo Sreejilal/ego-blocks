@@ -40,19 +40,20 @@ const STYLES = {
     awaken: { move: { name: 'LIGHTNING STEP', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'OVERLOAD', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
   TITAN: { name: 'TITAN', rarity: 'Legendary', hair: '#4a2c1a', hairShape: 'mohawk', aura: '#ff8a2a', blurb: 'A battering ram at the back. Charges through anyone in the way, blocks shots and boots the ball clear.', abilities: ['ram', 'bodyBlock', 'clearance'],
     awaken: { move: { name: 'EARTHQUAKE', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'JUGGERNAUT', desc: 'Nobody can tackle you, abilities recharge faster and you are 10% faster.', perk: 'tank', mods: { speed: 1.1, cdRate: 1.3 } } },
-  // keeper characters (owner, Nov 2026): only for you in goal (the Locker's KEEPERS tab, Save.data.gk). Never bots, never spins, no Awakening
-  FORTRESS: { name: 'FORTRESS', rarity: 'Rare', gk: true, hair: '#2b2b33', hairShape: 'short', aura: '#ffb02e', blurb: 'A keeper built like a wall. Giant gloves, hands of iron and a kick that reaches the other box.', abilities: ['bigGloves', 'ironHands', 'cannonKick'] },
-  LYNX: { name: 'LYNX', rarity: 'Epic', gk: true, hair: '#d9d2c5', hairShape: 'spiky', aura: '#7dff9a', blurb: 'Springy reflexes. Leaps right across the goal, slows shots down and throws it out in a flash.', abilities: ['catLeap', 'slowShot', 'quickThrow'] },
+  // keeper styles (owner, Nov 2026): spun, kept and equipped like any style; their powers work when you play in goal (in goal any other style's moves work too). Bots never get them
+  FORTRESS: { name: 'FORTRESS', rarity: 'Rare', gk: true, hair: '#2b2b33', hairShape: 'flattop', aura: '#ffb02e', blurb: 'A keeper built like a wall. Giant gloves, hands of iron and a kick that reaches the other box. Its powers work in goal.', abilities: ['bigGloves', 'ironHands', 'cannonKick'],
+    awaken: { move: { name: 'GROUND SLAM', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'THE WALL', desc: '+15% shot power, and tackles reach 30% further.', mods: { shot: 1.15, tackleRange: 1.3 } } },
+  LYNX: { name: 'LYNX', rarity: 'Epic', gk: true, hair: '#d9d2c5', hairShape: 'spiky', aura: '#7dff9a', blurb: 'Springy reflexes. Leaps right across the goal, slows shots down and throws it out in a flash. Its powers work in goal.', abilities: ['catLeap', 'slowShot', 'quickThrow'],
+    awaken: { move: { name: 'NINE LIVES', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'CAT REFLEXES', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
 };
-const STYLE_IDS = Object.keys(STYLES).filter((k) => !STYLES[k].gk); // outfield styles (spins, bots, the STYLES tab)
-const GK_IDS = Object.keys(STYLES).filter((k) => STYLES[k].gk); // keeper characters
-const GK_FREE = 'FORTRESS'; // everyone has this one
+const STYLE_IDS = Object.keys(STYLES);
+const GK_IDS = STYLE_IDS.filter((k) => STYLES[k].gk); // keeper styles
 /** a bot's style: common styles most of the time, the rare ones now and then (like the spins) */
 const BOT_STYLE_ODDS = { Rare: 40, Epic: 30, Legendary: 15, Mythic: 10, Generational: 5 };
 function botStyle() {
   let r = Math.random() * 100;
-  for (const rar of RARITIES) { r -= BOT_STYLE_ODDS[rar]; if (r < 0) { const pool = STYLE_IDS.filter((k) => STYLES[k].rarity === rar); if (pool.length) return pick(pool); } }
-  return pick(STYLE_IDS);
+  for (const rar of RARITIES) { r -= BOT_STYLE_ODDS[rar]; if (r < 0) { const pool = STYLE_IDS.filter((k) => STYLES[k].rarity === rar && !STYLES[k].gk); if (pool.length) return pick(pool); } } // bots never play a keeper style
+  return 'ROOKIE';
 }
 
 function nearBall(p, m, r = 1.9) {
@@ -857,7 +858,7 @@ const GIFT_CODE = 'KICKOFF';
 function unlockAll(d) {
   const n = d.styles.length + d.flows.length + d.skins.length;
   const add = (have, all) => { for (const k of all) if (!have.includes(k)) have.push(k); };
-  add(d.styles, STYLE_IDS.concat(GK_IDS)); add(d.flows, FLOW_IDS); add(d.skins, Object.keys(SKINS).filter((k) => !SKINS[k].base));
+  add(d.styles, STYLE_IDS); add(d.flows, FLOW_IDS); add(d.skins, Object.keys(SKINS).filter((k) => !SKINS[k].base));
   return d.styles.length + d.flows.length + d.skins.length - n;
 }
 /** a save that used a 'give all' code also gets everything added in later updates (Save.validate runs this on load) */
@@ -1054,5 +1055,5 @@ function poolFor(kind, rarityIdx) {
   const rar = RARITIES[rarityIdx];
   if (kind === 'skin') return SKIN_IDS.filter((k) => SKINS[k].rarity === rar);
   const src = kind === 'style' ? STYLES : FLOWS;
-  return Object.keys(src).filter((k) => src[k].rarity === rar && !src[k].gk); // keeper characters never come from spins
+  return Object.keys(src).filter((k) => src[k].rarity === rar);
 }

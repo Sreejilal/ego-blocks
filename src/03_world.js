@@ -74,7 +74,9 @@ const World = {
   excite: [0, 0], netBulge: [0, 0], fanMat: null,
   init(canvas) {
     const q = Save.data.settings.quality;
-    const r = new THREE.WebGLRenderer({ canvas, antialias: q !== 'low', powerPreference: 'high-performance', stencil: false });
+    let r;
+    try { r = new THREE.WebGLRenderer({ canvas, antialias: q !== 'low', powerPreference: 'high-performance', stencil: false }); }
+    catch (e) { r = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'default', stencil: false }); } // some phones refuse the first ask: a simpler one (if that fails too, bootFail says so)
     r.outputEncoding = THREE.sRGBEncoding;
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.18;

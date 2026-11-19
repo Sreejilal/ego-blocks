@@ -77,6 +77,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const turnTo = async (want) => { let d = want - s.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); if (Math.abs(d) < 0.08 || !perPx) return; const px = Math.max(-220, Math.min(220, d / perPx)); await tStart(2, W * 0.55, H * 0.3); for (let i = 1; i <= 4; i++) await tMove(2, W * 0.55 + px * i / 4, H * 0.3); await tEnd(2); };
   while (s.st === 'match' && iter < (+process.env.ITERS || 2600)) {
     iter++;
+    // still level after golden goal: a free kick battle. Take our kicks (theirs the bots take by themselves)
+    if (await page.evaluate(() => { const m = EGO.Game.match, h = m && m.human; if (!m || !m.fk || !m.fk.battle) return false; if (m.fk.state === 'aim' && m.ball.owner === h && h.fkHold && m.fk.t > 0.5) { const t = m.aim.clone().set(Math.sign(m.fk.x || 1) * -3, 1.6, m.oppGoalZ(h.team)); m.freeKickShot(h, EGO.fkIdeal(Math.hypot(t.x - m.ball.pos.x, t.z - m.ball.pos.z)), t); } EGO.Game.stepManual(10); return true; })) { seen.battle = true; s = await info(); continue; }
     if (s.phase === 'play') {
       // run at the ball, or at their goal once we have it
       const tx = s.own ? 0 : s.bx, tz = s.own ? s.gz : s.bz;
@@ -109,7 +111,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   }
   if (stick) { await tEnd(1); }
   const end = await page.evaluate(() => ({ st: EGO.Game.state, score: EGO.Game.match && EGO.Game.match.score, team: EGO.Game.match && EGO.Game.match.human.team, played: EGO.Save.data.stats.played }));
-  console.log('MATCH ' + JSON.stringify({ end, own: seen.own, shots: seen.shots, tackles: seen.tackles, passes: seen.passes, moved: +seen.moved.toFixed(1), seconds: Math.round(seen.frames / 60), tips: [...seen.tips].map((t) => t.slice(0, 50)) }));
+  console.log('MATCH ' + JSON.stringify({ end, battle: !!seen.battle, own: seen.own, shots: seen.shots, tackles: seen.tackles, passes: seen.passes, moved: +seen.moved.toFixed(1), seconds: Math.round(seen.frames / 60), tips: [...seen.tips].map((t) => t.slice(0, 50)) }));
   check('the stick moved the player around the pitch', seen.moved > 10, +seen.moved.toFixed(1));
   check('I won the ball with touches', seen.own > 0, seen.own);
   check('I shot with the SHOOT button', seen.shots > 0, seen.shots);

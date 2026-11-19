@@ -75,7 +75,7 @@ const AI = {
     } else if (st === 'def') {
       const sorted = field.slice().sort((a, c) => dist2D(a.pos, owner.pos) - dist2D(c.pos, owner.pos));
       const humanPress = humanHere && dist2D(humanHere.pos, owner.pos) < 3.5;
-      if (sorted[0]) sorted[0].ai.task = humanPress ? 'cover' : 'press';
+      if (sorted[0] && !m.safeGK(owner)) sorted[0].ai.task = humanPress ? 'cover' : 'press'; // owner: "the striker still rushes": nobody charges at a keeper who has it safe, they get back into shape
       const danger = (o) => -Math.hypot(o.pos.x, m.ownGoalZ(team) - o.pos.z);
       const threats = opps.filter((o) => !o.isGK && o !== owner).sort((a, c) => danger(c) - danger(a));
       const free = field.filter((p) => p.ai.task === 'pos');

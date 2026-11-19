@@ -1081,7 +1081,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, gk: 'FORTRESS', bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false, tips: [],
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false, tips: [],
       fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
@@ -1125,7 +1125,6 @@ const Save = {
     out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
     out.tone = clamp(Math.floor(Number(out.tone)), 0, 7); if (!Number.isFinite(out.tone)) out.tone = 1;
     out.pos = typeof out.pos === 'string' && /^(GK|ST|FW|MID|LW|RW|DEF|DEF2)$/.test(out.pos) ? out.pos : null; // the position you like to play (the match intro)
-    if (!('gk' in out)) out.gk = 'FORTRESS'; // your keeper character (checked in validate, once the styles exist)
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
     out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
@@ -1165,8 +1164,8 @@ const Save = {
     if (!d.styles.includes('ROOKIE')) d.styles.unshift('ROOKIE');
     d.flows = d.flows.filter((f) => FLOWS[f]);
     if (d.spunStyle && (!STYLES[d.spunStyle] || d.styles.includes(d.spunStyle))) d.spunStyle = null;
-    if (!STYLES[d.style] || STYLES[d.style].gk || (!d.styles.includes(d.style) && d.style !== d.spunStyle)) d.style = 'ROOKIE'; // yours for good, or from your last spin (never a keeper character)
-    if (d.gk !== null && (typeof d.gk !== 'string' || !STYLES[d.gk] || !STYLES[d.gk].gk || (d.gk !== GK_FREE && !d.styles.includes(d.gk)))) d.gk = GK_FREE; // your keeper character: the free one, one you own, or none (null: your own style in goal too)
+    if (!STYLES[d.style] || (!d.styles.includes(d.style) && d.style !== d.spunStyle)) d.style = 'ROOKIE'; // yours for good, or from your last spin
+    delete d.gk; // the old keeper character slot (keeper styles are normal styles now)
     for (const g of GOALS) d.goalSteps[g.id] = clamp(Math.floor(Number(d.goalSteps[g.id]) || 0), 0, g.steps.length);
     for (const k in d.goalSteps) if (!GOALS.some((g) => g.id === k)) delete d.goalSteps[k];
     if (d.flow && (!FLOWS[d.flow] || !d.flows.includes(d.flow))) d.flow = null;
@@ -1940,9 +1939,9 @@ function badgeURL(tier) {
 }
 /** pixel portrait of a style (head front + hair + aura frame); `look` can swap the haircut and colour */
 function portraitCanvas(styleId, size = 96, look = null) {
-  const st = STYLES[styleId] || STYLES.ROOKIE;
+  const st = STYLES[styleId] || STYLES.ROOKIE, sig = !!(look && look.sig); // sig: the style's own face (Locker cards, spins), not your skins
   const c = mkCanvas(16, 16), g = c.getContext('2d');
-  g.fillStyle = st.aura; g.globalAlpha = 0.28; g.fillRect(0, 0, 16, 16); g.globalAlpha = 1;
+  g.fillStyle = st.aura; g.globalAlpha = sig ? 0.45 : 0.28; g.fillRect(0, 0, 16, 16); g.globalAlpha = 1;
   const skin = (look && look.skin) || '#e8b48a', hair = (look && look.hair) || st.hair, shape = (look && look.hairShape) || st.hairShape;
   g.fillStyle = '#0a0c17'; g.fillRect(3, 3, 10, 11);
   g.fillStyle = skin; g.fillRect(4, 4, 8, 9);
@@ -1965,6 +1964,17 @@ function portraitCanvas(styleId, size = 96, look = null) {
   g.fillStyle = '#f7f7f2'; g.fillRect(5, 8, 2, 1); g.fillRect(9, 8, 2, 1);
   g.fillStyle = st.aura; g.fillRect(6, 8, 1, 1); g.fillRect(9, 8, 1, 1);
   g.fillStyle = '#7a4a30'; g.fillRect(7, 11, 2, 1);
+  if (sig) { // owner: every character looked the same on its card. Each one gets its own look: hair, a face of its own, a shirt in its colour
+    let hs = 0; for (const ch of String(styleId)) hs = (hs * 31 + ch.charCodeAt(0)) >>> 0;
+    const mood = hs % 4;
+    if (mood === 1) { g.fillRect(6, 10, 1, 1); g.fillRect(9, 10, 1, 1); } // a grin
+    if (mood === 2) { g.fillStyle = hair; g.fillRect(5, 7, 2, 1); g.fillRect(9, 7, 2, 1); } // fierce brows
+    if (mood === 3) g.fillRect(9, 10, 1, 1); // a smirk
+    g.fillStyle = '#0a0c17'; g.fillRect(2, 14, 12, 2);
+    g.fillStyle = st.aura; g.fillRect(3, 14, 10, 2);
+    g.fillStyle = skin; g.fillRect(7, 14, 2, 1);
+    if (st.gk) { g.fillStyle = '#f2f2ea'; g.fillRect(1, 12, 2, 2); g.fillRect(13, 12, 2, 2); } // keeper styles: gloves up
+  }
   const out = mkCanvas(size, size), og = out.getContext('2d');
   og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size);
   out.className = 'px';
@@ -2114,7 +2124,9 @@ const World = {
   excite: [0, 0], netBulge: [0, 0], fanMat: null,
   init(canvas) {
     const q = Save.data.settings.quality;
-    const r = new THREE.WebGLRenderer({ canvas, antialias: q !== 'low', powerPreference: 'high-performance', stencil: false });
+    let r;
+    try { r = new THREE.WebGLRenderer({ canvas, antialias: q !== 'low', powerPreference: 'high-performance', stencil: false }); }
+    catch (e) { r = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'default', stencil: false }); } // some phones refuse the first ask: a simpler one (if that fails too, bootFail says so)
     r.outputEncoding = THREE.sRGBEncoding;
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.18;
@@ -3673,19 +3685,20 @@ const STYLES = {
     awaken: { move: { name: 'LIGHTNING STEP', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'OVERLOAD', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
   TITAN: { name: 'TITAN', rarity: 'Legendary', hair: '#4a2c1a', hairShape: 'mohawk', aura: '#ff8a2a', blurb: 'A battering ram at the back. Charges through anyone in the way, blocks shots and boots the ball clear.', abilities: ['ram', 'bodyBlock', 'clearance'],
     awaken: { move: { name: 'EARTHQUAKE', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'JUGGERNAUT', desc: 'Nobody can tackle you, abilities recharge faster and you are 10% faster.', perk: 'tank', mods: { speed: 1.1, cdRate: 1.3 } } },
-  // keeper characters (owner, Nov 2026): only for you in goal (the Locker's KEEPERS tab, Save.data.gk). Never bots, never spins, no Awakening
-  FORTRESS: { name: 'FORTRESS', rarity: 'Rare', gk: true, hair: '#2b2b33', hairShape: 'short', aura: '#ffb02e', blurb: 'A keeper built like a wall. Giant gloves, hands of iron and a kick that reaches the other box.', abilities: ['bigGloves', 'ironHands', 'cannonKick'] },
-  LYNX: { name: 'LYNX', rarity: 'Epic', gk: true, hair: '#d9d2c5', hairShape: 'spiky', aura: '#7dff9a', blurb: 'Springy reflexes. Leaps right across the goal, slows shots down and throws it out in a flash.', abilities: ['catLeap', 'slowShot', 'quickThrow'] },
+  // keeper styles (owner, Nov 2026): spun, kept and equipped like any style; their powers work when you play in goal (in goal any other style's moves work too). Bots never get them
+  FORTRESS: { name: 'FORTRESS', rarity: 'Rare', gk: true, hair: '#2b2b33', hairShape: 'flattop', aura: '#ffb02e', blurb: 'A keeper built like a wall. Giant gloves, hands of iron and a kick that reaches the other box. Its powers work in goal.', abilities: ['bigGloves', 'ironHands', 'cannonKick'],
+    awaken: { move: { name: 'GROUND SLAM', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'THE WALL', desc: '+15% shot power, and tackles reach 30% further.', mods: { shot: 1.15, tackleRange: 1.3 } } },
+  LYNX: { name: 'LYNX', rarity: 'Epic', gk: true, hair: '#d9d2c5', hairShape: 'spiky', aura: '#7dff9a', blurb: 'Springy reflexes. Leaps right across the goal, slows shots down and throws it out in a flash. Its powers work in goal.', abilities: ['catLeap', 'slowShot', 'quickThrow'],
+    awaken: { move: { name: 'NINE LIVES', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'CAT REFLEXES', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
 };
-const STYLE_IDS = Object.keys(STYLES).filter((k) => !STYLES[k].gk); // outfield styles (spins, bots, the STYLES tab)
-const GK_IDS = Object.keys(STYLES).filter((k) => STYLES[k].gk); // keeper characters
-const GK_FREE = 'FORTRESS'; // everyone has this one
+const STYLE_IDS = Object.keys(STYLES);
+const GK_IDS = STYLE_IDS.filter((k) => STYLES[k].gk); // keeper styles
 /** a bot's style: common styles most of the time, the rare ones now and then (like the spins) */
 const BOT_STYLE_ODDS = { Rare: 40, Epic: 30, Legendary: 15, Mythic: 10, Generational: 5 };
 function botStyle() {
   let r = Math.random() * 100;
-  for (const rar of RARITIES) { r -= BOT_STYLE_ODDS[rar]; if (r < 0) { const pool = STYLE_IDS.filter((k) => STYLES[k].rarity === rar); if (pool.length) return pick(pool); } }
-  return pick(STYLE_IDS);
+  for (const rar of RARITIES) { r -= BOT_STYLE_ODDS[rar]; if (r < 0) { const pool = STYLE_IDS.filter((k) => STYLES[k].rarity === rar && !STYLES[k].gk); if (pool.length) return pick(pool); } } // bots never play a keeper style
+  return 'ROOKIE';
 }
 
 function nearBall(p, m, r = 1.9) {
@@ -4490,7 +4503,7 @@ const GIFT_CODE = 'KICKOFF';
 function unlockAll(d) {
   const n = d.styles.length + d.flows.length + d.skins.length;
   const add = (have, all) => { for (const k of all) if (!have.includes(k)) have.push(k); };
-  add(d.styles, STYLE_IDS.concat(GK_IDS)); add(d.flows, FLOW_IDS); add(d.skins, Object.keys(SKINS).filter((k) => !SKINS[k].base));
+  add(d.styles, STYLE_IDS); add(d.flows, FLOW_IDS); add(d.skins, Object.keys(SKINS).filter((k) => !SKINS[k].base));
   return d.styles.length + d.flows.length + d.skins.length - n;
 }
 /** a save that used a 'give all' code also gets everything added in later updates (Save.validate runs this on load) */
@@ -4687,7 +4700,7 @@ function poolFor(kind, rarityIdx) {
   const rar = RARITIES[rarityIdx];
   if (kind === 'skin') return SKIN_IDS.filter((k) => SKINS[k].rarity === rar);
   const src = kind === 'style' ? STYLES : FLOWS;
-  return Object.keys(src).filter((k) => src[k].rarity === rar && !src[k].gk); // keeper characters never come from spins
+  return Object.keys(src).filter((k) => src[k].rarity === rar);
 }
 
 /* ---- 08_match.js ---- */
@@ -4785,7 +4798,7 @@ class Match {
           p.speedMul = 1 + 0.045 * sk; p.fit = 1.1 - 0.25 * sk;
         }
         this.players.push(p); this.teams[team].push(p);
-        if (net) { p.netId = net.id; this.humans.push(p); } else if (human) { this.human = p; p.ownStyle = style; p.gkStyle = opts.gkStyle !== undefined ? opts.gkStyle : Save.data.gk; this.styleFor(p); }
+        if (net) { p.netId = net.id; this.humans.push(p); } else if (human) this.human = p;
       }
     }
     if (!this.human) this.human = null;
@@ -4838,15 +4851,6 @@ class Match {
     a.isGK = a.role === 'GK'; b.isGK = b.role === 'GK';
     [a.number, b.number] = [b.number, a.number];
     a.repaint(); b.repaint();
-    this.styleFor(a); this.styleFor(b);
-  }
-  /** you in goal play your keeper character (the Locker's KEEPERS tab: its three powers), anywhere else your own style.
-      Your look stays yours */
-  styleFor(p) {
-    if (!p || !p.ownStyle) return;
-    const id = p.isGK && p.gkStyle && STYLES[p.gkStyle] ? p.gkStyle : p.ownStyle;
-    if (p.styleId === id) return;
-    p.styleId = id; p.style = STYLES[id]; p.abil = p.style.abilities.map((a) => ({ id: a, def: ABILITIES[a], cd: 0 }));
   }
   /** owner's rule (Nov 2026: "a bot just follows me around and I can't shoot"): once you are in their box, their outfield
       bots wait outside it for BOX_FREE seconds, so the one marking you cannot follow you in and block every shot. Their
@@ -5108,12 +5112,16 @@ class Match {
     let dx = 0, ky = high ? 2.3 : 0.7, tk = 0.4;
     const want = Math.abs(push) > 0.3 ? sgn(push) : 0;
     const aimed = K && Math.abs(K.x) < F.GW + 3 && (!want || sgn(K.x - p.pos.x) === want || Math.abs(K.x - p.pos.x) < 0.6);
-    if (aimed && !now && K.t > 0.42) { p.diveQ = { at: this.time + K.t - 0.36, push, high }; return true; } // early: wait for it
+    if (aimed && !now && K.t > 0.85) { p.diveQ = { at: this.time + K.t - 0.8, push, high }; return true; } // very early: a moment's wait (you shuffle across)
     if (aimed) { dx = K.x - p.pos.x; ky = Math.max(ky, K.y); tk = K.t; }
     else dx = (want || sgn(b.pos.x - p.pos.x) || 1) * (big ? 5.5 : 3.2);
     if (Math.abs(dx) < 0.5) dx = sgn(dx || 1) * 0.5;
     AI.dive(this, p, dx, ky, tk, Math.max(0.8, this.skill(p)));
     if (big && p.dive) { p.dive.vx = clamp(dx / clamp(tk, 0.25, 0.5), -24, 24); p.dive.dur = 0.5; p.dive.big = true; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 2, 20); }
+    else if (aimed && tk > 0.42 && p.dive) { // pressed early: it goes at once, a slower and floatier dive that is still stretched out when the ball gets there
+      p.dive.dur = Math.min(tk, 0.85); p.dive.vx = clamp(dx / p.dive.dur, -16, 16);
+      if (!p.onGround) { p.vel.y *= 0.5; p.fx.hang = p.dive.dur + 0.2; } // a high one: half the speed up at a quarter of the gravity, the same height for twice as long
+    }
     p.diveAt = this.time + 1.1;
     return true;
   }
@@ -6777,7 +6785,7 @@ const AI = {
     } else if (st === 'def') {
       const sorted = field.slice().sort((a, c) => dist2D(a.pos, owner.pos) - dist2D(c.pos, owner.pos));
       const humanPress = humanHere && dist2D(humanHere.pos, owner.pos) < 3.5;
-      if (sorted[0]) sorted[0].ai.task = humanPress ? 'cover' : 'press';
+      if (sorted[0] && !m.safeGK(owner)) sorted[0].ai.task = humanPress ? 'cover' : 'press'; // owner: "the striker still rushes": nobody charges at a keeper who has it safe, they get back into shape
       const danger = (o) => -Math.hypot(o.pos.x, m.ownGoalZ(team) - o.pos.z);
       const threats = opps.filter((o) => !o.isGK && o !== owner).sort((a, c) => danger(c) - danger(a));
       const free = field.filter((p) => p.ai.task === 'pos');
@@ -7626,7 +7634,8 @@ const Touch = {
   /** first guess before any input arrives: phones and tablets report a coarse primary pointer. On CrazyGames their SDK says which device it is (their rule) */
   detect() {
     const dev = Portal.on ? Portal.try(() => Portal.sdk.user.systemInfo.device.type) : null;
-    this.on = dev ? dev !== 'desktop' : this.mq('(pointer: coarse)');
+    this.dev = dev || null;
+    this.on = dev ? dev !== 'desktop' : this.mq('(pointer: coarse)') || (navigator.maxTouchPoints > 0 && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ''));
     document.body.classList.toggle('touch', this.on);
   },
   tpl() {
@@ -7637,6 +7646,9 @@ const Touch = {
       + `<div class="tb sm" data-act="pause" aria-label="Pause"><i class="ic"></i></div><div class="tb sm" data-act="chat" aria-label="Chat"><i class="ic"></i></div><div class="tb sm" data-act="cam" aria-label="Switch camera"><i class="ic"></i></div><div class="tb sm" data-act="emote" aria-label="Emotes"><i class="ic"></i></div><div class="tb sm fsgo" data-act="fs" aria-label="Full screen" hidden><i class="ic"></i><b class="lb">FULL</b></div><div class="tboard" data-act="board" aria-label="Scoreboard"></div>`;
   },
   init() {
+    // owner: "on some phones the game does not work": a phone that did not say it is one got no touch buttons. The first real
+    // touch on the screen switches them on (not on CrazyGames when their SDK says it is a computer: their rule)
+    window.addEventListener('touchstart', () => { if (!this.on && this.dev !== 'desktop') this.setOn(true); }, { passive: true, capture: true });
     const el = document.createElement('div');
     el.id = 'touch'; el.hidden = true;
     el.innerHTML = this.tpl();
@@ -7881,7 +7893,7 @@ const Touch = {
   },
   tog(el, cls, on) { if (el.classList.contains(cls) !== on) el.classList.toggle(cls, on); },
   setCd(act, frac, num) {
-    const c = this.cache, q = Math.round(frac * 90);
+    const c = this.cache, q = frac > 0 ? Math.ceil(frac * 90) : 0; // exactly 0 only when it is ready (a rounded 0 used to leave a sliver drawn)
     if (c['cd' + act] !== q) { c['cd' + act] = q; this.b[act].style.setProperty('--p', (frac * 360).toFixed(0) + 'deg'); }
     if (c['n' + act] !== num) { c['n' + act] = num; this.parts[act].num.textContent = num; }
   },
@@ -10335,7 +10347,7 @@ const UI = {
         <div class="locker">
           <div class="lk-stage"><div class="lk-fit" id="lk-fit" title="Drag to turn your player"><span class="label lk-drag">DRAG TO TURN</span></div><div class="lk-cap panel" id="lk-cap"></div></div>
           <div class="lk-side">
-            <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button><button class="tab" id="ltab-skin" role="tab" type="button">SKINS</button><button class="tab" id="ltab-gk" role="tab" type="button">KEEPERS</button><button class="tab" id="ltab-club" role="tab" type="button">CLUB</button></div>
+            <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button><button class="tab" id="ltab-skin" role="tab" type="button">SKINS</button><button class="tab" id="ltab-club" role="tab" type="button">CLUB</button></div>
             <div class="tabs slots" id="lk-slots" role="tablist" hidden></div>
             <div class="lk-body"><div class="grid-cards" id="locker-grid"></div><div class="panel detail" id="locker-detail"></div></div>
           </div>
@@ -10425,7 +10437,7 @@ const UI = {
             <li><b>Game pass:</b> free, 30 tiers a season (8 weeks). Earn pass XP by playing well and from 4 weekly skill challenges. Rewards are emeralds, skins and celebrations, never stats. Standing around earns nothing.</li>
             <li><b>Your position:</b> before each match the camera flies in and you pick where you play: striker, midfield, wing, defence or in goal. The game remembers it for next time.</li>
             <li><b>In goal:</b> JUMP with A or D held (the stick left or right) dives that way, and C (B on a controller, DIVE on a phone) dives too. At a shot, the dive goes to where the ball is going, as high as it is; press early and you shuffle across and dive at the right moment. Where you stand is up to you, so you can come off your line. With the ball in your hands, PASS throws it and SHOOT kicks it long.</li>
-            <li><b>Keeper characters:</b> in goal you play your keeper character, with three powers made for keepers. FORTRESS is free, LYNX costs blueprints. Pick one in the Locker, KEEPERS tab.</li>
+            <li><b>Keeper styles:</b> FORTRESS and LYNX come from style spins (or blueprints) like any style, and their powers work when you play in goal. In goal you can play any other style too and use its moves.</li>
             <li><b>Their box:</b> against bots, once you get into their box their defenders wait outside it for 5 seconds, so you get a fair go at a shot.</li>
             <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
@@ -10777,7 +10789,6 @@ const UI = {
     click('ltab-style', () => { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.renderLocker(); });
     click('ltab-flow', () => { this.lockerTab = 'flow'; this.lockerSel = Save.data.flow || 'NONE'; this.renderLocker(); });
     click('ltab-club', () => { this.lockerTab = 'club'; this.lockerSel = Save.data.club; this.renderLocker(); });
-    click('ltab-gk', () => { this.lockerTab = 'gk'; this.lockerSel = Save.data.gk || 'NONE'; this.renderLocker(); });
     click('ltab-skin', () => { this.lockerTab = 'skin'; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
     $('lk-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); this.skinSlot = b.dataset.slot; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
     click('btn-mute', () => { // SOUND ON, then MUSIC OFF (sounds but no music), then SOUND OFF
@@ -11164,7 +11175,7 @@ const UI = {
     const back = (r) => (r === 'GK' ? 99 : ROLE_ORDER.indexOf(r));
     this.introRoles = m.teams[m.human.team].map((p) => p.role).sort((a, b) => back(b) - back(a));
     $('in-keys').textContent = Touch.on ? '' : 'KEYS 1-' + this.introRoles.length + ' PICK · ENTER PLAYS';
-    $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${r === 'GK' && Save.data.gk && STYLES[Save.data.gk] ? STYLES[Save.data.gk].name + ' · ' : ''}${ROLE_INFO[r][1]}</span></button>`).join('');
+    $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${ROLE_INFO[r][1]}</span></button>`).join('');
     this.renderIntro(m);
     $('intro').hidden = false;
   },
@@ -11285,7 +11296,7 @@ const UI = {
     const keep = kind === 'style' && !dupe ? `<span class="label">KEEP IT FOR GOOD: ${BP_COST[src.rarity]} BLUEPRINTS (YOU HAVE ${Save.data.bp})</span>`
       + (Save.data.bp >= BP_COST[src.rarity] ? '<button class="btn small emerald" id="spin-keep" type="button">KEEP IT</button>' : '') : '';
     res.innerHTML = `<span class="cv"></span><span class="rar" data-r="${src.rarity}">${src.rarity.toUpperCase()}</span><span>${esc(src.name)}</span>${slotName}${tag}${!dupe && kind !== 'style' ? '<button class="btn small blue" id="spin-equip" type="button">EQUIP</button>' : ''}${keep}`;
-    res.querySelector('.cv').replaceWith(kind === 'style' ? portraitCanvas(id, 48) : kind === 'flow' ? flowEmblemCanvas(id, 48) : skinCanvas(id, 48));
+    res.querySelector('.cv').replaceWith(kind === 'style' ? portraitCanvas(id, 48, { sig: true }) : kind === 'flow' ? flowEmblemCanvas(id, 48) : skinCanvas(id, 48));
     res.classList.add('show');
     const eq = $('spin-equip');
     const kp = $('spin-keep');
@@ -11298,13 +11309,8 @@ const UI = {
   /** what a card in the current tab stands for */
   lockerItem(id) {
     const d = Save.data, tab = this.lockerTab;
-    if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
+    if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { gk: !!st.gk, name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
     if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
-    if (tab === 'gk') { // keeper characters: only used when you play in goal
-      if (id === 'NONE') return { name: 'YOUR OWN STYLE', rarity: 'Rare', base: true, owned: true, equipped: d.gk === null };
-      const st = STYLES[id], free = id === GK_FREE;
-      return { name: st.name, rarity: st.rarity, base: free, owned: free || d.styles.includes(id), equipped: d.gk === id, from: BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] };
-    }
     if (tab === 'flow') { const fl = id === 'NONE' ? null : FLOWS[id]; return { name: fl ? fl.name : 'NO FLOW', rarity: fl ? fl.rarity : 'Rare', base: !fl, owned: !fl || d.flows.includes(id), equipped: (d.flow || 'NONE') === id, from: 'FLOW SPINS' }; }
     if (id.startsWith('TONE')) { const n = +id.slice(4); return { name: 'SKIN ' + (n + 1), rarity: 'Rare', base: true, owned: true, equipped: d.tone === n }; }
     const sk = SKINS[id];
@@ -11313,26 +11319,24 @@ const UI = {
   lockerArt(id, size) {
     const tab = this.lockerTab;
     if (tab === 'club') return crestCanvas(id, size);
-    if (tab === 'gk' && id !== 'NONE') { const st = STYLES[id], im = document.createElement('img'); im.className = 'px'; im.alt = ''; im.src = iconURL(ABILITIES[st.abilities[0]].icon, st.aura); im.style.width = im.style.height = size + 'px'; return im; }
-    if (tab === 'gk') return portraitCanvas(Save.data.style, size, Object.assign(lookFor(Save.data.style, Save.data.look), { skin: SKIN_TONES[Save.data.tone] }));
     const look = Object.assign(lookFor(Save.data.style, Save.data.look), { skin: SKIN_TONES[Save.data.tone] });
     if (id.startsWith && id.startsWith('TONE')) return portraitCanvas(Save.data.style, size, Object.assign(look, { skin: SKIN_TONES[+id.slice(4)] }));
-    return tab === 'style' ? portraitCanvas(id, size, Object.assign(lookFor(id, Save.data.look), { skin: SKIN_TONES[Save.data.tone] })) : tab === 'flow' ? flowEmblemCanvas(id === 'NONE' ? null : id, size) : skinCanvas(id, size);
+    return tab === 'style' ? portraitCanvas(id, size, { skin: SKIN_TONES[Save.data.tone], sig: true }) : tab === 'flow' ? flowEmblemCanvas(id === 'NONE' ? null : id, size) : skinCanvas(id, size);
   },
   renderLocker() {
     const d = Save.data, tab = this.lockerTab;
-    for (const t of ['style', 'flow', 'skin', 'gk', 'club']) $('ltab-' + t).setAttribute('aria-selected', tab === t);
+    for (const t of ['style', 'flow', 'skin', 'club']) $('ltab-' + t).setAttribute('aria-selected', tab === t);
     const slots = $('lk-slots');
     slots.hidden = tab !== 'skin';
     if (tab === 'skin') slots.innerHTML = `<button class="tab" type="button" role="tab" data-slot="tone" aria-selected="${this.skinSlot === 'tone'}">SKIN</button>` + SKIN_SLOTS.map((sl) => `<button class="tab" type="button" role="tab" data-slot="${sl.id}" aria-selected="${this.skinSlot === sl.id}">${sl.name}</button>`).join('');
     const byRar = (M) => (a, b) => RARITIES.indexOf(M[a].rarity) - RARITIES.indexOf(M[b].rarity); // Rare first, Generational last
-    const ids = tab === 'club' ? CLUB_IDS : tab === 'gk' ? ['NONE'].concat(GK_IDS) : tab === 'style' ? STYLE_IDS.slice().sort(byRar(STYLES)) : tab === 'flow' ? ['NONE'].concat(FLOW_IDS.slice().sort(byRar(FLOWS)))
+    const ids = tab === 'club' ? CLUB_IDS : tab === 'style' ? STYLE_IDS.slice().sort(byRar(STYLES)) : tab === 'flow' ? ['NONE'].concat(FLOW_IDS.slice().sort(byRar(FLOWS)))
       : this.skinSlot === 'tone' ? SKIN_TONES.map((t, i) => 'TONE' + i)
       : Object.keys(SKINS).filter((k) => SKINS[k].base && SKINS[k].slot === this.skinSlot).concat(LOCKER_SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
     const grid = $('locker-grid');
     grid.innerHTML = ids.map((id) => {
       const it = this.lockerItem(id);
-      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.equipped ? 'EQUIPPED' : it.spun ? 'FROM SPIN' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
+      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.gk ? 'KEEPER · ' : ''}${it.equipped ? 'EQUIPPED' : it.spun ? 'FROM SPIN' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
     }).join('');
     grid.querySelectorAll('.lcard').forEach((b) => {
       b.querySelector('.cv').replaceWith(this.lockerArt(b.dataset.id, 40));
@@ -11342,7 +11346,6 @@ const UI = {
     // the 3D player tries on whatever card is picked, owned or not
     const id = this.lockerSel, spec = { look: {} };
     if (tab === 'style') spec.style = id;
-    else if (tab === 'gk') { /* a keeper character keeps your own look */ }
     else if (tab === 'club') spec.club = id;
     else if (tab === 'flow') spec.flow = id === 'NONE' ? null : id;
     else if (id.startsWith('TONE')) spec.tone = +id.slice(4);
@@ -11355,14 +11358,9 @@ const UI = {
     const head = (sub, blurb) => `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px">${it.chip ? `<span class="chip" style="justify-self:start">${it.chip}</span>` : it.base ? '<span class="chip" style="justify-self:start">FREE</span>' : `<span class="rar" data-r="${it.rarity}" style="justify-self:start">${it.rarity.toUpperCase()}</span>`}<h3>${esc(it.name)}</h3>${sub ? `<span class="label">${sub}</span>` : ''}${blurb ? `<p style="margin:0;color:var(--muted);max-width:46ch">${esc(blurb)}</p>` : ''}</div></div>`;
     if (tab === 'style') {
       const st = STYLES[id];
-      det.innerHTML = head('', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KeyNames.of(KEYS3[i])}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
+      det.innerHTML = head(st.gk ? 'KEEPER STYLE · ITS POWERS WORK IN GOAL' : '', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KeyNames.of(KEYS3[i])}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
         + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)}</p></div></div>` : '')
         + (st.awaken && st.awaken.move ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><div><div class="t"><span class="key">Z</span><b>${esc(st.awaken.move.name)}</b><span class="label">AWAKENED · ONCE</span></div><p>${esc(st.awaken.move.desc)}</p></div></div>` : '') + '</div>';
-    } else if (tab === 'gk') {
-      const st = id === 'NONE' ? null : STYLES[id];
-      det.innerHTML = st ? head('KEEPER CHARACTER · ONLY WHEN YOU PLAY IN GOAL', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KeyNames.of(KEYS3[i])}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}</div>`
-        + '<p style="margin:0;color:var(--muted)">Pick KEEPER before a match to play in goal. You keep your own look and wear the keeper kit.</p>'
-        : head('', 'In goal you keep your own style and its powers. Pick a keeper character for three powers made for goalkeepers.');
     } else if (tab === 'club') {
       const c = CLUBS[id];
       det.innerHTML = head('', 'The club you play for. Your team wears its kit, and its fans fill your stands.') + `<div class="kits">${[['HOME', c.home], ['AWAY', c.away], ['KEEPER', c.keeper]].map(([n]) => `<div class="kitbox"><span class="kv"></span><span class="label">${n}</span></div>`).join('')}</div>
@@ -11383,12 +11381,12 @@ const UI = {
     const cap = $('lk-cap');
     cap.innerHTML = `${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<b>${esc(it.name)}</b>`
       + (it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" data-sfx="equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`)
-      + ((tab === 'style' && (it.spun || !it.owned)) || (tab === 'gk' && !it.owned) ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
+      + (tab === 'style' && (it.spun || !it.owned) ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
     const kp = $('lk-keep');
-    if (kp) kp.addEventListener('click', () => { if (Goals.unlock(d, id)) { if (tab === 'gk') d.gk = id; else d.style = id; Save.save(); Sfx.coin(); this.renderLocker(); this.renderLobby(); } });
+    if (kp) kp.addEventListener('click', () => { if (Goals.unlock(d, id)) { d.style = id; Save.save(); Sfx.coin(); this.renderLocker(); this.renderLobby(); } });
     const eq = $('lk-equip');
     if (eq) eq.addEventListener('click', () => {
-      if (tab === 'style') d.style = id; else if (tab === 'gk') d.gk = id === 'NONE' ? null : id; else if (tab === 'club') d.club = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else if (id.startsWith('TONE')) d.tone = +id.slice(4); else d.look[SKINS[id].slot] = id;
+      if (tab === 'style') d.style = id; else if (tab === 'club') d.club = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else if (id.startsWith('TONE')) d.tone = +id.slice(4); else d.look[SKINS[id].slot] = id;
       Save.save(); this.renderLocker();
     });
   },
@@ -11410,6 +11408,8 @@ const Game = {
     Save.load(); Save.validate();
     Portal.applyMute();
     World.init($('gl'));
+    // a phone short of memory can take the graphics away mid-game: say so, with RELOAD, instead of a frozen black screen
+    $('gl').addEventListener('webglcontextlost', (e) => { e.preventDefault(); try { Save.save(); } catch (er) {} bootFail(new Error('THE GRAPHICS STOPPED. THIS PHONE OR TABLET NEEDED THE MEMORY BACK. CLOSE OTHER APPS AND TABS, THEN RELOAD. YOUR PROGRESS IS SAVED.'), true); }, false);
     FX.init(World.scene);
     Touch.detect();
     UI.init();
@@ -11506,9 +11506,8 @@ const Game = {
     if (h.role === r) return true;
     const o = m.teams[h.team].find((p) => p.role === r && !p.isHuman);
     if (!o) return false;
-    m.swapRoles(h, o); // in goal: the keeper's kit and number 1 come with it, and your keeper character's powers
+    m.swapRoles(h, o); // in goal: the keeper's kit and number 1 come with it
     m.setupKickoff(0, true, true);
-    UI.buildHud(m); // the power slots follow (a keeper character has its own)
     Save.data.pos = r; Save.save();
     UI.renderIntro(m);
     return true;
@@ -11552,7 +11551,8 @@ const Game = {
     const ramp = this.rampFor(mode);
     if (ramp) { size = Math.min(size, ramp[0]); skill = Math.min(skill, ramp[1]); }
     const intro = !o.noIntro && this.introOn(mode);
-    this.match = new Match(mode, skill, { size, role: Save.data.pos, intro });
+    const st = STYLES[Save.data.style];
+    this.match = new Match(mode, skill, { size, role: Save.data.pos || (st && st.gk ? 'GK' : null), intro }); // a keeper style with no position picked yet starts in goal
     this.lastMode = mode; this.ended = false;
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
@@ -11767,7 +11767,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {
@@ -11805,9 +11805,15 @@ window.addEventListener('load', () => {
     Portal.boot().then(() => { try { Game.start(); Portal.ready(); } catch (err) { bootFail(err); } });
   } catch (err) { bootFail(err); }
 });
-function bootFail(err) {
+function bootFail(err, stopped = false) {
   const b = document.getElementById('boot') || document.getElementById('app');
-  if (b) { b.style.display = 'grid'; b.innerHTML = '<div style="max-width:40ch;text-align:center;font-family:var(--font-body);font-size:18px;padding:16px">SCORZ could not start.<br><br>' + esc(err && err.message ? err.message : String(err)) + '</div>'; }
+  const msg = err && err.message ? err.message : String(err);
+  const gl = /webgl|context/i.test(msg) && !stopped ? '<br><br>This browser could not start 3D graphics. Try Chrome, close other apps and tabs, or restart the device.' : '';
+  if (b) {
+    b.style.display = 'grid'; b.style.zIndex = 999; b.style.position = 'fixed'; b.style.inset = '0'; b.style.placeItems = 'center'; b.style.background = '#090b16';
+    b.innerHTML = '<div style="max-width:40ch;text-align:center;font-family:var(--font-body);font-size:18px;padding:16px;color:#eef1f4">' + (stopped ? '' : 'SCORZ could not start.<br><br>') + esc(msg) + gl + '<br><br><button type="button" class="btn blue" id="boot-reload">RELOAD</button></div>';
+    const rb = document.getElementById('boot-reload'); if (rb) rb.addEventListener('click', () => location.reload());
+  }
   console.error(err);
 }
 
