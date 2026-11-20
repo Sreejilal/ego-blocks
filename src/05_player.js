@@ -351,7 +351,7 @@ class Player {
     // targets
     let bx = run * 0.14, bz = 0, by = 0.72 + Math.abs(Math.cos(this.animPhase)) * 0.05 * run;
     let lL = s * 0.9 * run, lR = -s * 0.9 * run, aL = -s * 0.8 * run, aR = s * 0.8 * run, aLz = 0.06, aRz = -0.06;
-    let hx = 0, hy = 0, lRz = 0, snapX = false;
+    let hx = 0, hy = 0, lRz = 0, snapX = false, spinY = 0;
     if (!this.onGround && st === 'free') { lL = -0.55; lR = 0.35; aL = -0.5; aR = -0.3; aLz = 0.5; aRz = -0.5; }
     if (this.charging) { // winding up: the kicking leg draws back, arms open for balance, body leans back and coils
       const c = this.charge; lR = 0.4 + c * 1.15; lL = -0.12 * c; aLz = 0.7 + 0.45 * c; aRz = -0.35 - 0.35 * c; aL = -0.35 * c; aR = 0.4 * c; bx = -0.05 - c * 0.14; bz = -0.1 * c;
@@ -437,6 +437,12 @@ class Player {
         } else if (c === 'drums') { const a = Math.sin(t * 16), b2 = Math.sin(t * 16 + Math.PI); aL = -1.2 + a * 0.45; aR = -1.2 + b2 * 0.45; aLz = 0.3; aRz = -0.3; hx = 0.15 + Math.abs(Math.sin(t * 8)) * 0.15; lL = Math.max(0, Math.sin(t * 8)) * -0.3;
         } else if (c === 'pump') { const u = Math.max(0, Math.sin(t * 7)); aR = -1.6 - u * 1.3; aRz = -0.1; aL = 0.2; aLz = 0.35; by = 0.72 + u * 0.08; hx = -0.15 * u;
         } else if (c === 'chill') { const k = Math.min(1, t / 0.35); by = 0.72 - 0.5 * k; bx = -0.3 * k; lL = lR = -1.45 * k; aL = aR = 0.9 * k; aLz = 0.3 * k; aRz = -0.3 * k; hx = -0.15 * k + Math.sin(t * 1.5) * 0.04;
+        } else if (c === 'spin') { spinY = t * 9; aLz = 1.45; aRz = -1.45; by = 0.72 + Math.abs(Math.sin(t * 9)) * 0.06; hx = -0.15; lL = Math.sin(t * 9) * 0.25;
+        } else if (c === 'dance') { const d = Math.sin(t * 8); bz = d * 0.16; aL = -2.4 + Math.max(0, d) * 0.5; aR = -2.4 + Math.max(0, -d) * 0.5; aLz = 0.5; aRz = -0.5; lL = Math.max(0, d) * -0.45; lR = Math.max(0, -d) * -0.45; by = 0.72 - Math.abs(d) * 0.05; hy = d * 0.3;
+        } else if (c === 'heart') {
+          aL = aR = -2.85; aLz = -0.32; aRz = 0.32; bz = Math.sin(t * 2.2) * 0.06; hx = -0.2; by = 0.72 + Math.abs(Math.sin(t * 4)) * 0.02; // hands meet over the head
+          const k = Math.floor(t / 0.55);
+          if (this._heart !== k) { this._heart = k; FX.sparks(this.pos.x, this.pos.y + 2.9, this.pos.z, '#ff4d6d', 8, 2.2, 0.2, 0.9); }
         } else if (c === 'fireworks') {
           const u = Math.abs(Math.sin(t * 4)); aL = aR = -2.8 + u * 0.25; aLz = 0.35; aRz = -0.35; by = 0.72 + u * 0.06; hx = -0.3;
           const k = Math.floor(t / 0.6);
@@ -455,7 +461,7 @@ class Player {
     r(P.armL, 'x', aL); r(P.armR, 'x', aR); r(P.armL, 'z', aLz); r(P.armR, 'z', aRz);
     r(P.headP, 'x', hx);
     P.root.position.copy(this.pos);
-    P.root.rotation.y = this.yaw;
+    P.root.rotation.y = this.yaw + spinY; // SPIN celebration turns you round
     const bs = clamp(1 - this.pos.y / 5, 0.3, 1) * (st === 'down' ? 1.6 : st === 'dive' ? 1.5 : 1);
     this.blob.position.set(this.pos.x, 0.025, this.pos.z); this.blob.scale.set(bs, 1, bs);
     P.eyes.visible = this.flowT > 0 || this.awakeT > 0;

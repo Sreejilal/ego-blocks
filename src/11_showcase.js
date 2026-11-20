@@ -44,6 +44,12 @@ const POSES = {
   SPARK: (t) => ({ aL: -1.25 - Math.max(0, Math.sin(t * 7)) * 0.4, aLz: 0.3, aR: -1.25 - Math.max(0, -Math.sin(t * 7)) * 0.4, aRz: -0.3, by: 0.72 + Math.abs(Math.sin(t * 8)) * 0.045, lL: -0.15, lR: 0.15, hx: 0.1, ball: [0.42, 0.42] }), // fists up, bouncing
   TITAN: (t) => ({ by: 0.68, bx: -0.1, aL: -0.35, aLz: 2.35 + Math.sin(t * 3) * 0.06, aR: -0.35, aRz: -2.35 - Math.sin(t * 3) * 0.06, lLz: 0.24, lRz: -0.24, hx: -0.3, ball: [0.48, 0.28] }), // a roar: both arms up, feet wide
   FORTRESS: (t) => ({ by: 0.6, bx: 0.28, aL: -0.95, aLz: 0.85, aR: -0.95, aRz: -0.85, lL: -0.2, lLz: 0.25, lR: -0.2, lRz: -0.25, hx: -0.3 + Math.sin(t * 1.4) * 0.03, ball: [0.62, -0.42] }), // a keeper's set position, gloves up
+  VORTEX: (t) => ({ lR: -0.45, aL: -1.0 + Math.sin(t * 4) * 0.6, aLz: 0.9, aR: -1.0 - Math.sin(t * 4) * 0.6, aRz: -0.9, bz: Math.sin(t * 2) * 0.12, hy: Math.sin(t * 2) * 0.3, hx: -0.05, ball: [0.45, 0.3] }), // mid-spin, arms swirling
+  NOVA: (t) => ({ by: 0.95 + Math.sin(t * 2.4) * 0.05, aL: -0.3, aLz: 2.0, aR: -0.3, aRz: -2.0, lLz: 0.45, lRz: -0.45, hx: -0.4, ball: [0.3, 0, 2.9 + Math.sin(t * 2.4 + 1) * 0.08] }), // a star jump in the air
+  SENTINEL: (t) => ({ aR: -2.6, aRz: 0.9, aL: 0.3, aLz: 0.2, hy: Math.sin(t * 0.6) * 0.5, hx: -0.05, lLz: 0.12, lRz: -0.12, ball: [0.4, -0.35] }), // a hand over the eyes, scanning the pitch
+  JESTER: (t) => ({ bx: 0.6 + Math.sin(t * 1.6) * 0.1, aR: -0.6, aRz: 0.8, aL: 0.8, aLz: 0.9, hx: 0.25, lR: 0.3, ball: [0.5, 0.35] }), // taking a bow
+  TEMPEST: (t) => ({ by: 0.8 + Math.sin(t * 1.8) * 0.04, aL: -2.8, aLz: 0.5, aR: -2.8, aRz: -0.5, hx: -0.5, bz: Math.sin(t * 1.1) * 0.04, ball: [0.42, -0.36] }), // arms up, calling the storm
+  ACE: (t) => ({ aR: -1.5, aRz: 0.25, aL: 0.3, aLz: 0.6, bz: 0.06, hx: 0.02 + Math.sin(t * 0.9) * 0.03, hy: 0.15, lR: -0.25, ball: [0.3, -0.12] }), // a hand on the hip, pointing right at you
   LYNX: (t) => ({ by: 0.5, bx: 0.55, aL: -1.0, aLz: 0.25, aR: -0.85, aRz: -0.25, lL: -0.55, lR: 0.6, hx: -0.55, bz: Math.sin(t * 2.5) * 0.05, hy: Math.sin(t * 1.3) * 0.2, ball: [0.78, 0.2] }), // crouched to pounce
 };
 /** a style's pose at time t, every joint filled in */

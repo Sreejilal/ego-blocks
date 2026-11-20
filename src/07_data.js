@@ -40,6 +40,19 @@ const STYLES = {
     awaken: { move: { name: 'LIGHTNING STEP', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'OVERLOAD', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
   TITAN: { name: 'TITAN', rarity: 'Legendary', hair: '#4a2c1a', hairShape: 'mohawk', aura: '#ff8a2a', blurb: 'A battering ram at the back. Charges through anyone in the way, blocks shots and boots the ball clear.', abilities: ['ram', 'bodyBlock', 'clearance'],
     awaken: { move: { name: 'EARTHQUAKE', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'JUGGERNAUT', desc: 'Nobody can tackle you, abilities recharge faster and you are 10% faster.', perk: 'tank', mods: { speed: 1.1, cdRate: 1.3 } } },
+  // the content pack (owner, Nov 2026: "make way more content"): six more characters, made from tried and tested powers
+  VORTEX: { name: 'VORTEX', rarity: 'Epic', hair: '#1f8fff', hairShape: 'swept', aura: '#4dd8ff', blurb: 'Spins defenders dizzy. Zigzags through, cuts inside and bends it into the corner.', abilities: ['zigzag', 'cutInside', 'curler'],
+    awaken: { move: { name: 'CYCLONE', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'WHIRLWIND', desc: '+12% speed and +10% shot power.', mods: { speed: 1.12, shot: 1.1 } } },
+  NOVA: { name: 'NOVA', rarity: 'Legendary', hair: '#ffe9a3', hairShape: 'fluffy', aura: '#ffd84d', blurb: 'A shooting star. Rockets into the air, kills high balls dead and chips the keeper.', abilities: ['rocketJump', 'skyTrap', 'chipShot'],
+    awaken: { move: { name: 'SUPERNOVA', kind: 'starfall', desc: 'Leap sky high and crash down, knocking over everyone near you.' }, name: 'STARLIGHT', desc: '+15% shot power, and abilities recharge faster.', mods: { shot: 1.15, cdRate: 1.3 } } },
+  SENTINEL: { name: 'SENTINEL', rarity: 'Rare', hair: '#3a3f55', hairShape: 'crop', aura: '#9aa6ff', blurb: 'Reads every pass. Steps in, pokes it away and sends it long.', abilities: ['poke', 'bodyBlock', 'clearance'],
+    awaken: { move: { name: 'NO ENTRY', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'WATCHTOWER', desc: 'Tackles reach 25% further and come back faster.', mods: { tackleRange: 1.25, tackleCd: 0.75 } } },
+  JESTER: { name: 'JESTER', rarity: 'Epic', hair: '#ff9ad8', hairShape: 'afro', aura: '#ff5fd2', blurb: 'Pure showtime. Rainbow flicks, fake shots and feints that leave defenders on the floor.', abilities: ['rainbow', 'fakeVolley', 'feint'],
+    awaken: { move: { name: 'GRAND FINALE', kind: 'shadow', desc: 'Flash forward and freeze every defender near you.' }, name: 'SHOWTIME', desc: '+10% speed, and abilities recharge faster.', perk: 'dodge', mods: { speed: 1.1, cdRate: 1.25 } } },
+  TEMPEST: { name: 'TEMPEST', rarity: 'Mythic', hair: '#2a1f4f', hairShape: 'long', aura: '#7a5cff', blurb: 'A storm in boots. Zaps the nearest defender, locks down their best attacker and hits a wobbling knuckleball.', abilities: ['zap', 'lockdown', 'knuckle'],
+    awaken: { move: { name: 'THUNDERCLAP', kind: 'storm', desc: 'Every opponent near you loses their footing.' }, name: 'SUPERCELL', desc: '+15% shot power, and tackles reach 30% further.', mods: { shot: 1.15, tackleRange: 1.3 } } },
+  ACE: { name: 'ACE', rarity: 'Legendary', hair: '#c4161c', hairShape: 'messy', aura: '#ff3d3d', blurb: 'Never wastes a touch. Quick shots, first-time finishes and fresh legs when everyone else is tired.', abilities: ['quickShot', 'oneTouch', 'secondWind'],
+    awaken: { move: { name: 'ACE SHOT', kind: 'bolt', desc: 'A straight shot so hard the keeper cannot catch it.' }, name: 'IN THE ZONE', desc: '+12% speed and +12% shot power.', mods: { speed: 1.12, shot: 1.12 } } },
   // keeper styles (owner, Nov 2026): spun, kept and equipped like any style; their powers work when you play in goal (in goal any other style's moves work too). Bots never get them
   FORTRESS: { name: 'FORTRESS', rarity: 'Rare', gk: true, hair: '#2b2b33', hairShape: 'flattop', aura: '#ffb02e', blurb: 'A keeper built like a wall. Giant gloves, hands of iron and a kick that reaches the other box. Its powers work in goal.', abilities: ['bigGloves', 'ironHands', 'cannonKick'],
     awaken: { move: { name: 'GROUND SLAM', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'THE WALL', desc: '+15% shot power, and tackles reach 30% further.', mods: { shot: 1.15, tackleRange: 1.3 } } },
@@ -497,6 +510,11 @@ const FLOWS = {
   FROSTBITE: { name: 'FROSTBITE', rarity: 'Legendary', color: '#9fe8ff', fx: 'venom', desc: 'Cooldowns 20% shorter, and tackles reach 30% further. Icy drops fall off you.', mods: { cdRate: 1 / 0.8, tackleRange: 1.3 } },
   MONARCH: { name: 'MONARCH', rarity: 'Generational', color: '#ffffff', fx: 'crown', desc: '+20% shot power, +12% speed and cooldowns 15% shorter. A crown of light floats over your head.', mods: { shot: 1.2, speed: 1.12, cdRate: 1 / 0.85 } },
 };
+Object.assign(FLOWS, { // the content pack: three more Flows
+  STAMPEDE: { name: 'STAMPEDE', rarity: 'Rare', color: '#d69a5a', fx: 'wind', desc: '+10% speed, and sprinting costs 20% less. Dust swirls around you.', mods: { speed: 1.1, stamDrain: 0.8 } },
+  ECLIPSE: { name: 'ECLIPSE', rarity: 'Epic', color: '#a66bff', fx: 'aura', desc: '+15% shot power, and cooldowns 10% shorter. A dark purple glow.', mods: { shot: 1.15, cdRate: 1 / 0.9 } },
+  PHOENIX: { name: 'PHOENIX', rarity: 'Mythic', color: '#ff4d2e', fx: 'flame', desc: 'Your stamina refills at once, then +15% speed and +15% shot power. Red fire on your head.', start: { stamina: true }, mods: { speed: 1.15, shot: 1.15 } },
+});
 const FLOW_IDS = Object.keys(FLOWS);
 /** Awakening: a style's own transformation. It comes by itself at random moments; big plays make it come much sooner.
     For AWAKEN_TIME seconds: cooldowns reset and recharge twice as fast, ability effects last 50% longer, plus the style's own power */
@@ -663,6 +681,25 @@ const SKINS = {
   CHAMP_BOOTS: { slot: 'boots', name: 'CHAMPION BOOTS', rarity: 'Legendary', hex: '#f6f2e6', sparkle: true, pass: true },
   TROPHY: { slot: 'celeb', name: 'TROPHY LIFT', rarity: 'Mythic', celeb: 'trophy', pass: true, desc: 'Hoist an invisible trophy over your head, again and again.' },
 };
+Object.assign(SKINS, { // the content pack: fifteen more skins
+  NEON_PINK: { slot: 'color', name: 'NEON PINK', rarity: 'Rare', hex: '#ff4fd8' },
+  ICE_BLUE: { slot: 'color', name: 'ICE BLUE', rarity: 'Rare', hex: '#9fe4ff' },
+  LIME: { slot: 'color', name: 'LIME', rarity: 'Epic', hex: '#a8ff3d' },
+  MINT_BOOTS: { slot: 'boots', name: 'MINT', rarity: 'Rare', hex: '#6dffc4' },
+  LAVA_BOOTS: { slot: 'boots', name: 'LAVA', rarity: 'Epic', hex: '#ff4d1a', sparkle: true },
+  GALAXY_BOOTS: { slot: 'boots', name: 'GALAXY', rarity: 'Legendary', hex: '#6b4dff', sparkle: true },
+  NEON_GLOVES: { slot: 'gloves', name: 'NEON', rarity: 'Rare', hex: '#39ff8a' },
+  GOLD_GLOVES: { slot: 'gloves', name: 'GOLDEN GLOVES', rarity: 'Epic', hex: '#ffcb3d' },
+  NIGHT_MASK: { slot: 'acc', name: 'NIGHT MASK', rarity: 'Rare', acc: 'mask', hex: '#1a1a22' },
+  GOLD_BAND: { slot: 'acc', name: 'GOLD HEADBAND', rarity: 'Epic', acc: 'band', hex: '#ffcb3d', glow: 0.3 },
+  STAR_SHADES: { slot: 'acc', name: 'STAR SHADES', rarity: 'Legendary', acc: 'shades', hex: '#ff5fd2', glow: 0.4 },
+  NEON_SASH: { slot: 'kit', name: 'NEON SASH', rarity: 'Rare', pattern: 'sash', trim: '#39ff8a', desc: 'A sash across the shirt with neon green trim.' },
+  GOLD_HOOPS: { slot: 'kit', name: 'GOLD HOOPS', rarity: 'Epic', pattern: 'hoops', trim: '#ffcb3d', desc: 'Hoops in your team colours with gold trim.' },
+  MIDNIGHT: { slot: 'kit', name: 'MIDNIGHT STARS', rarity: 'Legendary', pattern: 'stars', trim: '#b6a6ff', desc: 'Stars on your team colours, lilac trim.' },
+  SPIN_CELEB: { slot: 'celeb', name: 'SPIN', rarity: 'Epic', celeb: 'spin', desc: 'Spin round and round with your arms out.' },
+  DANCE_CELEB: { slot: 'celeb', name: 'DANCE', rarity: 'Rare', celeb: 'dance', desc: 'A side to side dance with your arms in the air.' },
+  HEART_CELEB: { slot: 'celeb', name: 'HEART', rarity: 'Legendary', celeb: 'heart', desc: 'Make a heart over your head for the fans. Pink hearts pop up.' },
+});
 const SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base && !SKINS[k].pass && !SKINS[k].obj); // what spins can give (not pass or GOALS rewards)
 const LOCKER_SKIN_IDS = Object.keys(SKINS).filter((k) => !SKINS[k].base);
 /** the concrete colours and shapes a player model is built from: the style's defaults with skins on top */
