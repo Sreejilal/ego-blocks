@@ -5101,14 +5101,16 @@ class Match {
     }
     out.feint = false; // without the ball the FEINT button only ever dives
     const sideways = Math.abs(c.moveX || 0) > 0.3;
+    const push = Math.abs(p.mx) > 0.3 ? p.mx : 0;
     if (c.jump && sideways) out.jump = false;
-    if (c.dodge || (c.jump && sideways)) this.keeperDive(p, Math.abs(p.mx) > 0.3 ? p.mx : 0, !!c.dodge && c.jumpHeld);
+    if (c.dodge || (c.jump && sideways)) this.keeperDive(p, push, !!c.dodge && c.jumpHeld);
+    else if (sideways && !p.onGround && p.state === 'free' && this.time - (p.jumpAt || -9) < 0.3) this.keeperDive(p, push, true, true, false, true); // owner: "the jump side to side is not there": JUMP first and A/D a moment after (pressed "together") turns the jump into a dive
     return out;
   }
   /** a ball flying at your goal: where (and when) it passes the line you stand on */
   shotAt(p) { const b = this.ball; return !b.owner && b.vel.z * this.dir(p.team) < -0.5 && b.vel.lengthSq() > 49 ? AI.crossAt(b, p.pos.z) : null; }
-  keeperDive(p, push, high, now = false, big = false) {
-    if (p.state !== 'free' || !p.onGround || (!big && (p.diveAt || -9) > this.time) || p.diveQ) return false;
+  keeperDive(p, push, high, now = false, big = false, air = false) {
+    if (p.state !== 'free' || (!p.onGround && !air) || (!big && (p.diveAt || -9) > this.time) || p.diveQ) return false;
     const b = this.ball, K = this.shotAt(p);
     let dx = 0, ky = high ? 2.3 : 0.7, tk = 0.4;
     const want = Math.abs(push) > 0.3 ? sgn(push) : 0;
@@ -5345,7 +5347,7 @@ class Match {
   }
   jump(p) {
     if (!p.onGround || p.state !== 'free') return false;
-    p.vel.y = 9.4; p.onGround = false; // about 2 blocks high: up to headers and volleys
+    p.vel.y = 9.4; p.onGround = false; p.jumpAt = this.time; // about 2 blocks high: up to headers and volleys
     const b = this.ball;
     if (b.owner === p) {
       b.release();

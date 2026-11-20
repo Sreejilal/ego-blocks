@@ -69,6 +69,17 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   check('JUMP with D held dives that way and saves', jd.dived && jd.side === -1 && jd.saved && !jd.goal, jd);
   const ja = await page.evaluate(() => { __shoot(3.6, 0.6); EGO.Game.stepManual(8); __key('KeyA', true); __key('Space', true); EGO.Game.stepManual(1); __key('Space', false); const r = __watch(70); __key('KeyA', false); return r; });
   check('JUMP with A held dives the other way and saves', ja.dived && ja.side === 1 && ja.saved && !ja.goal, ja);
+  // real key presses, no shot coming: the order does not matter (owner: "the jump side to side is not there")
+  const realKeys = async (first, second) => {
+    await page.evaluate(() => { const m = EGO.Game.match, h = m.human, b = m.ball; m.phase = 'play'; m.phaseT = 0; if (b.owner) b.release(); b.reset(10, 0); b.vel.set(0, 0, 0); b.kick = null; h.setState('free'); h.dive = null; h.diveAt = -9; h.diveQ = null; h.pos.set(0, 0, m.ownGoalZ(0) + 1.2); h.vel.set(0, 0, 0); h.onGround = true; });
+    await page.keyboard.down(first); await page.evaluate(() => EGO.Game.stepManual(4));
+    await page.keyboard.down(second); await page.evaluate(() => EGO.Game.stepManual(4));
+    const r = await page.evaluate(() => { const h = EGO.Game.match.human; return { state: h.state, side: h.dive ? Math.sign(h.dive.vx) : 0 }; });
+    await page.keyboard.up(second); await page.keyboard.up(first); await page.evaluate(() => EGO.Game.stepManual(80));
+    return r;
+  };
+  const dFirst = await realKeys('KeyD', 'Space'), spaceFirst = await realKeys('Space', 'KeyD'), aSpace = await realKeys('Space', 'KeyA');
+  check('real keys: D then SPACE, SPACE then D, SPACE then A all dive the right way', dFirst.state === 'dive' && dFirst.side === -1 && spaceFirst.state === 'dive' && spaceFirst.side === -1 && aSpace.state === 'dive' && aSpace.side === 1, { dFirst, spaceFirst, aSpace });
   // C, pressed early at a high shot: you wait, shuffle across, and are still in the air when it arrives
   const early = await page.evaluate(() => { __shoot(-3.4, 1.0, 1.8); EGO.Game.stepManual(4); __key('KeyC', true); EGO.Game.stepManual(1); __key('KeyC', false); const h = EGO.Game.match.human, waited = h.state === 'free' && !!h.diveQ; const r = __watch(90); return Object.assign(r, { waited }); });
   check("C pressed very early at a high shot: a moment's wait, then the dive saves it", early.waited && early.dived && !early.goal, early);
