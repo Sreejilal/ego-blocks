@@ -390,7 +390,9 @@ class Player {
       case 'dive': {
         const d = this.dive; const k = Math.min(1, this.stateT / 0.12);
         bz = -d.side * 1.3 * k; by = 0.72 + (d.high ? 0.7 : 0.35) * k * (this.stateT < d.dur ? 1 : Math.max(0, 1 - (this.stateT - d.dur) / 0.25));
-        aL = aR = 0; aLz = 2.9; aRz = -2.9; lL = 0.2; lR = -0.2; break;
+        aL = aR = 0; aLz = 2.9; aRz = -2.9; lL = 0.2; lR = -0.2;
+        if (d.fwd) { bz = 0; bx = 1.3 * k; aL = aR = -2.9; aLz = 0.25; aRz = -0.25; } // a forward dive: flat out, arms reaching ahead
+        break;
       }
       case 'awaken': { // the transformation: rise up, arms out, head back, then land
         const u = clamp(this.stateT / (this.stateDur || 1), 0, 1), w = Math.sin(Math.PI * u);

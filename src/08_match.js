@@ -375,6 +375,10 @@ class Match {
       or taken out of the box, it goes by itself. Returns { feint, jump }: false when that press was a dive */
   keeperControls(dt, c, p, ml) {
     const b = this.ball, out = { feint: true, jump: true };
+    // a fresh push this frame (it was not pushed last frame): in the air, that is what dives
+    const ix = c.moveX || 0, iy = c.moveY || 0, pv = p.inPrev || (p.inPrev = { x: 0, y: 0 });
+    const sidePress = Math.abs(ix) > 0.4 && Math.abs(pv.x) <= 0.4, fwdPress = iy > 0.4 && pv.y <= 0.4 && Math.abs(ix) <= 0.4;
+    pv.x = ix; pv.y = iy;
     if (p.state === 'hold') {
       p.holdFor = (p.holdFor || 0) + dt; p.diveQ = null;
       if (!this.inOwnBox(p)) { p.setState('free'); b.held = false; p.holdFor = 0; } // no hands outside the box: it drops to your feet
@@ -397,8 +401,20 @@ class Match {
     const push = Math.abs(p.mx) > 0.3 ? p.mx : 0;
     if (c.jump && sideways) out.jump = false;
     if (c.dodge || (c.jump && sideways)) this.keeperDive(p, push, !!c.dodge && c.jumpHeld);
-    else if (sideways && !p.onGround && p.state === 'free' && this.time - (p.jumpAt || -9) < 0.3) this.keeperDive(p, push, true, true, false, true); // owner: "the jump side to side is not there": JUMP first and A/D a moment after (pressed "together") turns the jump into a dive
+    else if (!p.onGround && p.state === 'free' && this.time - (p.jumpAt || -9) < 1.5 && (sidePress || fwdPress)) { // owner: "jump, and when you're in the air press A or D to dive ... you can dive forward": any time in the jump
+      if (fwdPress) this.keeperLunge(p); else this.keeperDive(p, push, true, true, false, true);
+    }
     return out;
+  }
+  /** W in the air: dive forward, the way the stick points (onto a ball at an attacker's feet) */
+  keeperLunge(p) {
+    if (p.state !== 'free' || (p.diveAt || -9) > this.time) return false;
+    let dx = p.mx, dz = p.mz; const l = Math.hypot(dx, dz);
+    if (l < 0.2) { dx = Math.sin(p.yaw); dz = Math.cos(p.yaw); } else { dx /= l; dz /= l; }
+    p.yaw = Math.atan2(dx, dz);
+    p.dive = { vx: dx * 11, vz: dz * 11, dur: 0.35, rest: 0.6, side: 0, high: !p.onGround, ux: dx, uz: dz, fwd: true };
+    p.setState('dive'); p.diveAt = this.time + 1.1; Sfx.swoosh();
+    return true;
   }
   /** a ball flying at your goal: where (and when) it passes the line you stand on */
   shotAt(p) { const b = this.ball; return !b.owner && b.vel.z * this.dir(p.team) < -0.5 && b.vel.lengthSq() > 49 ? AI.crossAt(b, p.pos.z) : null; }
