@@ -144,7 +144,7 @@ const Save = {
     out.goalSteps = out.goalSteps && typeof out.goalSteps === 'object' ? out.goalSteps : {};
     out.settings = Object.assign({}, def.settings, out.settings || {});
     const st = out.settings;
-    if (!['auto', 'low', 'med', 'high'].includes(st.quality)) st.quality = 'auto';
+    if (!['auto', 'low', 'med', 'high', 'ultra'].includes(st.quality)) st.quality = 'auto';
     st.sens = clamp(Number(st.sens) || 1, 0.3, 2.5);
     st.btn = [0.85, 1, 1.15].includes(Number(st.btn)) ? Number(st.btn) : 1;
     st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false; st.server = typeof st.server === 'string' ? st.server.slice(0, 200) : '';

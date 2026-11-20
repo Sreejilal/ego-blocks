@@ -1133,7 +1133,7 @@ const Save = {
     out.goalSteps = out.goalSteps && typeof out.goalSteps === 'object' ? out.goalSteps : {};
     out.settings = Object.assign({}, def.settings, out.settings || {});
     const st = out.settings;
-    if (!['auto', 'low', 'med', 'high'].includes(st.quality)) st.quality = 'auto';
+    if (!['auto', 'low', 'med', 'high', 'ultra'].includes(st.quality)) st.quality = 'auto';
     st.sens = clamp(Number(st.sens) || 1, 0.3, 2.5);
     st.btn = [0.85, 1, 1.15].includes(Number(st.btn)) ? Number(st.btn) : 1;
     st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false; st.server = typeof st.server === 'string' ? st.server.slice(0, 200) : '';
@@ -2104,6 +2104,7 @@ const QUALITY = {
   lite: { pr: 1, shadows: false, map: 512 }, // auto graphics only: no shadows, but still sharp
   med: { pr: 1, shadows: true, map: 1024 },
   high: { pr: 1.5, shadows: true, map: 2048 },
+  ultra: { pr: 2, shadows: true, map: 4096, soft: true }, // owner: "way more graphical at the highest end": sharpest, big soft shadows, every crowd extra
 };
 
 // the sky and the light: a bright day (the default) or the evening sunset. World.setLook switches them (settings.sky)
@@ -2145,6 +2146,7 @@ const World = {
     this.buildGoals();
     this.buildStands();
     this.buildFans();
+    this.buildCrowdExtras();
     this.buildFloodlights();
     this.buildTower();
     this.buildTrees();
@@ -2157,6 +2159,8 @@ const World = {
   setQuality(q, scale = 1) {
     if (!QUALITY[q]) q = 'med';
     const Q = QUALITY[q], shadowsChange = this.renderer.shadowMap.enabled !== Q.shadows;
+    const sType = Q.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap, typeChange = this.renderer.shadowMap.type !== sType;
+    this.renderer.shadowMap.type = sType;
     this.quality = q; this.scale = scale;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, Q.pr) * scale);
     this.renderer.shadowMap.enabled = Q.shadows;
@@ -2166,7 +2170,11 @@ const World = {
       if (this.sun.shadow.map) { this.sun.shadow.map.dispose(); this.sun.shadow.map = null; }
     }
     // rebuilding every shader freezes the game for a moment, so only when shadows go on or off (the only change that needs it)
-    if (shadowsChange) this.scene.traverse((o) => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { m.needsUpdate = true; }); } });
+    if (shadowsChange || typeChange) this.scene.traverse((o) => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { m.needsUpdate = true; }); } });
+    if (this.extras) { // the crowd extras: banners always, posters and flashes from MED, giant flags from HIGH
+      const E = this.extras, lowish = q === 'low';
+      E.posters.visible = !lowish; E.flashes.visible = !lowish && q !== 'lite'; E.flags.forEach((f) => { f.visible = q === 'high' || q === 'ultra'; });
+    }
     this.resize();
   },
   resize() {
@@ -2465,7 +2473,137 @@ const World = {
     im.instanceMatrix.needsUpdate = true;
     im.frustumCulled = false;
     this.scene.add(im);
-    this.fanMat = mat; this.fans = im; this.fanCount = n;
+    this.fanMat = mat; this.fans = im; this.fanCount = n; this.fanSpots = spots;
+  },
+  /** banners over the front wall, fans holding up posters, giant flags waving in the end stands and camera flashes
+      (owner, Nov 2026: "make the crowd have posters and banners"). All in the clubs' colours (paintCrowdExtras) */
+  buildCrowdExtras() {
+    const S = this.stand, rows = this.standRows, spots = this.fanSpots, R = mulberry32(77), fog = THREE.UniformsLib.fog;
+    const fogFrag = ['#include <common>', '#include <fog_pars_fragment>'], tail = [' #include <tonemapping_fragment>', ' #include <encodings_fragment>', ' #include <fog_fragment>', '}'];
+    const E = this.extras = {};
+    // 1) banners: one mesh, 6 per club (4 along the side wall, 2 along the end wall), hanging over the front rail
+    E.bannerCv = mkCanvas(128, 16 * 12); E.bannerTex = Tex.fromCanvas(E.bannerCv, { mip: true });
+    const pos = [], uv = [], idx = [], H = 1.4, W = 11.2;
+    const quad = (cx, cy, cz, nx, nz, row) => { // facing (nx, 0, nz); its right is up x normal
+      const rx = nz, rz = -nx, b = pos.length / 3, v0 = 1 - (row + 1) / 12, v1 = 1 - row / 12;
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) pos.push(cx + rx * sx * W / 2, cy + sy * H / 2, cz + rz * sx * W / 2);
+      uv.push(0, v0, 1, v0, 1, v1, 0, v1); idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+    };
+    const wy = 1.75, sx = S.sideIn - 0.62, ez = S.endIn - 0.62; // high enough to show over the advert boards
+    [-0.68, -0.23, 0.23, 0.68].forEach((k, i) => { quad(-sx, wy, -k * S.sideLen, 1, 0, i); quad(sx, wy, k * S.sideLen, -1, 0, 6 + i); });
+    [-0.45, 0.45].forEach((k, i) => { quad(k * S.endLen, wy, -ez, 0, 1, 4 + i); quad(-k * S.endLen, wy, ez, 0, -1, 10 + i); });
+    const bg = new THREE.BufferGeometry();
+    bg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); bg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); bg.setIndex(idx); bg.computeVertexNormals();
+    E.banners = new THREE.Mesh(bg, new THREE.MeshLambertMaterial({ map: E.bannerTex }));
+    this.scene.add(E.banners);
+    // 2) posters held up by about one fan in eleven: an atlas of 8 designs per club (4 x 4 cells of 32 x 16)
+    E.posterCv = mkCanvas(128, 64); E.posterTex = Tex.fromCanvas(E.posterCv, { mip: true });
+    const picks = []; spots.forEach((sp, i) => { if (R() < 0.09) picks.push(i); });
+    E.posterIdx = picks;
+    const pg = new THREE.PlaneGeometry(1.3, 0.68), n = picks.length;
+    const aCell = new Float32Array(n * 2), aData = new Float32Array(n * 2);
+    picks.forEach((si, k) => { const sp = spots[si], d = Math.floor(R() * 8); aCell[k * 2] = (d % 4) * 0.25; aCell[k * 2 + 1] = 1 - (Math.floor(d / 4) + sp.team * 2 + 1) * 0.25; aData[k * 2] = this.fans.geometry.attributes.aData.getX(si); aData[k * 2 + 1] = sp.team; });
+    pg.setAttribute('aCell', new THREE.InstancedBufferAttribute(aCell, 2)); pg.setAttribute('aData', new THREE.InstancedBufferAttribute(aData, 2));
+    const pm = new THREE.ShaderMaterial({
+      uniforms: THREE.UniformsUtils.merge([fog, { map: { value: null } }]),
+      vertexShader: ['attribute vec2 aCell; attribute vec2 aData; uniform float uTime; uniform vec2 uExcite; varying vec2 vUv;', '#include <fog_pars_vertex>', 'void main(){',
+        ' vec3 p = position; float ex = mix(uExcite.x, uExcite.y, aData.y);',
+        ' float j = max(0.0, sin(uTime * (6.0 + ex * 5.0) + aData.x * 6.2831));', // in time with the fan holding it
+        ' p.y += j * (0.05 + ex * 0.6) + ex * 0.3;',
+        ' vUv = aCell + uv * vec2(0.25, 0.25);',
+        ' vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4(p, 1.0);', ' gl_Position = projectionMatrix * mvPosition;', ' #include <fog_vertex>', '}'].join('\n'),
+      fragmentShader: ['uniform sampler2D map; uniform vec3 uLight; varying vec2 vUv;'].concat(fogFrag, ['void main(){', ' vec3 c = pow(texture2D(map, vUv).rgb, vec3(2.2));', ' gl_FragColor = vec4(c * uLight * 1.15, 1.0);'], tail).join('\n'),
+      fog: true, side: THREE.DoubleSide,
+    });
+    pm.uniforms.map.value = E.posterTex;
+    pm.uniforms.uTime = this.fanMat.uniforms.uTime; pm.uniforms.uExcite = this.fanMat.uniforms.uExcite; pm.uniforms.uLight = this.fanMat.uniforms.uLight; // the same as the fans'
+    E.posters = new THREE.InstancedMesh(pg, pm, n);
+    const m4 = new THREE.Matrix4();
+    picks.forEach((si, k) => { const sp = spots[si]; m4.makeRotationY(sp.yaw); m4.setPosition(sp.x + Math.sin(sp.yaw) * 0.18, sp.y + 1.75, sp.z + Math.cos(sp.yaw) * 0.18); E.posters.setMatrixAt(k, m4); });
+    E.posters.instanceMatrix.needsUpdate = true; E.posters.frustumCulled = false;
+    this.scene.add(E.posters);
+    // 3) giant flags waving over the fans in each end stand
+    E.flagCv = [mkCanvas(48, 28), mkCanvas(48, 28)]; E.flagTex = E.flagCv.map((c) => Tex.fromCanvas(c, { mip: true }));
+    E.flagMat = E.flagTex.map((t) => {
+      const fm = new THREE.ShaderMaterial({
+        uniforms: THREE.UniformsUtils.merge([fog, { map: { value: null }, uTime: { value: 0 } }]),
+        vertexShader: ['attribute float aPhase; uniform float uTime; varying vec2 vUv; varying float vShade;', '#include <fog_pars_vertex>', 'void main(){',
+          ' vec3 p = position; float k = uv.x;', // the pole side (left) stays put
+          ' float w = sin(p.x * 0.9 - uTime * 3.2 + aPhase) * 0.45 * k + sin(p.y * 1.3 - uTime * 2.1 + aPhase) * 0.12 * k;',
+          ' p.z += w; p.y -= k * k * 0.25; vShade = 0.82 + 0.3 * cos(p.x * 0.9 - uTime * 3.2 + aPhase) * k; vUv = uv;',
+          ' vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);', ' gl_Position = projectionMatrix * mvPosition;', ' #include <fog_vertex>', '}'].join('\n'),
+        fragmentShader: ['uniform sampler2D map; uniform vec3 uLight; varying vec2 vUv; varying float vShade;'].concat(fogFrag, ['void main(){', ' vec3 c = pow(texture2D(map, vUv).rgb, vec3(2.2));', ' gl_FragColor = vec4(c * uLight * vShade * 1.1, 1.0);'], tail).join('\n'),
+        fog: true, side: THREE.DoubleSide,
+      });
+      fm.uniforms.map.value = t; fm.uniforms.uLight = this.fanMat.uniforms.uLight;
+      return fm;
+    });
+    E.flags = [];
+    const fy = rows.BASE + 3 * rows.RISE + 2.4, fz = S.endIn + 3.5 * rows.DEP;
+    for (const [x, team] of [[-14, 0], [14, 0], [-14, 1], [14, 1]]) {
+      const g = new THREE.PlaneGeometry(7.2, 4.2, 16, 8), ph = new Float32Array(g.attributes.position.count).fill(R() * 6.28);
+      g.setAttribute('aPhase', new THREE.BufferAttribute(ph, 1));
+      const f = new THREE.Mesh(g, E.flagMat[team]);
+      const zs = team === 0 ? -1 : 1; // the home end is south (z < 0)
+      f.position.set(x * (team ? -1 : 1), fy, zs * fz); f.rotation.set(zs * 0.42, team ? Math.PI : 0, 0); f.frustumCulled = false;
+      E.flags.push(f); this.scene.add(f);
+    }
+    // 4) camera flashes popping all round the crowd (lots more after a goal)
+    const fl = 320, fpos = new Float32Array(fl * 3), fph = new Float32Array(fl), frt = new Float32Array(fl);
+    E.flashIdx = Array.from({ length: fl }, () => Math.floor(R() * spots.length)).sort((p1, p2) => p1 - p2); // front rows first, like the fans (setTier shows only those who came)
+    E.flashIdx.forEach((si, i) => { const sp = spots[si]; fpos.set([sp.x, sp.y + 1.05, sp.z], i * 3); fph[i] = R(); frt[i] = 0.05 + R() * 0.1; }); // each one pops every 7 to 20 seconds (much more often after a goal)
+    const fg = new THREE.BufferGeometry();
+    fg.setAttribute('position', new THREE.BufferAttribute(fpos, 3)); fg.setAttribute('aPhase', new THREE.BufferAttribute(fph, 1)); fg.setAttribute('aRate', new THREE.BufferAttribute(frt, 1));
+    E.flashMat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uFlash: { value: 0 }, uScale: { value: 600 } },
+      vertexShader: ['attribute float aPhase; attribute float aRate; uniform float uTime; uniform float uFlash; uniform float uScale; varying float vA;', 'void main(){',
+        ' vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+        ' float spd = aRate * (1.0 + uFlash * 6.0), f = fract(uTime * spd + aPhase);', ' vA = 1.0 - smoothstep(0.0, 0.1 * spd, f);',
+        ' gl_PointSize = vA > 0.01 ? max(2.0, 0.55 * uScale / max(1.0, -mv.z)) : 0.0;', ' gl_Position = projectionMatrix * mv;', '}'].join('\n'),
+      fragmentShader: ['varying float vA;', 'void main(){', ' vec2 d = gl_PointCoord - 0.5; float r = length(d); if (r > 0.5) discard;', ' float a = vA * (1.0 - r * 2.0);', ' gl_FragColor = vec4(vec3(1.0, 0.97, 0.9) * a * 1.8, a);', '}'].join('\n'),
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    });
+    E.flashes = new THREE.Points(fg, E.flashMat); E.flashes.frustumCulled = false;
+    this.scene.add(E.flashes);
+  },
+  /** paint the banners, posters and flags in the two clubs' colours (home: west and south, away: east and north) */
+  paintCrowdExtras(a, b) {
+    const E = this.extras; if (!E) return;
+    const sides = [a, b], kit = (s) => CLUBS[s.club].home, ink = (hex) => (hexLum(hex) > 0.55 ? '#14161f' : '#ffffff');
+    // banners: 6 lines per club
+    const bc = E.bannerCv.getContext('2d');
+    sides.forEach((s, t) => {
+      const k = kit(s), nm = s.short || 'FC', lines = ['GO ' + nm + ' GO', 'WE BELIEVE', 'BLOCK PARTY', nm + ' FOREVER', 'NO FEAR', 'ONE TEAM ONE DREAM'];
+      lines.forEach((txt, i) => {
+        const y = (t * 6 + i) * 16, bgc = i % 2 ? k.alt : k.shirt, fg = ink(bgc);
+        bc.fillStyle = bgc; bc.fillRect(0, y, 128, 16);
+        bc.fillStyle = i % 2 ? k.shirt : k.alt; bc.fillRect(0, y, 128, 2); bc.fillRect(0, y + 14, 128, 2);
+        for (let x = 4; x < 128; x += 24) { bc.fillStyle = fg; bc.globalAlpha = 0.25; bc.fillRect(x, y + 6, 3, 3); bc.globalAlpha = 1; }
+        const w = pfWidth(txt, 1); pfDraw(bc, txt, Math.floor((128 - w) / 2), y + 5, 1, fg);
+      });
+    });
+    E.bannerTex.needsUpdate = true;
+    // posters: 8 designs per club
+    const pc = E.posterCv.getContext('2d');
+    sides.forEach((s, t) => {
+      const k = kit(s), nm = s.short || 'FC';
+      for (let d = 0; d < 8; d++) {
+        const x = (d % 4) * 32, y = (t * 2 + Math.floor(d / 4)) * 16, white = d % 3 !== 1, bgc = white ? '#f6f3ea' : k.shirt, fg = white ? (hexLum(k.shirt) > 0.7 ? k.alt : k.shirt) : ink(k.shirt);
+        pc.fillStyle = '#20222c'; pc.fillRect(x, y, 32, 16); pc.fillStyle = bgc; pc.fillRect(x + 1, y + 1, 30, 14);
+        const word = ['GOAL!', '', '10', nm, 'WOW', '', 'GO!', 'OLE'][d];
+        if (word) { const w = pfWidth(word, 1); pfDraw(pc, word, x + Math.floor((32 - w) / 2), y + 5, 1, fg); }
+        else if (d === 1) { pc.fillStyle = '#ff4d6d'; [[2, 0, 2], [6, 0, 2], [1, 1, 8], [1, 2, 8], [2, 3, 6], [3, 4, 4], [4, 5, 2]].forEach(([dx, dy, ww]) => pc.fillRect(x + 11 + dx, y + 4 + dy, ww, 1)); } // a heart
+        else { pc.fillStyle = '#ffcb3d'; [[4, 0, 1], [4, 1, 1], [0, 2, 9], [2, 3, 5], [2, 4, 5], [1, 5, 2], [6, 5, 2]].forEach(([dx, dy, ww]) => pc.fillRect(x + 11 + dx, y + 4 + dy, ww, 1)); } // a star
+      }
+    });
+    E.posterTex.needsUpdate = true;
+    // giant flags: halves in the club's colours with its name
+    sides.forEach((s, t) => {
+      const c = E.flagCv[t], g = c.getContext('2d'), k = kit(s), nm = s.short || 'FC';
+      g.fillStyle = k.shirt; g.fillRect(0, 0, 48, 28); g.fillStyle = k.alt; g.fillRect(0, 0, 48, 7); g.fillRect(0, 21, 48, 7);
+      const w = pfWidth(nm, 2); pfDraw(g, nm, Math.floor((48 - w) / 2), 9, 2, ink(k.shirt));
+      E.flagTex[t].needsUpdate = true;
+    });
   },
   buildFloodlights() {
     const T = this.T;
@@ -2583,6 +2721,12 @@ const World = {
     this.excite[0] = Math.max(0, this.excite[0] - dt * 0.22);
     this.excite[1] = Math.max(0, this.excite[1] - dt * 0.22);
     if (this.fanMat) { this.fanMat.uniforms.uTime.value = this.time; this.fanMat.uniforms.uExcite.value.set(this.excite[0], this.excite[1]); }
+    if (this.extras) {
+      const E = this.extras;
+      E.flagMat.forEach((fm) => { fm.uniforms.uTime.value = this.time; });
+      E.flashMat.uniforms.uTime.value = this.time; E.flashMat.uniforms.uFlash.value = Math.max(this.excite[0], this.excite[1]);
+      E.flashMat.uniforms.uScale.value = this.renderer.domElement.height * 0.5 / Math.tan(this.camera.fov * Math.PI / 360);
+    }
     const cp = cam.position;
     for (const n of this.nets) {
       // the camera behind this goal (you in goal, or near your own line): its net goes away so it never fills the view (the posts and bar stay)
@@ -2613,6 +2757,7 @@ const World = {
       col.setXYZ(i, c.r * k, c.g * k, c.b * k);
     }
     col.needsUpdate = true;
+    this.paintCrowdExtras(a, b);
   },
   /** the stadium for a rank tier: how full it is, the upper deck from Gold up, and how loud */
   setTier(tier) {
@@ -2621,6 +2766,10 @@ const World = {
     this.fans.count = n;
     this.upper.visible = tier >= 3;
     if (!this.upper.visible) this.fans.count = Math.min(n, this.lowerFans);
+    if (this.extras) { // only fans who came hold posters and take photos
+      const c = this.fans.count, E = this.extras, upTo = (A) => { let k = 0; while (k < A.length && A[k] < c) k++; return k; };
+      E.posters.count = upTo(E.posterIdx); E.flashes.geometry.setDrawRange(0, upTo(E.flashIdx));
+    }
     Sfx.setLoud(TIER_LOUD[tier]);
   },
   setSun(dir) { this.sunRef = dir; SUN_DIR.copy(dir); if (this.sky) this.sky.material.uniforms.sunDir.value.copy(dir); },
@@ -10741,7 +10890,7 @@ const UI = {
       <div class="dialog panel">
         <h2>PAUSED</h2>
         <div class="set">
-          <span>Graphics</span><div class="seg" id="set-q"><button type="button" data-q="auto">AUTO</button><button type="button" data-q="low">LOW</button><button type="button" data-q="med">MED</button><button type="button" data-q="high">HIGH</button></div>
+          <span>Graphics</span><div class="seg" id="set-q"><button type="button" data-q="auto">AUTO</button><button type="button" data-q="low">LOW</button><button type="button" data-q="med">MED</button><button type="button" data-q="high">HIGH</button><button type="button" data-q="ultra">ULTRA</button></div>
           <span>Sky</span><div class="seg" id="set-sky"><button type="button" data-v="day">DAY</button><button type="button" data-v="sunset">SUNSET</button></div>
           <label for="set-sens">Look sensitivity</label><input type="range" id="set-sens" min="0.3" max="2.5" step="0.05">
           <span>Shift lock</span><div class="seg" id="set-sl"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
@@ -10855,7 +11004,7 @@ const UI = {
       if (s.mute) { s.mute = false; s.music = true; } else if (s.music) s.music = false; else s.mute = true;
       Portal.applyMute(); Music.apply(); Save.save(); this.renderLobby();
     });
-    click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
+    click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high', 'ultra']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % order.length]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('cg-acct', () => Portal.acctClick());
     click('hud-chat', () => Net.openChat());
     click('p-chat', () => { $('p-resume').click(); setTimeout(() => Net.openChat(), 0); });
@@ -11826,7 +11975,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {

@@ -424,7 +424,7 @@ const UI = {
       <div class="dialog panel">
         <h2>PAUSED</h2>
         <div class="set">
-          <span>Graphics</span><div class="seg" id="set-q"><button type="button" data-q="auto">AUTO</button><button type="button" data-q="low">LOW</button><button type="button" data-q="med">MED</button><button type="button" data-q="high">HIGH</button></div>
+          <span>Graphics</span><div class="seg" id="set-q"><button type="button" data-q="auto">AUTO</button><button type="button" data-q="low">LOW</button><button type="button" data-q="med">MED</button><button type="button" data-q="high">HIGH</button><button type="button" data-q="ultra">ULTRA</button></div>
           <span>Sky</span><div class="seg" id="set-sky"><button type="button" data-v="day">DAY</button><button type="button" data-v="sunset">SUNSET</button></div>
           <label for="set-sens">Look sensitivity</label><input type="range" id="set-sens" min="0.3" max="2.5" step="0.05">
           <span>Shift lock</span><div class="seg" id="set-sl"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
@@ -538,7 +538,7 @@ const UI = {
       if (s.mute) { s.mute = false; s.music = true; } else if (s.music) s.music = false; else s.mute = true;
       Portal.applyMute(); Music.apply(); Save.save(); this.renderLobby();
     });
-    click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % 4]; Game.applyQuality(); Save.save(); this.renderLobby(); });
+    click('btn-gfx', () => { const order = ['auto', 'low', 'med', 'high', 'ultra']; const s = Save.data.settings; s.quality = order[(order.indexOf(s.quality) + 1) % order.length]; Game.applyQuality(); Save.save(); this.renderLobby(); });
     click('cg-acct', () => Portal.acctClick());
     click('hud-chat', () => Net.openChat());
     click('p-chat', () => { $('p-resume').click(); setTimeout(() => Net.openChat(), 0); });
