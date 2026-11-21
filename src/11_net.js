@@ -492,6 +492,7 @@ const Net = {
     Replay.stop(); Reveal.stop(); Showcase.hide(); UI.hideOverlays(); TimeCtl.reset(); FX.clear();
     [TEAM[0], TEAM[1]] = matchSides(msg.home, msg.away);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(2); World.setSun(SUN_MATCH);
+    applyBallLook(); // your own ball, on your screen
     const nm = this.nm = new NetMatch(msg, this.id);
     Game.match = nm; Game.lastMode = 'online'; Game.ended = false;
     this.snaps = []; this.rt = -1; this.delay = NET_DELAY; this.jit = 0; this.offMin = null; this.lastNow = 0; this.pend = {}; this.paused = false; this.lastBall = null; this.lastPhase = '';

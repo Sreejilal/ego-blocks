@@ -2,7 +2,7 @@
    Match: rules, possession, kicking, tackling, abilities, goals,
    restarts, Flow, Lawless items
    ===================================================================== */
-const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {} }; // filled in by the UI
+const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {}, lightning() {} }; // filled in by the UI
 const BOT_NAMES = ['BLOK', 'CUBO', 'PIXL', 'VOXX', 'CHUNK', 'BRIK', 'TILE', 'STAK', 'OBBY', 'GRAV', 'LOAM', 'SLAB', 'COBB', 'FLINT', 'QUARTZ', 'MOSS', 'DUSK', 'EMBR', 'RUNE', 'KRYS', 'BYTE', 'NOVA', 'REDS', 'TUFF'];
 const MODES = {
   // rewards: offline, only these full-time matches give rewards (online with friends, every mode does)
@@ -18,11 +18,12 @@ const MODES = {
   moon: { name: 'MOON BALL', ranked: false, items: false, ballG: 6.5, tip: 'THE BALL FLOATS · JUMP FOR IT' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
   freekick: { name: 'FREE KICKS', ranked: false, items: false, practice: true },
+  fkkeeper: { name: 'KEEPER PRACTICE', ranked: false, items: false, practice: true, keeper: true }, // owner: you in goal for their free kicks
   tutorial: { name: 'TUTORIAL', ranked: false, items: false, tutorial: true },
 };
 // kickoff spots on the first pitch's scale (see PITCH_KX / PITCH_KZ)
 const FORM = { GK: [0, -31.0], DEF: [0, -18], DEF2: [-8, -17], MID: [7, -9], LW: [11, -7], RW: [-11, -7], ST: [0, -2.2], FW: [-7, -4] };
-const MATCH_LEN = 240, GOLDEN_LEN = 120;
+const MATCH_LEN = 240, GOLDEN_LEN = 45; // owner: a tighter golden goal ("gives you that stress"), then a free kick battle: no draws
 const INTRO_FLY = 4, INTRO_AUTO = 10; // the match intro: the camera flight (s), and when the kickoff starts by itself if nobody presses PLAY
 
 class Match {
@@ -56,6 +57,7 @@ class Match {
   /* ---------- setup ---------- */
   /** 5v5: each team plays ultra defensive or ultra attacking, picked at random (opts.setups to choose) */
   rolesFor(team) {
+    if (this.cfg.practice && this.cfg.keeper) return team === 0 ? ['GK', 'DEF', 'DEF2'] : ['GK', 'ST', 'MID']; // keeper practice: you in goal with two in your wall, their taker
     if (this.cfg.practice) return team === 0 ? ['ST'] : ['GK', 'DEF', 'DEF2', 'MID', 'ST']; // free kicks: you against a keeper, a wall and defenders in the box
     if (this.cfg.tutorial) return team === 0 ? ['ST', 'MID'] : ['DEF']; // the tutorial: you, a teammate and one defender (an empty goal)
     if (this.cfg.roster && this.cfg.roster.length === this.size) return this.cfg.roster; // a mode's own line-up (Quick Match: a winger)
@@ -73,7 +75,7 @@ class Match {
     }
     for (let team = 0; team < 2; team++) {
       const roles = this.rolesFor(team), lead = leadRole(roles);
-      const mine = team === 0 && opts.role && !this.cfg.tutorial && !this.cfg.practice && roles.includes(opts.role) && !(opts.role === 'GK' && this.cfg.noKeeper) ? opts.role : lead; // the position you picked last time (in goal too), when this line-up has it
+      const mine = this.cfg.keeper ? 'GK' : team === 0 && opts.role && !this.cfg.tutorial && !this.cfg.practice && roles.includes(opts.role) && !(opts.role === 'GK' && this.cfg.noKeeper) ? opts.role : lead; // the position you picked last time (in goal too), when this line-up has it; keeper practice: in goal
       for (const role of roles) {
         if (this.cfg.noKeeper && role === 'GK') continue; // No Keepers: open goals
         const net = opts.humans ? seat[team + role] : null;
@@ -165,6 +167,26 @@ class Match {
     }
   }
   boxBlocked(p) { return this.boxT > 0 && this.boxT < BOX_FREE && !!this.human && p.team !== this.human.team && !p.isGK && !p.isHuman; }
+  /** owner: "thunder in rain, every couple of minutes it hits somewhere, not on purpose": in your bot matches when it rains, a
+      lightning bolt strikes a random spot on the pitch every 70 to 150 seconds (the first one sooner). Anyone near is knocked
+      flat and a ball close by jumps. Not online (the weather is your own setting) */
+  weatherTick(dt) {
+    if (!this.human || this.online || this.fk || this.tut || this.phase !== 'play' || typeof World === 'undefined' || World.weather !== 'rain') return;
+    this.thunderT = (this.thunderT == null ? rand(25, 45) : this.thunderT) - dt;
+    if (this.thunderT > 0) return;
+    this.thunderT = rand(70, 150);
+    this.lightning(rand(-F.W + 3, F.W - 3), rand(-F.L + 6, F.L - 6));
+  }
+  lightning(x, z) {
+    Hud.lightning(x, z);
+    for (const p of this.players) {
+      const dx = p.pos.x - x, dz = p.pos.z - z, d = Math.hypot(dx, dz);
+      if (d > 3.2) continue;
+      if (this.knockDown(p, 1.4, dx / (d || 1), dz / (d || 1), 5)) { this.label(p, 'ZAPPED', '#c8e0ff', 1.2); if (p.isHuman) this.toast('STRUCK BY LIGHTNING!', 'bad', p); }
+    }
+    const b = this.ball;
+    if (Math.hypot(b.pos.x - x, b.pos.z - z) < 3.5) { if (b.owner) b.release(); b.vel.set(rand(-6, 6), 9, rand(-6, 6)); b.kick = { by: null, type: 'loose', t: this.time }; }
+  }
   /** CANNON KICK: a long kick to the teammate furthest up the pitch */
   cannonKick(p) {
     const t = this.teams[p.team].filter((q) => q !== p && q.state !== 'down').sort((a, b) => this.prog(b.team, b.pos) - this.prog(a.team, a.pos))[0];
@@ -256,6 +278,7 @@ class Match {
     for (const p of this.players) if (p.awake > 40 && p.awakeT <= 0 && p.style.awaken && !(p.isGK && !p.isHuman) && Math.random() < (p.awake - 40) / 60 * dt * 6) FX.sparks(p.pos.x + rand(-0.4, 0.4), p.pos.y + rand(0.3, 1.7), p.pos.z + rand(-0.4, 0.4), p.aura, 3, 1.6, 0.12, 0.5);
     this.updatePending(dt);
     this.keeperFx();
+    this.weatherTick(dt);
     for (const p of this.players) p.physics(dt);
     this.boxFree(dt);
     this.rocketLandings();
@@ -1054,10 +1077,12 @@ class Match {
   }
   /* ---------- free kick practice ---------- */
   startFreeKicks() {
-    this.fk = { n: 0, total: FK_KICKS, log: [], state: 'aim', t: 0, x: 0, z: 0 };
-    this.fkWall = this.teams[1].filter((p) => !p.isGK);
+    this.fk = { n: 0, total: FK_KICKS, log: [], state: 'aim', t: 0, x: 0, z: 0, keeper: !!this.cfg.keeper };
+    this.fkWall = this.teams[this.cfg.keeper ? 0 : 1].filter((p) => !p.isGK);
     for (const w of this.fkWall) w.wall = true;
-    Hud.banner('FREE KICKS', 'AIM, THEN HOLD SHOOT FOR POWER', '#b65cff');
+    if (this.cfg.keeper) for (const p of this.teams[1]) if (!p.isGK) p.wall = true; // their taker waits for his kick
+    if (this.cfg.keeper) Hud.banner('KEEPER PRACTICE', Touch.on ? 'SAVE THEIR FREE KICKS: JUMP + STICK TO DIVE' : 'SAVE THEIR FREE KICKS: JUMP + A OR D TO DIVE', '#b65cff');
+    else Hud.banner('FREE KICKS', 'AIM, THEN HOLD SHOOT FOR POWER', '#b65cff');
     this.nextFreeKick();
   }
   /** a new spot 16 to 27 blocks out. Like real football the wall covers the near-post half and the keeper the far
@@ -1067,6 +1092,7 @@ class Match {
     let t = h.team;
     if (k.battle) { t = this.battleNext(); if (t < 0) { this.endBattle(); return; } }
     else if (k.n >= k.total) { this.endFreeKicks(); return; }
+    if (k.keeper) t = 1 - h.team; // keeper practice: always their kick
     k.n++; k.state = 'aim'; k.t = 0; k.hit = null; k.dist = 0; k.botT = null;
     this.phase = 'play'; this.phaseT = 0; this.lastPass = null;
     const sh = t === h.team ? h : this.teams[t].find((p) => p.role === leadRole(this.rolesFor(t)));
@@ -1098,7 +1124,8 @@ class Match {
     });
     const g = this.teams[1 - t].find((p) => p.isGK);
     if (g) { g.pos.set(-side * 0.9, 0, gz - s * 1.2); g.yaw = yaw + Math.PI; }
-    if (sh === h) { Hud.freeKick(yaw, dist); this.toast(k.battle ? 'YOUR KICK · ' + Math.round(dist) + ' BLOCKS OUT' : 'KICK ' + k.n + ' OF ' + k.total + ' · ' + Math.round(dist) + ' BLOCKS OUT', 'gold', h); }
+    if (k.keeper) this.toast('KICK ' + k.n + ' OF ' + k.total + ' · ' + Math.round(dist) + ' BLOCKS OUT · SAVE IT!', 'gold', h);
+    else if (sh === h) { Hud.freeKick(yaw, dist); this.toast(k.battle ? 'YOUR KICK · ' + Math.round(dist) + ' BLOCKS OUT' : 'KICK ' + k.n + ' OF ' + k.total + ' · ' + Math.round(dist) + ' BLOCKS OUT', 'gold', h); }
     else if (h.inWall) { const yw = Math.atan2(x - h.pos.x, z - h.pos.z); h.yaw = yw; Hud.freeKick(yw, 7); this.toast(Touch.on ? 'THEIR KICK · YOU ARE IN THE WALL · TAP JUMP TO BLOCK IT' : 'THEIR KICK · YOU ARE IN THE WALL · SPACE TO JUMP AND BLOCK IT', 'gold', h); }
   }
   /* ---------- the tutorial: one step at a time on a quiet pitch ---------- */
@@ -1280,7 +1307,9 @@ class Match {
     const k = this.fk, h = this.human, goals = k.log.filter((r) => r === 'GOAL').length;
     k.state = 'end'; h.fkHold = false;
     this.phase = 'end'; this.phaseT = 0;
-    this.result = { res: 'practice', practice: { goals, total: k.total, log: k.log.slice() }, score: [goals, k.total - goals], human: Object.assign({}, h.stats), players: [] };
+    const saved = k.total - goals; // keeper practice counts what you kept out
+    this.result = { res: 'practice', practice: { goals: k.keeper ? saved : goals, total: k.total, log: k.log.slice(), keeper: k.keeper }, score: [goals, k.total - goals], human: Object.assign({}, h.stats), players: [] };
+    if (k.keeper) { Hud.banner('KEEPER PRACTICE', saved + ' OF ' + k.total + ' KEPT OUT', saved >= 7 ? '#2ee38f' : saved >= 4 ? '#ffcb3d' : '#ff4d5e'); Sfx.whistle(3); if (saved >= 7) h.setState('celebrate', 99); return; }
     Hud.banner('FREE KICKS', goals + ' OF ' + k.total + ' SCORED', goals >= 7 ? '#2ee38f' : goals >= 4 ? '#ffcb3d' : '#ff4d5e');
     Sfx.whistle(3);
     if (goals >= 7) h.setState('celebrate', 99);
@@ -1561,14 +1590,14 @@ class Match {
     if (gk.state === 'dive' && gk.dive) {
       const d = gk.dive;
       ax = gk.pos.x - d.ux * 0.4; ay = gk.pos.y + 0.55; az = gk.pos.z - d.uz * 0.4;
-      const far = d.big ? 2.0 : 1.45; // CAT LEAP: stretched right out
+      const far = d.big ? 2.0 : gk.isHuman ? 1.75 : 1.45; // CAT LEAP: stretched right out; you in goal reach a little further
       bx = gk.pos.x + d.ux * far; by = gk.pos.y + (d.high ? 1.5 : 1.0); bz = gk.pos.z + d.uz * far;
     } else { ax = gk.pos.x; ay = gk.pos.y + 0.2; az = gk.pos.z; bx = gk.pos.x; by = gk.pos.y + 2.25; bz = gk.pos.z; }
     const abx = bx - ax, aby = by - ay, abz = bz - az, l2 = abx * abx + aby * aby + abz * abz;
     const t = clamp(((b.pos.x - ax) * abx + (b.pos.y - ay) * aby + (b.pos.z - az) * abz) / l2, 0, 1);
     const cx = ax + abx * t, cy = ay + aby * t, cz = az + abz * t;
     const dist = Math.hypot(b.pos.x - cx, b.pos.y - cy, b.pos.z - cz);
-    const reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.gkSize()) * 0.14 + (gk.fx.gloves > 0 ? 0.75 : 0); // longer reach in small teams, where keepers face more shots; GIANT GLOVES
+    const reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.gkSize()) * 0.14 + (gk.fx.gloves > 0 ? 0.75 : 0) + (gk.isHuman ? 0.3 : 0); // longer reach in small teams, where keepers face more shots; GIANT GLOVES; a little more for you in goal
     if (dist > BALL_R + reach) return;
     const k = b.kick;
     const shooter = k && k.by && k.by.team !== gk.team && k.type === 'shot' ? k.by : null;

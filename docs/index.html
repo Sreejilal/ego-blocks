@@ -735,6 +735,8 @@ body.replaying #hud, body.replaying #labels { display: none !important; }
 #cutin { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .slot.awk { border-color: #ffffff; box-shadow: 0 0 0 3px var(--aura, #ffcb3d), 0 0 18px var(--aura, #ffcb3d); animation: awkSlot .8s steps(2) infinite; }
 .slot.awk .nm { color: #fff; }
+#clock.stress { color: #ff4d5e; animation: clockStress .5s steps(2) infinite; } /* the last 15 seconds of golden goal */
+@keyframes clockStress { 50% { color: #ffffff; transform: scale(1.12); } }
 @keyframes awkSlot { 50% { box-shadow: 0 0 0 3px #ffffff, 0 0 26px var(--aura, #ffcb3d); } }
 /* the Awakening flashback: a faded memory, then a flash in their colour and what they say now (UI.awakenStory) */
 #app > #awk { pointer-events: none; }
@@ -2047,6 +2049,11 @@ const SKIN_ICON = { boots: 'boot', gloves: 'glove', band: 'band', mask: 'mask', 
 function skinCanvas(id, size = 96) {
   const sk = SKINS[id];
   if (sk.slot === 'face') return faceCanvas(sk.face, size);
+  if (sk.slot === 'ball') { // a little pixel ball in its two colours
+    const c = mkCanvas(16, 16), g = c.getContext('2d'), [m, q] = sk.ball;
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const d = Math.hypot(x - 7.5, y - 7.5); if (d > 7.2) continue; g.fillStyle = d > 6.3 ? '#14161f' : ((x + 1) % 5 < 2 && (y + 2) % 5 < 2) || (x > 5 && x < 10 && y > 5 && y < 10) ? q : m; g.fillRect(x, y, 1, 1); }
+    const out = mkCanvas(size, size), og = out.getContext('2d'); og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size); out.className = 'px'; return out;
+  }
   if (sk.slot === 'hair') return portraitCanvas('ROOKIE', size, { hairShape: sk.shape || 'short', hair: '#6b3e22' });
   if (sk.slot === 'color') return portraitCanvas('ROOKIE', size, { hair: sk.hex || '#3b2a22', prism: sk.prism });
   if (sk.slot === 'kit') { // your club's shirt with this skin's pattern and trim
@@ -2139,7 +2146,7 @@ const LOOKS = {
   day: {
     sky: ['#2f7fe0', '#5aa6f0', '#9fd0fa', '#e4f4ff', '#a9c7dc', '#fff1c8'], sun: '#fffbe6', halo: ['#fff0b8', 0.4], stars: false,
     fog: ['#cfe5f6', 170, 640], hemi: ['#d6e8ff', '#5f7f3e', 0.7], amb: ['#a7b8d8', 0.24], light: ['#fff1dc', 1.6, [-40, 100, -30]], fill: ['#e2ecff', 0.45],
-    exposure: 0.98, cloud: ['#b9d4ee', 0.45], fans: [1, 1, 1], tower: 0.55, lamps: 0.4, sunMatch: [-0.42, 0.62, 0.66], sunLobby: [0.3, 0.55, 0.78],
+    exposure: 0.86, cloud: ['#b9d4ee', 0.45], fans: [1, 1, 1], tower: 0.55, lamps: 0.4, sunMatch: [-0.42, 0.62, 0.66], sunLobby: [0.3, 0.55, 0.78],
   },
   sunset: {
     sky: ['#141844', '#46307a', '#c4527a', '#ff9a5c', '#3a2a3e', '#ffd08a'], sun: '#ffe39a', halo: ['#ff9a50', 0.55], stars: true,
@@ -2149,8 +2156,8 @@ const LOOKS = {
   // owner: "a night match with floodlights": a dark sky full of stars, the floodlights do the lighting (the main light straight down from high up)
   night: {
     sky: ['#03050f', '#081028', '#142246', '#24345e', '#0a0f1e', '#c8d6ff'], sun: '#e8eeff', halo: ['#9fb4ff', 0.25], stars: true,
-    fog: ['#0d1428', 90, 430], hemi: ['#5a6aa8', '#1c2a1c', 0.42], amb: ['#22305a', 0.3], light: ['#f4f6ff', 1.55, [-12, 120, -8]], fill: ['#b8c8ff', 0.5],
-    exposure: 1.22, cloud: ['#1a2440', 0.25], fans: [0.7, 0.72, 0.85], tower: 1.7, lamps: 1.7, sunMatch: [-0.12, 0.95, 0.2], sunLobby: [0.1, 0.9, 0.3],
+    fog: ['#1a2440', 110, 470], hemi: ['#7a8ad0', '#2c3e2c', 0.78], amb: ['#3a4a80', 0.55], light: ['#f4f6ff', 2.2, [-12, 120, -8]], fill: ['#c8d6ff', 0.8],
+    exposure: 1.45, cloud: ['#1a2440', 0.25], fans: [0.92, 0.94, 1.0], tower: 1.7, lamps: 1.9, sunMatch: [-0.12, 0.95, 0.2], sunLobby: [0.1, 0.9, 0.3],
   },
 };
 
@@ -2180,7 +2187,7 @@ const World = {
     this.buildStands();
     this.buildFans();
     this.buildCrowdExtras();
-    this.buildRoofs(); this.buildRain(); this.buildGrass();
+    this.buildRoofs(); this.buildRain();
     this.buildFloodlights();
     this.buildTower();
     this.buildTrees();
@@ -2212,7 +2219,6 @@ const World = {
       E.posters.visible = !lowish; E.flashes.visible = !lowish && q !== 'lite'; E.flags.forEach((f) => { f.visible = !!Q.post; });
     }
     this.postOn = !!Q.post && this.initPost(); this.postGrade = Q.grade || 0;
-    if (this.grass) this.grass.visible = !!Q.post; // the 3D grass with the camera effects (HIGH, ULTRA, auto at its best)
     this.resize();
   },
   resize() {
@@ -2292,7 +2298,7 @@ const World = {
     const pitch = new THREE.Mesh(new THREE.PlaneGeometry(PITCH_BX, PITCH_BZ), new THREE.MeshLambertMaterial({ map: makePitchTexture() }));
     pitch.rotation.x = -Math.PI / 2;
     pitch.receiveShadow = true;
-    this.scene.add(pitch); this.pitchTex = pitch.material.map; // the 3D grass takes its colours from it
+    this.scene.add(pitch); this.pitchTex = pitch.material.map;
     const gGeo = new THREE.PlaneGeometry(1600, 1600);
     const uv = gGeo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 1600, uv.getY(i) * 1600);
     const ground = new THREE.Mesh(gGeo, new THREE.MeshLambertMaterial({ map: T.grassTop }));
@@ -2649,40 +2655,6 @@ const World = {
     if (this.rain) this.rain.visible = this.weather === 'rain';
     this.setLook(this.look || 'day'); // the look, greyed for rain
   },
-  /** owner: "more detailed grass": real little blades of grass around the camera (HIGH and ULTRA), coloured from the pitch under them (white on the lines), swaying */
-  buildGrass() {
-    if (!this.renderer.capabilities.vertexTextures) return; // the blades read the pitch colours in the vertex shader: not every phone can
-    const N = 120, S = 0.24, n = N * N; // a 120 x 120 patch, a blade every 0.24 blocks, that follows the camera in whole steps
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute([-0.035, 0, 0, 0.035, 0, 0, 0, 1, 0, 0, 0, -0.035, 0, 0, 0.035, 0, 1, 0], 3)); // two crossed slivers
-    const cell = new Float32Array(n * 2); for (let i = 0; i < n; i++) { cell[i * 2] = i % N; cell[i * 2 + 1] = Math.floor(i / N); }
-    geo.setAttribute('aCell', new THREE.InstancedBufferAttribute(cell, 2));
-    this.grassMat = new THREE.ShaderMaterial({
-      uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { map: { value: null }, uTime: { value: 0 }, uCam: { value: new THREE.Vector2() }, uLight: { value: new THREE.Vector3(1, 1, 1) }, uSize: { value: new THREE.Vector2(PITCH_BX, PITCH_BZ) } }]),
-      vertexShader: ['attribute vec2 aCell; uniform float uTime; uniform vec2 uCam; uniform vec2 uSize; uniform sampler2D map; varying vec3 vCol; varying float vTip;', '#include <fog_pars_vertex>',
-        'float h(vec2 q){ return fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453); }', 'void main(){',
-        ' float N = ' + N + '.0, S = ' + S + ';',
-        ' vec2 base = floor(uCam / S) * S - N * S * 0.5;',
-        ' vec2 w = base + aCell * S; vec2 id = floor(w / S + 0.5);',
-        ' w += (vec2(h(id), h(id + 7.1)) - 0.5) * S;',
-        ' float d = length(w - uCam) / (N * S * 0.5); float fade = 1.0 - smoothstep(0.55, 1.0, d);',
-        ' float on = step(abs(w.x), uSize.x * 0.5 - 0.6) * step(abs(w.y), uSize.y * 0.5 - 0.6);', // only on the pitch and its run-off
-        ' float ht = (0.06 + h(id + 3.3) * 0.06) * fade * on;',
-        ' vec3 p = position; p.y *= ht; float sway = sin(uTime * 2.2 + w.x * 0.7 + w.y * 0.5) * 0.025 * p.y / max(ht, 0.001);',
-        ' vec3 wp = vec3(w.x + p.x + sway * position.y, p.y, w.y + p.z + sway * 0.6 * position.y);',
-        ' vec2 uv = vec2(w.x / uSize.x + 0.5, 0.5 - w.y / uSize.y);',
-        ' vCol = pow(texture2D(map, uv).rgb, vec3(2.2)) * (0.95 + 0.3 * position.y) * (0.94 + h(id + 1.7) * 0.12); vTip = position.y;',
-        ' vec4 mvPosition = modelViewMatrix * vec4(wp, 1.0);', ' gl_Position = projectionMatrix * mvPosition;', ' #include <fog_vertex>', '}'].join('\n'),
-      fragmentShader: ['uniform vec3 uLight; varying vec3 vCol; varying float vTip;', '#include <common>', '#include <fog_pars_fragment>', 'void main(){',
-        ' gl_FragColor = vec4(vCol * uLight, 1.0);', ' #include <tonemapping_fragment>', ' #include <encodings_fragment>', ' #include <fog_fragment>', '}'].join('\n'),
-      fog: true, side: THREE.DoubleSide,
-    });
-    this.grassMat.uniforms.map.value = this.pitchTex;
-    this.grass = new THREE.InstancedMesh(geo, this.grassMat, n);
-    this.grass.frustumCulled = false; this.grass.visible = false;
-    const m4 = new THREE.Matrix4(); for (let i = 0; i < n; i++) this.grass.setMatrixAt(i, m4); // the shader places every blade
-    this.scene.add(this.grass);
-  },
   /** paint the banners, posters and flags in the two clubs' colours (home: west and south, away: east and north) */
   paintCrowdExtras(a, b) {
     const E = this.extras; if (!E) return;
@@ -2839,7 +2811,6 @@ const World = {
     this.excite[1] = Math.max(0, this.excite[1] - dt * 0.22);
     if (this.fanMat) { this.fanMat.uniforms.uTime.value = this.time; this.fanMat.uniforms.uExcite.value.set(this.excite[0], this.excite[1]); }
     if (this.rain && this.rain.visible) { this.rainMat.uniforms.uTime.value = this.time; this.rainMat.uniforms.uCam.value.copy(cam.position); }
-    if (this.grass && this.grass.visible) { const G = this.grassMat.uniforms; G.uTime.value = this.time; G.uCam.value.set(cam.position.x, cam.position.z); G.uLight.value.copy(this.fanMat ? this.fanMat.uniforms.uLight.value : G.uLight.value); }
     if (this.extras) {
       const E = this.extras;
       E.flagMat.forEach((fm) => { fm.uniforms.uTime.value = this.time; });
@@ -2848,9 +2819,7 @@ const World = {
     }
     const cp = cam.position;
     for (const n of this.nets) {
-      // the camera behind this goal (you in goal, or near your own line): its net fades right down, so you still see it but it never fills the view
-      const behind = cp.z * n.s > F.L - 0.3 && Math.abs(cp.x) < F.GW + F.POST + 7 && cp.y < F.GH + 7;
-      n.mat.opacity = damp(n.mat.opacity, behind ? 0.28 : 1, 10, dt); n.mat.depthWrite = n.mat.opacity > 0.9;
+      // owner: the net is always there and always solid (fading it backfired); the keeper camera stays in front of the frame instead
       const i = n.s > 0 ? 0 : 1;
       this.netBulge[i] = damp(this.netBulge[i], 0, 5, dt);
       n.back.position.z = n.baseZ + n.s * this.netBulge[i] * 0.9;
@@ -2883,7 +2852,7 @@ const World = {
   },
   paintCrowd(a, b) {
     const sides = [a, b];
-    this.setNet(pick(['classic', 'classic', 'diamond', 'hex', 'big', 'fine']), Math.random() < 0.3 ? CLUBS[a.club].home.shirt : pick(['#eef0f4', '#eef0f4', '#ffcb3d', '#1d1f2e'])); // a new net every match
+    this.setNet('classic', '#eef0f4'); // owner: the other net styles looked bad: the classic white net
     repaintSeat(this.T.seatHome, a.crest[0]); repaintSeat(this.T.seatAway, b.crest[0]);
     const pals = sides.map((s) => { const k = CLUBS[s.club].home; return [k.shirt, k.shirt, k.alt, k.sleeve, k.shirt].map((h) => lin(h)); });
     const geo = this.fans.geometry, col = geo.attributes.aColor, data = geo.attributes.aData, R = mulberry32(9);
@@ -2947,7 +2916,7 @@ const World = {
       const vert = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
       const mat = (frag, uniforms) => new THREE.ShaderMaterial({ uniforms, vertexShader: vert, fragmentShader: frag, depthTest: false, depthWrite: false });
       const bright = mat(['uniform sampler2D tIn; varying vec2 vUv;', 'void main(){ vec3 c = texture2D(tIn, vUv).rgb; float l = dot(c, vec3(0.299, 0.587, 0.114));',
-        ' gl_FragColor = vec4(c * smoothstep(0.84, 1.0, l), 1.0); }'].join('\n'), { tIn: { value: null } });
+        ' gl_FragColor = vec4(c * smoothstep(0.9, 1.0, l), 1.0); }'].join('\n'), { tIn: { value: null } });
       const blur = mat(['uniform sampler2D tIn; uniform vec2 uDir; varying vec2 vUv;', 'void main(){',
         ' vec3 c = texture2D(tIn, vUv).rgb * 0.227;',
         ' c += (texture2D(tIn, vUv + uDir * 1.385).rgb + texture2D(tIn, vUv - uDir * 1.385).rgb) * 0.316;',
@@ -2956,11 +2925,11 @@ const World = {
       const comp = mat(['uniform sampler2D tScene; uniform sampler2D tBloom; uniform float uBloom; uniform float uGrade; varying vec2 vUv;', 'void main(){',
         ' vec3 c = texture2D(tScene, vUv).rgb + texture2D(tBloom, vUv).rgb * uBloom;',
         ' float l = dot(c, vec3(0.299, 0.587, 0.114));',
-        ' c = mix(vec3(l), c, 1.1 + 0.06 * uGrade);', // a little more colour
-        ' c = (c - 0.5) * (1.06 + 0.04 * uGrade) + 0.5;', // a little more contrast
+        ' c = mix(vec3(l), c, 1.05 + 0.04 * uGrade);', // a little more colour
+        ' c = (c - 0.5) * (1.03 + 0.03 * uGrade) + 0.5 - 0.02;', // a little more contrast, a touch darker (owner: it looked like a flash bang)
         ' c += vec3(0.022, 0.008, -0.018) * smoothstep(0.45, 1.0, l) - vec3(0.012, 0.0, -0.016) * (1.0 - smoothstep(0.0, 0.45, l));', // warm highlights, cool shadows
         ' vec2 q = vUv - 0.5; c *= 1.0 - (0.2 + 0.08 * uGrade) * smoothstep(0.3, 0.85, dot(q, q) * 2.2);', // a soft vignette
-        ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }'].join('\n'), { tScene: { value: null }, tBloom: { value: null }, uBloom: { value: 0.45 }, uGrade: { value: 0 } });
+        ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }'].join('\n'), { tScene: { value: null }, tBloom: { value: null }, uBloom: { value: 0.22 }, uGrade: { value: 0 } });
       const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), comp); quad.frustumCulled = false;
       const qScene = new THREE.Scene(); qScene.add(quad);
       this.post = { sceneRT, a: rt(4, 4), b: rt(4, 4), c: rt(4, 4), bright, blur, comp, quad, qScene, qCam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), w: 0, h: 0, sz: new THREE.Vector2() };
@@ -3816,6 +3785,17 @@ class Player {
    ===================================================================== */
 const ROLL_A = 2.6, ROLL_B = 0.2; // rolling friction: decel = A + B * speed
 let BALL_GEO = null;
+/** recolour the ball (every ball shares BALL_GEO): main panels and patches. Each corner keeps its shade */
+function setBallLook(main, patch) {
+  if (!BALL_GEO) BALL_GEO = makeBallGeometry();
+  const c = BALL_GEO.attributes.color; if (!c) return;
+  const base = BALL_GEO.userData.base || (BALL_GEO.userData.base = Float32Array.from(c.array));
+  const W = lin('#f3f3ef'), B = lin('#1b1c22'), m = lin(main || '#f3f3ef'), q = lin(patch || '#1b1c22'), cut = (W.r + B.r) * 0.25;
+  for (let i = 0; i < c.count; i++) { const r = base[i * 3], white = r > cut, k = white ? r / W.r : r / Math.max(B.r, 1e-3), t = white ? m : q; c.setXYZ(i, t.r * k, t.g * k, t.b * k); }
+  c.needsUpdate = true;
+}
+/** your equipped ball (the BALL skin slot) */
+function applyBallLook(look) { const sk = SKINS[(look || Save.data.look).ball]; setBallLook(...(sk && sk.ball ? sk.ball : [])); }
 class Ball {
   constructor(m) {
     this.m = m;
@@ -4605,7 +4585,7 @@ const ITEM_IDS = Object.keys(ITEMS);
 const SKIN_SLOTS = [
   { id: 'face', name: 'FACE', base: 'FACE_CALM' }, { id: 'hair', name: 'HAIR', base: 'STYLE_HAIR' }, { id: 'color', name: 'COLOUR', base: 'STYLE_COLOR' }, { id: 'kit', name: 'KIT', base: 'TEAM_KIT' },
   { id: 'boots', name: 'BOOTS', base: 'TEAM_BOOTS' }, { id: 'gloves', name: 'GLOVES', base: 'NO_GLOVES' },
-  { id: 'acc', name: 'EXTRA', base: 'NO_ACC' }, { id: 'celeb', name: 'GOAL', base: 'JUMP' },
+  { id: 'acc', name: 'EXTRA', base: 'NO_ACC' }, { id: 'celeb', name: 'GOAL', base: 'JUMP' }, { id: 'ball', name: 'BALL', base: 'CLASSIC_BALL' },
 ];
 const SKINS = {
   // faces (owner, Nov 2026: "add different faces"): every one is free, so everyone can look different from day one
@@ -4716,6 +4696,15 @@ const SKINS = {
   VETERAN_KIT: { slot: 'kit', name: 'VETERAN', rarity: 'Legendary', pattern: 'hoops', trim: '#ffd54a', obj: true, desc: 'From GOALS: win 150 matches.' },
   LEGEND_KIT: { slot: 'kit', name: 'LEGEND', rarity: 'Mythic', pattern: 'stars', trim: '#ffd54a', obj: true, desc: 'From GOALS: play 300 matches.' },
   STARFIELD: { slot: 'kit', name: 'STARFIELD', rarity: 'Mythic', pattern: 'stars', trim: '#ffffff', desc: 'A shirt full of stars, with white trim.' },
+  // owner: "make it so you can change the ball": the ball's two colours [main, patches]; your ball in your matches
+  CLASSIC_BALL: { slot: 'ball', name: 'CLASSIC', rarity: 'Rare', base: true, ball: ['#f3f3ef', '#1b1c22'], desc: 'The ball everyone starts with.' },
+  NEON_BALL: { slot: 'ball', name: 'NEON', rarity: 'Rare', ball: ['#39ff8a', '#0b3d1f'], desc: 'Bright green, easy to spot.' },
+  ICE_BALL: { slot: 'ball', name: 'ICE', rarity: 'Rare', ball: ['#d8f6ff', '#2a7ab8'], desc: 'Frosty white and blue.' },
+  PINK_BALL: { slot: 'ball', name: 'BUBBLEGUM', rarity: 'Rare', ball: ['#ff9ad8', '#7a1a5a'], desc: 'Pink and plum.' },
+  GOLD_BALL: { slot: 'ball', name: 'GOLDEN', rarity: 'Epic', ball: ['#ffd54a', '#6b4200'], desc: 'A golden ball, like a trophy.' },
+  NIGHT_BALL: { slot: 'ball', name: 'MIDNIGHT', rarity: 'Epic', ball: ['#1d1f2e', '#ffcb3d'], desc: 'Black with gold patches.' },
+  FIRE_BALL: { slot: 'ball', name: 'FIREBALL', rarity: 'Legendary', ball: ['#ff7a1a', '#5a1000'], desc: 'Orange and ember red.' },
+  GALAXY_BALL: { slot: 'ball', name: 'GALAXY', rarity: 'Mythic', ball: ['#6b4dff', '#f4f0ff'], desc: 'Deep purple with starry patches.' },
   JUMP: { slot: 'celeb', name: 'BIG JUMP', rarity: 'Rare', base: true, celeb: 'jump', desc: 'Jump for joy with both arms up.' },
   AIRPLANE: { slot: 'celeb', name: 'AIRPLANE', rarity: 'Rare', celeb: 'plane', desc: 'Arms out wide, tilting side to side.' },
   SHUSH: { slot: 'celeb', name: 'SHUSH', rarity: 'Epic', celeb: 'shush', desc: 'A finger to the lips for the away fans.' },
@@ -5157,7 +5146,7 @@ function poolFor(kind, rarityIdx) {
    Match: rules, possession, kicking, tackling, abilities, goals,
    restarts, Flow, Lawless items
    ===================================================================== */
-const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {} }; // filled in by the UI
+const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {}, lightning() {} }; // filled in by the UI
 const BOT_NAMES = ['BLOK', 'CUBO', 'PIXL', 'VOXX', 'CHUNK', 'BRIK', 'TILE', 'STAK', 'OBBY', 'GRAV', 'LOAM', 'SLAB', 'COBB', 'FLINT', 'QUARTZ', 'MOSS', 'DUSK', 'EMBR', 'RUNE', 'KRYS', 'BYTE', 'NOVA', 'REDS', 'TUFF'];
 const MODES = {
   // rewards: offline, only these full-time matches give rewards (online with friends, every mode does)
@@ -5173,11 +5162,12 @@ const MODES = {
   moon: { name: 'MOON BALL', ranked: false, items: false, ballG: 6.5, tip: 'THE BALL FLOATS · JUMP FOR IT' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
   freekick: { name: 'FREE KICKS', ranked: false, items: false, practice: true },
+  fkkeeper: { name: 'KEEPER PRACTICE', ranked: false, items: false, practice: true, keeper: true }, // owner: you in goal for their free kicks
   tutorial: { name: 'TUTORIAL', ranked: false, items: false, tutorial: true },
 };
 // kickoff spots on the first pitch's scale (see PITCH_KX / PITCH_KZ)
 const FORM = { GK: [0, -31.0], DEF: [0, -18], DEF2: [-8, -17], MID: [7, -9], LW: [11, -7], RW: [-11, -7], ST: [0, -2.2], FW: [-7, -4] };
-const MATCH_LEN = 240, GOLDEN_LEN = 120;
+const MATCH_LEN = 240, GOLDEN_LEN = 45; // owner: a tighter golden goal ("gives you that stress"), then a free kick battle: no draws
 const INTRO_FLY = 4, INTRO_AUTO = 10; // the match intro: the camera flight (s), and when the kickoff starts by itself if nobody presses PLAY
 
 class Match {
@@ -5211,6 +5201,7 @@ class Match {
   /* ---------- setup ---------- */
   /** 5v5: each team plays ultra defensive or ultra attacking, picked at random (opts.setups to choose) */
   rolesFor(team) {
+    if (this.cfg.practice && this.cfg.keeper) return team === 0 ? ['GK', 'DEF', 'DEF2'] : ['GK', 'ST', 'MID']; // keeper practice: you in goal with two in your wall, their taker
     if (this.cfg.practice) return team === 0 ? ['ST'] : ['GK', 'DEF', 'DEF2', 'MID', 'ST']; // free kicks: you against a keeper, a wall and defenders in the box
     if (this.cfg.tutorial) return team === 0 ? ['ST', 'MID'] : ['DEF']; // the tutorial: you, a teammate and one defender (an empty goal)
     if (this.cfg.roster && this.cfg.roster.length === this.size) return this.cfg.roster; // a mode's own line-up (Quick Match: a winger)
@@ -5228,7 +5219,7 @@ class Match {
     }
     for (let team = 0; team < 2; team++) {
       const roles = this.rolesFor(team), lead = leadRole(roles);
-      const mine = team === 0 && opts.role && !this.cfg.tutorial && !this.cfg.practice && roles.includes(opts.role) && !(opts.role === 'GK' && this.cfg.noKeeper) ? opts.role : lead; // the position you picked last time (in goal too), when this line-up has it
+      const mine = this.cfg.keeper ? 'GK' : team === 0 && opts.role && !this.cfg.tutorial && !this.cfg.practice && roles.includes(opts.role) && !(opts.role === 'GK' && this.cfg.noKeeper) ? opts.role : lead; // the position you picked last time (in goal too), when this line-up has it; keeper practice: in goal
       for (const role of roles) {
         if (this.cfg.noKeeper && role === 'GK') continue; // No Keepers: open goals
         const net = opts.humans ? seat[team + role] : null;
@@ -5320,6 +5311,26 @@ class Match {
     }
   }
   boxBlocked(p) { return this.boxT > 0 && this.boxT < BOX_FREE && !!this.human && p.team !== this.human.team && !p.isGK && !p.isHuman; }
+  /** owner: "thunder in rain, every couple of minutes it hits somewhere, not on purpose": in your bot matches when it rains, a
+      lightning bolt strikes a random spot on the pitch every 70 to 150 seconds (the first one sooner). Anyone near is knocked
+      flat and a ball close by jumps. Not online (the weather is your own setting) */
+  weatherTick(dt) {
+    if (!this.human || this.online || this.fk || this.tut || this.phase !== 'play' || typeof World === 'undefined' || World.weather !== 'rain') return;
+    this.thunderT = (this.thunderT == null ? rand(25, 45) : this.thunderT) - dt;
+    if (this.thunderT > 0) return;
+    this.thunderT = rand(70, 150);
+    this.lightning(rand(-F.W + 3, F.W - 3), rand(-F.L + 6, F.L - 6));
+  }
+  lightning(x, z) {
+    Hud.lightning(x, z);
+    for (const p of this.players) {
+      const dx = p.pos.x - x, dz = p.pos.z - z, d = Math.hypot(dx, dz);
+      if (d > 3.2) continue;
+      if (this.knockDown(p, 1.4, dx / (d || 1), dz / (d || 1), 5)) { this.label(p, 'ZAPPED', '#c8e0ff', 1.2); if (p.isHuman) this.toast('STRUCK BY LIGHTNING!', 'bad', p); }
+    }
+    const b = this.ball;
+    if (Math.hypot(b.pos.x - x, b.pos.z - z) < 3.5) { if (b.owner) b.release(); b.vel.set(rand(-6, 6), 9, rand(-6, 6)); b.kick = { by: null, type: 'loose', t: this.time }; }
+  }
   /** CANNON KICK: a long kick to the teammate furthest up the pitch */
   cannonKick(p) {
     const t = this.teams[p.team].filter((q) => q !== p && q.state !== 'down').sort((a, b) => this.prog(b.team, b.pos) - this.prog(a.team, a.pos))[0];
@@ -5411,6 +5422,7 @@ class Match {
     for (const p of this.players) if (p.awake > 40 && p.awakeT <= 0 && p.style.awaken && !(p.isGK && !p.isHuman) && Math.random() < (p.awake - 40) / 60 * dt * 6) FX.sparks(p.pos.x + rand(-0.4, 0.4), p.pos.y + rand(0.3, 1.7), p.pos.z + rand(-0.4, 0.4), p.aura, 3, 1.6, 0.12, 0.5);
     this.updatePending(dt);
     this.keeperFx();
+    this.weatherTick(dt);
     for (const p of this.players) p.physics(dt);
     this.boxFree(dt);
     this.rocketLandings();
@@ -6209,10 +6221,12 @@ class Match {
   }
   /* ---------- free kick practice ---------- */
   startFreeKicks() {
-    this.fk = { n: 0, total: FK_KICKS, log: [], state: 'aim', t: 0, x: 0, z: 0 };
-    this.fkWall = this.teams[1].filter((p) => !p.isGK);
+    this.fk = { n: 0, total: FK_KICKS, log: [], state: 'aim', t: 0, x: 0, z: 0, keeper: !!this.cfg.keeper };
+    this.fkWall = this.teams[this.cfg.keeper ? 0 : 1].filter((p) => !p.isGK);
     for (const w of this.fkWall) w.wall = true;
-    Hud.banner('FREE KICKS', 'AIM, THEN HOLD SHOOT FOR POWER', '#b65cff');
+    if (this.cfg.keeper) for (const p of this.teams[1]) if (!p.isGK) p.wall = true; // their taker waits for his kick
+    if (this.cfg.keeper) Hud.banner('KEEPER PRACTICE', Touch.on ? 'SAVE THEIR FREE KICKS: JUMP + STICK TO DIVE' : 'SAVE THEIR FREE KICKS: JUMP + A OR D TO DIVE', '#b65cff');
+    else Hud.banner('FREE KICKS', 'AIM, THEN HOLD SHOOT FOR POWER', '#b65cff');
     this.nextFreeKick();
   }
   /** a new spot 16 to 27 blocks out. Like real football the wall covers the near-post half and the keeper the far
@@ -6222,6 +6236,7 @@ class Match {
     let t = h.team;
     if (k.battle) { t = this.battleNext(); if (t < 0) { this.endBattle(); return; } }
     else if (k.n >= k.total) { this.endFreeKicks(); return; }
+    if (k.keeper) t = 1 - h.team; // keeper practice: always their kick
     k.n++; k.state = 'aim'; k.t = 0; k.hit = null; k.dist = 0; k.botT = null;
     this.phase = 'play'; this.phaseT = 0; this.lastPass = null;
     const sh = t === h.team ? h : this.teams[t].find((p) => p.role === leadRole(this.rolesFor(t)));
@@ -6253,7 +6268,8 @@ class Match {
     });
     const g = this.teams[1 - t].find((p) => p.isGK);
     if (g) { g.pos.set(-side * 0.9, 0, gz - s * 1.2); g.yaw = yaw + Math.PI; }
-    if (sh === h) { Hud.freeKick(yaw, dist); this.toast(k.battle ? 'YOUR KICK · ' + Math.round(dist) + ' BLOCKS OUT' : 'KICK ' + k.n + ' OF ' + k.total + ' · ' + Math.round(dist) + ' BLOCKS OUT', 'gold', h); }
+    if (k.keeper) this.toast('KICK ' + k.n + ' OF ' + k.total + ' · ' + Math.round(dist) + ' BLOCKS OUT · SAVE IT!', 'gold', h);
+    else if (sh === h) { Hud.freeKick(yaw, dist); this.toast(k.battle ? 'YOUR KICK · ' + Math.round(dist) + ' BLOCKS OUT' : 'KICK ' + k.n + ' OF ' + k.total + ' · ' + Math.round(dist) + ' BLOCKS OUT', 'gold', h); }
     else if (h.inWall) { const yw = Math.atan2(x - h.pos.x, z - h.pos.z); h.yaw = yw; Hud.freeKick(yw, 7); this.toast(Touch.on ? 'THEIR KICK · YOU ARE IN THE WALL · TAP JUMP TO BLOCK IT' : 'THEIR KICK · YOU ARE IN THE WALL · SPACE TO JUMP AND BLOCK IT', 'gold', h); }
   }
   /* ---------- the tutorial: one step at a time on a quiet pitch ---------- */
@@ -6435,7 +6451,9 @@ class Match {
     const k = this.fk, h = this.human, goals = k.log.filter((r) => r === 'GOAL').length;
     k.state = 'end'; h.fkHold = false;
     this.phase = 'end'; this.phaseT = 0;
-    this.result = { res: 'practice', practice: { goals, total: k.total, log: k.log.slice() }, score: [goals, k.total - goals], human: Object.assign({}, h.stats), players: [] };
+    const saved = k.total - goals; // keeper practice counts what you kept out
+    this.result = { res: 'practice', practice: { goals: k.keeper ? saved : goals, total: k.total, log: k.log.slice(), keeper: k.keeper }, score: [goals, k.total - goals], human: Object.assign({}, h.stats), players: [] };
+    if (k.keeper) { Hud.banner('KEEPER PRACTICE', saved + ' OF ' + k.total + ' KEPT OUT', saved >= 7 ? '#2ee38f' : saved >= 4 ? '#ffcb3d' : '#ff4d5e'); Sfx.whistle(3); if (saved >= 7) h.setState('celebrate', 99); return; }
     Hud.banner('FREE KICKS', goals + ' OF ' + k.total + ' SCORED', goals >= 7 ? '#2ee38f' : goals >= 4 ? '#ffcb3d' : '#ff4d5e');
     Sfx.whistle(3);
     if (goals >= 7) h.setState('celebrate', 99);
@@ -6716,14 +6734,14 @@ class Match {
     if (gk.state === 'dive' && gk.dive) {
       const d = gk.dive;
       ax = gk.pos.x - d.ux * 0.4; ay = gk.pos.y + 0.55; az = gk.pos.z - d.uz * 0.4;
-      const far = d.big ? 2.0 : 1.45; // CAT LEAP: stretched right out
+      const far = d.big ? 2.0 : gk.isHuman ? 1.75 : 1.45; // CAT LEAP: stretched right out; you in goal reach a little further
       bx = gk.pos.x + d.ux * far; by = gk.pos.y + (d.high ? 1.5 : 1.0); bz = gk.pos.z + d.uz * far;
     } else { ax = gk.pos.x; ay = gk.pos.y + 0.2; az = gk.pos.z; bx = gk.pos.x; by = gk.pos.y + 2.25; bz = gk.pos.z; }
     const abx = bx - ax, aby = by - ay, abz = bz - az, l2 = abx * abx + aby * aby + abz * abz;
     const t = clamp(((b.pos.x - ax) * abx + (b.pos.y - ay) * aby + (b.pos.z - az) * abz) / l2, 0, 1);
     const cx = ax + abx * t, cy = ay + aby * t, cz = az + abz * t;
     const dist = Math.hypot(b.pos.x - cx, b.pos.y - cy, b.pos.z - cz);
-    const reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.gkSize()) * 0.14 + (gk.fx.gloves > 0 ? 0.75 : 0); // longer reach in small teams, where keepers face more shots; GIANT GLOVES
+    const reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.gkSize()) * 0.14 + (gk.fx.gloves > 0 ? 0.75 : 0) + (gk.isHuman ? 0.3 : 0); // longer reach in small teams, where keepers face more shots; GIANT GLOVES; a little more for you in goal
     if (dist > BALL_R + reach) return;
     const k = b.kick;
     const shooter = k && k.by && k.by.team !== gk.team && k.type === 'shot' ? k.by : null;
@@ -8034,6 +8052,10 @@ const Cam = {
       let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.85 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
       if (Save.data.settings.shiftLock && !wide) { tx += -Math.cos(this.yaw) * 1.0; tz += Math.sin(this.yaw) * 1.0; ty -= 0.25; } // shift lock: over your right shoulder
       tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
+      if (p.isGK && !wide && m.ownGoalZ) { // you in goal (owner's video: the posts and bar hid the top corners): the camera stays in front of your goal line, just over your shoulder
+        const s = m.dir(p.team), lim = m.ownGoalZ(p.team) + s * (F.POST + 0.55); // in front of the posts and bar, not inside them
+        if ((tz - lim) * s < 0) { const k = clamp((lim - tz) * s / 4, 0, 1); tz = lim; ty = Math.max(ty, p.pos.y + 3.5 + 0.5 * k); }
+      }
       if (Math.abs(tz) > F.L - 0.6 && Math.abs(tz) < F.L + F.GD + 0.8 && Math.abs(tx) < F.GW + F.POST + 0.6) ty = Math.max(ty, F.GH + F.POST + 0.7); // never inside the goal net: up over the bar
       const k = 1 - Math.exp(-16 * realDt);
       this.pos.x += (tx - this.pos.x) * k; this.pos.y += (ty - this.pos.y) * k; this.pos.z += (tz - this.pos.z) * k;
@@ -9927,6 +9949,7 @@ const Net = {
     Replay.stop(); Reveal.stop(); Showcase.hide(); UI.hideOverlays(); TimeCtl.reset(); FX.clear();
     [TEAM[0], TEAM[1]] = matchSides(msg.home, msg.away);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(2); World.setSun(SUN_MATCH);
+    applyBallLook(); // your own ball, on your screen
     const nm = this.nm = new NetMatch(msg, this.id);
     Game.match = nm; Game.lastMode = 'online'; Game.ended = false;
     this.snaps = []; this.rt = -1; this.delay = NET_DELAY; this.jit = 0; this.offMin = null; this.lastNow = 0; this.pend = {}; this.paused = false; this.lastBall = null; this.lastPhase = '';
@@ -10642,6 +10665,7 @@ const Showcase = {
     if (this.p && this.key === key) return;
     if (this.p) this.p.dispose();
     this.key = key; this.flow = flow;
+    applyBallLook(look); // the Locker tries balls on too
     this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: 'ST', human: true, style, flow, look, side: sideFor(club), number: 10, name: 'YOU', skin: SKIN_TONES[tone] || SKIN_TONES[1] });
     const aura = col(this.p.aura);
     this.ringMat.color.copy(aura); this.glowMat.color.copy(aura); this.beamMat.color.copy(col('#fff1d6')).lerp(aura, 0.35);
@@ -10817,6 +10841,7 @@ const UI = {
     Hud.lockHint = () => this.lockHint();
     Hud.cutin = (p, name) => this.cutin(p, name);
     Hud.awaken = (p) => this.awakenStory(p);
+    Hud.lightning = (x, z) => this.lightning(x, z);
     Hud.freeKick = (yaw, dist) => Cam.fkFace(yaw, dist, false); // a new free kick: the camera turns to the goal
     Hud.flash = (hex) => { const fl = $('flash'); fl.className = ''; fl.style.background = hex || '#ffffff'; fl.animate([{ opacity: 0.45 }, { opacity: 0 }], { duration: 260, easing: 'steps(4)' }); };
     this.renderLobby();
@@ -11167,7 +11192,7 @@ const UI = {
     </section>`;
   },
   openModes() {
-    const desc = { koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', golden: 'THE NEXT GOAL WINS THE MATCH', nokeep: 'NO KEEPERS. SHOOT FROM ANYWHERE', turbo: 'EVERYTHING IS FASTER, THE CLOCK TOO', moon: 'THE BALL FLOATS LIKE ON THE MOON', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
+    const desc = { fkkeeper: 'YOU IN GOAL. SAVE THEIR 10 FREE KICKS', koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', golden: 'THE NEXT GOAL WINS THE MATCH', nokeep: 'NO KEEPERS. SHOOT FROM ANYWHERE', turbo: 'EVERYTHING IS FASTER, THE CLOCK TOO', moon: 'THE BALL FLOATS LIKE ON THE MOON', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
     const feat = featuredAt().mode;
     $('md-grid').innerHTML = Object.keys(desc).map((k) => `<button class="btn md-card" type="button" data-mode="${k}">${MODES[k].name}${k === feat ? '<span class="tag">FEATURED</span>' : ''}<span class="sub">${desc[k]}</span></button>`).join('');
     $('scr-modes').hidden = false;
@@ -11257,6 +11282,13 @@ const UI = {
       for (let i = 0; i < 4; i++) person(50 + i * 8, 76, D); person(120, 78, HI); // all of them together, one on their own
     }
     g.fillStyle = 'rgba(0,0,0,0.1)'; for (let y = 0; y < H; y += 3) g.fillRect(0, y, W, 1); // faint old film lines
+  },
+  /** a lightning strike: a white flash, a bolt from the clouds to the spot, the thunder a moment later */
+  lightning(x, z) {
+    const f = $('flash'); if (f) { f.style.background = '#e8f0ff'; f.style.transition = 'none'; f.style.opacity = '0.85'; void f.offsetWidth; f.style.transition = 'opacity .45s ease-out'; f.style.opacity = '0'; }
+    FX.beam(V3(x + rand(-4, 4), 60, z + rand(-4, 4)), { pos: V3(x, 0, z) }, '#cfe2ff');
+    FX.ring(x, 0.2, z, '#cfe2ff', 3.2, 30); FX.sparks(x, 0.5, z, '#ffffff', 30, 9, 0.2, 0.7);
+    Shake.add(0.5); Sfx.thud(1); setTimeout(() => { Sfx.roar(0.25); Sfx.thud(0.8); }, 260);
   },
   /** comic-style cut-in for a big move: your portrait and the move name slam across the screen (0.8s) */
   cutin(p, name) {
@@ -11537,7 +11569,9 @@ const UI = {
     if (m.tut) { this.setText('clock', Math.min(m.tut.step + 1, TUT_STEPS.length) + '/' + TUT_STEPS.length); this.setText('clock-sub', 'TUTORIAL'); }
     else if (m.fk && m.fk.battle) { this.setText('clock', m.fk.bs[0] + '-' + m.fk.bs[1]); this.setText('clock-sub', 'FK BATTLE'); }
     else if (m.fk) { this.setText('clock', Math.min(m.fk.n, m.fk.total) + '/' + m.fk.total); this.setText('clock-sub', 'FREE KICK'); }
-    else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL'); }
+    else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL');
+      const sec = Math.ceil(m.goldenClock), hot = sec <= 15 && sec > 0; $('clock').classList.toggle('stress', hot); // owner: "gives you that stress"
+      if (hot && sec !== this.goldTick) { this.goldTick = sec; Sfx.tick(); } }
     else { this.setText('clock', fmtTime(m.clock)); this.setText('clock-sub', ''); }
     this.setText('hud-em', String(Save.data.emeralds));
     p.abil.forEach((a, i) => {
@@ -11828,8 +11862,8 @@ const UI = {
   /** free kick practice: your score, your best, what happened to each kick */
   showPractice(r) {
     $('r-again').textContent = 'AGAIN'; $('r-lobby').textContent = 'LOBBY';
-    $('r-title').textContent = r.goals + ' / ' + r.total; $('r-title').style.color = r.goals >= 7 ? '#2ee38f' : r.goals >= 4 ? '#ffcb3d' : '#ff4d5e';
-    $('r-score').innerHTML = `<span>${r.newBest ? 'NEW BEST!' : 'BEST ' + r.best + ' / ' + r.total}</span><span class="chip">FREE KICKS</span>`;
+    $('r-title').textContent = r.goals + ' / ' + r.total + (r.keeper ? ' KEPT OUT' : ''); $('r-title').style.color = r.goals >= 7 ? '#2ee38f' : r.goals >= 4 ? '#ffcb3d' : '#ff4d5e';
+    $('r-score').innerHTML = r.keeper ? '<span>YOU IN GOAL</span><span class="chip">KEEPER PRACTICE</span>' : `<span>${r.newBest ? 'NEW BEST!' : 'BEST ' + r.best + ' / ' + r.total}</span><span class="chip">FREE KICKS</span>`;
     const n = (w) => r.log.filter((x) => x === w).length;
     $('r-stats').innerHTML = [['GOALS', n('GOAL')], ['SAVED', n('SAVED')], ['BLOCKED', n('BLOCKED')], ['MISSED', n('MISS')]].map(([k, v]) => `<div><span class="label">${k}</span><b>${v}</b></div>`).join('');
     $('r-earn').innerHTML = '<div class="idle-note"><span>PRACTICE GIVES NO REWARDS. JUST GET BETTER</span></div>';
@@ -12149,6 +12183,7 @@ const Game = {
     if (ramp) { size = Math.min(size, ramp[0]); skill = Math.min(skill, ramp[1]); }
     const intro = !o.noIntro && this.introOn(mode);
     const st = STYLES[Save.data.style];
+    applyBallLook(); // your ball
     this.match = new Match(mode, skill, { size, role: Save.data.pos || (st && st.gk ? 'GK' : null), intro }); // a keeper style with no position picked yet starts in goal
     this.lastMode = mode; this.ended = false;
     Replay.reset(this.match);
@@ -12214,8 +12249,8 @@ const Game = {
     }
     if (m.cfg.practice) { // free kick practice: your score and your best, no rewards
       if (forfeit) { this.toLobby(); return; }
-      const P = m.result.practice || { goals: 0, total: 0, log: [] }, best = d.fkBest || 0;
-      if (P.goals > best) d.fkBest = P.goals;
+      const P = m.result.practice || { goals: 0, total: 0, log: [] }, best = P.keeper ? 0 : d.fkBest || 0;
+      if (!P.keeper && P.goals > best) d.fkBest = P.goals;
       Save.save();
       this.state = 'results'; m.paused = true;
       Input.releaseLock();

@@ -581,7 +581,7 @@ const ITEM_IDS = Object.keys(ITEMS);
 const SKIN_SLOTS = [
   { id: 'face', name: 'FACE', base: 'FACE_CALM' }, { id: 'hair', name: 'HAIR', base: 'STYLE_HAIR' }, { id: 'color', name: 'COLOUR', base: 'STYLE_COLOR' }, { id: 'kit', name: 'KIT', base: 'TEAM_KIT' },
   { id: 'boots', name: 'BOOTS', base: 'TEAM_BOOTS' }, { id: 'gloves', name: 'GLOVES', base: 'NO_GLOVES' },
-  { id: 'acc', name: 'EXTRA', base: 'NO_ACC' }, { id: 'celeb', name: 'GOAL', base: 'JUMP' },
+  { id: 'acc', name: 'EXTRA', base: 'NO_ACC' }, { id: 'celeb', name: 'GOAL', base: 'JUMP' }, { id: 'ball', name: 'BALL', base: 'CLASSIC_BALL' },
 ];
 const SKINS = {
   // faces (owner, Nov 2026: "add different faces"): every one is free, so everyone can look different from day one
@@ -692,6 +692,15 @@ const SKINS = {
   VETERAN_KIT: { slot: 'kit', name: 'VETERAN', rarity: 'Legendary', pattern: 'hoops', trim: '#ffd54a', obj: true, desc: 'From GOALS: win 150 matches.' },
   LEGEND_KIT: { slot: 'kit', name: 'LEGEND', rarity: 'Mythic', pattern: 'stars', trim: '#ffd54a', obj: true, desc: 'From GOALS: play 300 matches.' },
   STARFIELD: { slot: 'kit', name: 'STARFIELD', rarity: 'Mythic', pattern: 'stars', trim: '#ffffff', desc: 'A shirt full of stars, with white trim.' },
+  // owner: "make it so you can change the ball": the ball's two colours [main, patches]; your ball in your matches
+  CLASSIC_BALL: { slot: 'ball', name: 'CLASSIC', rarity: 'Rare', base: true, ball: ['#f3f3ef', '#1b1c22'], desc: 'The ball everyone starts with.' },
+  NEON_BALL: { slot: 'ball', name: 'NEON', rarity: 'Rare', ball: ['#39ff8a', '#0b3d1f'], desc: 'Bright green, easy to spot.' },
+  ICE_BALL: { slot: 'ball', name: 'ICE', rarity: 'Rare', ball: ['#d8f6ff', '#2a7ab8'], desc: 'Frosty white and blue.' },
+  PINK_BALL: { slot: 'ball', name: 'BUBBLEGUM', rarity: 'Rare', ball: ['#ff9ad8', '#7a1a5a'], desc: 'Pink and plum.' },
+  GOLD_BALL: { slot: 'ball', name: 'GOLDEN', rarity: 'Epic', ball: ['#ffd54a', '#6b4200'], desc: 'A golden ball, like a trophy.' },
+  NIGHT_BALL: { slot: 'ball', name: 'MIDNIGHT', rarity: 'Epic', ball: ['#1d1f2e', '#ffcb3d'], desc: 'Black with gold patches.' },
+  FIRE_BALL: { slot: 'ball', name: 'FIREBALL', rarity: 'Legendary', ball: ['#ff7a1a', '#5a1000'], desc: 'Orange and ember red.' },
+  GALAXY_BALL: { slot: 'ball', name: 'GALAXY', rarity: 'Mythic', ball: ['#6b4dff', '#f4f0ff'], desc: 'Deep purple with starry patches.' },
   JUMP: { slot: 'celeb', name: 'BIG JUMP', rarity: 'Rare', base: true, celeb: 'jump', desc: 'Jump for joy with both arms up.' },
   AIRPLANE: { slot: 'celeb', name: 'AIRPLANE', rarity: 'Rare', celeb: 'plane', desc: 'Arms out wide, tilting side to side.' },
   SHUSH: { slot: 'celeb', name: 'SHUSH', rarity: 'Epic', celeb: 'shush', desc: 'A finger to the lips for the away fans.' },

@@ -118,6 +118,7 @@ const Showcase = {
     if (this.p && this.key === key) return;
     if (this.p) this.p.dispose();
     this.key = key; this.flow = flow;
+    applyBallLook(look); // the Locker tries balls on too
     this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: 'ST', human: true, style, flow, look, side: sideFor(club), number: 10, name: 'YOU', skin: SKIN_TONES[tone] || SKIN_TONES[1] });
     const aura = col(this.p.aura);
     this.ringMat.color.copy(aura); this.glowMat.color.copy(aura); this.beamMat.color.copy(col('#fff1d6')).lerp(aura, 0.35);

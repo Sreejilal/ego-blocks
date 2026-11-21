@@ -158,6 +158,7 @@ const Game = {
     if (ramp) { size = Math.min(size, ramp[0]); skill = Math.min(skill, ramp[1]); }
     const intro = !o.noIntro && this.introOn(mode);
     const st = STYLES[Save.data.style];
+    applyBallLook(); // your ball
     this.match = new Match(mode, skill, { size, role: Save.data.pos || (st && st.gk ? 'GK' : null), intro }); // a keeper style with no position picked yet starts in goal
     this.lastMode = mode; this.ended = false;
     Replay.reset(this.match);
@@ -223,8 +224,8 @@ const Game = {
     }
     if (m.cfg.practice) { // free kick practice: your score and your best, no rewards
       if (forfeit) { this.toLobby(); return; }
-      const P = m.result.practice || { goals: 0, total: 0, log: [] }, best = d.fkBest || 0;
-      if (P.goals > best) d.fkBest = P.goals;
+      const P = m.result.practice || { goals: 0, total: 0, log: [] }, best = P.keeper ? 0 : d.fkBest || 0;
+      if (!P.keeper && P.goals > best) d.fkBest = P.goals;
       Save.save();
       this.state = 'results'; m.paused = true;
       Input.releaseLock();

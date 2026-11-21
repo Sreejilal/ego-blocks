@@ -3,6 +3,17 @@
    ===================================================================== */
 const ROLL_A = 2.6, ROLL_B = 0.2; // rolling friction: decel = A + B * speed
 let BALL_GEO = null;
+/** recolour the ball (every ball shares BALL_GEO): main panels and patches. Each corner keeps its shade */
+function setBallLook(main, patch) {
+  if (!BALL_GEO) BALL_GEO = makeBallGeometry();
+  const c = BALL_GEO.attributes.color; if (!c) return;
+  const base = BALL_GEO.userData.base || (BALL_GEO.userData.base = Float32Array.from(c.array));
+  const W = lin('#f3f3ef'), B = lin('#1b1c22'), m = lin(main || '#f3f3ef'), q = lin(patch || '#1b1c22'), cut = (W.r + B.r) * 0.25;
+  for (let i = 0; i < c.count; i++) { const r = base[i * 3], white = r > cut, k = white ? r / W.r : r / Math.max(B.r, 1e-3), t = white ? m : q; c.setXYZ(i, t.r * k, t.g * k, t.b * k); }
+  c.needsUpdate = true;
+}
+/** your equipped ball (the BALL skin slot) */
+function applyBallLook(look) { const sk = SKINS[(look || Save.data.look).ball]; setBallLook(...(sk && sk.ball ? sk.ball : [])); }
 class Ball {
   constructor(m) {
     this.m = m;

@@ -62,7 +62,7 @@ const LOOKS = {
   day: {
     sky: ['#2f7fe0', '#5aa6f0', '#9fd0fa', '#e4f4ff', '#a9c7dc', '#fff1c8'], sun: '#fffbe6', halo: ['#fff0b8', 0.4], stars: false,
     fog: ['#cfe5f6', 170, 640], hemi: ['#d6e8ff', '#5f7f3e', 0.7], amb: ['#a7b8d8', 0.24], light: ['#fff1dc', 1.6, [-40, 100, -30]], fill: ['#e2ecff', 0.45],
-    exposure: 0.98, cloud: ['#b9d4ee', 0.45], fans: [1, 1, 1], tower: 0.55, lamps: 0.4, sunMatch: [-0.42, 0.62, 0.66], sunLobby: [0.3, 0.55, 0.78],
+    exposure: 0.86, cloud: ['#b9d4ee', 0.45], fans: [1, 1, 1], tower: 0.55, lamps: 0.4, sunMatch: [-0.42, 0.62, 0.66], sunLobby: [0.3, 0.55, 0.78],
   },
   sunset: {
     sky: ['#141844', '#46307a', '#c4527a', '#ff9a5c', '#3a2a3e', '#ffd08a'], sun: '#ffe39a', halo: ['#ff9a50', 0.55], stars: true,
@@ -72,8 +72,8 @@ const LOOKS = {
   // owner: "a night match with floodlights": a dark sky full of stars, the floodlights do the lighting (the main light straight down from high up)
   night: {
     sky: ['#03050f', '#081028', '#142246', '#24345e', '#0a0f1e', '#c8d6ff'], sun: '#e8eeff', halo: ['#9fb4ff', 0.25], stars: true,
-    fog: ['#0d1428', 90, 430], hemi: ['#5a6aa8', '#1c2a1c', 0.42], amb: ['#22305a', 0.3], light: ['#f4f6ff', 1.55, [-12, 120, -8]], fill: ['#b8c8ff', 0.5],
-    exposure: 1.22, cloud: ['#1a2440', 0.25], fans: [0.7, 0.72, 0.85], tower: 1.7, lamps: 1.7, sunMatch: [-0.12, 0.95, 0.2], sunLobby: [0.1, 0.9, 0.3],
+    fog: ['#1a2440', 110, 470], hemi: ['#7a8ad0', '#2c3e2c', 0.78], amb: ['#3a4a80', 0.55], light: ['#f4f6ff', 2.2, [-12, 120, -8]], fill: ['#c8d6ff', 0.8],
+    exposure: 1.45, cloud: ['#1a2440', 0.25], fans: [0.92, 0.94, 1.0], tower: 1.7, lamps: 1.9, sunMatch: [-0.12, 0.95, 0.2], sunLobby: [0.1, 0.9, 0.3],
   },
 };
 
@@ -103,7 +103,7 @@ const World = {
     this.buildStands();
     this.buildFans();
     this.buildCrowdExtras();
-    this.buildRoofs(); this.buildRain(); this.buildGrass();
+    this.buildRoofs(); this.buildRain();
     this.buildFloodlights();
     this.buildTower();
     this.buildTrees();
@@ -135,7 +135,6 @@ const World = {
       E.posters.visible = !lowish; E.flashes.visible = !lowish && q !== 'lite'; E.flags.forEach((f) => { f.visible = !!Q.post; });
     }
     this.postOn = !!Q.post && this.initPost(); this.postGrade = Q.grade || 0;
-    if (this.grass) this.grass.visible = !!Q.post; // the 3D grass with the camera effects (HIGH, ULTRA, auto at its best)
     this.resize();
   },
   resize() {
@@ -215,7 +214,7 @@ const World = {
     const pitch = new THREE.Mesh(new THREE.PlaneGeometry(PITCH_BX, PITCH_BZ), new THREE.MeshLambertMaterial({ map: makePitchTexture() }));
     pitch.rotation.x = -Math.PI / 2;
     pitch.receiveShadow = true;
-    this.scene.add(pitch); this.pitchTex = pitch.material.map; // the 3D grass takes its colours from it
+    this.scene.add(pitch); this.pitchTex = pitch.material.map;
     const gGeo = new THREE.PlaneGeometry(1600, 1600);
     const uv = gGeo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 1600, uv.getY(i) * 1600);
     const ground = new THREE.Mesh(gGeo, new THREE.MeshLambertMaterial({ map: T.grassTop }));
@@ -572,40 +571,6 @@ const World = {
     if (this.rain) this.rain.visible = this.weather === 'rain';
     this.setLook(this.look || 'day'); // the look, greyed for rain
   },
-  /** owner: "more detailed grass": real little blades of grass around the camera (HIGH and ULTRA), coloured from the pitch under them (white on the lines), swaying */
-  buildGrass() {
-    if (!this.renderer.capabilities.vertexTextures) return; // the blades read the pitch colours in the vertex shader: not every phone can
-    const N = 120, S = 0.24, n = N * N; // a 120 x 120 patch, a blade every 0.24 blocks, that follows the camera in whole steps
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute([-0.035, 0, 0, 0.035, 0, 0, 0, 1, 0, 0, 0, -0.035, 0, 0, 0.035, 0, 1, 0], 3)); // two crossed slivers
-    const cell = new Float32Array(n * 2); for (let i = 0; i < n; i++) { cell[i * 2] = i % N; cell[i * 2 + 1] = Math.floor(i / N); }
-    geo.setAttribute('aCell', new THREE.InstancedBufferAttribute(cell, 2));
-    this.grassMat = new THREE.ShaderMaterial({
-      uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { map: { value: null }, uTime: { value: 0 }, uCam: { value: new THREE.Vector2() }, uLight: { value: new THREE.Vector3(1, 1, 1) }, uSize: { value: new THREE.Vector2(PITCH_BX, PITCH_BZ) } }]),
-      vertexShader: ['attribute vec2 aCell; uniform float uTime; uniform vec2 uCam; uniform vec2 uSize; uniform sampler2D map; varying vec3 vCol; varying float vTip;', '#include <fog_pars_vertex>',
-        'float h(vec2 q){ return fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453); }', 'void main(){',
-        ' float N = ' + N + '.0, S = ' + S + ';',
-        ' vec2 base = floor(uCam / S) * S - N * S * 0.5;',
-        ' vec2 w = base + aCell * S; vec2 id = floor(w / S + 0.5);',
-        ' w += (vec2(h(id), h(id + 7.1)) - 0.5) * S;',
-        ' float d = length(w - uCam) / (N * S * 0.5); float fade = 1.0 - smoothstep(0.55, 1.0, d);',
-        ' float on = step(abs(w.x), uSize.x * 0.5 - 0.6) * step(abs(w.y), uSize.y * 0.5 - 0.6);', // only on the pitch and its run-off
-        ' float ht = (0.06 + h(id + 3.3) * 0.06) * fade * on;',
-        ' vec3 p = position; p.y *= ht; float sway = sin(uTime * 2.2 + w.x * 0.7 + w.y * 0.5) * 0.025 * p.y / max(ht, 0.001);',
-        ' vec3 wp = vec3(w.x + p.x + sway * position.y, p.y, w.y + p.z + sway * 0.6 * position.y);',
-        ' vec2 uv = vec2(w.x / uSize.x + 0.5, 0.5 - w.y / uSize.y);',
-        ' vCol = pow(texture2D(map, uv).rgb, vec3(2.2)) * (0.95 + 0.3 * position.y) * (0.94 + h(id + 1.7) * 0.12); vTip = position.y;',
-        ' vec4 mvPosition = modelViewMatrix * vec4(wp, 1.0);', ' gl_Position = projectionMatrix * mvPosition;', ' #include <fog_vertex>', '}'].join('\n'),
-      fragmentShader: ['uniform vec3 uLight; varying vec3 vCol; varying float vTip;', '#include <common>', '#include <fog_pars_fragment>', 'void main(){',
-        ' gl_FragColor = vec4(vCol * uLight, 1.0);', ' #include <tonemapping_fragment>', ' #include <encodings_fragment>', ' #include <fog_fragment>', '}'].join('\n'),
-      fog: true, side: THREE.DoubleSide,
-    });
-    this.grassMat.uniforms.map.value = this.pitchTex;
-    this.grass = new THREE.InstancedMesh(geo, this.grassMat, n);
-    this.grass.frustumCulled = false; this.grass.visible = false;
-    const m4 = new THREE.Matrix4(); for (let i = 0; i < n; i++) this.grass.setMatrixAt(i, m4); // the shader places every blade
-    this.scene.add(this.grass);
-  },
   /** paint the banners, posters and flags in the two clubs' colours (home: west and south, away: east and north) */
   paintCrowdExtras(a, b) {
     const E = this.extras; if (!E) return;
@@ -762,7 +727,6 @@ const World = {
     this.excite[1] = Math.max(0, this.excite[1] - dt * 0.22);
     if (this.fanMat) { this.fanMat.uniforms.uTime.value = this.time; this.fanMat.uniforms.uExcite.value.set(this.excite[0], this.excite[1]); }
     if (this.rain && this.rain.visible) { this.rainMat.uniforms.uTime.value = this.time; this.rainMat.uniforms.uCam.value.copy(cam.position); }
-    if (this.grass && this.grass.visible) { const G = this.grassMat.uniforms; G.uTime.value = this.time; G.uCam.value.set(cam.position.x, cam.position.z); G.uLight.value.copy(this.fanMat ? this.fanMat.uniforms.uLight.value : G.uLight.value); }
     if (this.extras) {
       const E = this.extras;
       E.flagMat.forEach((fm) => { fm.uniforms.uTime.value = this.time; });
@@ -771,9 +735,7 @@ const World = {
     }
     const cp = cam.position;
     for (const n of this.nets) {
-      // the camera behind this goal (you in goal, or near your own line): its net fades right down, so you still see it but it never fills the view
-      const behind = cp.z * n.s > F.L - 0.3 && Math.abs(cp.x) < F.GW + F.POST + 7 && cp.y < F.GH + 7;
-      n.mat.opacity = damp(n.mat.opacity, behind ? 0.28 : 1, 10, dt); n.mat.depthWrite = n.mat.opacity > 0.9;
+      // owner: the net is always there and always solid (fading it backfired); the keeper camera stays in front of the frame instead
       const i = n.s > 0 ? 0 : 1;
       this.netBulge[i] = damp(this.netBulge[i], 0, 5, dt);
       n.back.position.z = n.baseZ + n.s * this.netBulge[i] * 0.9;
@@ -806,7 +768,7 @@ const World = {
   },
   paintCrowd(a, b) {
     const sides = [a, b];
-    this.setNet(pick(['classic', 'classic', 'diamond', 'hex', 'big', 'fine']), Math.random() < 0.3 ? CLUBS[a.club].home.shirt : pick(['#eef0f4', '#eef0f4', '#ffcb3d', '#1d1f2e'])); // a new net every match
+    this.setNet('classic', '#eef0f4'); // owner: the other net styles looked bad: the classic white net
     repaintSeat(this.T.seatHome, a.crest[0]); repaintSeat(this.T.seatAway, b.crest[0]);
     const pals = sides.map((s) => { const k = CLUBS[s.club].home; return [k.shirt, k.shirt, k.alt, k.sleeve, k.shirt].map((h) => lin(h)); });
     const geo = this.fans.geometry, col = geo.attributes.aColor, data = geo.attributes.aData, R = mulberry32(9);
@@ -870,7 +832,7 @@ const World = {
       const vert = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
       const mat = (frag, uniforms) => new THREE.ShaderMaterial({ uniforms, vertexShader: vert, fragmentShader: frag, depthTest: false, depthWrite: false });
       const bright = mat(['uniform sampler2D tIn; varying vec2 vUv;', 'void main(){ vec3 c = texture2D(tIn, vUv).rgb; float l = dot(c, vec3(0.299, 0.587, 0.114));',
-        ' gl_FragColor = vec4(c * smoothstep(0.84, 1.0, l), 1.0); }'].join('\n'), { tIn: { value: null } });
+        ' gl_FragColor = vec4(c * smoothstep(0.9, 1.0, l), 1.0); }'].join('\n'), { tIn: { value: null } });
       const blur = mat(['uniform sampler2D tIn; uniform vec2 uDir; varying vec2 vUv;', 'void main(){',
         ' vec3 c = texture2D(tIn, vUv).rgb * 0.227;',
         ' c += (texture2D(tIn, vUv + uDir * 1.385).rgb + texture2D(tIn, vUv - uDir * 1.385).rgb) * 0.316;',
@@ -879,11 +841,11 @@ const World = {
       const comp = mat(['uniform sampler2D tScene; uniform sampler2D tBloom; uniform float uBloom; uniform float uGrade; varying vec2 vUv;', 'void main(){',
         ' vec3 c = texture2D(tScene, vUv).rgb + texture2D(tBloom, vUv).rgb * uBloom;',
         ' float l = dot(c, vec3(0.299, 0.587, 0.114));',
-        ' c = mix(vec3(l), c, 1.1 + 0.06 * uGrade);', // a little more colour
-        ' c = (c - 0.5) * (1.06 + 0.04 * uGrade) + 0.5;', // a little more contrast
+        ' c = mix(vec3(l), c, 1.05 + 0.04 * uGrade);', // a little more colour
+        ' c = (c - 0.5) * (1.03 + 0.03 * uGrade) + 0.5 - 0.02;', // a little more contrast, a touch darker (owner: it looked like a flash bang)
         ' c += vec3(0.022, 0.008, -0.018) * smoothstep(0.45, 1.0, l) - vec3(0.012, 0.0, -0.016) * (1.0 - smoothstep(0.0, 0.45, l));', // warm highlights, cool shadows
         ' vec2 q = vUv - 0.5; c *= 1.0 - (0.2 + 0.08 * uGrade) * smoothstep(0.3, 0.85, dot(q, q) * 2.2);', // a soft vignette
-        ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }'].join('\n'), { tScene: { value: null }, tBloom: { value: null }, uBloom: { value: 0.45 }, uGrade: { value: 0 } });
+        ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }'].join('\n'), { tScene: { value: null }, tBloom: { value: null }, uBloom: { value: 0.22 }, uGrade: { value: 0 } });
       const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), comp); quad.frustumCulled = false;
       const qScene = new THREE.Scene(); qScene.add(quad);
       this.post = { sceneRT, a: rt(4, 4), b: rt(4, 4), c: rt(4, 4), bright, blur, comp, quad, qScene, qCam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), w: 0, h: 0, sz: new THREE.Vector2() };

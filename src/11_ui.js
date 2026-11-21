@@ -24,6 +24,7 @@ const UI = {
     Hud.lockHint = () => this.lockHint();
     Hud.cutin = (p, name) => this.cutin(p, name);
     Hud.awaken = (p) => this.awakenStory(p);
+    Hud.lightning = (x, z) => this.lightning(x, z);
     Hud.freeKick = (yaw, dist) => Cam.fkFace(yaw, dist, false); // a new free kick: the camera turns to the goal
     Hud.flash = (hex) => { const fl = $('flash'); fl.className = ''; fl.style.background = hex || '#ffffff'; fl.animate([{ opacity: 0.45 }, { opacity: 0 }], { duration: 260, easing: 'steps(4)' }); };
     this.renderLobby();
@@ -374,7 +375,7 @@ const UI = {
     </section>`;
   },
   openModes() {
-    const desc = { koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', golden: 'THE NEXT GOAL WINS THE MATCH', nokeep: 'NO KEEPERS. SHOOT FROM ANYWHERE', turbo: 'EVERYTHING IS FASTER, THE CLOCK TOO', moon: 'THE BALL FLOATS LIKE ON THE MOON', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
+    const desc = { fkkeeper: 'YOU IN GOAL. SAVE THEIR 10 FREE KICKS', koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', golden: 'THE NEXT GOAL WINS THE MATCH', nokeep: 'NO KEEPERS. SHOOT FROM ANYWHERE', turbo: 'EVERYTHING IS FASTER, THE CLOCK TOO', moon: 'THE BALL FLOATS LIKE ON THE MOON', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
     const feat = featuredAt().mode;
     $('md-grid').innerHTML = Object.keys(desc).map((k) => `<button class="btn md-card" type="button" data-mode="${k}">${MODES[k].name}${k === feat ? '<span class="tag">FEATURED</span>' : ''}<span class="sub">${desc[k]}</span></button>`).join('');
     $('scr-modes').hidden = false;
@@ -464,6 +465,13 @@ const UI = {
       for (let i = 0; i < 4; i++) person(50 + i * 8, 76, D); person(120, 78, HI); // all of them together, one on their own
     }
     g.fillStyle = 'rgba(0,0,0,0.1)'; for (let y = 0; y < H; y += 3) g.fillRect(0, y, W, 1); // faint old film lines
+  },
+  /** a lightning strike: a white flash, a bolt from the clouds to the spot, the thunder a moment later */
+  lightning(x, z) {
+    const f = $('flash'); if (f) { f.style.background = '#e8f0ff'; f.style.transition = 'none'; f.style.opacity = '0.85'; void f.offsetWidth; f.style.transition = 'opacity .45s ease-out'; f.style.opacity = '0'; }
+    FX.beam(V3(x + rand(-4, 4), 60, z + rand(-4, 4)), { pos: V3(x, 0, z) }, '#cfe2ff');
+    FX.ring(x, 0.2, z, '#cfe2ff', 3.2, 30); FX.sparks(x, 0.5, z, '#ffffff', 30, 9, 0.2, 0.7);
+    Shake.add(0.5); Sfx.thud(1); setTimeout(() => { Sfx.roar(0.25); Sfx.thud(0.8); }, 260);
   },
   /** comic-style cut-in for a big move: your portrait and the move name slam across the screen (0.8s) */
   cutin(p, name) {
@@ -744,7 +752,9 @@ const UI = {
     if (m.tut) { this.setText('clock', Math.min(m.tut.step + 1, TUT_STEPS.length) + '/' + TUT_STEPS.length); this.setText('clock-sub', 'TUTORIAL'); }
     else if (m.fk && m.fk.battle) { this.setText('clock', m.fk.bs[0] + '-' + m.fk.bs[1]); this.setText('clock-sub', 'FK BATTLE'); }
     else if (m.fk) { this.setText('clock', Math.min(m.fk.n, m.fk.total) + '/' + m.fk.total); this.setText('clock-sub', 'FREE KICK'); }
-    else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL'); }
+    else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL');
+      const sec = Math.ceil(m.goldenClock), hot = sec <= 15 && sec > 0; $('clock').classList.toggle('stress', hot); // owner: "gives you that stress"
+      if (hot && sec !== this.goldTick) { this.goldTick = sec; Sfx.tick(); } }
     else { this.setText('clock', fmtTime(m.clock)); this.setText('clock-sub', ''); }
     this.setText('hud-em', String(Save.data.emeralds));
     p.abil.forEach((a, i) => {
@@ -1035,8 +1045,8 @@ const UI = {
   /** free kick practice: your score, your best, what happened to each kick */
   showPractice(r) {
     $('r-again').textContent = 'AGAIN'; $('r-lobby').textContent = 'LOBBY';
-    $('r-title').textContent = r.goals + ' / ' + r.total; $('r-title').style.color = r.goals >= 7 ? '#2ee38f' : r.goals >= 4 ? '#ffcb3d' : '#ff4d5e';
-    $('r-score').innerHTML = `<span>${r.newBest ? 'NEW BEST!' : 'BEST ' + r.best + ' / ' + r.total}</span><span class="chip">FREE KICKS</span>`;
+    $('r-title').textContent = r.goals + ' / ' + r.total + (r.keeper ? ' KEPT OUT' : ''); $('r-title').style.color = r.goals >= 7 ? '#2ee38f' : r.goals >= 4 ? '#ffcb3d' : '#ff4d5e';
+    $('r-score').innerHTML = r.keeper ? '<span>YOU IN GOAL</span><span class="chip">KEEPER PRACTICE</span>' : `<span>${r.newBest ? 'NEW BEST!' : 'BEST ' + r.best + ' / ' + r.total}</span><span class="chip">FREE KICKS</span>`;
     const n = (w) => r.log.filter((x) => x === w).length;
     $('r-stats').innerHTML = [['GOALS', n('GOAL')], ['SAVED', n('SAVED')], ['BLOCKED', n('BLOCKED')], ['MISSED', n('MISS')]].map(([k, v]) => `<div><span class="label">${k}</span><b>${v}</b></div>`).join('');
     $('r-earn').innerHTML = '<div class="idle-note"><span>PRACTICE GIVES NO REWARDS. JUST GET BETTER</span></div>';

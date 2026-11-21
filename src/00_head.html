@@ -722,6 +722,8 @@ body.replaying #hud, body.replaying #labels { display: none !important; }
 #cutin { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .slot.awk { border-color: #ffffff; box-shadow: 0 0 0 3px var(--aura, #ffcb3d), 0 0 18px var(--aura, #ffcb3d); animation: awkSlot .8s steps(2) infinite; }
 .slot.awk .nm { color: #fff; }
+#clock.stress { color: #ff4d5e; animation: clockStress .5s steps(2) infinite; } /* the last 15 seconds of golden goal */
+@keyframes clockStress { 50% { color: #ffffff; transform: scale(1.12); } }
 @keyframes awkSlot { 50% { box-shadow: 0 0 0 3px #ffffff, 0 0 26px var(--aura, #ffcb3d); } }
 /* the Awakening flashback: a faded memory, then a flash in their colour and what they say now (UI.awakenStory) */
 #app > #awk { pointer-events: none; }

@@ -616,6 +616,11 @@ const SKIN_ICON = { boots: 'boot', gloves: 'glove', band: 'band', mask: 'mask', 
 function skinCanvas(id, size = 96) {
   const sk = SKINS[id];
   if (sk.slot === 'face') return faceCanvas(sk.face, size);
+  if (sk.slot === 'ball') { // a little pixel ball in its two colours
+    const c = mkCanvas(16, 16), g = c.getContext('2d'), [m, q] = sk.ball;
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const d = Math.hypot(x - 7.5, y - 7.5); if (d > 7.2) continue; g.fillStyle = d > 6.3 ? '#14161f' : ((x + 1) % 5 < 2 && (y + 2) % 5 < 2) || (x > 5 && x < 10 && y > 5 && y < 10) ? q : m; g.fillRect(x, y, 1, 1); }
+    const out = mkCanvas(size, size), og = out.getContext('2d'); og.imageSmoothingEnabled = false; og.drawImage(c, 0, 0, size, size); out.className = 'px'; return out;
+  }
   if (sk.slot === 'hair') return portraitCanvas('ROOKIE', size, { hairShape: sk.shape || 'short', hair: '#6b3e22' });
   if (sk.slot === 'color') return portraitCanvas('ROOKIE', size, { hair: sk.hex || '#3b2a22', prism: sk.prism });
   if (sk.slot === 'kit') { // your club's shirt with this skin's pattern and trim
