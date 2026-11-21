@@ -52,8 +52,9 @@ const QUALITY = {
   low: { pr: 0.75, shadows: false, map: 512 },
   lite: { pr: 1, shadows: false, map: 512 }, // auto graphics only: no shadows, but still sharp
   med: { pr: 1, shadows: true, map: 1024 },
-  high: { pr: 1.5, shadows: true, map: 2048 },
-  ultra: { pr: 2, shadows: true, map: 4096, soft: true }, // owner: "way more graphical at the highest end": sharpest, big soft shadows, every crowd extra
+  hi1: { pr: 1, shadows: true, map: 2048, post: true }, // auto graphics only: HIGH's look at MED's sharpness (CrazyGames: the resolution stays the same as auto steps down)
+  high: { pr: 1.5, shadows: true, map: 2048, post: true },
+  ultra: { pr: 2, shadows: true, map: 4096, soft: true, post: true, grade: 1 }, // owner: "way more graphical at the highest end": sharpest, big soft shadows, every crowd extra, the strongest camera effects
 };
 
 // the sky and the light: a bright day (the default) or the evening sunset. World.setLook switches them (settings.sky)
@@ -122,8 +123,9 @@ const World = {
     if (shadowsChange || typeChange) this.scene.traverse((o) => { if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { m.needsUpdate = true; }); } });
     if (this.extras) { // the crowd extras: banners always, posters and flashes from MED, giant flags from HIGH
       const E = this.extras, lowish = q === 'low';
-      E.posters.visible = !lowish; E.flashes.visible = !lowish && q !== 'lite'; E.flags.forEach((f) => { f.visible = q === 'high' || q === 'ultra'; });
+      E.posters.visible = !lowish; E.flashes.visible = !lowish && q !== 'lite'; E.flags.forEach((f) => { f.visible = !!Q.post; });
     }
+    this.postOn = !!Q.post && this.initPost(); this.postGrade = Q.grade || 0;
     this.resize();
   },
   resize() {
@@ -742,5 +744,57 @@ const World = {
     SUN_MATCH.set(L.sunMatch[0], L.sunMatch[1], L.sunMatch[2]).normalize(); SUN_LOBBY.set(L.sunLobby[0], L.sunLobby[1], L.sunLobby[2]).normalize();
     this.setSun(this.sunRef || SUN_MATCH);
   },
-  render() { this.renderer.render(this.scene, this.camera); },
+  /* camera effects for HIGH and ULTRA (owner, Nov 2026: "the graphics are too low ... like GTA 6, I know it is not possible
+     but try"): the scene is drawn into a texture, then bright things bloom (a soft glow from floodlights, the sun, white
+     kits, flashes), the colours get a little richer (more contrast and colour, warm highlights, cool shadows) and the edges
+     darken slightly. three r128 tone maps and sRGB-encodes into the texture itself (its encoding is sRGB), so the passes
+     work on the finished picture and write it straight out. WebGL2 keeps antialiasing (a multisampled target) */
+  initPost() {
+    if (this.post) return true;
+    try {
+      const r = this.renderer, ms = r.capabilities.isWebGL2 && THREE.WebGLMultisampleRenderTarget;
+      const opt = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: false };
+      const rt = (w, h, depth) => { const t = new THREE.WebGLRenderTarget(w, h, Object.assign({ depthBuffer: !!depth }, opt)); t.texture.encoding = THREE.sRGBEncoding; t.texture.generateMipmaps = false; return t; };
+      const sceneRT = ms ? new THREE.WebGLMultisampleRenderTarget(4, 4, Object.assign({ depthBuffer: true }, opt)) : rt(4, 4, true);
+      if (ms) sceneRT.samples = 4;
+      sceneRT.texture.encoding = THREE.sRGBEncoding; sceneRT.texture.generateMipmaps = false;
+      const vert = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+      const mat = (frag, uniforms) => new THREE.ShaderMaterial({ uniforms, vertexShader: vert, fragmentShader: frag, depthTest: false, depthWrite: false });
+      const bright = mat(['uniform sampler2D tIn; varying vec2 vUv;', 'void main(){ vec3 c = texture2D(tIn, vUv).rgb; float l = dot(c, vec3(0.299, 0.587, 0.114));',
+        ' gl_FragColor = vec4(c * smoothstep(0.84, 1.0, l), 1.0); }'].join('\n'), { tIn: { value: null } });
+      const blur = mat(['uniform sampler2D tIn; uniform vec2 uDir; varying vec2 vUv;', 'void main(){',
+        ' vec3 c = texture2D(tIn, vUv).rgb * 0.227;',
+        ' c += (texture2D(tIn, vUv + uDir * 1.385).rgb + texture2D(tIn, vUv - uDir * 1.385).rgb) * 0.316;',
+        ' c += (texture2D(tIn, vUv + uDir * 3.231).rgb + texture2D(tIn, vUv - uDir * 3.231).rgb) * 0.07;',
+        ' gl_FragColor = vec4(c, 1.0); }'].join('\n'), { tIn: { value: null }, uDir: { value: new THREE.Vector2() } });
+      const comp = mat(['uniform sampler2D tScene; uniform sampler2D tBloom; uniform float uBloom; uniform float uGrade; varying vec2 vUv;', 'void main(){',
+        ' vec3 c = texture2D(tScene, vUv).rgb + texture2D(tBloom, vUv).rgb * uBloom;',
+        ' float l = dot(c, vec3(0.299, 0.587, 0.114));',
+        ' c = mix(vec3(l), c, 1.1 + 0.06 * uGrade);', // a little more colour
+        ' c = (c - 0.5) * (1.06 + 0.04 * uGrade) + 0.5;', // a little more contrast
+        ' c += vec3(0.022, 0.008, -0.018) * smoothstep(0.45, 1.0, l) - vec3(0.012, 0.0, -0.016) * (1.0 - smoothstep(0.0, 0.45, l));', // warm highlights, cool shadows
+        ' vec2 q = vUv - 0.5; c *= 1.0 - (0.2 + 0.08 * uGrade) * smoothstep(0.3, 0.85, dot(q, q) * 2.2);', // a soft vignette
+        ' gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0); }'].join('\n'), { tScene: { value: null }, tBloom: { value: null }, uBloom: { value: 0.45 }, uGrade: { value: 0 } });
+      const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), comp); quad.frustumCulled = false;
+      const qScene = new THREE.Scene(); qScene.add(quad);
+      this.post = { sceneRT, a: rt(4, 4), b: rt(4, 4), c: rt(4, 4), bright, blur, comp, quad, qScene, qCam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), w: 0, h: 0, sz: new THREE.Vector2() };
+      return true;
+    } catch (e) { this.post = null; return false; } // no camera effects on this device; the plain picture still works
+  },
+  render() {
+    const r = this.renderer, P = this.post;
+    if (!this.postOn || !P) { r.render(this.scene, this.camera); return; }
+    const sz = r.getDrawingBufferSize(P.sz), w = Math.max(4, sz.x | 0), h = Math.max(4, sz.y | 0);
+    if (P.w !== w || P.h !== h) { P.w = w; P.h = h; P.sceneRT.setSize(w, h); P.a.setSize(w >> 1, h >> 1); P.b.setSize(w >> 2, h >> 2); P.c.setSize(w >> 2, h >> 2); }
+    const pass = (m, target) => { P.quad.material = m; r.setRenderTarget(target); r.render(P.qScene, P.qCam); };
+    r.setRenderTarget(P.sceneRT); r.render(this.scene, this.camera);
+    P.bright.uniforms.tIn.value = P.sceneRT.texture; pass(P.bright, P.a); // the bright parts, at half size
+    const bw = P.b.width, bh = P.b.height, U = P.blur.uniforms;
+    U.tIn.value = P.a.texture; U.uDir.value.set(1 / bw, 0); pass(P.blur, P.b); // a wide soft blur at quarter size, twice
+    U.tIn.value = P.b.texture; U.uDir.value.set(0, 1 / bh); pass(P.blur, P.c);
+    U.tIn.value = P.c.texture; U.uDir.value.set(2 / bw, 0); pass(P.blur, P.b);
+    U.tIn.value = P.b.texture; U.uDir.value.set(0, 2 / bh); pass(P.blur, P.c);
+    const C = P.comp.uniforms; C.tScene.value = P.sceneRT.texture; C.tBloom.value = P.c.texture; C.uGrade.value = this.postGrade;
+    pass(P.comp, null);
+  },
 };

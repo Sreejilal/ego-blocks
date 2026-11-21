@@ -3,7 +3,7 @@
    ===================================================================== */
 // the auto graphics ladder: [quality, pixel scale]. Shadows go first and the picture stays sharp; fewer pixels (a softer
 // picture) only at the very end (CrazyGames: "consistent resolution throughout the game")
-const AUTO_STEPS = [['med', 1], ['lite', 1], ['lite', 0.9], ['low', 1]];
+const AUTO_STEPS = [['hi1', 1], ['med', 1], ['lite', 1], ['lite', 0.9], ['low', 1]]; // the camera effects go first, then shadows
 const Game = {
   state: 'boot', match: null, lastMode: null, last: 0, time: 0, ended: false, pausedAt: 0,
   perf: { t: 0, frames: 0, long: 0, min: 1, skip: 0 }, autoStep: 0, autoWant: null, autoWait: 0, crowdT: 0, gate: false,
@@ -17,6 +17,7 @@ const Game = {
     $('gl').addEventListener('webglcontextlost', (e) => { e.preventDefault(); try { Save.save(); } catch (er) {} bootFail(new Error('THE GRAPHICS STOPPED. THIS PHONE OR TABLET NEEDED THE MEMORY BACK. CLOSE OTHER APPS AND TABS, THEN RELOAD. YOUR PROGRESS IS SAVED.'), true); }, false);
     FX.init(World.scene);
     Touch.detect();
+    if (Touch.on || navigator.webdriver) this.autoStep = 1; // phones and tablets start without the camera effects (so do test robots, many windows at once on a small PC; test/post.js turns them on)
     UI.init();
     Showcase.init();
     Reveal.init();

@@ -127,6 +127,7 @@ const FAKE_SDK = `(() => {
   await A.evaluate(() => EGO.UI.show('lobby')); await A.click('#go-online'); await sleep(300);
   const nameBox = await A.evaluate(() => ({ v: document.getElementById('on-name').value, ro: document.getElementById('on-name').readOnly }));
   await A.click('#on-create'); await sleep(900);
+  for (let i = 0; i < 60; i++) { if (await A.evaluate(() => !!(EGO.Net.room))) break; await sleep(250); } // a slow PC can take a few seconds to connect
   const code = await A.evaluate(() => EGO.Net.room && EGO.Net.room.code);
   const link = await A.evaluate(() => EGO.Net.inviteLink());
   const c3 = await calls(A);
