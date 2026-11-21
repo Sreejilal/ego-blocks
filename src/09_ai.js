@@ -218,12 +218,13 @@ const AI = {
     }
     // a defender right on them: SLOW-MO and dribble past
     if (p.slowRe <= 0 && !p.isGK && c.pressure < 3.2 && c.dGoal < 38 && chance(0.15 + 0.3 * sk) && m.slowMo(p)) { this.dribble(m, p, c); return; }
-    const range = 12 + 9 * sk + (p.flowT > 0 ? 3 : 0);
+    const gk = m.keeperOf(1 - p.team), vsYou = !!(gk && gk.isHuman && !m.online); // owner: bots ran into the box to score every time against you in goal
+    const range = 12 + 9 * sk + (p.flowT > 0 ? 3 : 0) + (vsYou ? 7 : 0);
     if (c.dGoal < range && c.angleOK) {
       const pShoot = clamp((range - c.dGoal) / range * 1.3 + (c.pressure < 2.6 ? 0.25 : 0) + (c.dGoal < 9 ? 0.4 : 0), 0.1, 0.97);
       if (chance(pShoot)) { this.shoot(m, p, c, sk); return; }
     }
-    if (c.dGoal >= range && c.dGoal < 30 && c.angleOK && chance(0.025 + 0.04 * sk)) { this.shoot(m, p, c, sk); return; }
+    if (c.dGoal >= range && c.dGoal < 30 && c.angleOK && chance((0.025 + 0.04 * sk) * (vsYou ? 3 : 1))) { this.shoot(m, p, c, sk); return; } // against you in goal they try their luck from further out
     const bp = c.bestPass;
     let keep = (c.spaceAhead ? 6 : 2) + (c.dGoal < 20 ? 2 : 0) - (c.pressure < 2.6 ? 4.5 : 0) - (c.chasedBy ? 1.5 : 0);
     if (p.isGK) keep = -10;

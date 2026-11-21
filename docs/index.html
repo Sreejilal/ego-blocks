@@ -733,6 +733,31 @@ input[type="range"] { accent-color: var(--gold); width: 160px; }
 body.replaying #hud, body.replaying #labels { display: none !important; }
 /* cut-in for big moves: speed lines, then a slanted comic panel with your face and the move name, 0.8s in all */
 #cutin { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.slot.awk { border-color: #ffffff; box-shadow: 0 0 0 3px var(--aura, #ffcb3d), 0 0 18px var(--aura, #ffcb3d); animation: awkSlot .8s steps(2) infinite; }
+.slot.awk .nm { color: #fff; }
+@keyframes awkSlot { 50% { box-shadow: 0 0 0 3px #ffffff, 0 0 26px var(--aura, #ffcb3d); } }
+/* the Awakening flashback: a faded memory, then a flash in their colour and what they say now (UI.awakenStory) */
+#app > #awk { pointer-events: none; }
+#awk { position: absolute; inset: 0; z-index: 28; overflow: hidden; }
+#awk::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(40,26,12,.72), rgba(10,6,2,.94)); opacity: 0; }
+#awk canvas { position: absolute; left: 50%; top: 42%; width: min(68vw, 112vh, 760px); height: auto; aspect-ratio: 16 / 9; transform: translate(-50%, -50%) rotate(-1.5deg); image-rendering: pixelated; opacity: 0; filter: sepia(.55) contrast(1.05); border: 8px solid #ecd9b0; box-shadow: 0 0 0 3px #2e2014, 10px 12px 0 rgba(0,0,0,.5); } /* an old photo */
+#awk .awk-flash { position: absolute; inset: 0; background: var(--ci, #fff); opacity: 0; mix-blend-mode: screen; }
+#awk .awk-mem { position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%); display: grid; gap: 4px; text-align: center; padding: 10px 18px; opacity: 0; max-width: calc(100% - 32px); box-sizing: border-box; }
+#awk .awk-mem b { font-family: var(--font-display); font-size: clamp(18px, 3.2vw, 30px); letter-spacing: 1px; color: #f4e6c4; }
+#awk .awk-now { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; gap: clamp(12px, 3vw, 28px); padding: 16px; background: linear-gradient(90deg, transparent, rgba(9,11,22,.88) 18%, rgba(9,11,22,.88) 82%, transparent); border-block: 6px solid var(--ci, #fff); opacity: 0; }
+#awk .awk-face canvas { width: clamp(80px, 13vw, 140px); height: auto; display: block; border: 4px solid var(--ci, #fff); }
+#awk .awk-words { display: grid; gap: 6px; max-width: 60%; }
+#awk .awk-words b { font-family: var(--font-display); font-size: clamp(24px, 4.6vw, 52px); line-height: 1.05; color: #fff; text-shadow: 4px 4px 0 rgba(0,0,0,.5), 0 0 22px var(--ci, #fff); }
+#awk .awk-words span { font-family: var(--font-display); font-size: clamp(13px, 1.8vw, 18px); color: var(--ci, #fff); letter-spacing: 1px; }
+#awk.go canvas, #awk.go::before { animation: awkScene 2.9s linear forwards; }
+#awk.go .awk-mem { animation: awkMem 2.9s steps(12) forwards; }
+#awk.go .awk-flash { animation: awkFlash 2.9s ease-out forwards; }
+#awk.go .awk-now { animation: awkNow 2.9s cubic-bezier(.2,1.4,.4,1) forwards; }
+@keyframes awkScene { 0% { opacity: 0; } 8% { opacity: 1; } 48% { opacity: 1; } 52% { opacity: 0; } 100% { opacity: 0; } }
+@keyframes awkMem { 0%, 6% { opacity: 0; clip-path: inset(0 100% 0 0); } 10% { opacity: 1; clip-path: inset(0 100% 0 0); } 36% { opacity: 1; clip-path: inset(0 0 0 0); } 48% { opacity: 1; clip-path: inset(0 0 0 0); } 52%, 100% { opacity: 0; } }
+@keyframes awkFlash { 0%, 49% { opacity: 0; } 52% { opacity: .95; } 66% { opacity: .2; } 100% { opacity: 0; } }
+@keyframes awkNow { 0%, 51% { opacity: 0; transform: translateY(-50%) scale(1.4); } 58% { opacity: 1; transform: translateY(-50%) scale(1); } 92% { opacity: 1; transform: translateY(-50%) scale(1); } 100% { opacity: 0; transform: translateY(-50%) scale(.96); } }
+@media (prefers-reduced-motion: reduce) { #awk.go .awk-now, #awk.go canvas { animation-timing-function: linear; } }
 #cutin .ci-lines { position: absolute; inset: -20%; opacity: 0;
   background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,0) 0deg 4deg, rgba(255,255,255,.5) 4deg 5deg, rgba(255,255,255,0) 5deg 9deg, var(--ci, #fff) 9deg 9.6deg);
   -webkit-mask-image: radial-gradient(circle, transparent 26%, #000 62%); mask-image: radial-gradient(circle, transparent 26%, #000 62%); }
@@ -1138,7 +1163,8 @@ const Save = {
     st.btn = [0.85, 1, 1.15].includes(Number(st.btn)) ? Number(st.btn) : 1;
     st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false; st.server = typeof st.server === 'string' ? st.server.slice(0, 200) : '';
     st.chat = ['all', 'quick', 'off'].includes(st.chat) ? st.chat : 'all';
-    st.sky = st.sky === 'sunset' ? 'sunset' : 'day';
+    st.sky = st.sky === 'sunset' || st.sky === 'night' ? st.sky : 'day';
+    st.weather = st.weather === 'rain' ? 'rain' : 'clear';
     st.showOnline = st.showOnline !== false; st.invites = ['all', 'friends', 'off'].includes(st.invites) ? st.invites : 'all';
     st.music = st.music !== false;
     st.frOpen = typeof st.frOpen === 'boolean' ? st.frOpen : null; // the FRIENDS panel open or hidden (null: open on wide screens)
@@ -2120,6 +2146,12 @@ const LOOKS = {
     fog: ['#b27a86', 95, 470], hemi: ['#8d96e6', '#5a4630', 0.62], amb: ['#2c3466', 0.35], light: ['#ffb27a', 1.35, [-58, 72, -34]], fill: ['#dfe7ff', 0.62],
     exposure: 1.18, cloud: ['#c86c7a', 0.55], fans: [0.82, 0.74, 0.8], tower: 1.25, lamps: 1, sunMatch: [-0.42, 0.24, 0.87], sunLobby: [0.3, 0.2, 0.93],
   },
+  // owner: "a night match with floodlights": a dark sky full of stars, the floodlights do the lighting (the main light straight down from high up)
+  night: {
+    sky: ['#03050f', '#081028', '#142246', '#24345e', '#0a0f1e', '#c8d6ff'], sun: '#e8eeff', halo: ['#9fb4ff', 0.25], stars: true,
+    fog: ['#0d1428', 90, 430], hemi: ['#5a6aa8', '#1c2a1c', 0.42], amb: ['#22305a', 0.3], light: ['#f4f6ff', 1.55, [-12, 120, -8]], fill: ['#b8c8ff', 0.5],
+    exposure: 1.22, cloud: ['#1a2440', 0.25], fans: [0.7, 0.72, 0.85], tower: 1.7, lamps: 1.7, sunMatch: [-0.12, 0.95, 0.2], sunLobby: [0.1, 0.9, 0.3],
+  },
 };
 
 const World = {
@@ -2148,11 +2180,14 @@ const World = {
     this.buildStands();
     this.buildFans();
     this.buildCrowdExtras();
+    this.buildRoofs(); this.buildRain(); this.buildGrass();
     this.buildFloodlights();
     this.buildTower();
     this.buildTrees();
     this.buildClouds();
+    this.weather = Save.data.settings.weather === 'rain' ? 'rain' : 'clear';
     this.setLook(Save.data.settings.sky);
+    if (this.rain) this.rain.visible = this.weather === 'rain';
     this.setQuality(q === 'auto' ? 'med' : q);
     this.resize();
   },
@@ -2177,6 +2212,7 @@ const World = {
       E.posters.visible = !lowish; E.flashes.visible = !lowish && q !== 'lite'; E.flags.forEach((f) => { f.visible = !!Q.post; });
     }
     this.postOn = !!Q.post && this.initPost(); this.postGrade = Q.grade || 0;
+    if (this.grass) this.grass.visible = !!Q.post; // the 3D grass with the camera effects (HIGH, ULTRA, auto at its best)
     this.resize();
   },
   resize() {
@@ -2256,7 +2292,7 @@ const World = {
     const pitch = new THREE.Mesh(new THREE.PlaneGeometry(PITCH_BX, PITCH_BZ), new THREE.MeshLambertMaterial({ map: makePitchTexture() }));
     pitch.rotation.x = -Math.PI / 2;
     pitch.receiveShadow = true;
-    this.scene.add(pitch);
+    this.scene.add(pitch); this.pitchTex = pitch.material.map; // the 3D grass takes its colours from it
     const gGeo = new THREE.PlaneGeometry(1600, 1600);
     const uv = gGeo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 1600, uv.getY(i) * 1600);
     const ground = new THREE.Mesh(gGeo, new THREE.MeshLambertMaterial({ map: T.grassTop }));
@@ -2312,14 +2348,16 @@ const World = {
     this.scene.add(frame);
     const netMat = new THREE.MeshLambertMaterial({ map: this.T.net, alphaTest: 0.5, side: THREE.DoubleSide });
     this.nets = [];
-    const mkNet = (w, h, uw, uh) => { const g = new THREE.PlaneGeometry(w, h); const a = g.attributes.uv; for (let i = 0; i < a.count; i++) a.setXY(i, a.getX(i) * uw, a.getY(i) * uh); return new THREE.Mesh(g, netMat); };
+    let nm = netMat;
+    const mkNet = (w, h, uw, uh) => { const g = new THREE.PlaneGeometry(w, h); const a = g.attributes.uv; for (let i = 0; i < a.count; i++) a.setXY(i, a.getX(i) * uw, a.getY(i) * uh); return new THREE.Mesh(g, nm); };
     for (const s of [1, -1]) {
+      nm = netMat.clone(); nm.transparent = true; // each goal its own, so the one the camera is behind can fade
       const grp = new THREE.Group();
       const backNet = mkNet(gw * 2, gh, gw * 2, gh); backNet.position.set(0, gh / 2, s * (back - P / 2)); grp.add(backNet);
       const top = mkNet(gw * 2, F.GD - P, gw * 2, F.GD - P); top.rotation.x = -Math.PI / 2; top.position.set(0, gh + P / 2, s * (L + (F.GD - P) / 2)); grp.add(top);
       for (const sx of [1, -1]) { const side = mkNet(F.GD - P, gh, F.GD - P, gh); side.rotation.y = Math.PI / 2; side.position.set(sx * (gw + P / 2), gh / 2, s * (L + (F.GD - P) / 2)); grp.add(side); }
       this.scene.add(grp);
-      this.nets.push({ s, back: backNet, baseZ: backNet.position.z, grp });
+      this.nets.push({ s, back: backNet, baseZ: backNet.position.z, grp, mat: nm });
     }
   },
   buildStands() {
@@ -2568,6 +2606,83 @@ const World = {
     E.flashes = new THREE.Points(fg, E.flashMat); E.flashes.frustumCulled = false;
     this.scene.add(E.flashes);
   },
+  /** owner: "a stadium roof": over the lower stands in a small stadium, over the upper deck once it opens (setTier), with a row of lights under the front edge */
+  buildRoofs() {
+    const S = this.stand, U = this.upperRows, T = this.T;
+    const mat = new THREE.MeshLambertMaterial({ map: T.metalDark, vertexColors: true }), glow = new THREE.MeshBasicMaterial({ color: lin('#fff3d0'), toneMapped: false });
+    const make = (outX, outZ, y, depth) => {
+      const vb = new VoxBuilder(), lights = new VoxBuilder(), L = S.sideLen + 1, E = S.endLen + 1;
+      vb.box(-outX - 1, y, -L, -outX + depth, y + 0.5, L, '#9aa0b4', { uv: 1 }); vb.box(outX - depth, y, -L, outX + 1, y + 0.5, L, '#9aa0b4', { uv: 1 }); // the sides
+      vb.box(-E, y, -outZ - 1, E, y + 0.5, -outZ + depth, '#9aa0b4', { uv: 1 }); vb.box(-E, y, outZ - depth, E, y + 0.5, outZ + 1, '#9aa0b4', { uv: 1 }); // the ends
+      for (const sx of [-1, 1]) vb.box(sx * (outX - depth) - 0.3, y - 0.7, -L, sx * (outX - depth) + 0.3, y + 0.5, L, '#e8ecf4', { uv: 1 }); // white front edges
+      for (const sz of [-1, 1]) vb.box(-E, y - 0.7, sz * (outZ - depth) - 0.3, E, y + 0.5, sz * (outZ - depth) + 0.3, '#e8ecf4', { uv: 1 });
+      for (let z = -L + 4; z < L; z += 8) for (const sx of [-1, 1]) lights.box(sx * (outX - depth) - 0.2, y - 0.95, z - 0.5, sx * (outX - depth) + 0.2, y - 0.7, z + 0.5, '#ffffff');
+      for (let x = -E + 4; x < E; x += 8) for (const sz of [-1, 1]) lights.box(x - 0.5, y - 0.95, sz * (outZ - depth) - 0.2, x + 0.5, y - 0.7, sz * (outZ - depth) + 0.2, '#ffffff');
+      const g = new THREE.Group(), m = vb.mesh(mat); m.castShadow = true; g.add(m, lights.mesh(glow));
+      this.scene.add(g); return g;
+    };
+    this.roofLow = make(S.outerX, S.outerZ, S.wallTop + 1.6, 9);
+    const ux = U.ux + U.UP * this.standRows.DEP, uz = U.uz + U.UP * this.standRows.DEP;
+    this.roofHigh = make(ux, uz, U.uBase + U.UP * U.uRise + 2.6, 11);
+  },
+  /** owner: "rain": streaks falling round the camera (they keep their place in the world, so moving does not drag them), and a greyer sky. settings.weather */
+  buildRain() {
+    const n = 3000, seed = new Float32Array(n * 2 * 3), end = new Float32Array(n * 2), pos = new Float32Array(n * 2 * 3), R = mulberry32(5);
+    for (let i = 0; i < n; i++) { const a = R(), b = R(), c = R(); for (let k = 0; k < 2; k++) { seed.set([a, b, c], (i * 2 + k) * 3); end[i * 2 + k] = k; } }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('aSeed', new THREE.BufferAttribute(seed, 3)); g.setAttribute('aEnd', new THREE.BufferAttribute(end, 1));
+    this.rainMat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uCam: { value: new THREE.Vector3() } },
+      vertexShader: ['attribute vec3 aSeed; attribute float aEnd; uniform float uTime; uniform vec3 uCam; varying float vA;', 'void main(){',
+        ' float B = 64.0, H = 34.0;',
+        ' vec3 p = vec3(uCam.x + mod(aSeed.x * B - uCam.x, B) - B * 0.5, mod(aSeed.y * H - uTime * (22.0 + aSeed.z * 8.0), H) - 2.0, uCam.z + mod(aSeed.z * B - uCam.z, B) - B * 0.5);',
+        ' p.y -= aEnd * 0.75; p.x -= aEnd * 0.12; vA = 0.42 - aEnd * 0.3;',
+        ' gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }'].join('\n'),
+      fragmentShader: ['varying float vA;', 'void main(){ gl_FragColor = vec4(0.78, 0.84, 0.95, vA); }'].join('\n'),
+      transparent: true, depthWrite: false,
+    });
+    this.rain = new THREE.LineSegments(g, this.rainMat); this.rain.frustumCulled = false; this.rain.visible = false;
+    this.scene.add(this.rain);
+  },
+  setWeather(w) {
+    this.weather = w === 'rain' ? 'rain' : 'clear';
+    if (this.rain) this.rain.visible = this.weather === 'rain';
+    this.setLook(this.look || 'day'); // the look, greyed for rain
+  },
+  /** owner: "more detailed grass": real little blades of grass around the camera (HIGH and ULTRA), coloured from the pitch under them (white on the lines), swaying */
+  buildGrass() {
+    if (!this.renderer.capabilities.vertexTextures) return; // the blades read the pitch colours in the vertex shader: not every phone can
+    const N = 120, S = 0.24, n = N * N; // a 120 x 120 patch, a blade every 0.24 blocks, that follows the camera in whole steps
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute([-0.035, 0, 0, 0.035, 0, 0, 0, 1, 0, 0, 0, -0.035, 0, 0, 0.035, 0, 1, 0], 3)); // two crossed slivers
+    const cell = new Float32Array(n * 2); for (let i = 0; i < n; i++) { cell[i * 2] = i % N; cell[i * 2 + 1] = Math.floor(i / N); }
+    geo.setAttribute('aCell', new THREE.InstancedBufferAttribute(cell, 2));
+    this.grassMat = new THREE.ShaderMaterial({
+      uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { map: { value: null }, uTime: { value: 0 }, uCam: { value: new THREE.Vector2() }, uLight: { value: new THREE.Vector3(1, 1, 1) }, uSize: { value: new THREE.Vector2(PITCH_BX, PITCH_BZ) } }]),
+      vertexShader: ['attribute vec2 aCell; uniform float uTime; uniform vec2 uCam; uniform vec2 uSize; uniform sampler2D map; varying vec3 vCol; varying float vTip;', '#include <fog_pars_vertex>',
+        'float h(vec2 q){ return fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453); }', 'void main(){',
+        ' float N = ' + N + '.0, S = ' + S + ';',
+        ' vec2 base = floor(uCam / S) * S - N * S * 0.5;',
+        ' vec2 w = base + aCell * S; vec2 id = floor(w / S + 0.5);',
+        ' w += (vec2(h(id), h(id + 7.1)) - 0.5) * S;',
+        ' float d = length(w - uCam) / (N * S * 0.5); float fade = 1.0 - smoothstep(0.55, 1.0, d);',
+        ' float on = step(abs(w.x), uSize.x * 0.5 - 0.6) * step(abs(w.y), uSize.y * 0.5 - 0.6);', // only on the pitch and its run-off
+        ' float ht = (0.06 + h(id + 3.3) * 0.06) * fade * on;',
+        ' vec3 p = position; p.y *= ht; float sway = sin(uTime * 2.2 + w.x * 0.7 + w.y * 0.5) * 0.025 * p.y / max(ht, 0.001);',
+        ' vec3 wp = vec3(w.x + p.x + sway * position.y, p.y, w.y + p.z + sway * 0.6 * position.y);',
+        ' vec2 uv = vec2(w.x / uSize.x + 0.5, 0.5 - w.y / uSize.y);',
+        ' vCol = pow(texture2D(map, uv).rgb, vec3(2.2)) * (0.95 + 0.3 * position.y) * (0.94 + h(id + 1.7) * 0.12); vTip = position.y;',
+        ' vec4 mvPosition = modelViewMatrix * vec4(wp, 1.0);', ' gl_Position = projectionMatrix * mvPosition;', ' #include <fog_vertex>', '}'].join('\n'),
+      fragmentShader: ['uniform vec3 uLight; varying vec3 vCol; varying float vTip;', '#include <common>', '#include <fog_pars_fragment>', 'void main(){',
+        ' gl_FragColor = vec4(vCol * uLight, 1.0);', ' #include <tonemapping_fragment>', ' #include <encodings_fragment>', ' #include <fog_fragment>', '}'].join('\n'),
+      fog: true, side: THREE.DoubleSide,
+    });
+    this.grassMat.uniforms.map.value = this.pitchTex;
+    this.grass = new THREE.InstancedMesh(geo, this.grassMat, n);
+    this.grass.frustumCulled = false; this.grass.visible = false;
+    const m4 = new THREE.Matrix4(); for (let i = 0; i < n; i++) this.grass.setMatrixAt(i, m4); // the shader places every blade
+    this.scene.add(this.grass);
+  },
   /** paint the banners, posters and flags in the two clubs' colours (home: west and south, away: east and north) */
   paintCrowdExtras(a, b) {
     const E = this.extras; if (!E) return;
@@ -2723,6 +2838,8 @@ const World = {
     this.excite[0] = Math.max(0, this.excite[0] - dt * 0.22);
     this.excite[1] = Math.max(0, this.excite[1] - dt * 0.22);
     if (this.fanMat) { this.fanMat.uniforms.uTime.value = this.time; this.fanMat.uniforms.uExcite.value.set(this.excite[0], this.excite[1]); }
+    if (this.rain && this.rain.visible) { this.rainMat.uniforms.uTime.value = this.time; this.rainMat.uniforms.uCam.value.copy(cam.position); }
+    if (this.grass && this.grass.visible) { const G = this.grassMat.uniforms; G.uTime.value = this.time; G.uCam.value.set(cam.position.x, cam.position.z); G.uLight.value.copy(this.fanMat ? this.fanMat.uniforms.uLight.value : G.uLight.value); }
     if (this.extras) {
       const E = this.extras;
       E.flagMat.forEach((fm) => { fm.uniforms.uTime.value = this.time; });
@@ -2731,8 +2848,9 @@ const World = {
     }
     const cp = cam.position;
     for (const n of this.nets) {
-      // the camera behind this goal (you in goal, or near your own line): its net goes away so it never fills the view (the posts and bar stay)
-      n.grp.visible = !(cp.z * n.s > F.L - 0.3 && Math.abs(cp.x) < F.GW + F.POST + 7 && cp.y < F.GH + 7);
+      // the camera behind this goal (you in goal, or near your own line): its net fades right down, so you still see it but it never fills the view
+      const behind = cp.z * n.s > F.L - 0.3 && Math.abs(cp.x) < F.GW + F.POST + 7 && cp.y < F.GH + 7;
+      n.mat.opacity = damp(n.mat.opacity, behind ? 0.28 : 1, 10, dt); n.mat.depthWrite = n.mat.opacity > 0.9;
       const i = n.s > 0 ? 0 : 1;
       this.netBulge[i] = damp(this.netBulge[i], 0, 5, dt);
       n.back.position.z = n.baseZ + n.s * this.netBulge[i] * 0.9;
@@ -2749,8 +2867,23 @@ const World = {
     if (this.lampSprites.length) this.lampSprites[0].material.opacity = (0.36 + Math.sin(this.time * 1.7) * 0.03) * (this.lampGlow == null ? 1 : this.lampGlow); // floodlights glow less by day
   },
   /** dress the stands for a match: seats in each club's crest colour, fans in their club's home shirts */
+  /** owner: "add some net variety": the goal nets' pattern and colour (each match picks one, paintCrowd) */
+  setNet(kind, hex) {
+    const tex = this.T.net, c = tex.image, g = c.getContext('2d'), col = hexRGB(hex || '#eef0f4'), img = g.createImageData(16, 16), d = img.data;
+    const on = {
+      classic: (x, y) => x % 4 === 0 || y % 4 === 0,
+      diamond: (x, y) => (x + y) % 4 === 0 || (x - y + 16) % 4 === 0,
+      hex: (x, y) => { const r = Math.floor(y / 4), ox = (r % 2) * 2; return (y % 4 === 0 && (x + ox) % 4 !== 2) || (x + ox) % 4 === 0 && y % 4 !== 0; },
+      big: (x, y) => x % 8 < 2 || y % 8 < 2,
+      fine: (x, y) => x % 2 === 0 || y % 2 === 0,
+    }[kind] || ((x, y) => x % 4 === 0 || y % 4 === 0);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const i = (y * 16 + x) * 4, v = on(x, y); d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = v ? 255 : 0; }
+    g.putImageData(img, 0, 0); tex.needsUpdate = true;
+    this.netKind = kind; this.netHex = hex || '#eef0f4';
+  },
   paintCrowd(a, b) {
     const sides = [a, b];
+    this.setNet(pick(['classic', 'classic', 'diamond', 'hex', 'big', 'fine']), Math.random() < 0.3 ? CLUBS[a.club].home.shirt : pick(['#eef0f4', '#eef0f4', '#ffcb3d', '#1d1f2e'])); // a new net every match
     repaintSeat(this.T.seatHome, a.crest[0]); repaintSeat(this.T.seatAway, b.crest[0]);
     const pals = sides.map((s) => { const k = CLUBS[s.club].home; return [k.shirt, k.shirt, k.alt, k.sleeve, k.shirt].map((h) => lin(h)); });
     const geo = this.fans.geometry, col = geo.attributes.aColor, data = geo.attributes.aData, R = mulberry32(9);
@@ -2767,6 +2900,7 @@ const World = {
     const n = Math.round(this.fanCount * TIER_FANS[tier]);
     this.fans.count = n;
     this.upper.visible = tier >= 3;
+    if (this.roofLow) { this.roofLow.visible = !this.upper.visible; this.roofHigh.visible = this.upper.visible; }
     if (!this.upper.visible) this.fans.count = Math.min(n, this.lowerFans);
     if (this.extras) { // only fans who came hold posters and take photos
       const c = this.fans.count, E = this.extras, upTo = (A) => { let k = 0; while (k < A.length && A[k] < c) k++; return k; };
@@ -2788,6 +2922,7 @@ const World = {
     this.sun.color.copy(lin(L.light[0])); this.sun.intensity = L.light[1]; this.sun.position.set(L.light[2][0], L.light[2][1], L.light[2][2]);
     this.fill.color.copy(lin(L.fill[0])); this.fill.intensity = L.fill[1];
     this.renderer.toneMappingExposure = L.exposure;
+    if (this.weather === 'rain') { f.color.lerp(lin('#6f7888'), 0.6); f.near *= 0.55; f.far *= 0.6; this.sun.intensity = L.light[1] * 0.6; this.hemi.intensity = L.hemi[2] * 0.85; this.renderer.toneMappingExposure = L.exposure * 0.92; } // rain: a greyer, closer world
     this.cloudMat.emissive.copy(lin(L.cloud[0])); this.cloudMat.emissiveIntensity = L.cloud[1];
     this.fanMat.uniforms.uLight.value.set(L.fans[0], L.fans[1], L.fans[2]);
     this.towerGlass.emissiveIntensity = L.tower;
@@ -4408,6 +4543,39 @@ const FLOW_IDS = Object.keys(FLOWS);
 /** Awakening: a style's own transformation. It comes by itself at random moments; big plays make it come much sooner.
     For AWAKEN_TIME seconds: cooldowns reset and recharge twice as fast, ability effects last 50% longer, plus the style's own power */
 const AWAKEN_TIME = 20;
+/** owner: "animations for the awakening, like SPRINTER remembering his past, how he lost a race and saying he will not
+    give up": a flashback before each Awakening. [the memory's scene, what happened, what they say now] */
+const AWAKEN_STORY = {
+  ROOKIE: ['park', 'EVERYONE PICKED ME LAST AT THE PARK', 'NOT ANYMORE. WATCH ME!'],
+  SPRINTER: ['race', 'I LOST THE BIG RACE BY ONE STEP', 'I WILL NOT GIVE UP. NOT THIS TIME!'],
+  PHANTOM: ['crowd', 'THEY SAID I WAS TOO SMALL TO PLAY', 'NOW THEY CANNOT EVEN SEE ME.'],
+  TRICKSTER: ['crowd', 'THE WHOLE CROWD LAUGHED WHEN I FELL', 'NOW THEY LAUGH AT YOUR DEFENDERS!'],
+  ENFORCER: ['goal', 'WE LOST BECAUSE I STEPPED BACK', 'I WILL NEVER STEP BACK AGAIN!'],
+  SHAMBLER: ['rain', 'I GOT KNOCKED DOWN AGAIN AND AGAIN', 'AND EVERY TIME I GOT BACK UP.'],
+  PROWLER: ['goal', 'I MISSED AN OPEN GOAL IN THE FINAL', 'I HAVE NOT MISSED SINCE.'],
+  MAGNET: ['park', 'THE BALL ALWAYS BOUNCED AWAY FROM ME', 'NOW IT COMES TO ME!'],
+  THUNDER: ['goal', 'COACH SAID: NEVER SHOOT FROM THERE', 'WATCH THIS ONE, COACH!'],
+  WARDEN: ['goal', 'I LET IN THE GOAL THAT LOST THE CUP', 'NOBODY GETS PAST ME AGAIN!'],
+  MAESTRO: ['crowd', 'NOBODY PASSED TO ME FOR A WHOLE SEASON', 'NOW EVERYTHING GOES THROUGH ME.'],
+  BLITZ: ['race', 'I WAS ALWAYS ONE SECOND TOO LATE', 'NEVER AGAIN. I GET THERE FIRST!'],
+  COMET: ['night', 'I DREAMED OF FLYING SINCE I WAS SMALL', 'TODAY I FLY!'],
+  RAILGUN: ['rain', 'I PRACTISED ONE SHOT TEN THOUSAND TIMES', 'THIS IS NUMBER TEN THOUSAND AND ONE!'],
+  KESTREL: ['rain', 'I RAN MY LAPS ALONE IN THE RAIN', 'MY LEGS NEVER GET TIRED NOW!'],
+  ANCHOR: ['park', 'THEY CALLED ME SLOW AND HEAVY', 'GOOD LUCK MOVING ME!'],
+  FEATHER: ['crowd', 'THEY SAID I WAS TOO SOFT FOR THIS GAME', 'A SOFT TOUCH. AND YOU CANNOT STOP IT.'],
+  CAPTAIN: ['crowd', 'MY TEAM LOOKED AT ME WHEN WE WERE LOSING', 'FOLLOW ME. WE DO THIS TOGETHER!'],
+  GLACIER: ['night', 'I FROZE IN MY FIRST BIG MATCH', 'NOW THE GAME FREEZES FOR ME.'],
+  SPARK: ['crowd', 'MY TEMPER GOT ME SENT OFF', 'NOW IT GOES INTO EVERY TOUCH!'],
+  TITAN: ['park', 'I WAS THE KID NOBODY WANTED ON THEIR TEAM', 'NOW NOTHING CAN STOP ME!'],
+  FORTRESS: ['goal', 'A SHOT WENT RIGHT THROUGH MY HANDS', 'NEVER AGAIN. THIS IS MY GOAL!'],
+  LYNX: ['goal', 'I DIVED THE WRONG WAY IN THE BIG GAME', 'I WILL NOT GUESS. I WILL KNOW!'],
+  VORTEX: ['night', 'I SPUN IN CIRCLES, LOST AND DIZZY', 'NOW YOU ARE THE ONES SPINNING!'],
+  NOVA: ['night', 'I WATCHED SHOOTING STARS EVERY NIGHT', 'TONIGHT I AM THE STAR!'],
+  SENTINEL: ['goal', 'I TURNED MY BACK FOR ONE SECOND', 'I WILL NEVER LOOK AWAY AGAIN.'],
+  JESTER: ['crowd', 'THEY TOLD ME FOOTBALL IS NOT A SHOW', 'THEN WHY IS EVERYONE WATCHING?'],
+  TEMPEST: ['rain', 'I WAS SCARED OF STORMS', 'NOW I AM THE STORM!'],
+  ACE: ['race', 'I WASTED THE LAST CHANCE OF THE FINAL', 'EVERY CHANCE COUNTS NOW!'],
+};
 /** the feint (C): a step-over cut nobody can tackle you through, once every FEINT_CD seconds */
 const FEINT_CD = 5;
 const BOX_FREE = 5; // owner's rule: once you are in their box, their defenders wait outside it this many seconds (bot matches)
@@ -4989,7 +5157,7 @@ function poolFor(kind, rarityIdx) {
    Match: rules, possession, kicking, tackling, abilities, goals,
    restarts, Flow, Lawless items
    ===================================================================== */
-const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {} }; // filled in by the UI
+const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {} }; // filled in by the UI
 const BOT_NAMES = ['BLOK', 'CUBO', 'PIXL', 'VOXX', 'CHUNK', 'BRIK', 'TILE', 'STAK', 'OBBY', 'GRAV', 'LOAM', 'SLAB', 'COBB', 'FLINT', 'QUARTZ', 'MOSS', 'DUSK', 'EMBR', 'RUNE', 'KRYS', 'BYTE', 'NOVA', 'REDS', 'TUFF'];
 const MODES = {
   // rewards: offline, only these full-time matches give rewards (online with friends, every mode does)
@@ -5239,6 +5407,8 @@ class Match {
       else if (this.ball.owner === ot.from && this.canAct(ot.from)) { this.oneTwoBack = null; this.throughBall(ot.from, ot.to); this.label(ot.from, 'ONE-TWO', ot.to.aura); }
     }
     this.updateAwakening(dt);
+    // the build-up: as the hidden Awakening meter fills, sparks in your colour start to crackle round you, more and more
+    for (const p of this.players) if (p.awake > 40 && p.awakeT <= 0 && p.style.awaken && !(p.isGK && !p.isHuman) && Math.random() < (p.awake - 40) / 60 * dt * 6) FX.sparks(p.pos.x + rand(-0.4, 0.4), p.pos.y + rand(0.3, 1.7), p.pos.z + rand(-0.4, 0.4), p.aura, 3, 1.6, 0.12, 0.5);
     this.updatePending(dt);
     this.keeperFx();
     for (const p of this.players) p.physics(dt);
@@ -5385,9 +5555,9 @@ class Match {
     }
     out.feint = false; // without the ball the FEINT button only ever dives
     const sideways = Math.abs(c.moveX || 0) > 0.3;
-    const push = Math.abs(p.mx) > 0.3 ? p.mx : 0;
-    if (c.jump && sideways) out.jump = false;
-    if (c.dodge || (c.jump && sideways)) this.keeperDive(p, push, !!c.dodge && c.jumpHeld);
+    const push = Math.abs(p.mx) > 0.3 ? p.mx : 0, forward = iy > 0.4 && !sideways;
+    if ((c.jump || c.dodge) && forward && p.onGround) { out.jump = false; this.keeperLunge(p); } // owner: "make it so you can dive forward": JUMP (or C) with W
+    else if (c.dodge || (c.jump && sideways)) { if (c.jump) out.jump = false; this.keeperDive(p, push, !!c.dodge && c.jumpHeld); }
     else if (!p.onGround && p.state === 'free' && this.time - (p.jumpAt || -9) < 1.5 && (sidePress || fwdPress)) { // owner: "jump, and when you're in the air press A or D to dive ... you can dive forward": any time in the jump
       if (fwdPress) this.keeperLunge(p); else this.keeperDive(p, push, true, true, false, true);
     }
@@ -5991,9 +6161,10 @@ class Match {
     if (p.isHuman && before < 100 && p.flow >= 100) { this.toast(Touch.on ? 'FLOW READY. TAP FLOW' : 'FLOW READY. PRESS G', 'gold', p); Sfx.coin(); Hud.flowReady(); }
   }
   awakeAdd(p, amt) {
-    if (!p || p.isGK || p.awakeT > 0 || !p.style.awaken) return;
+    if (!p || (p.isGK && !p.isHuman) || p.awakeT > 0 || !p.style.awaken) return; // owner: "add awakening" for you in goal too
     const before = p.awake;
     p.awake = Math.min(100, p.awake + amt * 0.7); // a hidden meter: the fuller it is, the likelier you awaken any second
+    if (p.isHuman && before < 70 && p.awake >= 70) this.label(p, 'POWER RISING', p.aura, 1.4); // owner: the effects show before it even happens
   }
   /** Awakening comes by itself: once a second each player may awaken. Big plays (p.awake) make it much likelier,
       and after one ends there is a rest before the next */
@@ -6003,7 +6174,7 @@ class Match {
     if (this.awT < 1) return;
     this.awT -= 1;
     for (const p of this.players) {
-      if (p.isGK || p.awakeT > 0 || !p.style.awaken || (p.awakeRest || 0) > this.time) continue;
+      if ((p.isGK && !p.isHuman) || p.awakeT > 0 || !p.style.awaken || (p.awakeRest || 0) > this.time) continue;
       if (Math.random() < this.awakenChance(p)) this.activateAwaken(p);
     }
   }
@@ -6011,7 +6182,7 @@ class Match {
   /** your style's Awakening: a burst of light, then AWAKEN_TIME seconds of its powers */
   activateAwaken(p) {
     const aw = p.style.awaken;
-    if (!aw || p.isGK || p.awakeT > 0 || !this.canAct(p)) return false;
+    if (!aw || (p.isGK && !p.isHuman) || p.awakeT > 0 || !this.canAct(p)) return false;
     p.awakeRest = this.time + AWAKEN_TIME + 25;
     p.awake = 0; p.awakeT = AWAKEN_TIME; p.awakeMoveUsed = false;
     for (const a of p.abil) a.cd = 0;
@@ -6021,7 +6192,8 @@ class Match {
     this.label(p, 'AWAKENED · ' + aw.name, p.aura, 2.4);
     FX.awakenBurst(p);
     Sfx.flow(); Sfx.cutin();
-    if (p.isHuman) { if (!this.cinematic(p, 'AWAKENING · ' + aw.name)) TimeCtl.slowMo(0.35, 0.8); Shake.add(0.4); }
+    if (p.isHuman && !this.online && !this.autopilot && Save.data.settings.cutins) { Hud.awaken(p); TimeCtl.slowMo(0.1, 2.7); Shake.add(0.4); } // the flashback (owner: like SPRINTER remembering the race he lost)
+    else if (p.isHuman) { if (!this.cinematic(p, 'AWAKENING · ' + aw.name)) TimeCtl.slowMo(0.35, 0.8); Shake.add(0.4); }
     else Shake.add(0.12);
     return true;
   }
@@ -7227,12 +7399,13 @@ const AI = {
     }
     // a defender right on them: SLOW-MO and dribble past
     if (p.slowRe <= 0 && !p.isGK && c.pressure < 3.2 && c.dGoal < 38 && chance(0.15 + 0.3 * sk) && m.slowMo(p)) { this.dribble(m, p, c); return; }
-    const range = 12 + 9 * sk + (p.flowT > 0 ? 3 : 0);
+    const gk = m.keeperOf(1 - p.team), vsYou = !!(gk && gk.isHuman && !m.online); // owner: bots ran into the box to score every time against you in goal
+    const range = 12 + 9 * sk + (p.flowT > 0 ? 3 : 0) + (vsYou ? 7 : 0);
     if (c.dGoal < range && c.angleOK) {
       const pShoot = clamp((range - c.dGoal) / range * 1.3 + (c.pressure < 2.6 ? 0.25 : 0) + (c.dGoal < 9 ? 0.4 : 0), 0.1, 0.97);
       if (chance(pShoot)) { this.shoot(m, p, c, sk); return; }
     }
-    if (c.dGoal >= range && c.dGoal < 30 && c.angleOK && chance(0.025 + 0.04 * sk)) { this.shoot(m, p, c, sk); return; }
+    if (c.dGoal >= range && c.dGoal < 30 && c.angleOK && chance((0.025 + 0.04 * sk) * (vsYou ? 3 : 1))) { this.shoot(m, p, c, sk); return; } // against you in goal they try their luck from further out
     const bp = c.bestPass;
     let keep = (c.spaceAhead ? 6 : 2) + (c.dGoal < 20 ? 2 : 0) - (c.pressure < 2.6 ? 4.5 : 0) - (c.chasedBy ? 1.5 : 0);
     if (p.isGK) keep = -10;
@@ -7846,11 +8019,12 @@ const Cam = {
     if (pk > 0 || this.punchK > 0) { cam.fov = World.baseFov - pk * 10; cam.updateProjectionMatrix(); }
     this.punchK = pk;
     // first person, except for goals and the final whistle (wide shots) and when you are on the grass
-    const fp = this.first() && !wide && p.state !== 'down' && p.state !== 'celebrate' && p.state !== 'dive';
+    const fp = this.first() && !wide && p.state !== 'down' && p.state !== 'celebrate' && (p.state !== 'dive' || p.isGK); // owner: a keeper's dive stays in first person
     if (fp) {
       // at your eyes, a little in front of the face so the head never fills the screen
       const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
       this.pos.set(p.pos.x + fx * 0.3, p.pos.y + CAM_EYE, p.pos.z + fz * 0.3);
+      if (p.state === 'dive' && p.P && p.P.headP) { p.P.root.updateMatrixWorld(true); p.P.headP.localToWorld(_v3.set(0, 0.32, 0.12)); this.pos.copy(_v3); } // diving: your eyes go with your head
       if (this.hidden !== p) { this.unhide(); this.hidden = p; }
       p.P.root.visible = false;
     } else {
@@ -9811,7 +9985,7 @@ const Net = {
     else if (e.e === 'idleok') this.idleWarn(null);
     else if (e.e === 'bot') this.idleWarn('A BOT IS PLAYING FOR YOU', 'PRESS ANY BUTTON TO PLAY AGAIN. NO REWARDS THIS MATCH.', true);
     else if (e.e === 'back') { this.idleWarn(null); UI.toast('YOU ARE BACK IN', 'good'); }
-    else if (e.e === 'cutin') { const p = P(e.i); if (p && Save.data.settings.cutins) { UI.cutin(p, e.name); Cam.punch(0.75); Sfx.cutin(); } }
+    else if (e.e === 'cutin') { const p = P(e.i); if (p && Save.data.settings.cutins) { if (/^AWAKENING/.test(e.name || '') && p === this.nm.human && p.style.awaken) UI.awakenStory(p); else UI.cutin(p, e.name); Cam.punch(0.75); Sfx.cutin(); } } // your own Awakening: the flashback (no slow motion online)
   },
   /** the idle warning in the middle of the screen (null hides it) */
   idleWarn(big, small, beep) {
@@ -10629,7 +10803,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
@@ -10642,6 +10816,7 @@ const UI = {
     Hud.flowReady = () => {};
     Hud.lockHint = () => this.lockHint();
     Hud.cutin = (p, name) => this.cutin(p, name);
+    Hud.awaken = (p) => this.awakenStory(p);
     Hud.freeKick = (yaw, dist) => Cam.fkFace(yaw, dist, false); // a new free kick: the camera turns to the goal
     Hud.flash = (hex) => { const fl = $('flash'); fl.className = ''; fl.style.background = hex || '#ffffff'; fl.animate([{ opacity: 0.45 }, { opacity: 0 }], { duration: 260, easing: 'steps(4)' }); };
     this.renderLobby();
@@ -11029,6 +11204,60 @@ const UI = {
   tplCutin() {
     return `<div id="cutin" hidden aria-hidden="true"><div class="ci-lines"></div><div class="ci-panel"><span class="ci-face" id="ci-face"></span><div class="ci-text"><b id="ci-name"></b><span id="ci-style"></span></div></div></div>`;
   },
+  tplAwake() {
+    return `<div id="awk" hidden aria-hidden="true"><canvas id="awk-scene" width="160" height="90"></canvas><div class="awk-flash"></div>
+      <div class="awk-mem panel"><span class="label">A MEMORY</span><b id="awk-mem"></b></div>
+      <div class="awk-now"><span class="awk-face" id="awk-face"></span><div class="awk-words"><b id="awk-quote"></b><span id="awk-name"></span></div></div></div>`;
+  },
+  /** the Awakening flashback (about 2.9s, the match in slow motion): their memory in faded colours, then a flash in their
+      colour and what they say now. Each style's story is in AWAKEN_STORY */
+  awakenStory(p) {
+    const el = $('awk'), st = AWAKEN_STORY[p.styleId] || ['crowd', 'THEY SAID I COULD NOT DO IT', 'WATCH ME NOW!'];
+    el.style.setProperty('--ci', p.aura);
+    this.drawMemory(st[0], $('awk-scene'));
+    $('awk-mem').textContent = st[1]; $('awk-quote').textContent = st[2];
+    $('awk-name').textContent = p.style.name + ' · AWAKENING · ' + p.style.awaken.name;
+    const face = $('awk-face'); face.innerHTML = ''; face.appendChild(portraitCanvas(p.styleId, 140, p.look));
+    el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+    clearTimeout(this.awkT); this.awkT = setTimeout(() => { el.hidden = true; el.classList.remove('go'); }, 3000);
+  },
+  /** a little faded picture of the memory: a race, a goal, the rain, a night sky, a crowd or the park */
+  drawMemory(kind, c) {
+    const g = c.getContext('2d'), W = 160, H = 90, R = mulberry32(kind.length * 7 + 3);
+    const D = '#2e2014', M = '#6b4c30', L = '#b8935f', HI = '#ecd9b0';
+    const person = (x, y, col, down) => { g.fillStyle = col; if (down) { g.fillRect(x - 4, y - 3, 9, 3); g.fillRect(x + 5, y - 5, 3, 3); return; } g.fillRect(x, y - 13, 3, 3); g.fillRect(x - 1, y - 10, 5, 6); g.fillRect(x - 1, y - 4, 2, 4); g.fillRect(x + 2, y - 4, 2, 4); };
+    g.fillStyle = M; g.fillRect(0, 0, W, H);
+    if (kind === 'race') {
+      g.fillStyle = L; g.fillRect(0, 0, W, 38); g.fillStyle = M; g.fillRect(0, 38, W, 52);
+      g.fillStyle = HI; for (let i = 0; i < 4; i++) g.fillRect(0, 46 + i * 11, W, 1);
+      for (let y = 38; y < 90; y += 4) for (let x = 0; x < 8; x += 4) { g.fillStyle = ((x + y) / 4) % 2 ? D : HI; g.fillRect(120 + x, y, 4, 4); }
+      person(132, 64, D); person(112, 75, D, false); g.fillStyle = HI; g.fillRect(126, 40, 16, 2); // one step behind at the line
+    } else if (kind === 'goal') {
+      g.fillStyle = L; g.fillRect(0, 60, W, 30);
+      g.fillStyle = HI; g.fillRect(40, 20, 80, 3); g.fillRect(40, 20, 3, 42); g.fillRect(117, 20, 3, 42);
+      g.fillStyle = M; for (let x = 44; x < 116; x += 6) g.fillRect(x, 24, 1, 37); for (let y = 26; y < 60; y += 6) g.fillRect(43, y, 74, 1);
+      g.fillStyle = HI; g.fillRect(96, 50, 5, 5); person(70, 82, D, true);
+    } else if (kind === 'rain') {
+      g.fillStyle = D; g.fillRect(0, 0, W, H); g.fillStyle = M; g.fillRect(0, 66, W, 24);
+      g.fillStyle = L; for (let i = 0; i < 70; i++) g.fillRect(Math.floor(R() * W), Math.floor(R() * H), 1, 4);
+      person(78, 72, HI);
+    } else if (kind === 'night') {
+      g.fillStyle = D; g.fillRect(0, 0, W, H); g.fillStyle = HI; for (let i = 0; i < 40; i++) g.fillRect(Math.floor(R() * W), Math.floor(R() * 55), 1, 1);
+      g.fillRect(120, 12, 10, 10); g.fillStyle = D; g.fillRect(124, 12, 6, 6); // the moon
+      g.fillStyle = M; g.fillRect(0, 70, W, 20); g.fillRect(30, 64, 60, 6); person(58, 64, L);
+      g.fillStyle = HI; g.fillRect(20, 20, 6, 1); g.fillRect(14, 19, 6, 1); // a shooting star
+    } else if (kind === 'crowd') {
+      g.fillStyle = D; g.fillRect(0, 0, W, 40);
+      for (let x = 2; x < W; x += 6) for (let r = 0; r < 3; r++) { g.fillStyle = r % 2 ? M : L; g.fillRect(x + (r % 2) * 3, 8 + r * 10, 4, 6); }
+      g.fillStyle = L; g.fillRect(0, 40, W, 50); g.fillStyle = HI; g.fillRect(0, 58, W, 1);
+      person(80, 80, D, true);
+    } else { // the park
+      g.fillStyle = L; g.fillRect(0, 0, W, 50); g.fillStyle = M; g.fillRect(0, 50, W, 40);
+      g.fillStyle = D; for (const x of [16, 132]) { g.fillRect(x, 22, 4, 28); g.fillRect(x - 8, 10, 20, 14); }
+      for (let i = 0; i < 4; i++) person(50 + i * 8, 76, D); person(120, 78, HI); // all of them together, one on their own
+    }
+    g.fillStyle = 'rgba(0,0,0,0.1)'; for (let y = 0; y < H; y += 3) g.fillRect(0, y, W, 1); // faint old film lines
+  },
   /** comic-style cut-in for a big move: your portrait and the move name slam across the screen (0.8s) */
   cutin(p, name) {
     const el = $('cutin');
@@ -11044,7 +11273,8 @@ const UI = {
         <h2>PAUSED</h2>
         <div class="set">
           <span>Graphics</span><div class="seg" id="set-q"><button type="button" data-q="auto">AUTO</button><button type="button" data-q="low">LOW</button><button type="button" data-q="med">MED</button><button type="button" data-q="high">HIGH</button><button type="button" data-q="ultra">ULTRA</button></div>
-          <span>Sky</span><div class="seg" id="set-sky"><button type="button" data-v="day">DAY</button><button type="button" data-v="sunset">SUNSET</button></div>
+          <span>Sky</span><div class="seg" id="set-sky"><button type="button" data-v="day">DAY</button><button type="button" data-v="sunset">SUNSET</button><button type="button" data-v="night">NIGHT</button></div>
+          <span>Weather</span><div class="seg" id="set-wx"><button type="button" data-v="clear">CLEAR</button><button type="button" data-v="rain">RAIN</button></div>
           <label for="set-sens">Look sensitivity</label><input type="range" id="set-sens" min="0.3" max="2.5" step="0.05">
           <span>Shift lock</span><div class="seg" id="set-sl"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Camera</span><div class="seg" id="set-cam"><button type="button" data-v="third">3RD PERSON</button><button type="button" data-v="first">1ST PERSON</button></div>
@@ -11181,6 +11411,7 @@ const UI = {
     $('set-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.invertY = v === '1'; Save.save(); this.renderPause(); });
     $('set-chat').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Net.setChatShow(v); this.renderPause(); });
     $('set-sky').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v) return; Save.data.settings.sky = v; World.setLook(v); Save.save(); this.renderPause(); });
+    $('set-wx').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v) return; Save.data.settings.weather = v; World.setWeather(v); Save.save(); this.renderPause(); });
     $('set-cut').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.cutins = v === '1'; Save.save(); this.renderPause(); });
     $('set-music').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.music = v === '1'; Music.apply(); Save.save(); this.renderPause(); });
     $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Portal.applyMute(); Save.save(); this.renderPause(); });
@@ -11272,11 +11503,13 @@ const UI = {
     html += `<div class="slot small" id="slot-c"><img class="px" src="${iconURL('dash', '#ffffff')}" alt=""><span class="key k">C</span><div class="cd"></div><div class="pips"><i></i></div><span class="nm">FEINT</span></div>`;
     html += `<div class="slot small" id="slot-s"><img class="px" src="${iconURL('hourglass', '#9fb4ff')}" alt=""><span class="key k">CC</span><div class="cd"></div><span class="nm">SLOW-MO</span></div>`;
     html += `<div class="slot small" id="slot-g"><img class="px" src="${iconURL('flame', p.aura)}" alt=""><span class="key k">G</span><div class="cd"></div><span class="nm">FLOW</span></div>`;
+    const mv = p.style.awaken && p.style.awaken.move; // owner: "every awakening they get 1 special move, only in their awakening, along with their normal skill set"
+    html += `<div class="slot awk" id="slot-z" hidden><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><span class="key k">Z</span><span class="nm">${esc(mv ? mv.name : 'AWAKENED')}</span></div>`;
     hb.innerHTML = html;
     this.slots = [0, 1, 2].map((i) => ({ el: $('slot' + i), cd: $('slot' + i).querySelector('.cd'), num: $('slot' + i).querySelector('.num'), last: -1 }));
     this.slotC = { el: $('slot-c'), cd: $('slot-c').querySelector('.cd'), pips: $('slot-c').querySelectorAll('.pips i') };
     this.slotS = { el: $('slot-s'), cd: $('slot-s').querySelector('.cd') };
-    this.slotG = { el: $('slot-g') };
+    this.slotG = { el: $('slot-g') }; this.slotZ = $('slot-z');
     $('st-ico').src = iconURL('bolt', '#ffd23d'); this.stLast = -1;
     $('flowbar').style.setProperty('--aura', p.aura);
     $('flow-name').textContent = p.flowId ? 'FLOW · ' + FLOWS[p.flowId].name : 'FLOW';
@@ -11327,6 +11560,7 @@ const UI = {
     this.slowWas = smOn; this.slowedWas = sdOn;
     const has = m.ball.owner === p; $('xhair').classList.toggle('ball', has); $('balltag').hidden = !has; // a frame and BALL while you have the ball
     this.slotG.el.classList.toggle('ready', p.flow >= 100 && p.flowT <= 0);
+    if (this.slotZ) { const z = p.awakeT > 0 && !p.awakeMoveUsed && !!(p.style.awaken && p.style.awaken.move); if (this.slotZ.hidden === z) this.slotZ.hidden = !z; } // the special move: only while awakened, until used
     this.slotG.el.classList.toggle('active', p.flowT > 0);
     const fpct = p.flowT > 0 ? p.flowT / 15 * 100 : p.flow;
     $('flow-fill').style.width = fpct.toFixed(1) + '%';
@@ -11491,6 +11725,7 @@ const UI = {
     $('set-music').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.music !== false)));
     $('set-cut').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.cutins !== false)));
     $('set-sky').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.sky));
+    $('set-wx').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === (s.weather || 'clear')));
     $('set-chat').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.chat));
     $('set-cam').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.cam));
     $('set-sl').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !!s.shiftLock));
@@ -12129,7 +12364,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {

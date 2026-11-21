@@ -222,11 +222,12 @@ const Cam = {
     if (pk > 0 || this.punchK > 0) { cam.fov = World.baseFov - pk * 10; cam.updateProjectionMatrix(); }
     this.punchK = pk;
     // first person, except for goals and the final whistle (wide shots) and when you are on the grass
-    const fp = this.first() && !wide && p.state !== 'down' && p.state !== 'celebrate' && p.state !== 'dive';
+    const fp = this.first() && !wide && p.state !== 'down' && p.state !== 'celebrate' && (p.state !== 'dive' || p.isGK); // owner: a keeper's dive stays in first person
     if (fp) {
       // at your eyes, a little in front of the face so the head never fills the screen
       const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
       this.pos.set(p.pos.x + fx * 0.3, p.pos.y + CAM_EYE, p.pos.z + fz * 0.3);
+      if (p.state === 'dive' && p.P && p.P.headP) { p.P.root.updateMatrixWorld(true); p.P.headP.localToWorld(_v3.set(0, 0.32, 0.12)); this.pos.copy(_v3); } // diving: your eyes go with your head
       if (this.hidden !== p) { this.unhide(); this.hidden = p; }
       p.P.root.visible = false;
     } else {

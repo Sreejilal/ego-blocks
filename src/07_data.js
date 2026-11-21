@@ -519,6 +519,39 @@ const FLOW_IDS = Object.keys(FLOWS);
 /** Awakening: a style's own transformation. It comes by itself at random moments; big plays make it come much sooner.
     For AWAKEN_TIME seconds: cooldowns reset and recharge twice as fast, ability effects last 50% longer, plus the style's own power */
 const AWAKEN_TIME = 20;
+/** owner: "animations for the awakening, like SPRINTER remembering his past, how he lost a race and saying he will not
+    give up": a flashback before each Awakening. [the memory's scene, what happened, what they say now] */
+const AWAKEN_STORY = {
+  ROOKIE: ['park', 'EVERYONE PICKED ME LAST AT THE PARK', 'NOT ANYMORE. WATCH ME!'],
+  SPRINTER: ['race', 'I LOST THE BIG RACE BY ONE STEP', 'I WILL NOT GIVE UP. NOT THIS TIME!'],
+  PHANTOM: ['crowd', 'THEY SAID I WAS TOO SMALL TO PLAY', 'NOW THEY CANNOT EVEN SEE ME.'],
+  TRICKSTER: ['crowd', 'THE WHOLE CROWD LAUGHED WHEN I FELL', 'NOW THEY LAUGH AT YOUR DEFENDERS!'],
+  ENFORCER: ['goal', 'WE LOST BECAUSE I STEPPED BACK', 'I WILL NEVER STEP BACK AGAIN!'],
+  SHAMBLER: ['rain', 'I GOT KNOCKED DOWN AGAIN AND AGAIN', 'AND EVERY TIME I GOT BACK UP.'],
+  PROWLER: ['goal', 'I MISSED AN OPEN GOAL IN THE FINAL', 'I HAVE NOT MISSED SINCE.'],
+  MAGNET: ['park', 'THE BALL ALWAYS BOUNCED AWAY FROM ME', 'NOW IT COMES TO ME!'],
+  THUNDER: ['goal', 'COACH SAID: NEVER SHOOT FROM THERE', 'WATCH THIS ONE, COACH!'],
+  WARDEN: ['goal', 'I LET IN THE GOAL THAT LOST THE CUP', 'NOBODY GETS PAST ME AGAIN!'],
+  MAESTRO: ['crowd', 'NOBODY PASSED TO ME FOR A WHOLE SEASON', 'NOW EVERYTHING GOES THROUGH ME.'],
+  BLITZ: ['race', 'I WAS ALWAYS ONE SECOND TOO LATE', 'NEVER AGAIN. I GET THERE FIRST!'],
+  COMET: ['night', 'I DREAMED OF FLYING SINCE I WAS SMALL', 'TODAY I FLY!'],
+  RAILGUN: ['rain', 'I PRACTISED ONE SHOT TEN THOUSAND TIMES', 'THIS IS NUMBER TEN THOUSAND AND ONE!'],
+  KESTREL: ['rain', 'I RAN MY LAPS ALONE IN THE RAIN', 'MY LEGS NEVER GET TIRED NOW!'],
+  ANCHOR: ['park', 'THEY CALLED ME SLOW AND HEAVY', 'GOOD LUCK MOVING ME!'],
+  FEATHER: ['crowd', 'THEY SAID I WAS TOO SOFT FOR THIS GAME', 'A SOFT TOUCH. AND YOU CANNOT STOP IT.'],
+  CAPTAIN: ['crowd', 'MY TEAM LOOKED AT ME WHEN WE WERE LOSING', 'FOLLOW ME. WE DO THIS TOGETHER!'],
+  GLACIER: ['night', 'I FROZE IN MY FIRST BIG MATCH', 'NOW THE GAME FREEZES FOR ME.'],
+  SPARK: ['crowd', 'MY TEMPER GOT ME SENT OFF', 'NOW IT GOES INTO EVERY TOUCH!'],
+  TITAN: ['park', 'I WAS THE KID NOBODY WANTED ON THEIR TEAM', 'NOW NOTHING CAN STOP ME!'],
+  FORTRESS: ['goal', 'A SHOT WENT RIGHT THROUGH MY HANDS', 'NEVER AGAIN. THIS IS MY GOAL!'],
+  LYNX: ['goal', 'I DIVED THE WRONG WAY IN THE BIG GAME', 'I WILL NOT GUESS. I WILL KNOW!'],
+  VORTEX: ['night', 'I SPUN IN CIRCLES, LOST AND DIZZY', 'NOW YOU ARE THE ONES SPINNING!'],
+  NOVA: ['night', 'I WATCHED SHOOTING STARS EVERY NIGHT', 'TONIGHT I AM THE STAR!'],
+  SENTINEL: ['goal', 'I TURNED MY BACK FOR ONE SECOND', 'I WILL NEVER LOOK AWAY AGAIN.'],
+  JESTER: ['crowd', 'THEY TOLD ME FOOTBALL IS NOT A SHOW', 'THEN WHY IS EVERYONE WATCHING?'],
+  TEMPEST: ['rain', 'I WAS SCARED OF STORMS', 'NOW I AM THE STORM!'],
+  ACE: ['race', 'I WASTED THE LAST CHANCE OF THE FINAL', 'EVERY CHANCE COUNTS NOW!'],
+};
 /** the feint (C): a step-over cut nobody can tackle you through, once every FEINT_CD seconds */
 const FEINT_CD = 5;
 const BOX_FREE = 5; // owner's rule: once you are in their box, their defenders wait outside it this many seconds (bot matches)

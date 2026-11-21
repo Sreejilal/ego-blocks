@@ -44,8 +44,8 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   check('FORTRESS (a keeper style) in goal: its three powers in the power slots', sw.style === 'FORTRESS' && sw.abil.join(',') === 'bigGloves,ironHands,cannonKick' && sw.slot === 'GIANT GLOVES', sw);
   await page.evaluate(() => EGO.Game.stepManual(260));
   await shot('keeper1_intro');
-  const nets = await page.evaluate(() => ({ mine: EGO.World.nets.find((n) => n.s < 0).grp.visible, theirs: EGO.World.nets.find((n) => n.s > 0).grp.visible }));
-  check('the camera behind your goal: your net goes see-through (theirs stays)', !nets.mine && nets.theirs, nets);
+  const nets = await page.evaluate(() => ({ mine: +EGO.World.nets.find((n) => n.s < 0).mat.opacity.toFixed(2), theirs: +EGO.World.nets.find((n) => n.s > 0).mat.opacity.toFixed(2) }));
+  check('the camera behind your goal: your net fades (still there, never in the way), theirs stays solid', nets.mine < 0.5 && nets.mine > 0.1 && nets.theirs > 0.95, nets);
   await page.click('#in-go'); await page.waitForTimeout(150);
   await page.evaluate(() => EGO.Game.stepManual(200));
   const st = await page.evaluate(() => { const m = EGO.Game.match, h = m.human; return { phase: m.phase, z: +h.pos.z.toFixed(1), box: m.inOwnBox(h), chat: !document.getElementById('hud-chat').hidden }; });

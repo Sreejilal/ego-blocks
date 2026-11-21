@@ -2,7 +2,7 @@
    Match: rules, possession, kicking, tackling, abilities, goals,
    restarts, Flow, Lawless items
    ===================================================================== */
-const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {} }; // filled in by the UI
+const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {} }; // filled in by the UI
 const BOT_NAMES = ['BLOK', 'CUBO', 'PIXL', 'VOXX', 'CHUNK', 'BRIK', 'TILE', 'STAK', 'OBBY', 'GRAV', 'LOAM', 'SLAB', 'COBB', 'FLINT', 'QUARTZ', 'MOSS', 'DUSK', 'EMBR', 'RUNE', 'KRYS', 'BYTE', 'NOVA', 'REDS', 'TUFF'];
 const MODES = {
   // rewards: offline, only these full-time matches give rewards (online with friends, every mode does)
@@ -252,6 +252,8 @@ class Match {
       else if (this.ball.owner === ot.from && this.canAct(ot.from)) { this.oneTwoBack = null; this.throughBall(ot.from, ot.to); this.label(ot.from, 'ONE-TWO', ot.to.aura); }
     }
     this.updateAwakening(dt);
+    // the build-up: as the hidden Awakening meter fills, sparks in your colour start to crackle round you, more and more
+    for (const p of this.players) if (p.awake > 40 && p.awakeT <= 0 && p.style.awaken && !(p.isGK && !p.isHuman) && Math.random() < (p.awake - 40) / 60 * dt * 6) FX.sparks(p.pos.x + rand(-0.4, 0.4), p.pos.y + rand(0.3, 1.7), p.pos.z + rand(-0.4, 0.4), p.aura, 3, 1.6, 0.12, 0.5);
     this.updatePending(dt);
     this.keeperFx();
     for (const p of this.players) p.physics(dt);
@@ -398,9 +400,9 @@ class Match {
     }
     out.feint = false; // without the ball the FEINT button only ever dives
     const sideways = Math.abs(c.moveX || 0) > 0.3;
-    const push = Math.abs(p.mx) > 0.3 ? p.mx : 0;
-    if (c.jump && sideways) out.jump = false;
-    if (c.dodge || (c.jump && sideways)) this.keeperDive(p, push, !!c.dodge && c.jumpHeld);
+    const push = Math.abs(p.mx) > 0.3 ? p.mx : 0, forward = iy > 0.4 && !sideways;
+    if ((c.jump || c.dodge) && forward && p.onGround) { out.jump = false; this.keeperLunge(p); } // owner: "make it so you can dive forward": JUMP (or C) with W
+    else if (c.dodge || (c.jump && sideways)) { if (c.jump) out.jump = false; this.keeperDive(p, push, !!c.dodge && c.jumpHeld); }
     else if (!p.onGround && p.state === 'free' && this.time - (p.jumpAt || -9) < 1.5 && (sidePress || fwdPress)) { // owner: "jump, and when you're in the air press A or D to dive ... you can dive forward": any time in the jump
       if (fwdPress) this.keeperLunge(p); else this.keeperDive(p, push, true, true, false, true);
     }
@@ -1004,9 +1006,10 @@ class Match {
     if (p.isHuman && before < 100 && p.flow >= 100) { this.toast(Touch.on ? 'FLOW READY. TAP FLOW' : 'FLOW READY. PRESS G', 'gold', p); Sfx.coin(); Hud.flowReady(); }
   }
   awakeAdd(p, amt) {
-    if (!p || p.isGK || p.awakeT > 0 || !p.style.awaken) return;
+    if (!p || (p.isGK && !p.isHuman) || p.awakeT > 0 || !p.style.awaken) return; // owner: "add awakening" for you in goal too
     const before = p.awake;
     p.awake = Math.min(100, p.awake + amt * 0.7); // a hidden meter: the fuller it is, the likelier you awaken any second
+    if (p.isHuman && before < 70 && p.awake >= 70) this.label(p, 'POWER RISING', p.aura, 1.4); // owner: the effects show before it even happens
   }
   /** Awakening comes by itself: once a second each player may awaken. Big plays (p.awake) make it much likelier,
       and after one ends there is a rest before the next */
@@ -1016,7 +1019,7 @@ class Match {
     if (this.awT < 1) return;
     this.awT -= 1;
     for (const p of this.players) {
-      if (p.isGK || p.awakeT > 0 || !p.style.awaken || (p.awakeRest || 0) > this.time) continue;
+      if ((p.isGK && !p.isHuman) || p.awakeT > 0 || !p.style.awaken || (p.awakeRest || 0) > this.time) continue;
       if (Math.random() < this.awakenChance(p)) this.activateAwaken(p);
     }
   }
@@ -1024,7 +1027,7 @@ class Match {
   /** your style's Awakening: a burst of light, then AWAKEN_TIME seconds of its powers */
   activateAwaken(p) {
     const aw = p.style.awaken;
-    if (!aw || p.isGK || p.awakeT > 0 || !this.canAct(p)) return false;
+    if (!aw || (p.isGK && !p.isHuman) || p.awakeT > 0 || !this.canAct(p)) return false;
     p.awakeRest = this.time + AWAKEN_TIME + 25;
     p.awake = 0; p.awakeT = AWAKEN_TIME; p.awakeMoveUsed = false;
     for (const a of p.abil) a.cd = 0;
@@ -1034,7 +1037,8 @@ class Match {
     this.label(p, 'AWAKENED · ' + aw.name, p.aura, 2.4);
     FX.awakenBurst(p);
     Sfx.flow(); Sfx.cutin();
-    if (p.isHuman) { if (!this.cinematic(p, 'AWAKENING · ' + aw.name)) TimeCtl.slowMo(0.35, 0.8); Shake.add(0.4); }
+    if (p.isHuman && !this.online && !this.autopilot && Save.data.settings.cutins) { Hud.awaken(p); TimeCtl.slowMo(0.1, 2.7); Shake.add(0.4); } // the flashback (owner: like SPRINTER remembering the race he lost)
+    else if (p.isHuman) { if (!this.cinematic(p, 'AWAKENING · ' + aw.name)) TimeCtl.slowMo(0.35, 0.8); Shake.add(0.4); }
     else Shake.add(0.12);
     return true;
   }

@@ -69,6 +69,12 @@ const LOOKS = {
     fog: ['#b27a86', 95, 470], hemi: ['#8d96e6', '#5a4630', 0.62], amb: ['#2c3466', 0.35], light: ['#ffb27a', 1.35, [-58, 72, -34]], fill: ['#dfe7ff', 0.62],
     exposure: 1.18, cloud: ['#c86c7a', 0.55], fans: [0.82, 0.74, 0.8], tower: 1.25, lamps: 1, sunMatch: [-0.42, 0.24, 0.87], sunLobby: [0.3, 0.2, 0.93],
   },
+  // owner: "a night match with floodlights": a dark sky full of stars, the floodlights do the lighting (the main light straight down from high up)
+  night: {
+    sky: ['#03050f', '#081028', '#142246', '#24345e', '#0a0f1e', '#c8d6ff'], sun: '#e8eeff', halo: ['#9fb4ff', 0.25], stars: true,
+    fog: ['#0d1428', 90, 430], hemi: ['#5a6aa8', '#1c2a1c', 0.42], amb: ['#22305a', 0.3], light: ['#f4f6ff', 1.55, [-12, 120, -8]], fill: ['#b8c8ff', 0.5],
+    exposure: 1.22, cloud: ['#1a2440', 0.25], fans: [0.7, 0.72, 0.85], tower: 1.7, lamps: 1.7, sunMatch: [-0.12, 0.95, 0.2], sunLobby: [0.1, 0.9, 0.3],
+  },
 };
 
 const World = {
@@ -97,11 +103,14 @@ const World = {
     this.buildStands();
     this.buildFans();
     this.buildCrowdExtras();
+    this.buildRoofs(); this.buildRain(); this.buildGrass();
     this.buildFloodlights();
     this.buildTower();
     this.buildTrees();
     this.buildClouds();
+    this.weather = Save.data.settings.weather === 'rain' ? 'rain' : 'clear';
     this.setLook(Save.data.settings.sky);
+    if (this.rain) this.rain.visible = this.weather === 'rain';
     this.setQuality(q === 'auto' ? 'med' : q);
     this.resize();
   },
@@ -126,6 +135,7 @@ const World = {
       E.posters.visible = !lowish; E.flashes.visible = !lowish && q !== 'lite'; E.flags.forEach((f) => { f.visible = !!Q.post; });
     }
     this.postOn = !!Q.post && this.initPost(); this.postGrade = Q.grade || 0;
+    if (this.grass) this.grass.visible = !!Q.post; // the 3D grass with the camera effects (HIGH, ULTRA, auto at its best)
     this.resize();
   },
   resize() {
@@ -205,7 +215,7 @@ const World = {
     const pitch = new THREE.Mesh(new THREE.PlaneGeometry(PITCH_BX, PITCH_BZ), new THREE.MeshLambertMaterial({ map: makePitchTexture() }));
     pitch.rotation.x = -Math.PI / 2;
     pitch.receiveShadow = true;
-    this.scene.add(pitch);
+    this.scene.add(pitch); this.pitchTex = pitch.material.map; // the 3D grass takes its colours from it
     const gGeo = new THREE.PlaneGeometry(1600, 1600);
     const uv = gGeo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 1600, uv.getY(i) * 1600);
     const ground = new THREE.Mesh(gGeo, new THREE.MeshLambertMaterial({ map: T.grassTop }));
@@ -261,14 +271,16 @@ const World = {
     this.scene.add(frame);
     const netMat = new THREE.MeshLambertMaterial({ map: this.T.net, alphaTest: 0.5, side: THREE.DoubleSide });
     this.nets = [];
-    const mkNet = (w, h, uw, uh) => { const g = new THREE.PlaneGeometry(w, h); const a = g.attributes.uv; for (let i = 0; i < a.count; i++) a.setXY(i, a.getX(i) * uw, a.getY(i) * uh); return new THREE.Mesh(g, netMat); };
+    let nm = netMat;
+    const mkNet = (w, h, uw, uh) => { const g = new THREE.PlaneGeometry(w, h); const a = g.attributes.uv; for (let i = 0; i < a.count; i++) a.setXY(i, a.getX(i) * uw, a.getY(i) * uh); return new THREE.Mesh(g, nm); };
     for (const s of [1, -1]) {
+      nm = netMat.clone(); nm.transparent = true; // each goal its own, so the one the camera is behind can fade
       const grp = new THREE.Group();
       const backNet = mkNet(gw * 2, gh, gw * 2, gh); backNet.position.set(0, gh / 2, s * (back - P / 2)); grp.add(backNet);
       const top = mkNet(gw * 2, F.GD - P, gw * 2, F.GD - P); top.rotation.x = -Math.PI / 2; top.position.set(0, gh + P / 2, s * (L + (F.GD - P) / 2)); grp.add(top);
       for (const sx of [1, -1]) { const side = mkNet(F.GD - P, gh, F.GD - P, gh); side.rotation.y = Math.PI / 2; side.position.set(sx * (gw + P / 2), gh / 2, s * (L + (F.GD - P) / 2)); grp.add(side); }
       this.scene.add(grp);
-      this.nets.push({ s, back: backNet, baseZ: backNet.position.z, grp });
+      this.nets.push({ s, back: backNet, baseZ: backNet.position.z, grp, mat: nm });
     }
   },
   buildStands() {
@@ -517,6 +529,83 @@ const World = {
     E.flashes = new THREE.Points(fg, E.flashMat); E.flashes.frustumCulled = false;
     this.scene.add(E.flashes);
   },
+  /** owner: "a stadium roof": over the lower stands in a small stadium, over the upper deck once it opens (setTier), with a row of lights under the front edge */
+  buildRoofs() {
+    const S = this.stand, U = this.upperRows, T = this.T;
+    const mat = new THREE.MeshLambertMaterial({ map: T.metalDark, vertexColors: true }), glow = new THREE.MeshBasicMaterial({ color: lin('#fff3d0'), toneMapped: false });
+    const make = (outX, outZ, y, depth) => {
+      const vb = new VoxBuilder(), lights = new VoxBuilder(), L = S.sideLen + 1, E = S.endLen + 1;
+      vb.box(-outX - 1, y, -L, -outX + depth, y + 0.5, L, '#9aa0b4', { uv: 1 }); vb.box(outX - depth, y, -L, outX + 1, y + 0.5, L, '#9aa0b4', { uv: 1 }); // the sides
+      vb.box(-E, y, -outZ - 1, E, y + 0.5, -outZ + depth, '#9aa0b4', { uv: 1 }); vb.box(-E, y, outZ - depth, E, y + 0.5, outZ + 1, '#9aa0b4', { uv: 1 }); // the ends
+      for (const sx of [-1, 1]) vb.box(sx * (outX - depth) - 0.3, y - 0.7, -L, sx * (outX - depth) + 0.3, y + 0.5, L, '#e8ecf4', { uv: 1 }); // white front edges
+      for (const sz of [-1, 1]) vb.box(-E, y - 0.7, sz * (outZ - depth) - 0.3, E, y + 0.5, sz * (outZ - depth) + 0.3, '#e8ecf4', { uv: 1 });
+      for (let z = -L + 4; z < L; z += 8) for (const sx of [-1, 1]) lights.box(sx * (outX - depth) - 0.2, y - 0.95, z - 0.5, sx * (outX - depth) + 0.2, y - 0.7, z + 0.5, '#ffffff');
+      for (let x = -E + 4; x < E; x += 8) for (const sz of [-1, 1]) lights.box(x - 0.5, y - 0.95, sz * (outZ - depth) - 0.2, x + 0.5, y - 0.7, sz * (outZ - depth) + 0.2, '#ffffff');
+      const g = new THREE.Group(), m = vb.mesh(mat); m.castShadow = true; g.add(m, lights.mesh(glow));
+      this.scene.add(g); return g;
+    };
+    this.roofLow = make(S.outerX, S.outerZ, S.wallTop + 1.6, 9);
+    const ux = U.ux + U.UP * this.standRows.DEP, uz = U.uz + U.UP * this.standRows.DEP;
+    this.roofHigh = make(ux, uz, U.uBase + U.UP * U.uRise + 2.6, 11);
+  },
+  /** owner: "rain": streaks falling round the camera (they keep their place in the world, so moving does not drag them), and a greyer sky. settings.weather */
+  buildRain() {
+    const n = 3000, seed = new Float32Array(n * 2 * 3), end = new Float32Array(n * 2), pos = new Float32Array(n * 2 * 3), R = mulberry32(5);
+    for (let i = 0; i < n; i++) { const a = R(), b = R(), c = R(); for (let k = 0; k < 2; k++) { seed.set([a, b, c], (i * 2 + k) * 3); end[i * 2 + k] = k; } }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('aSeed', new THREE.BufferAttribute(seed, 3)); g.setAttribute('aEnd', new THREE.BufferAttribute(end, 1));
+    this.rainMat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 }, uCam: { value: new THREE.Vector3() } },
+      vertexShader: ['attribute vec3 aSeed; attribute float aEnd; uniform float uTime; uniform vec3 uCam; varying float vA;', 'void main(){',
+        ' float B = 64.0, H = 34.0;',
+        ' vec3 p = vec3(uCam.x + mod(aSeed.x * B - uCam.x, B) - B * 0.5, mod(aSeed.y * H - uTime * (22.0 + aSeed.z * 8.0), H) - 2.0, uCam.z + mod(aSeed.z * B - uCam.z, B) - B * 0.5);',
+        ' p.y -= aEnd * 0.75; p.x -= aEnd * 0.12; vA = 0.42 - aEnd * 0.3;',
+        ' gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }'].join('\n'),
+      fragmentShader: ['varying float vA;', 'void main(){ gl_FragColor = vec4(0.78, 0.84, 0.95, vA); }'].join('\n'),
+      transparent: true, depthWrite: false,
+    });
+    this.rain = new THREE.LineSegments(g, this.rainMat); this.rain.frustumCulled = false; this.rain.visible = false;
+    this.scene.add(this.rain);
+  },
+  setWeather(w) {
+    this.weather = w === 'rain' ? 'rain' : 'clear';
+    if (this.rain) this.rain.visible = this.weather === 'rain';
+    this.setLook(this.look || 'day'); // the look, greyed for rain
+  },
+  /** owner: "more detailed grass": real little blades of grass around the camera (HIGH and ULTRA), coloured from the pitch under them (white on the lines), swaying */
+  buildGrass() {
+    if (!this.renderer.capabilities.vertexTextures) return; // the blades read the pitch colours in the vertex shader: not every phone can
+    const N = 120, S = 0.24, n = N * N; // a 120 x 120 patch, a blade every 0.24 blocks, that follows the camera in whole steps
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute([-0.035, 0, 0, 0.035, 0, 0, 0, 1, 0, 0, 0, -0.035, 0, 0, 0.035, 0, 1, 0], 3)); // two crossed slivers
+    const cell = new Float32Array(n * 2); for (let i = 0; i < n; i++) { cell[i * 2] = i % N; cell[i * 2 + 1] = Math.floor(i / N); }
+    geo.setAttribute('aCell', new THREE.InstancedBufferAttribute(cell, 2));
+    this.grassMat = new THREE.ShaderMaterial({
+      uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { map: { value: null }, uTime: { value: 0 }, uCam: { value: new THREE.Vector2() }, uLight: { value: new THREE.Vector3(1, 1, 1) }, uSize: { value: new THREE.Vector2(PITCH_BX, PITCH_BZ) } }]),
+      vertexShader: ['attribute vec2 aCell; uniform float uTime; uniform vec2 uCam; uniform vec2 uSize; uniform sampler2D map; varying vec3 vCol; varying float vTip;', '#include <fog_pars_vertex>',
+        'float h(vec2 q){ return fract(sin(dot(q, vec2(12.9898, 78.233))) * 43758.5453); }', 'void main(){',
+        ' float N = ' + N + '.0, S = ' + S + ';',
+        ' vec2 base = floor(uCam / S) * S - N * S * 0.5;',
+        ' vec2 w = base + aCell * S; vec2 id = floor(w / S + 0.5);',
+        ' w += (vec2(h(id), h(id + 7.1)) - 0.5) * S;',
+        ' float d = length(w - uCam) / (N * S * 0.5); float fade = 1.0 - smoothstep(0.55, 1.0, d);',
+        ' float on = step(abs(w.x), uSize.x * 0.5 - 0.6) * step(abs(w.y), uSize.y * 0.5 - 0.6);', // only on the pitch and its run-off
+        ' float ht = (0.06 + h(id + 3.3) * 0.06) * fade * on;',
+        ' vec3 p = position; p.y *= ht; float sway = sin(uTime * 2.2 + w.x * 0.7 + w.y * 0.5) * 0.025 * p.y / max(ht, 0.001);',
+        ' vec3 wp = vec3(w.x + p.x + sway * position.y, p.y, w.y + p.z + sway * 0.6 * position.y);',
+        ' vec2 uv = vec2(w.x / uSize.x + 0.5, 0.5 - w.y / uSize.y);',
+        ' vCol = pow(texture2D(map, uv).rgb, vec3(2.2)) * (0.95 + 0.3 * position.y) * (0.94 + h(id + 1.7) * 0.12); vTip = position.y;',
+        ' vec4 mvPosition = modelViewMatrix * vec4(wp, 1.0);', ' gl_Position = projectionMatrix * mvPosition;', ' #include <fog_vertex>', '}'].join('\n'),
+      fragmentShader: ['uniform vec3 uLight; varying vec3 vCol; varying float vTip;', '#include <common>', '#include <fog_pars_fragment>', 'void main(){',
+        ' gl_FragColor = vec4(vCol * uLight, 1.0);', ' #include <tonemapping_fragment>', ' #include <encodings_fragment>', ' #include <fog_fragment>', '}'].join('\n'),
+      fog: true, side: THREE.DoubleSide,
+    });
+    this.grassMat.uniforms.map.value = this.pitchTex;
+    this.grass = new THREE.InstancedMesh(geo, this.grassMat, n);
+    this.grass.frustumCulled = false; this.grass.visible = false;
+    const m4 = new THREE.Matrix4(); for (let i = 0; i < n; i++) this.grass.setMatrixAt(i, m4); // the shader places every blade
+    this.scene.add(this.grass);
+  },
   /** paint the banners, posters and flags in the two clubs' colours (home: west and south, away: east and north) */
   paintCrowdExtras(a, b) {
     const E = this.extras; if (!E) return;
@@ -672,6 +761,8 @@ const World = {
     this.excite[0] = Math.max(0, this.excite[0] - dt * 0.22);
     this.excite[1] = Math.max(0, this.excite[1] - dt * 0.22);
     if (this.fanMat) { this.fanMat.uniforms.uTime.value = this.time; this.fanMat.uniforms.uExcite.value.set(this.excite[0], this.excite[1]); }
+    if (this.rain && this.rain.visible) { this.rainMat.uniforms.uTime.value = this.time; this.rainMat.uniforms.uCam.value.copy(cam.position); }
+    if (this.grass && this.grass.visible) { const G = this.grassMat.uniforms; G.uTime.value = this.time; G.uCam.value.set(cam.position.x, cam.position.z); G.uLight.value.copy(this.fanMat ? this.fanMat.uniforms.uLight.value : G.uLight.value); }
     if (this.extras) {
       const E = this.extras;
       E.flagMat.forEach((fm) => { fm.uniforms.uTime.value = this.time; });
@@ -680,8 +771,9 @@ const World = {
     }
     const cp = cam.position;
     for (const n of this.nets) {
-      // the camera behind this goal (you in goal, or near your own line): its net goes away so it never fills the view (the posts and bar stay)
-      n.grp.visible = !(cp.z * n.s > F.L - 0.3 && Math.abs(cp.x) < F.GW + F.POST + 7 && cp.y < F.GH + 7);
+      // the camera behind this goal (you in goal, or near your own line): its net fades right down, so you still see it but it never fills the view
+      const behind = cp.z * n.s > F.L - 0.3 && Math.abs(cp.x) < F.GW + F.POST + 7 && cp.y < F.GH + 7;
+      n.mat.opacity = damp(n.mat.opacity, behind ? 0.28 : 1, 10, dt); n.mat.depthWrite = n.mat.opacity > 0.9;
       const i = n.s > 0 ? 0 : 1;
       this.netBulge[i] = damp(this.netBulge[i], 0, 5, dt);
       n.back.position.z = n.baseZ + n.s * this.netBulge[i] * 0.9;
@@ -698,8 +790,23 @@ const World = {
     if (this.lampSprites.length) this.lampSprites[0].material.opacity = (0.36 + Math.sin(this.time * 1.7) * 0.03) * (this.lampGlow == null ? 1 : this.lampGlow); // floodlights glow less by day
   },
   /** dress the stands for a match: seats in each club's crest colour, fans in their club's home shirts */
+  /** owner: "add some net variety": the goal nets' pattern and colour (each match picks one, paintCrowd) */
+  setNet(kind, hex) {
+    const tex = this.T.net, c = tex.image, g = c.getContext('2d'), col = hexRGB(hex || '#eef0f4'), img = g.createImageData(16, 16), d = img.data;
+    const on = {
+      classic: (x, y) => x % 4 === 0 || y % 4 === 0,
+      diamond: (x, y) => (x + y) % 4 === 0 || (x - y + 16) % 4 === 0,
+      hex: (x, y) => { const r = Math.floor(y / 4), ox = (r % 2) * 2; return (y % 4 === 0 && (x + ox) % 4 !== 2) || (x + ox) % 4 === 0 && y % 4 !== 0; },
+      big: (x, y) => x % 8 < 2 || y % 8 < 2,
+      fine: (x, y) => x % 2 === 0 || y % 2 === 0,
+    }[kind] || ((x, y) => x % 4 === 0 || y % 4 === 0);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const i = (y * 16 + x) * 4, v = on(x, y); d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = v ? 255 : 0; }
+    g.putImageData(img, 0, 0); tex.needsUpdate = true;
+    this.netKind = kind; this.netHex = hex || '#eef0f4';
+  },
   paintCrowd(a, b) {
     const sides = [a, b];
+    this.setNet(pick(['classic', 'classic', 'diamond', 'hex', 'big', 'fine']), Math.random() < 0.3 ? CLUBS[a.club].home.shirt : pick(['#eef0f4', '#eef0f4', '#ffcb3d', '#1d1f2e'])); // a new net every match
     repaintSeat(this.T.seatHome, a.crest[0]); repaintSeat(this.T.seatAway, b.crest[0]);
     const pals = sides.map((s) => { const k = CLUBS[s.club].home; return [k.shirt, k.shirt, k.alt, k.sleeve, k.shirt].map((h) => lin(h)); });
     const geo = this.fans.geometry, col = geo.attributes.aColor, data = geo.attributes.aData, R = mulberry32(9);
@@ -716,6 +823,7 @@ const World = {
     const n = Math.round(this.fanCount * TIER_FANS[tier]);
     this.fans.count = n;
     this.upper.visible = tier >= 3;
+    if (this.roofLow) { this.roofLow.visible = !this.upper.visible; this.roofHigh.visible = this.upper.visible; }
     if (!this.upper.visible) this.fans.count = Math.min(n, this.lowerFans);
     if (this.extras) { // only fans who came hold posters and take photos
       const c = this.fans.count, E = this.extras, upTo = (A) => { let k = 0; while (k < A.length && A[k] < c) k++; return k; };
@@ -737,6 +845,7 @@ const World = {
     this.sun.color.copy(lin(L.light[0])); this.sun.intensity = L.light[1]; this.sun.position.set(L.light[2][0], L.light[2][1], L.light[2][2]);
     this.fill.color.copy(lin(L.fill[0])); this.fill.intensity = L.fill[1];
     this.renderer.toneMappingExposure = L.exposure;
+    if (this.weather === 'rain') { f.color.lerp(lin('#6f7888'), 0.6); f.near *= 0.55; f.far *= 0.6; this.sun.intensity = L.light[1] * 0.6; this.hemi.intensity = L.hemi[2] * 0.85; this.renderer.toneMappingExposure = L.exposure * 0.92; } // rain: a greyer, closer world
     this.cloudMat.emissive.copy(lin(L.cloud[0])); this.cloudMat.emissiveIntensity = L.cloud[1];
     this.fanMat.uniforms.uLight.value.set(L.fans[0], L.fans[1], L.fans[2]);
     this.towerGlass.emissiveIntensity = L.tower;

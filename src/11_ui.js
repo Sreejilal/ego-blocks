@@ -10,7 +10,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
@@ -23,6 +23,7 @@ const UI = {
     Hud.flowReady = () => {};
     Hud.lockHint = () => this.lockHint();
     Hud.cutin = (p, name) => this.cutin(p, name);
+    Hud.awaken = (p) => this.awakenStory(p);
     Hud.freeKick = (yaw, dist) => Cam.fkFace(yaw, dist, false); // a new free kick: the camera turns to the goal
     Hud.flash = (hex) => { const fl = $('flash'); fl.className = ''; fl.style.background = hex || '#ffffff'; fl.animate([{ opacity: 0.45 }, { opacity: 0 }], { duration: 260, easing: 'steps(4)' }); };
     this.renderLobby();
@@ -410,6 +411,60 @@ const UI = {
   tplCutin() {
     return `<div id="cutin" hidden aria-hidden="true"><div class="ci-lines"></div><div class="ci-panel"><span class="ci-face" id="ci-face"></span><div class="ci-text"><b id="ci-name"></b><span id="ci-style"></span></div></div></div>`;
   },
+  tplAwake() {
+    return `<div id="awk" hidden aria-hidden="true"><canvas id="awk-scene" width="160" height="90"></canvas><div class="awk-flash"></div>
+      <div class="awk-mem panel"><span class="label">A MEMORY</span><b id="awk-mem"></b></div>
+      <div class="awk-now"><span class="awk-face" id="awk-face"></span><div class="awk-words"><b id="awk-quote"></b><span id="awk-name"></span></div></div></div>`;
+  },
+  /** the Awakening flashback (about 2.9s, the match in slow motion): their memory in faded colours, then a flash in their
+      colour and what they say now. Each style's story is in AWAKEN_STORY */
+  awakenStory(p) {
+    const el = $('awk'), st = AWAKEN_STORY[p.styleId] || ['crowd', 'THEY SAID I COULD NOT DO IT', 'WATCH ME NOW!'];
+    el.style.setProperty('--ci', p.aura);
+    this.drawMemory(st[0], $('awk-scene'));
+    $('awk-mem').textContent = st[1]; $('awk-quote').textContent = st[2];
+    $('awk-name').textContent = p.style.name + ' · AWAKENING · ' + p.style.awaken.name;
+    const face = $('awk-face'); face.innerHTML = ''; face.appendChild(portraitCanvas(p.styleId, 140, p.look));
+    el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+    clearTimeout(this.awkT); this.awkT = setTimeout(() => { el.hidden = true; el.classList.remove('go'); }, 3000);
+  },
+  /** a little faded picture of the memory: a race, a goal, the rain, a night sky, a crowd or the park */
+  drawMemory(kind, c) {
+    const g = c.getContext('2d'), W = 160, H = 90, R = mulberry32(kind.length * 7 + 3);
+    const D = '#2e2014', M = '#6b4c30', L = '#b8935f', HI = '#ecd9b0';
+    const person = (x, y, col, down) => { g.fillStyle = col; if (down) { g.fillRect(x - 4, y - 3, 9, 3); g.fillRect(x + 5, y - 5, 3, 3); return; } g.fillRect(x, y - 13, 3, 3); g.fillRect(x - 1, y - 10, 5, 6); g.fillRect(x - 1, y - 4, 2, 4); g.fillRect(x + 2, y - 4, 2, 4); };
+    g.fillStyle = M; g.fillRect(0, 0, W, H);
+    if (kind === 'race') {
+      g.fillStyle = L; g.fillRect(0, 0, W, 38); g.fillStyle = M; g.fillRect(0, 38, W, 52);
+      g.fillStyle = HI; for (let i = 0; i < 4; i++) g.fillRect(0, 46 + i * 11, W, 1);
+      for (let y = 38; y < 90; y += 4) for (let x = 0; x < 8; x += 4) { g.fillStyle = ((x + y) / 4) % 2 ? D : HI; g.fillRect(120 + x, y, 4, 4); }
+      person(132, 64, D); person(112, 75, D, false); g.fillStyle = HI; g.fillRect(126, 40, 16, 2); // one step behind at the line
+    } else if (kind === 'goal') {
+      g.fillStyle = L; g.fillRect(0, 60, W, 30);
+      g.fillStyle = HI; g.fillRect(40, 20, 80, 3); g.fillRect(40, 20, 3, 42); g.fillRect(117, 20, 3, 42);
+      g.fillStyle = M; for (let x = 44; x < 116; x += 6) g.fillRect(x, 24, 1, 37); for (let y = 26; y < 60; y += 6) g.fillRect(43, y, 74, 1);
+      g.fillStyle = HI; g.fillRect(96, 50, 5, 5); person(70, 82, D, true);
+    } else if (kind === 'rain') {
+      g.fillStyle = D; g.fillRect(0, 0, W, H); g.fillStyle = M; g.fillRect(0, 66, W, 24);
+      g.fillStyle = L; for (let i = 0; i < 70; i++) g.fillRect(Math.floor(R() * W), Math.floor(R() * H), 1, 4);
+      person(78, 72, HI);
+    } else if (kind === 'night') {
+      g.fillStyle = D; g.fillRect(0, 0, W, H); g.fillStyle = HI; for (let i = 0; i < 40; i++) g.fillRect(Math.floor(R() * W), Math.floor(R() * 55), 1, 1);
+      g.fillRect(120, 12, 10, 10); g.fillStyle = D; g.fillRect(124, 12, 6, 6); // the moon
+      g.fillStyle = M; g.fillRect(0, 70, W, 20); g.fillRect(30, 64, 60, 6); person(58, 64, L);
+      g.fillStyle = HI; g.fillRect(20, 20, 6, 1); g.fillRect(14, 19, 6, 1); // a shooting star
+    } else if (kind === 'crowd') {
+      g.fillStyle = D; g.fillRect(0, 0, W, 40);
+      for (let x = 2; x < W; x += 6) for (let r = 0; r < 3; r++) { g.fillStyle = r % 2 ? M : L; g.fillRect(x + (r % 2) * 3, 8 + r * 10, 4, 6); }
+      g.fillStyle = L; g.fillRect(0, 40, W, 50); g.fillStyle = HI; g.fillRect(0, 58, W, 1);
+      person(80, 80, D, true);
+    } else { // the park
+      g.fillStyle = L; g.fillRect(0, 0, W, 50); g.fillStyle = M; g.fillRect(0, 50, W, 40);
+      g.fillStyle = D; for (const x of [16, 132]) { g.fillRect(x, 22, 4, 28); g.fillRect(x - 8, 10, 20, 14); }
+      for (let i = 0; i < 4; i++) person(50 + i * 8, 76, D); person(120, 78, HI); // all of them together, one on their own
+    }
+    g.fillStyle = 'rgba(0,0,0,0.1)'; for (let y = 0; y < H; y += 3) g.fillRect(0, y, W, 1); // faint old film lines
+  },
   /** comic-style cut-in for a big move: your portrait and the move name slam across the screen (0.8s) */
   cutin(p, name) {
     const el = $('cutin');
@@ -425,7 +480,8 @@ const UI = {
         <h2>PAUSED</h2>
         <div class="set">
           <span>Graphics</span><div class="seg" id="set-q"><button type="button" data-q="auto">AUTO</button><button type="button" data-q="low">LOW</button><button type="button" data-q="med">MED</button><button type="button" data-q="high">HIGH</button><button type="button" data-q="ultra">ULTRA</button></div>
-          <span>Sky</span><div class="seg" id="set-sky"><button type="button" data-v="day">DAY</button><button type="button" data-v="sunset">SUNSET</button></div>
+          <span>Sky</span><div class="seg" id="set-sky"><button type="button" data-v="day">DAY</button><button type="button" data-v="sunset">SUNSET</button><button type="button" data-v="night">NIGHT</button></div>
+          <span>Weather</span><div class="seg" id="set-wx"><button type="button" data-v="clear">CLEAR</button><button type="button" data-v="rain">RAIN</button></div>
           <label for="set-sens">Look sensitivity</label><input type="range" id="set-sens" min="0.3" max="2.5" step="0.05">
           <span>Shift lock</span><div class="seg" id="set-sl"><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
           <span>Camera</span><div class="seg" id="set-cam"><button type="button" data-v="third">3RD PERSON</button><button type="button" data-v="first">1ST PERSON</button></div>
@@ -562,6 +618,7 @@ const UI = {
     $('set-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.invertY = v === '1'; Save.save(); this.renderPause(); });
     $('set-chat').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Net.setChatShow(v); this.renderPause(); });
     $('set-sky').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v) return; Save.data.settings.sky = v; World.setLook(v); Save.save(); this.renderPause(); });
+    $('set-wx').addEventListener('click', (e) => { const v = e.target.dataset.v; if (!v) return; Save.data.settings.weather = v; World.setWeather(v); Save.save(); this.renderPause(); });
     $('set-cut').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.cutins = v === '1'; Save.save(); this.renderPause(); });
     $('set-music').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.music = v === '1'; Music.apply(); Save.save(); this.renderPause(); });
     $('set-snd').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.mute = v === '0'; Portal.applyMute(); Save.save(); this.renderPause(); });
@@ -653,11 +710,13 @@ const UI = {
     html += `<div class="slot small" id="slot-c"><img class="px" src="${iconURL('dash', '#ffffff')}" alt=""><span class="key k">C</span><div class="cd"></div><div class="pips"><i></i></div><span class="nm">FEINT</span></div>`;
     html += `<div class="slot small" id="slot-s"><img class="px" src="${iconURL('hourglass', '#9fb4ff')}" alt=""><span class="key k">CC</span><div class="cd"></div><span class="nm">SLOW-MO</span></div>`;
     html += `<div class="slot small" id="slot-g"><img class="px" src="${iconURL('flame', p.aura)}" alt=""><span class="key k">G</span><div class="cd"></div><span class="nm">FLOW</span></div>`;
+    const mv = p.style.awaken && p.style.awaken.move; // owner: "every awakening they get 1 special move, only in their awakening, along with their normal skill set"
+    html += `<div class="slot awk" id="slot-z" hidden><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><span class="key k">Z</span><span class="nm">${esc(mv ? mv.name : 'AWAKENED')}</span></div>`;
     hb.innerHTML = html;
     this.slots = [0, 1, 2].map((i) => ({ el: $('slot' + i), cd: $('slot' + i).querySelector('.cd'), num: $('slot' + i).querySelector('.num'), last: -1 }));
     this.slotC = { el: $('slot-c'), cd: $('slot-c').querySelector('.cd'), pips: $('slot-c').querySelectorAll('.pips i') };
     this.slotS = { el: $('slot-s'), cd: $('slot-s').querySelector('.cd') };
-    this.slotG = { el: $('slot-g') };
+    this.slotG = { el: $('slot-g') }; this.slotZ = $('slot-z');
     $('st-ico').src = iconURL('bolt', '#ffd23d'); this.stLast = -1;
     $('flowbar').style.setProperty('--aura', p.aura);
     $('flow-name').textContent = p.flowId ? 'FLOW · ' + FLOWS[p.flowId].name : 'FLOW';
@@ -708,6 +767,7 @@ const UI = {
     this.slowWas = smOn; this.slowedWas = sdOn;
     const has = m.ball.owner === p; $('xhair').classList.toggle('ball', has); $('balltag').hidden = !has; // a frame and BALL while you have the ball
     this.slotG.el.classList.toggle('ready', p.flow >= 100 && p.flowT <= 0);
+    if (this.slotZ) { const z = p.awakeT > 0 && !p.awakeMoveUsed && !!(p.style.awaken && p.style.awaken.move); if (this.slotZ.hidden === z) this.slotZ.hidden = !z; } // the special move: only while awakened, until used
     this.slotG.el.classList.toggle('active', p.flowT > 0);
     const fpct = p.flowT > 0 ? p.flowT / 15 * 100 : p.flow;
     $('flow-fill').style.width = fpct.toFixed(1) + '%';
@@ -872,6 +932,7 @@ const UI = {
     $('set-music').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.music !== false)));
     $('set-cut').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === (s.cutins !== false)));
     $('set-sky').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.sky));
+    $('set-wx').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === (s.weather || 'clear')));
     $('set-chat').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.chat));
     $('set-cam').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === s.cam));
     $('set-sl').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === !!s.shiftLock));

@@ -550,7 +550,7 @@ const Net = {
     else if (e.e === 'idleok') this.idleWarn(null);
     else if (e.e === 'bot') this.idleWarn('A BOT IS PLAYING FOR YOU', 'PRESS ANY BUTTON TO PLAY AGAIN. NO REWARDS THIS MATCH.', true);
     else if (e.e === 'back') { this.idleWarn(null); UI.toast('YOU ARE BACK IN', 'good'); }
-    else if (e.e === 'cutin') { const p = P(e.i); if (p && Save.data.settings.cutins) { UI.cutin(p, e.name); Cam.punch(0.75); Sfx.cutin(); } }
+    else if (e.e === 'cutin') { const p = P(e.i); if (p && Save.data.settings.cutins) { if (/^AWAKENING/.test(e.name || '') && p === this.nm.human && p.style.awaken) UI.awakenStory(p); else UI.cutin(p, e.name); Cam.punch(0.75); Sfx.cutin(); } } // your own Awakening: the flashback (no slow motion online)
   },
   /** the idle warning in the middle of the screen (null hides it) */
   idleWarn(big, small, beep) {

@@ -149,7 +149,8 @@ const Save = {
     st.btn = [0.85, 1, 1.15].includes(Number(st.btn)) ? Number(st.btn) : 1;
     st.assist = st.assist !== false; st.mute = !!st.mute; st.invertY = !!st.invertY; st.cutins = st.cutins !== false; st.server = typeof st.server === 'string' ? st.server.slice(0, 200) : '';
     st.chat = ['all', 'quick', 'off'].includes(st.chat) ? st.chat : 'all';
-    st.sky = st.sky === 'sunset' ? 'sunset' : 'day';
+    st.sky = st.sky === 'sunset' || st.sky === 'night' ? st.sky : 'day';
+    st.weather = st.weather === 'rain' ? 'rain' : 'clear';
     st.showOnline = st.showOnline !== false; st.invites = ['all', 'friends', 'off'].includes(st.invites) ? st.invites : 'all';
     st.music = st.music !== false;
     st.frOpen = typeof st.frOpen === 'boolean' ? st.frOpen : null; // the FRIENDS panel open or hidden (null: open on wide screens)
