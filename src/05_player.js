@@ -204,6 +204,7 @@ class Player {
     if (this.awakeT > 0 && this.style.awaken) {
       const am = this.style.awaken.mods || {};
       m.cdRate *= 2 * (am.cdRate || 1);
+      m.speed *= 1.06; m.shot *= 1.1; // owner: "make the awakenings better": every Awakening is a real power-up on top of its own
       if (am.speed) m.speed *= am.speed;
       if (am.huntSpeed && this.m.ball.owner !== this) m.speed *= am.huntSpeed;
       if (am.shot) m.shot *= am.shot;

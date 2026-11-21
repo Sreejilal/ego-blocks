@@ -521,7 +521,8 @@ const AI = {
         if (Math.abs(px) < F.GW + 1.0 && py < F.GH + 0.9 && !screened) {
           // hard to read: volleys and bicycle kicks come off the foot at odd angles, a knuckleball wobbles, a long bomb dips late, a first-time finish gives no time to get set, an impact shot is a beam
           const sp = b.kick && b.kick.special, tricky = sp === 'volley' || sp === 'overhead' || sp === 'knuckle' || sp === 'bomb' || sp === 'onetouch' || sp === 'impact';
-          if (a.react == null) a.react = lerp(0.55, 0.16, Math.min(1, sk)) * rand(0.8, 1.2) * (m.fk && sp === 'knuckle' ? 1.8 : m.fk && b.kick.curved ? 1.5 : tricky ? 1.4 : b.kick && Math.abs(b.kick.curl || 0) > 0.5 ? 1.2 : 1); // free kicks: a knuckleball is the hardest, a curler round the wall is hard too
+          const topBins = py > F.GH - 1.1 && Math.abs(px) > F.GW - 1.9; // owner: "top bins never go in, nerf the goalie": the top corners are hard to read
+          if (a.react == null) a.react = lerp(0.55, 0.16, Math.min(1, sk)) * rand(0.8, 1.2) * (m.fk && sp === 'knuckle' ? 1.8 : m.fk && b.kick.curved ? 1.5 : tricky ? 1.4 : b.kick && Math.abs(b.kick.curl || 0) > 0.5 ? 1.2 : 1) * (topBins ? 1.45 : 1); // free kicks: a knuckleball is the hardest, a curler round the wall is hard too
           a.react -= dt;
           if (a.react <= 0) {
             const K = this.crossAt(b, p.pos.z) || X; // where it passes the keeper
@@ -587,7 +588,7 @@ const AI = {
     const localX = side * Math.cos(p.yaw);
     p.dive = { vx, vz: 0, dur, rest: 0.6, side: sgn(localX), high: ky > 1.7, ux: side, uz: 0 };
     p.setState('dive');
-    if (ky > 1.7) { p.vel.y = clamp((ky - 0.9) * 3.4, 3, 7.5); p.onGround = false; }
+    if (ky > 1.7) { p.vel.y = clamp((ky - 0.9) * 3.4, 3, p.isHuman ? 7.5 : 5.6); p.onGround = false; } // computer keepers cannot fly right up into the top corners
     Sfx.swoosh();
   },
   keeperBite(m, p) {

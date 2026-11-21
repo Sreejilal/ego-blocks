@@ -74,5 +74,24 @@ const inBox = (m, p) => m.inOwnBox(p);
   }
   check('a ball at head height hits the head instead of flying through', out.every((s) => s.endsWith('hit')), out);
 }
+{ // owner: "if you try to shoot top bins it just won't go in, nerf the goalie": a good shot into a top corner beats a computer keeper most of the time
+  const rate = (skill) => {
+    let goals = 0;
+    for (let i = 0; i < 30; i++) {
+      const m = new G.Match('quick', skill, { size: 4 }), h = m.human, gk = m.keeperOf(1), b = m.ball, gz = m.oppGoalZ(0);
+      m.phase = 'play'; m.ctl = neutral;
+      for (const p of m.players) { if (p !== h && p !== gk) { p.wall = true; p.pos.set(p.pos.x, 0, -30); } p.setState('free'); }
+      const dist = 14 + (i % 4) * 3, sx = ((i % 3) - 1) * 6;
+      h.pos.set(sx, 0, gz - dist); b.reset(sx, gz - dist + 0.6); m.possess(h); gk.pos.set(0, 0, gz - 1.2);
+      for (let f = 0; f < 30; f++) m.update(1 / 60);
+      m.shootAt(h, new (b.pos.constructor)((i % 2 ? 1 : -1) * (F.GW - 0.7), F.GH - 0.55, gz), 0.9, {});
+      for (let f = 0; f < 120; f++) { m.update(1 / 60); if (m.phase === 'goal') { goals++; break; } if (b.owner === gk || (b.kick && b.kick.by === gk)) break; }
+      m.dispose();
+    }
+    return goals / 30;
+  };
+  const avg = rate(0.5), top = rate(0.95);
+  check('a hard shot into a top corner beats the computer keeper most of the time (it used to be 1 in 5)', avg >= 0.5 && top >= 0.4, { average: Math.round(avg * 100) + '%', best: Math.round(top * 100) + '%' });
+}
 console.log(results.join('\n'));
 process.exit(results.some((r) => r.startsWith('FAIL')) ? 1 : 0);

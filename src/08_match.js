@@ -1031,7 +1031,7 @@ class Match {
   awakeAdd(p, amt) {
     if (!p || (p.isGK && !p.isHuman) || p.awakeT > 0 || !p.style.awaken) return; // owner: "add awakening" for you in goal too
     const before = p.awake;
-    p.awake = Math.min(100, p.awake + amt * 0.7); // a hidden meter: the fuller it is, the likelier you awaken any second
+    p.awake = Math.min(100, p.awake + amt * 0.9); // a hidden meter: the fuller it is, the likelier you awaken any second
     if (p.isHuman && before < 70 && p.awake >= 70) this.label(p, 'POWER RISING', p.aura, 1.4); // owner: the effects show before it even happens
   }
   /** Awakening comes by itself: once a second each player may awaken. Big plays (p.awake) make it much likelier,
@@ -1046,7 +1046,7 @@ class Match {
       if (Math.random() < this.awakenChance(p)) this.activateAwaken(p);
     }
   }
-  awakenChance(p) { const k = clamp(p.awake / 100, 0, 1); return 0.001 + Math.pow(k, 2) * 0.03; } // cold: about one in 15 minutes; after lots of big plays: one in about 30 seconds
+  awakenChance(p) { const k = clamp(p.awake / 100, 0, 1); return 0.002 + Math.pow(k, 2) * 0.05; } // cold: about one in 8 minutes; after lots of big plays: one in about 20 seconds (owner: Awakenings should show up more)
   /** your style's Awakening: a burst of light, then AWAKEN_TIME seconds of its powers */
   activateAwaken(p) {
     const aw = p.style.awaken;
@@ -1591,13 +1591,14 @@ class Match {
       const d = gk.dive;
       ax = gk.pos.x - d.ux * 0.4; ay = gk.pos.y + 0.55; az = gk.pos.z - d.uz * 0.4;
       const far = d.big ? 2.0 : gk.isHuman ? 1.75 : 1.45; // CAT LEAP: stretched right out; you in goal reach a little further
-      bx = gk.pos.x + d.ux * far; by = gk.pos.y + (d.high ? 1.5 : 1.0); bz = gk.pos.z + d.uz * far;
+      bx = gk.pos.x + d.ux * far; by = gk.pos.y + (d.high ? (gk.isHuman ? 1.5 : 1.15) : 1.0); bz = gk.pos.z + d.uz * far; // a computer keeper's high dive does not reach right up into the top corner
     } else { ax = gk.pos.x; ay = gk.pos.y + 0.2; az = gk.pos.z; bx = gk.pos.x; by = gk.pos.y + 2.25; bz = gk.pos.z; }
     const abx = bx - ax, aby = by - ay, abz = bz - az, l2 = abx * abx + aby * aby + abz * abz;
     const t = clamp(((b.pos.x - ax) * abx + (b.pos.y - ay) * aby + (b.pos.z - az) * abz) / l2, 0, 1);
     const cx = ax + abx * t, cy = ay + aby * t, cz = az + abz * t;
     const dist = Math.hypot(b.pos.x - cx, b.pos.y - cy, b.pos.z - cz);
-    const reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.gkSize()) * 0.14 + (gk.fx.gloves > 0 ? 0.75 : 0) + (gk.isHuman ? 0.3 : 0); // longer reach in small teams, where keepers face more shots; GIANT GLOVES; a little more for you in goal
+    let reach = (gk.state === 'dive' ? 0.78 : 0.62) + (5 - this.gkSize()) * 0.14 + (gk.fx.gloves > 0 ? 0.75 : 0) + (gk.isHuman ? 0.3 : 0);
+    if (!gk.isHuman && b.pos.y > F.GH - 1.2 && Math.abs(b.pos.x - gk.pos.x) > 0.9) reach -= 0.5; // a computer keeper stretching up into a top corner: fingertips at best // longer reach in small teams, where keepers face more shots; GIANT GLOVES; a little more for you in goal
     if (dist > BALL_R + reach) return;
     const k = b.kick;
     const shooter = k && k.by && k.by.team !== gk.team && k.type === 'shot' ? k.by : null;

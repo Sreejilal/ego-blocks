@@ -179,14 +179,21 @@ const FX = {
   },
   /** awakened: a strong aura in your style's colour with white light streaking up */
   awaken(p, dt) {
-    this.aura(p, p.aura, dt * 1.7);
-    if (Math.random() < dt * 30) this.glow.spawn(p.pos.x + rand(-0.5, 0.5), p.pos.y + 0.1, p.pos.z + rand(-0.5, 0.5), 0, rand(5, 8), 0, rand(0.06, 0.1), 0.45, col('#ffffff'), -0.3, 0.3, 0);
+    this.aura(p, p.aura, dt * 2.6);
+    if (Math.random() < dt * 40) this.glow.spawn(p.pos.x + rand(-0.5, 0.5), p.pos.y + 0.1, p.pos.z + rand(-0.5, 0.5), 0, rand(5, 8), 0, rand(0.06, 0.1), 0.45, col('#ffffff'), -0.3, 0.3, 0);
+    // owner: "make the awakenings better": rings pulse out from your feet, sparks crackle round you, and you leave a trail of light when you run
+    p._awFx = (p._awFx || 0) - dt;
+    if (p._awFx <= 0) { p._awFx = 0.7; this.ring(p.pos.x, 0.15, p.pos.z, p.aura, 1.4, 22); }
+    if (Math.random() < dt * 8) this.sparks(p.pos.x + rand(-0.5, 0.5), p.pos.y + rand(0.4, 1.9), p.pos.z + rand(-0.5, 0.5), p.aura, 3, 2.5, 0.12, 0.35);
+    const sp = Math.hypot(p.vel.x, p.vel.z);
+    if (sp > 5 && Math.random() < dt * 50) this.glow.spawn(p.pos.x - p.vel.x * 0.04, p.pos.y + rand(0.4, 1.4), p.pos.z - p.vel.z * 0.04, 0, rand(0.2, 0.6), 0, rand(0.1, 0.18), 0.5, col(p.aura), 0, 0.2, 0);
   },
   /** the moment you awaken: sparks, two rings and a pillar of light */
   awakenBurst(p) {
     const x = p.pos.x, z = p.pos.z;
     this.sparks(x, 1.1, z, p.aura, 70, 11, 0.22, 0.8); this.sparks(x, 1.1, z, '#ffffff', 30, 7, 0.14, 0.6);
-    this.ring(x, 0.2, z, p.aura, 1.6, 30); this.ring(x, 0.25, z, '#ffffff', 2.6, 36);
+    this.ring(x, 0.2, z, p.aura, 1.6, 30); this.ring(x, 0.25, z, '#ffffff', 2.6, 36); this.ring(x, 0.3, z, p.aura, 4.2, 44); // a bigger shockwave
+    this.sparks(x, 2.2, z, p.aura, 40, 14, 0.2, 1.0);
     for (let i = 0; i < 44; i++) this.glow.spawn(x + rand(-0.35, 0.35), rand(0, 0.5), z + rand(-0.35, 0.35), 0, rand(8, 16), 0, rand(0.12, 0.22), rand(0.5, 0.9), col(i % 3 ? p.aura : '#ffffff'), -0.2, 0.6, 0);
   },
   /** each Flow has its own look: wind, afterimage, venom, coins, blue fire, a crown. No Flow: your style's aura */
