@@ -84,6 +84,7 @@ function hairGeo(shape) {
 }
 function hairMat(hex) { return _hairMatCache[hex] || (_hairMatCache[hex] = new THREE.MeshLambertMaterial({ map: hex === 'prism' ? makePrismTexture() : makeHairTexture(hex, hex.length * 31 + parseInt(hex.slice(1, 3), 16)), vertexColors: true })); }
 function eyeMat(hex) { return _eyeMatCache[hex] || (_eyeMatCache[hex] = new THREE.MeshBasicMaterial({ color: lin(hex), toneMapped: false })); }
+const STEP_V = new THREE.Vector3(); // where the stepping foot is during a step-over (its white trail)
 
 class Player {
   constructor(match, o) {
@@ -351,7 +352,7 @@ class Player {
     // targets
     let bx = run * 0.14, bz = 0, by = 0.72 + Math.abs(Math.cos(this.animPhase)) * 0.05 * run;
     let lL = s * 0.9 * run, lR = -s * 0.9 * run, aL = -s * 0.8 * run, aR = s * 0.8 * run, aLz = 0.06, aRz = -0.06;
-    let hx = 0, hy = 0, lRz = 0, snapX = false, spinY = 0;
+    let hx = 0, hy = 0, lRz = 0, lLz = 0, snapX = false, spinY = 0, ease = 22; // ease: how fast joints reach their targets (quick moves need more)
     if (!this.onGround && st === 'free') { lL = -0.55; lR = 0.35; aL = -0.5; aR = -0.3; aLz = 0.5; aRz = -0.5; }
     if (this.charging) { // winding up: the kicking leg draws back, arms open for balance, body leans back and coils
       const c = this.charge; lR = 0.4 + c * 1.15; lL = -0.12 * c; aLz = 0.7 + 0.45 * c; aRz = -0.35 - 0.35 * c; aL = -0.35 * c; aR = 0.4 * c; bx = -0.05 - c * 0.14; bz = -0.1 * c;
@@ -394,15 +395,46 @@ class Player {
         if (d.fwd) { bz = 0; bx = 1.3 * k; aL = aR = -2.9; aLz = 0.25; aRz = -0.25; } // a forward dive: flat out, arms reaching ahead
         break;
       }
-      case 'awaken': { // the transformation: rise up, arms out, head back, then land
-        const u = clamp(this.stateT / (this.stateDur || 1), 0, 1), w = Math.sin(Math.PI * u);
-        by = 0.72 + 0.55 * w; bx = -0.08 * w; aL = aR = -0.35 * w; aLz = 0.2 + 1.3 * w; aRz = -0.2 - 1.3 * w; lL = 0.12 * w; lR = -0.12 * w; hx = -0.4 * w;
+      case 'awaken': { // the transformation (owner, Nov 2026: an animation you can see): crouch and gather with the arms crossed,
+        // burst up with a full spin, arms flung wide and head thrown back, hang there, then land in a wide power stance
+        const u = clamp(this.stateT / (this.stateDur || 1), 0, 1);
+        const a = smooth(clamp(u / 0.26, 0, 1)), b = smooth(clamp((u - 0.26) / 0.34, 0, 1)), c = clamp((u - 0.6) / 0.4, 0, 1);
+        const hang = u < 0.6 ? b : 1 - c * c;
+        by = 0.72 - 0.12 * a * (1 - b) + 1.15 * hang - (c > 0.82 ? 0.14 * Math.sin(Math.PI * (c - 0.82) / 0.18) : 0);
+        if (u < 0.26) { bx = 0.38 * a; aL = aR = -1.25 * a; aLz = 0.06 - 0.45 * a; aRz = -0.06 + 0.45 * a; hx = 0.5 * a; lL = lR = -0.3 * a; lLz = 0.3 * a; lRz = -0.3 * a; }
+        else if (u < 0.6) {
+          bx = lerp(0.38, -0.32, b); aL = aR = lerp(-1.25, -0.25, b); aLz = lerp(-0.39, 2.35, b); aRz = lerp(0.39, -2.35, b);
+          hx = lerp(0.5, -0.6, b); lL = lerp(-0.3, 0.18, b); lR = lerp(-0.3, -0.12, b); lLz = 0.3 * (1 - b); lRz = -0.3 * (1 - b); spinY = TAU * b;
+        } else {
+          const s2 = smooth(c);
+          bx = lerp(-0.32, 0.12, s2); aL = aR = lerp(-0.25, 0.3, s2); aLz = lerp(2.35, 0.6, s2); aRz = lerp(-2.35, -0.6, s2);
+          hx = lerp(-0.6, -0.05, s2); lL = lerp(0.18, 0.05, s2); lR = lerp(-0.12, 0.05, s2); lLz = 0.28 * s2; lRz = -0.28 * s2;
+        }
+        ease = 30;
+        if (u < 0.1) this._awFx = 0; // light at the top of the jump, a shockwave on landing
+        if (this._awFx === 0 && u >= 0.6) { this._awFx = 1; FX.ring(this.pos.x, this.pos.y + 1.9, this.pos.z, this.aura, 1.4, 26); FX.sparks(this.pos.x, this.pos.y + 1.9, this.pos.z, '#ffffff', 22, 6, 0.12, 0.5); }
+        if (this._awFx === 1 && c >= 0.9) { this._awFx = 2; FX.ring(this.pos.x, 0.15, this.pos.z, this.aura, 3.2, 40); FX.dust(this.pos.x, this.pos.z, 10); Shake.add(this.isHuman ? 0.3 : 0.05); }
         break;
       }
       case 'dash':
-        if (this.feint) { // a step-over: the leg sweeps round over the ball, the body drops to the side, arms out
-          const u = this.dash ? clamp(this.dash.t / this.dash.dur, 0, 1) : 1, w = Math.sin(Math.PI * u), sd = this.feint;
-          bx = 0.1; bz = 0.3 * sd * w; by = 0.72 - 0.06 * w; lRz = 1.0 * sd * w; lR = 0.4 * w; lL = -0.2; aL = aR = 0.15; aLz = 0.8; aRz = -0.8;
+        if (this.feint) { // a step-over (owner, Nov 2026: one you can see): the leg on the fake side lifts and circles round the front
+          // of the ball from inside to outside while the body dips, leans and looks that way; then you push off the way you cut (sd)
+          const u = this.dash ? clamp(this.dash.t / this.dash.dur, 0, 1) : 1, sd = this.feint;
+          const t1 = clamp(u / 0.62, 0, 1), t2 = clamp((u - 0.62) / 0.38, 0, 1);
+          const loop = Math.sin(Math.PI * t1), sell = u < 0.62 ? Math.sin(Math.PI * 0.5 * t1) : 1 - smooth(t2), go = Math.sin(Math.PI * t2);
+          const lift = -0.95 * loop + 0.2 * go;
+          const sweep = sd * (u < 0.62 ? lerp(0.4, -0.85, smooth(t1)) : lerp(-0.85, 0, smooth(t2)));
+          if (sd > 0) { lR = lift; lRz = sweep; lL = 0.18 - 0.3 * go; } else { lL = lift; lLz = sweep; lR = 0.18 - 0.3 * go; }
+          bx = 0.12 + 0.08 * loop; bz = 0.42 * sd * sell - 0.3 * sd * go; by = 0.72 - 0.07 * loop - 0.04 * go;
+          hy = -0.5 * sd * sell + 0.35 * sd * go;
+          const out = 0.75 + 0.6 * sell; // the arm on the fake side flies out for balance
+          if (sd > 0) { aRz = -out; aLz = 0.55; } else { aLz = out; aRz = -0.55; }
+          aL = 0.1 - (sd > 0 ? 0.35 * go : 0); aR = 0.1 - (sd < 0 ? 0.35 * go : 0);
+          ease = 46;
+          if (u < 0.62) { // a short white trail behind the stepping foot
+            const v = (sd > 0 ? P.legR : P.legL).localToWorld(STEP_V.set(0, -0.7, 0));
+            FX.glow.spawn(v.x, v.y, v.z, 0, 0, 0, 0.09, 0.22, col('#ffffff'), 0, 0, 0);
+          }
         } else { bx = 0.32; aL = 0.7; aR = 0.7; lL = s * 1.1; lR = -s * 1.1; }
         break;
       case 'windup': bx = 0.5; by = 0.6; aL = 0.9; aR = 0.9; aLz = 0.4; aRz = -0.4; lL = -0.5; lR = 0.4; break;
@@ -454,12 +486,12 @@ class Player {
       }
     }
     if (this.flipT >= 0) { bx = -this.flipT * TAU; lL = -1.2; lR = 0.3; }
-    const k = st === 'frozen' ? 0 : 1 - Math.exp(-22 * dt);
+    const k = st === 'frozen' ? 0 : 1 - Math.exp(-ease * dt);
     const r = (o, prop, v) => { o.rotation[prop] += (v - o.rotation[prop]) * k; };
     r(P.body, 'x', bx); r(P.body, 'z', bz);
     if (snapX) P.body.rotation.x = bx; // full flips are set directly, easing would unwind them
     P.body.position.y += (by - P.body.position.y) * k;
-    r(P.legL, 'x', lL); r(P.legR, 'x', lR); r(P.legR, 'z', lRz); r(P.headP, 'y', hy);
+    r(P.legL, 'x', lL); r(P.legR, 'x', lR); r(P.legR, 'z', lRz); r(P.legL, 'z', lLz); r(P.headP, 'y', hy);
     r(P.armL, 'x', aL); r(P.armR, 'x', aR); r(P.armL, 'z', aLz); r(P.armR, 'z', aRz);
     r(P.headP, 'x', hx);
     P.root.position.copy(this.pos);
