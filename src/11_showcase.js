@@ -114,12 +114,13 @@ const Showcase = {
     const style = sp.style || d.style, flow = sp.flow !== undefined ? sp.flow : d.flow, look = Object.assign({}, d.look, sp.look || {});
     const club = sp.club || d.club;
     const tone = sp.tone != null ? sp.tone : Save.data.tone;
-    const key = [style, flow || '', club, tone, SKIN_SLOTS.map((s) => look[s.id]).join(',')].join('|');
+    const pos = sp.pos !== undefined ? sp.pos : d.pos, gk = pos === 'GK' || (!pos && !!(STYLES[style] && STYLES[style].gk)); // in goal like Game.startMatch: keeper kit, number 1
+    const key = [style, flow || '', club, tone, SKIN_SLOTS.map((s) => look[s.id]).join(','), gk ? 'GK' : ''].join('|');
     if (this.p && this.key === key) return;
     if (this.p) this.p.dispose();
     this.key = key; this.flow = flow;
     applyBallLook(look); // the Locker tries balls on too
-    this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: 'ST', human: true, style, flow, look, side: sideFor(club), number: 10, name: 'YOU', skin: SKIN_TONES[tone] || SKIN_TONES[1] });
+    this.p = new Player({ scene: World.scene, ball: { owner: null } }, { team: 0, role: gk ? 'GK' : 'ST', human: true, style, flow, look, side: sideFor(club), number: gk ? 1 : 10, name: 'YOU', skin: SKIN_TONES[tone] || SKIN_TONES[1] });
     const aura = col(this.p.aura);
     this.ringMat.color.copy(aura); this.glowMat.color.copy(aura); this.beamMat.color.copy(col('#fff1d6')).lerp(aura, 0.35);
     this.p.P.root.visible = this.p.blob.visible = this.on;

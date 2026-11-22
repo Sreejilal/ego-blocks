@@ -873,6 +873,8 @@ const SETUPS_5 = { defensive: { name: 'ULTRA DEFENSIVE', roles: ['GK', 'DEF', 'D
 /** the most attacking role first: you play it, and it takes the kickoff */
 const ROLE_ORDER = ['ST', 'FW', 'MID', 'LW', 'RW', 'DEF', 'DEF2'];
 /** what each outfield spot is called on the position picker (the match intro), and what you do there */
+// outfit presets in the Locker (owner, Nov 2026: "infinite or 20 like presets", "type any way u want")
+const PRESET_MAX = 20, PRESET_NAME_MAX = 18;
 const ROLE_INFO = { GK: ['KEEPER', 'SAVE THEIR SHOTS'], ST: ['STRIKER', 'SCORE GOALS'], FW: ['FORWARD', 'SECOND STRIKER'], MID: ['MIDFIELD', 'PASS AND RUN'], LW: ['LEFT WING', 'RUN THE LEFT SIDE'], RW: ['RIGHT WING', 'RUN THE RIGHT SIDE'], DEF: ['DEFENDER', 'STOP THEIR ATTACKS'], DEF2: ['SIDE DEFENDER', 'GUARD THE SIDE'] };
 const leadRole = (roles) => roles.filter((r) => r !== 'GK').sort((a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b))[0];
 const teamSizeFor = (mode, rp) => { if (mode === 'duel') return 2; if (mode === 'quick') return 4; if (mode !== 'ranked') return 3; const t = tierOf(rp); return t >= 4 ? 5 : t >= 2 ? 4 : 3; };

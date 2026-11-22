@@ -97,9 +97,9 @@ const Save = {
       fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
-      // outfit presets (owner, Nov 2026: "1 preset its like striker then goalie"): each keeps a position and, once saved,
-      // s = { style, flow, tone, look }. USE in the Locker's PRESETS tab puts all of it on (UI.usePreset)
-      presets: [{ pos: 'ST', s: null }, { pos: 'GK', s: null }, { pos: 'MID', s: null }, { pos: 'DEF', s: null }],
+      // outfit presets (owner, Nov 2026: "1 preset its like striker then goalie", up to 20, names typed by you): each has
+      // a name n, a position and, once started, s = { style, flow, tone, look }. preset = the one you wear (-1: none)
+      presets: [{ n: 'STRIKER', pos: 'ST', s: null }, { n: 'KEEPER', pos: 'GK', s: null }, { n: 'MIDFIELD', pos: 'MID', s: null }, { n: 'DEFENDER', pos: 'DEF', s: null }], preset: -1,
     };
   },
   load() {
@@ -140,18 +140,23 @@ const Save = {
     out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
     out.tone = clamp(Math.floor(Number(out.tone)), 0, 7); if (!Number.isFinite(out.tone)) out.tone = 1;
     out.pos = typeof out.pos === 'string' && /^(GK|ST|FW|MID|LW|RW|DEF|DEF2)$/.test(out.pos) ? out.pos : null; // the position you like to play (the match intro)
-    // presets: always four; anything odd falls back to an empty one (the ids are checked against the game's lists in validate)
-    out.presets = def.presets.map((pd, i) => {
-      const p = Array.isArray(out.presets) ? out.presets[i] : null;
-      if (!p || typeof p !== 'object') return { pos: pd.pos, s: null };
+    // presets: 1 to PRESET_MAX; a missing or broken list gets the four starters back (ids are checked against the game's lists in validate)
+    const posName = { ST: 'STRIKER', GK: 'KEEPER', MID: 'MIDFIELD', DEF: 'DEFENDER' };
+    const rawP = Array.isArray(out.presets) && out.presets.length ? out.presets.slice(0, PRESET_MAX) : def.presets;
+    out.presets = rawP.map((p, i) => {
+      const pd = def.presets[i] || { n: 'PRESET ' + (i + 1), pos: null };
+      if (!p || typeof p !== 'object') return { n: pd.n, pos: pd.pos, s: null };
       const pos = p.pos === null || (typeof p.pos === 'string' && /^(GK|ST|MID|DEF)$/.test(p.pos)) ? p.pos : pd.pos;
+      const nm = typeof p.n === 'string' ? p.n.replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, PRESET_NAME_MAX) : '';
+      const n = nm || (pos ? posName[pos] : 'PRESET ' + (i + 1)); // saves from before names: named after the position
       const s = p.s && typeof p.s === 'object' && typeof p.s.style === 'string' ? {
         style: p.s.style.slice(0, 24), flow: typeof p.s.flow === 'string' ? p.s.flow.slice(0, 24) : null,
         tone: clamp(Math.floor(Number(p.s.tone)) || 0, 0, 7),
         look: p.s.look && typeof p.s.look === 'object' ? Object.fromEntries(Object.entries(p.s.look).filter(([, v]) => typeof v === 'string').slice(0, 20)) : {},
       } : null;
-      return { pos, s };
+      return { n, pos, s };
     });
+    out.preset = Number.isInteger(out.preset) && out.preset >= 0 && out.preset < out.presets.length && out.presets[out.preset].s ? out.preset : -1;
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
     out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];

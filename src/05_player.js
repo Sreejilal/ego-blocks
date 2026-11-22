@@ -125,14 +125,16 @@ class Player {
   paintSkin() {
     const side = this.side, L = this.look;
     let kit = this.isGK ? side.keeper : side.kit;
-    if (!this.isGK && (L.kitPattern || L.kitTrim)) {
+    // a keeper keeps the keeper's colours (so the sides stay readable) but wears your kit pattern, trim and gloves too
+    // (owner, Nov 2026: a keeper preset's look did not show in goal: the pattern and the GLOVES skin were dropped)
+    if (L.kitPattern || L.kitTrim) {
       kit = Object.assign({}, kit, { pattern: L.kitPattern || kit.pattern });
       if (L.kitTrim) Object.assign(kit, { collar: L.kitTrim, cuff: L.kitTrim, number: L.kitTrim, sockTrim: L.kitTrim, shortsTrim: L.kitTrim });
     }
     this.eyeCol = this.eyeCol || pick(EYE_COLS);
     return makePlayerSkin({
       kit, crest: side.crest, boots: L.boots || (this.team === 0 ? '#1a1a1f' : '#f4efe0'), sparkle: L.sparkle,
-      skin: this.skin, hair: L.hair, hairShape: L.hairShape, face: L.face, number: this.number, gloves: this.isGK ? '#f2f2ea' : L.gloves, eye: this.eyeCol,
+      skin: this.skin, hair: L.hair, hairShape: L.hairShape, face: L.face, number: this.number, gloves: this.isGK ? L.gloves || '#f2f2ea' : L.gloves, eye: this.eyeCol,
       seed: this.team * 97 + this.number * 13 + 7,
     });
   }
