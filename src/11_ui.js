@@ -206,6 +206,9 @@ const UI = {
           <form class="pf-code-row" id="pf-code-form" autocomplete="off"><input class="on-in" id="pf-code" maxlength="40" placeholder="TYPE A CODE" aria-label="Code" spellcheck="false" autocapitalize="characters"><button class="btn blue" type="submit">REDEEM</button></form>
           <p class="label" id="pf-code-msg" aria-live="polite"></p></section>
         <section class="panel pf-hist"><h3>MATCH HISTORY</h3><div id="pf-hist"></div></section>
+        <section class="panel pf-reset"><h3>START OVER</h3>
+          <p class="pf-note">Delete all your progress and start fresh: emeralds, styles, skins, rank, level and stats all go. Your settings, name, friends and codes stay. This cannot be undone.</p>
+          <div class="on-row"><button class="btn small hazard" id="pf-reset" type="button">RESET PROGRESS</button><span class="label" id="pf-reset-msg" aria-live="polite"></span></div></section>
       </div>
     </section>`;
   },
@@ -613,6 +616,15 @@ const UI = {
       const r = redeemCode(Save.data, $('pf-code').value);
       $('pf-code-msg').textContent = r.msg; $('pf-code-msg').dataset.ok = r.ok ? '1' : '';
       if (r.ok) { $('pf-code').value = ''; Save.save(); Sfx.fanfare(2); this.renderProfile(); } else Sfx.deny();
+    });
+    // RESET PROGRESS: press, then press again within 5 seconds (SURE?)
+    $('pf-reset').addEventListener('click', () => {
+      const b = $('pf-reset'), msg = $('pf-reset-msg');
+      if (!this.resetArmed) { this.resetArmed = true; b.textContent = 'SURE? PRESS AGAIN'; msg.textContent = Save.data.account ? 'YOUR SCORZ ACCOUNT STARTS OVER TOO' : 'EVERYTHING YOU EARNED GOES'; clearTimeout(this.resetT); this.resetT = setTimeout(() => { this.resetArmed = false; b.textContent = 'RESET PROGRESS'; msg.textContent = ''; }, 5000); Sfx.deny(); return; }
+      clearTimeout(this.resetT); this.resetArmed = false;
+      Save.reset(); Net.hello();
+      this.renderProfile(); this.renderLobby(); Showcase.ensure();
+      b.textContent = 'RESET PROGRESS'; $('pf-reset-msg').textContent = 'DONE. A FRESH START!'; Sfx.coin();
     });
     click('fc-close', () => { $('friend-card').hidden = true; });
     click('spin-back', () => { if (!this.spinning) this.show('lobby'); });

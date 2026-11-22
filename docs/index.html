@@ -439,6 +439,10 @@ body.touch #chat-pop { bottom: auto; top: calc(56px + var(--safe-area-inset-top,
 /* account and friends (on the Profile screen) */
 .pf-acc { padding: 16px; display: grid; gap: 10px; }
 .pf-code { padding: 16px; display: grid; gap: 10px; }
+.pf-reset { padding: 16px; display: grid; gap: 10px; }
+.pf-reset h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: .9; }
+.pf-reset .pf-note { margin: 0; }
+.on-v { font-style: normal; font-size: .8em; color: #7dff9a; }
 .pf-code h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: .9; }
 .pf-code-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .pf-code-row .on-in { flex: 1 1 200px; text-transform: uppercase; letter-spacing: .06em; }
@@ -1291,6 +1295,18 @@ const Save = {
       for (const sl of SKIN_SLOTS) { const sk = SKINS[p.s.look[sl.id]]; pl[sl.id] = sk && sk.slot === sl.id ? p.s.look[sl.id] : sl.base; }
       p.s.look = pl;
     }
+  },
+  /** RESET PROGRESS (the profile, owner Nov 2026): a fresh start. Everything you earned goes (emeralds, styles, skins, rank,
+      level, pass, stats, presets); your settings, name, friends, codes and the how-to-play steps you have seen stay. On
+      CrazyGames the save is removed from their Data module (removeItem) and everything else the game kept there too
+      (clear, Portal.wipe) before the fresh save goes in. Signed in to a SCORZ account: the fresh save goes there too */
+  reset() {
+    const d = this.data || this.defaults(), keep = {};
+    for (const k of ['settings', 'name', 'fid', 'friends', 'account', 'codes', 'tutorial', 'onboarded', 'howto', 'tips']) if (d[k] !== undefined) keep[k] = d[k];
+    try { const S = this.store(); S.removeItem(this.key); for (const k of this.oldKeys) S.removeItem(k); } catch (e) {}
+    if (typeof Portal !== 'undefined') Portal.wipe();
+    this.data = Object.assign(this.defaults(), JSON.parse(JSON.stringify(keep)));
+    this.save(); this.load(); this.validate();
   },
   save() {
     try { this.store().setItem(this.key, JSON.stringify(this.data)); this.ok = true; }
@@ -9148,6 +9164,15 @@ const Portal = {
     this.done = pct;
     this.try(() => this.sdk.game.reportGameCompletedPercentage(pct));
   },
+  /** RESET PROGRESS (Save.reset): everything this game kept in their Data module goes */
+  wipe() { if (this.on && Save.backend) this.try(() => this.sdk.data.clear()); },
+  /** signed in to CrazyGames and online: send our server their token (getUserToken), so it can check the name really is
+      yours and nobody else online can use it (owner, Nov 2026: "check names online"). Guests have no token */
+  async authServer() {
+    if (!this.on || !this.user || !Net.ws || Net.ws.readyState !== 1) return;
+    const t = await this.tryAsync(() => this.sdk.user.getUserToken({ signingKeyType: 'IN_GAME_AUTH' }));
+    if (typeof t === 'string' && t && Net.ws && Net.ws.readyState === 1) Net.send({ t: 'cgauth', token: t });
+  },
   /** a win: their page celebrates with you */
   happy() { if (this.on) { this.tick(); this.try(() => this.sdk.game.happytime()); } },
   /** a video ad at the final whistle. Their SDK picks if one plays (at most one every 3 minutes) */
@@ -9181,7 +9206,7 @@ const Portal = {
   signedIn(u) {
     this.user = u || null; if (!this.user) return;
     // their SDK has now loaded this account's progress (or moved the guest progress into it)
-    Save.load(); Save.validate(); this.useName(); this.applyMute(); this.progress();
+    Save.load(); Save.validate(); this.useName(); this.applyMute(); this.progress(); this.authServer();
     UI.renderLobby(); Showcase.ensure(); this.renderAcct(); if (UI.cur === 'profile') UI.renderProfile();
   },
   /** their profile picture (CrazyGames: "show their username and profile picture in your game") */
@@ -9997,7 +10022,7 @@ const Net = {
     let ws;
     try { ws = new WebSocket(this.url); } catch (e) { this.setStatus('THAT SERVER ADDRESS DOES NOT WORK'); return; }
     this.ws = ws; this.onOpen = then;
-    ws.onopen = () => { this.setStatus('CONNECTED'); this.retryWait = 10000; this.hello(); this.askWho(); const f = this.onOpen; this.onOpen = null; if (f) f(); };
+    ws.onopen = () => { this.setStatus('CONNECTED'); this.retryWait = 10000; this.hello(); Portal.authServer(); this.askWho(); const f = this.onOpen; this.onOpen = null; if (f) f(); };
     ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } this.onMessage(m); };
     ws.onclose = () => {
       const wasPlaying = Game.state === 'online';
@@ -10019,6 +10044,7 @@ const Net = {
   onMessage(m) {
     switch (m.t) {
       case 'welcome': this.id = m.id; break;
+      case 'cgauth': this.cgOk = !!m.ok; break; // the server checked your CrazyGames sign-in: a tick next to your name in rooms
       case 'room': {
         const before = this.room && this.room.code === m.code ? this.room.players.map((p) => p.id) : null;
         this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); Portal.room(m);
@@ -10059,7 +10085,7 @@ const Net = {
     $('on-room-code').textContent = R.code;
     for (const t of [0, 1]) {
       const list = R.players.filter((p) => p.team === t);
-      $('on-t' + t).innerHTML = `<span class="label">${t === 0 ? 'HOME' : 'AWAY'} · ${list.length} / ${R.size - 1}</span>` + list.map((p) => `<div class="on-p ${p.id === this.id ? 'me' : ''}">${esc(p.name)}${p.id === R.host ? ' <span class="chip">HOST</span>' : ''}${p.id === this.id ? ' <span class="chip">YOU</span>' : this.acts(p)}</div>`).join('') + '<div class="on-p bot">+ BOTS</div>';
+      $('on-t' + t).innerHTML = `<span class="label">${t === 0 ? 'HOME' : 'AWAY'} · ${list.length} / ${R.size - 1}</span>` + list.map((p) => `<div class="on-p ${p.id === this.id ? 'me' : ''}">${esc(p.name)}${p.v ? ' <i class="on-v" title="Signed in to CrazyGames">&#10003;</i>' : ''}${p.id === R.host ? ' <span class="chip">HOST</span>' : ''}${p.id === this.id ? ' <span class="chip">YOU</span>' : this.acts(p)}</div>`).join('') + '<div class="on-p bot">+ BOTS</div>';
     }
     $('on-host').hidden = !host;
     $('on-mode').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === R.mode));
@@ -11266,6 +11292,9 @@ const UI = {
           <form class="pf-code-row" id="pf-code-form" autocomplete="off"><input class="on-in" id="pf-code" maxlength="40" placeholder="TYPE A CODE" aria-label="Code" spellcheck="false" autocapitalize="characters"><button class="btn blue" type="submit">REDEEM</button></form>
           <p class="label" id="pf-code-msg" aria-live="polite"></p></section>
         <section class="panel pf-hist"><h3>MATCH HISTORY</h3><div id="pf-hist"></div></section>
+        <section class="panel pf-reset"><h3>START OVER</h3>
+          <p class="pf-note">Delete all your progress and start fresh: emeralds, styles, skins, rank, level and stats all go. Your settings, name, friends and codes stay. This cannot be undone.</p>
+          <div class="on-row"><button class="btn small hazard" id="pf-reset" type="button">RESET PROGRESS</button><span class="label" id="pf-reset-msg" aria-live="polite"></span></div></section>
       </div>
     </section>`;
   },
@@ -11673,6 +11702,15 @@ const UI = {
       const r = redeemCode(Save.data, $('pf-code').value);
       $('pf-code-msg').textContent = r.msg; $('pf-code-msg').dataset.ok = r.ok ? '1' : '';
       if (r.ok) { $('pf-code').value = ''; Save.save(); Sfx.fanfare(2); this.renderProfile(); } else Sfx.deny();
+    });
+    // RESET PROGRESS: press, then press again within 5 seconds (SURE?)
+    $('pf-reset').addEventListener('click', () => {
+      const b = $('pf-reset'), msg = $('pf-reset-msg');
+      if (!this.resetArmed) { this.resetArmed = true; b.textContent = 'SURE? PRESS AGAIN'; msg.textContent = Save.data.account ? 'YOUR SCORZ ACCOUNT STARTS OVER TOO' : 'EVERYTHING YOU EARNED GOES'; clearTimeout(this.resetT); this.resetT = setTimeout(() => { this.resetArmed = false; b.textContent = 'RESET PROGRESS'; msg.textContent = ''; }, 5000); Sfx.deny(); return; }
+      clearTimeout(this.resetT); this.resetArmed = false;
+      Save.reset(); Net.hello();
+      this.renderProfile(); this.renderLobby(); Showcase.ensure();
+      b.textContent = 'RESET PROGRESS'; $('pf-reset-msg').textContent = 'DONE. A FRESH START!'; Sfx.coin();
     });
     click('fc-close', () => { $('friend-card').hidden = true; });
     click('spin-back', () => { if (!this.spinning) this.show('lobby'); });

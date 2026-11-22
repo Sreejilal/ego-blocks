@@ -16,6 +16,7 @@ const THREE = require('three');
 const G = require('./headless').load();
 const Accounts = require('./accounts');
 const Filter = require('./filter');
+const CGAuth = require('./cgauth'); // CrazyGames sign-in check (getUserToken)
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 
 const PORT = Number(process.env.PORT) || 8787;
@@ -135,8 +136,10 @@ function makeRoom(room) {
 const BOTS_OK = ['fill', 'keepers', 'none']; // fill: bots in the empty spots; keepers: only computer keepers; none: only the friends
 function summary(room) {
   return { t: 'room', code: room.code, host: room.host, mode: room.mode, size: room.size, bots: room.bots, state: room.match ? 'match' : 'room', pub: !!room.pub, startIn: room.pub && !room.match && room.startAt ? Math.max(0, room.startAt - Date.now()) : null,
-    players: room.players.map((p) => ({ id: p.id, name: p.name, team: p.team, rp: p.rp || 0 })) };
+    players: room.players.map((p) => ({ id: p.id, name: p.name, team: p.team, rp: p.rp || 0, v: p.cg ? 1 : 0 })) }; // v: a checked CrazyGames account
 }
+/** a name a signed-in, checked CrazyGames player online is using (nobody else may take it) */
+function takenByCG(me, name) { for (const c of clients) if (c !== me && c.cg && c.name === name) return true; return false; }
 function broadcast(room, msg) { const s = JSON.stringify(msg); for (const p of room.players) if (p.ws.readyState === 1) p.ws.send(s); }
 function sync(room) { broadcast(room, summary(room)); }
 function pickTeam(room) {
@@ -392,6 +395,8 @@ wss.on('connection', (ws) => {
         if (acc) online.set(acc.user, me);
         const typed = clean(m.name, 12) || 'PLAYER';
         me.name = acc ? acc.user : Filter.clean(typed).changed ? 'PLAYER' + (10 + Math.floor(Math.random() * 90)) : typed; // no rude names or numbers
+        if (me.cg) me.name = me.cg.name; // a checked CrazyGames account always plays under its own name
+        else if (!acc && takenByCG(me, me.name)) me.name = 'PLAYER' + (10 + Math.floor(Math.random() * 90)); // that name belongs to a signed-in CrazyGames player who is online
         me.style = G.STYLES[m.style] ? m.style : 'ROOKIE';
         me.flow = G.FLOWS[m.flow] ? m.flow : null;
         me.look = {}; if (m.look && typeof m.look === 'object') for (const s of G.SKIN_SLOTS) if (G.SKINS[m.look[s.id]] && G.SKINS[m.look[s.id]].slot === s.id) me.look[s.id] = m.look[s.id];
@@ -409,6 +414,17 @@ wss.on('connection', (ws) => {
         leave(me);
         const r = { code: newCode(), host: me.id, hostClub: me.club, mode: 'quick', size: 3, bots: 'fill', players: [], match: null, events: [], log: [], reports: new Set(), silenced: new Set() };
         rooms.set(r.code, r); join(me, r);
+        break;
+      }
+      case 'cgauth': { // their portal: a signed-in player's CrazyGames token. Once it checks out, that name is theirs
+        CGAuth.verify(m.token).then((u) => {
+          if (!clients.has(me)) return;
+          if (!u) { send(ws, { t: 'cgauth', ok: false }); return; }
+          me.cg = { id: u.id, name: clean(u.username, 12) || 'PLAYER' }; me.name = me.cg.name;
+          for (const c of clients) if (c !== me && !c.cg && !c.account && c.name === me.name) { c.name = 'PLAYER' + (10 + Math.floor(Math.random() * 90)); if (c.room) sync(c.room); } // someone using that name without the account
+          send(ws, { t: 'cgauth', ok: true, name: me.name });
+          if (me.room) sync(me.room);
+        }, () => send(ws, { t: 'cgauth', ok: false }));
         break;
       }
       case 'random': joinRandom(me); break;

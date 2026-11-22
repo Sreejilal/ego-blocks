@@ -21,17 +21,18 @@ const PORT = 18788, URL = 'http://localhost:' + PORT + '/';
     return page;
   };
   const A = await mk({ viewport: { width: 1280, height: 720 } });
-  await A.goto(URL); await sleep(2500);
+  await A.goto(URL, { timeout: 120000 }); await sleep(2500);
   await A.click('#go-online'); await sleep(300);
   await A.fill('#on-name', 'ali'); await A.press('#on-name', 'Tab');
   await A.click('#on-create'); await sleep(800);
+  for (let i = 0; i < 60; i++) { if (await A.evaluate(() => !!(EGO.Net.room))) break; await sleep(250); } // a slow PC can take a few seconds to connect
   const code = await A.evaluate(() => document.getElementById('on-room-code').textContent);
   const link = await A.evaluate(() => EGO.Net ? EGO.Net.inviteLink() : null);
   check('desktop player creates a room and gets a code and invite link', /^[A-Z0-9]{4}$/.test(code) && link && link.includes('?room=' + code), { code, link });
   await A.screenshot({ path: __dirname + '/shots/on1_room.png' });
 
   const B = await mk({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
-  await B.goto(link);
+  await B.goto(link, { timeout: 120000 });
   for (let i = 0; i < 40; i++) { if (await B.evaluate(() => !!(window.EGO && EGO.Net.room)).catch(() => false)) break; await sleep(250); }
   const bRoom = await B.evaluate(() => ({ cur: EGO.UI.cur, code: document.getElementById('on-room-code').textContent, players: EGO.Net.room && EGO.Net.room.players.length }));
   check('the invite link opens straight into the room on a phone', bRoom.cur === 'online' && bRoom.code === code && bRoom.players === 2, bRoom);

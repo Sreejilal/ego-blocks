@@ -100,6 +100,15 @@ const Portal = {
     this.done = pct;
     this.try(() => this.sdk.game.reportGameCompletedPercentage(pct));
   },
+  /** RESET PROGRESS (Save.reset): everything this game kept in their Data module goes */
+  wipe() { if (this.on && Save.backend) this.try(() => this.sdk.data.clear()); },
+  /** signed in to CrazyGames and online: send our server their token (getUserToken), so it can check the name really is
+      yours and nobody else online can use it (owner, Nov 2026: "check names online"). Guests have no token */
+  async authServer() {
+    if (!this.on || !this.user || !Net.ws || Net.ws.readyState !== 1) return;
+    const t = await this.tryAsync(() => this.sdk.user.getUserToken({ signingKeyType: 'IN_GAME_AUTH' }));
+    if (typeof t === 'string' && t && Net.ws && Net.ws.readyState === 1) Net.send({ t: 'cgauth', token: t });
+  },
   /** a win: their page celebrates with you */
   happy() { if (this.on) { this.tick(); this.try(() => this.sdk.game.happytime()); } },
   /** a video ad at the final whistle. Their SDK picks if one plays (at most one every 3 minutes) */
@@ -133,7 +142,7 @@ const Portal = {
   signedIn(u) {
     this.user = u || null; if (!this.user) return;
     // their SDK has now loaded this account's progress (or moved the guest progress into it)
-    Save.load(); Save.validate(); this.useName(); this.applyMute(); this.progress();
+    Save.load(); Save.validate(); this.useName(); this.applyMute(); this.progress(); this.authServer();
     UI.renderLobby(); Showcase.ensure(); this.renderAcct(); if (UI.cur === 'profile') UI.renderProfile();
   },
   /** their profile picture (CrazyGames: "show their username and profile picture in your game") */

@@ -225,6 +225,18 @@ const Save = {
       p.s.look = pl;
     }
   },
+  /** RESET PROGRESS (the profile, owner Nov 2026): a fresh start. Everything you earned goes (emeralds, styles, skins, rank,
+      level, pass, stats, presets); your settings, name, friends, codes and the how-to-play steps you have seen stay. On
+      CrazyGames the save is removed from their Data module (removeItem) and everything else the game kept there too
+      (clear, Portal.wipe) before the fresh save goes in. Signed in to a SCORZ account: the fresh save goes there too */
+  reset() {
+    const d = this.data || this.defaults(), keep = {};
+    for (const k of ['settings', 'name', 'fid', 'friends', 'account', 'codes', 'tutorial', 'onboarded', 'howto', 'tips']) if (d[k] !== undefined) keep[k] = d[k];
+    try { const S = this.store(); S.removeItem(this.key); for (const k of this.oldKeys) S.removeItem(k); } catch (e) {}
+    if (typeof Portal !== 'undefined') Portal.wipe();
+    this.data = Object.assign(this.defaults(), JSON.parse(JSON.stringify(keep)));
+    this.save(); this.load(); this.validate();
+  },
   save() {
     try { this.store().setItem(this.key, JSON.stringify(this.data)); this.ok = true; }
     catch (e) { this.ok = false; }

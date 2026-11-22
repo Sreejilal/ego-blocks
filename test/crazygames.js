@@ -16,6 +16,15 @@ execFileSync(process.execPath, ['build.js', '--crazygames'], { cwd: ROOT, env: O
 execFileSync(process.execPath, ['build.js', '--crazygames'], { cwd: ROOT, env: Object.assign({}, process.env, { SCORZ_SERVER: '', SCORZ_CG_OUT: OUT2 }) });
 const CG = fs.readFileSync(path.join(OUT, 'index.html'), 'utf8'), CG_NOSERVER = fs.readFileSync(path.join(OUT2, 'index.html'), 'utf8');
 const PUBLIC = fs.readFileSync(path.join(ROOT, 'docs', 'index.html'), 'utf8');
+// their sign-in token (getUserToken): our own key pair stands in for theirs. The server fetches the public key from a
+// tiny local page (CG_JWKS_URL) and checks the token's signature and game id, just as it does with their real keys
+const crypto = require('crypto'), http = require('http');
+const KEYS = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }), JWKS_PORT = PORT + 7, GAME_ID = '20267';
+const jwk = Object.assign(KEYS.publicKey.export({ format: 'jwk' }), { kid: 'ingame-auth', alg: 'RS256', use: 'sig' });
+const jwksSrv = http.createServer((q, r) => { r.setHeader('content-type', 'application/json'); r.end(JSON.stringify({ keys: [jwk] })); }).listen(JWKS_PORT);
+const b64u = (b) => Buffer.from(b).toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+const signToken = (payload) => { const now = Math.floor(Date.now() / 1000); const h = b64u(JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: 'ingame-auth' })), b = b64u(JSON.stringify(Object.assign({ userId: 'cg-user-1', gameId: GAME_ID, username: 'Cool Kid77', profilePictureUrl: '', iat: now, exp: now + 3600 }, payload))); return h + '.' + b + '.' + b64u(crypto.sign('RSA-SHA256', Buffer.from(h + '.' + b), KEYS.privateKey)); };
+const TOKEN = signToken({});
 
 // the stand-in SDK: same names as theirs (docs.crazygames.com/sdk), it records what the game calls
 const FAKE_SDK = `(() => {
@@ -40,8 +49,9 @@ const FAKE_SDK = `(() => {
       showAuthPrompt: async () => { cg.user = { username: 'Cool Kid77', profilePictureUrl: 'https://images.crazygames.com/userportal/avatars/1.png' }; return cg.user; },
       addAuthListener: (f) => { cg.listeners.auth = f; },
       systemInfo: { countryCode: 'GB', locale: 'en-GB', device: { type: P.device || 'desktop' } },
+      getUserToken: async (o) => { cg.calls.push('getUserToken:' + JSON.stringify(o)); if (!cg.user) { const e = new Error('userNotAuthenticated'); e.code = 'userNotAuthenticated'; throw e; } return P.token || 'not.a.token'; },
     },
-    data: { getItem: (k) => (k in cg.data ? cg.data[k] : null), setItem: (k, v) => { cg.data[k] = String(v); }, removeItem: (k) => { delete cg.data[k]; }, clear: () => { cg.data = {}; } },
+    data: { getItem: (k) => (k in cg.data ? cg.data[k] : null), setItem: (k, v) => { cg.data[k] = String(v); }, removeItem: (k) => { cg.calls.push('data.removeItem:' + k); delete cg.data[k]; }, clear: () => { cg.calls.push('data.clear'); cg.data = {}; } },
     ad: {
       requestAd: (type, cb) => { cg.calls.push('ad:' + type); setTimeout(() => { cg.adOn = true; cb.adStarted && cb.adStarted(); setTimeout(() => { cg.adOn = false; cb.adFinished && cb.adFinished(); }, 700); }, 80); },
       hasAdblock: async () => false,
@@ -50,7 +60,7 @@ const FAKE_SDK = `(() => {
 })();`;
 
 (async () => {
-  const srv = spawn(process.execPath, [path.join(ROOT, 'server', 'server.js')], { env: Object.assign({}, process.env, { PORT: String(PORT), MATCH_SECONDS: '30' }) });
+  const srv = spawn(process.execPath, [path.join(ROOT, 'server', 'server.js')], { env: Object.assign({}, process.env, { PORT: String(PORT), MATCH_SECONDS: '30', CG_JWKS_URL: 'http://localhost:' + JWKS_PORT + '/jwks.json', CG_GAME_ID: GAME_ID }) });
   let out = ''; srv.stdout.on('data', (d) => { out += d; }); srv.stderr.on('data', (d) => { out += d; });
   for (let i = 0; i < 50 && !/SCORZ server/.test(out); i++) await sleep(100);
   // the page here is injected by the test, so Chrome cannot tell it comes from localhost; on CrazyGames both ends are public
@@ -71,7 +81,7 @@ const FAKE_SDK = `(() => {
   check('the CrazyGames page loads their SDK in <head>, the normal page does not', /<head>[\s\S]*sdk\.crazygames\.com\/crazygames-sdk-v3\.js[\s\S]*<\/head>/.test(CG) && !/crazygames-sdk/.test(PUBLIC));
   // an old local save is copied into their Data module once
   const oldSave = JSON.stringify({ emeralds: 4321, xp: 100 });
-  const A = await mk({ viewport: { width: 1280, height: 720 } }, {}, null, { 'scorz.save.v1': oldSave });
+  const A = await mk({ viewport: { width: 1280, height: 720 } }, { token: TOKEN }, null, { 'scorz.save.v1': oldSave });
   const boot = await A.evaluate(() => ({ on: EGO.Portal.on, em: EGO.Save.data.emeralds, inData: !!window.__cg.data['scorz.save.v1'], fs: !document.getElementById('btn-fs') || document.getElementById('btn-fs').hidden, adv: !!document.querySelector('.on-adv'), online: !document.getElementById('go-online').hidden }));
   const c0 = await calls(A);
   check('their SDK starts first and loading start/stop are reported', boot.on && c0[0] === 'loadingStart' && c0.includes('loadingStop'), c0);
@@ -144,7 +154,23 @@ const FAKE_SDK = `(() => {
   const chat1 = await A.evaluate(() => !document.getElementById('on-chat').hidden);
   check('their disableChat setting hides chat', chat1 === false);
   await A.evaluate(() => window.__cg.listeners.settings({ muteAudio: false, disableChat: false }));
+  // signed in: the server is sent their token (getUserToken), checks it, and your name gets a tick in the room
+  for (let i = 0; i < 40; i++) { if (await A.evaluate(() => EGO.Net.cgOk === true)) break; await sleep(250); }
+  const tok = await A.evaluate(() => ({ ok: EGO.Net.cgOk, tick: !!document.querySelector('#on-t0 .on-p.me .on-v, #on-t1 .on-p.me .on-v'), asked: window.__cg.calls.filter((c) => /^getUserToken/.test(c)) }));
+  check('signed in and online: their token is sent to our server, which checks it, and your name gets a tick', tok.ok === true && tok.tick && tok.asked[0] === 'getUserToken:' + JSON.stringify({ signingKeyType: 'IN_GAME_AUTH' }), tok);
   await A.screenshot({ path: __dirname + '/shots/cg2_room.png' });
+  // RESET PROGRESS in the profile: press, SURE?, press again. Their Data module: the save removed, everything cleared, the fresh save in
+  const rs = await A.evaluate(async () => {
+    const d = EGO.Save.data; d.emeralds = 9876; d.styles.push('THUNDER'); d.settings.sens = 1.7; d.codes = ['abc']; EGO.Save.save();
+    EGO.UI.show('profile'); window.__cg.calls.length = 0;
+    document.getElementById('pf-reset').click(); const sure = document.getElementById('pf-reset').textContent;
+    document.getElementById('pf-reset').click();
+    const s = EGO.Save.data, raw = JSON.parse(window.__cg.data['scorz.save.v1'] || '{}');
+    const out = { sure, calls: window.__cg.calls.filter((c) => /^data\./.test(c)), em: s.emeralds, styles: s.styles, sens: s.settings.sens, codes: s.codes, name: s.name, inData: raw.emeralds, msg: document.getElementById('pf-reset-msg').textContent };
+    EGO.UI.show('lobby'); return out;
+  });
+  check('RESET PROGRESS asks SURE? first, then starts you fresh (settings, name and codes stay)', /SURE/.test(rs.sure) && rs.em === 500 && rs.styles.join(',') === 'ROOKIE' && rs.sens === 1.7 && rs.codes.join(',') === 'abc' && rs.name === 'COOL KID77' && /FRESH START/.test(rs.msg), rs);
+  check('on CrazyGames it removes the save from their Data module and clears it (Remove Item, Clear), then saves the fresh start there', rs.calls.includes('data.removeItem:scorz.save.v1') && rs.calls.includes('data.clear') && rs.inData === 500, rs.calls);
 
   // a friend arrives from their invite (the page opens with invite params) and joins straight away
   const B = await mk({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }, { invite: { room: code } });
@@ -195,7 +221,7 @@ const FAKE_SDK = `(() => {
   const s1 = await S.evaluate(() => ({ on: EGO.Portal.on, state: EGO.Game.state, name: EGO.Save.data.name, ro: document.getElementById('on-name').readOnly })), cs = await calls(S);
   check('a slow SDK: the game does not wait for it, then it joins in late and gameplay start is still reported', s0.on === false && s0.state === 'lobby' && s1.on && s1.state === 'match' && cs.includes('loadingStop') && cs.includes('gameplayStart') && s1.ro, { s0, s1, cs: cs.filter((c) => /^(loading|gameplay)/.test(c)) });
   await S.context().close();
-  await browser.close(); srv.kill();
+  await browser.close(); srv.kill(); jwksSrv.close();
   fs.rmSync(OUT, { recursive: true, force: true }); fs.rmSync(OUT2, { recursive: true, force: true });
   console.log(results.join('\n'));
   process.exitCode = results.some((r) => r.startsWith('FAIL')) ? 1 : 0;

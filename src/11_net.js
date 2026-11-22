@@ -299,7 +299,7 @@ const Net = {
     let ws;
     try { ws = new WebSocket(this.url); } catch (e) { this.setStatus('THAT SERVER ADDRESS DOES NOT WORK'); return; }
     this.ws = ws; this.onOpen = then;
-    ws.onopen = () => { this.setStatus('CONNECTED'); this.retryWait = 10000; this.hello(); this.askWho(); const f = this.onOpen; this.onOpen = null; if (f) f(); };
+    ws.onopen = () => { this.setStatus('CONNECTED'); this.retryWait = 10000; this.hello(); Portal.authServer(); this.askWho(); const f = this.onOpen; this.onOpen = null; if (f) f(); };
     ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } this.onMessage(m); };
     ws.onclose = () => {
       const wasPlaying = Game.state === 'online';
@@ -321,6 +321,7 @@ const Net = {
   onMessage(m) {
     switch (m.t) {
       case 'welcome': this.id = m.id; break;
+      case 'cgauth': this.cgOk = !!m.ok; break; // the server checked your CrazyGames sign-in: a tick next to your name in rooms
       case 'room': {
         const before = this.room && this.room.code === m.code ? this.room.players.map((p) => p.id) : null;
         this.room = m; this.renderRoom(); if (this.paused) this.renderPeople(); Portal.room(m);
@@ -361,7 +362,7 @@ const Net = {
     $('on-room-code').textContent = R.code;
     for (const t of [0, 1]) {
       const list = R.players.filter((p) => p.team === t);
-      $('on-t' + t).innerHTML = `<span class="label">${t === 0 ? 'HOME' : 'AWAY'} · ${list.length} / ${R.size - 1}</span>` + list.map((p) => `<div class="on-p ${p.id === this.id ? 'me' : ''}">${esc(p.name)}${p.id === R.host ? ' <span class="chip">HOST</span>' : ''}${p.id === this.id ? ' <span class="chip">YOU</span>' : this.acts(p)}</div>`).join('') + '<div class="on-p bot">+ BOTS</div>';
+      $('on-t' + t).innerHTML = `<span class="label">${t === 0 ? 'HOME' : 'AWAY'} · ${list.length} / ${R.size - 1}</span>` + list.map((p) => `<div class="on-p ${p.id === this.id ? 'me' : ''}">${esc(p.name)}${p.v ? ' <i class="on-v" title="Signed in to CrazyGames">&#10003;</i>' : ''}${p.id === R.host ? ' <span class="chip">HOST</span>' : ''}${p.id === this.id ? ' <span class="chip">YOU</span>' : this.acts(p)}</div>`).join('') + '<div class="on-p bot">+ BOTS</div>';
     }
     $('on-host').hidden = !host;
     $('on-mode').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === R.mode));
