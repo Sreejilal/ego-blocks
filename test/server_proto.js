@@ -23,7 +23,7 @@ function client(name) {
   for (let i = 0; i < 50 && !/SCORZ server/.test(out); i++) await sleep(100);
   check('server starts', /SCORZ server/.test(out), out.trim().split('\n')[0]);
   const page = await fetch('http://localhost:' + PORT + '/').then((r) => r.text()).catch(() => '');
-  check('server also serves the game page', /<title>SCORZ<\/title>/.test(page));
+  check('server also serves the game page', /<title>SCORZ[^<]*<\/title>/.test(page));
 
   const a = client('ALI'), b = client('BEN');
   await a.open; await b.open;

@@ -96,7 +96,26 @@ let CF_TOKEN = String(process.env.SCORZ_CF_TOKEN || '').trim();
 try { if (!CF_TOKEN) CF_TOKEN = String(JSON.parse(fs.readFileSync(path.join(ROOT, 'analytics.json'), 'utf8')).cloudflare || '').trim(); } catch (e) {}
 if (CF_TOKEN && !/^[a-f0-9]{20,64}$/i.test(CF_TOKEN)) { console.error('The Cloudflare token should be the long code of letters and numbers from the Web Analytics snippet'); process.exit(1); }
 const cfTag = CF_TOKEN ? "\n<script>if (location.protocol === 'https:' && !navigator.webdriver) { var s = document.createElement('script'); s.defer = true; s.src = 'https://static.cloudflareinsights.com/beacon.min.js'; s.setAttribute('data-cf-beacon', JSON.stringify({ token: '" + CF_TOKEN + "' })); document.head.appendChild(s); }</script>" : '';
-const page = pageFor(game, cfTag);
+// Google and link previews (website only, Nov 2026: the owner set up Google Search Console). A title and description
+// that say what the game is, the main address as the canonical one (the same page is also on GitHub Pages and itch.io),
+// a preview picture for WhatsApp / Discord / YouTube links (docs/share.jpg) and VideoGame data for Google.
+// robots.txt, sitemap.xml and Google's verification file (google84fef4218683ea75.html, never delete it) sit next to it in docs/.
+const SITE = 'https://scorz.onrender.com/';
+const SITE_TITLE = 'SCORZ: Free Blocky Football Game, Play in Your Browser';
+const SITE_DESC = 'Free blocky 3D football game in your browser. 29 styles with powers, Awakenings, slow-mo, curve shots and online matches with friends. No download.';
+const seoTag = `
+<link rel="canonical" href="${SITE}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SCORZ">
+<meta property="og:title" content="${SITE_TITLE}">
+<meta property="og:description" content="${SITE_DESC}">
+<meta property="og:url" content="${SITE}">
+<meta property="og:image" content="${SITE}share.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'VideoGame', name: 'SCORZ', url: SITE, description: SITE_DESC, image: SITE + 'share.jpg', genre: ['Sports', 'Football'], gamePlatform: ['Web browser', 'Android'], applicationCategory: 'Game', operatingSystem: 'Any', playMode: ['SinglePlayer', 'MultiPlayer'], offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } })}</script>`;
+const page = pageFor(game, cfTag + seoTag).replace(titleM[0], `<title>${SITE_TITLE}</title>`).replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${SITE_DESC}">`);
 fs.mkdirSync(path.join(ROOT, 'docs'), { recursive: true });
 // a test build into a temp folder (SCORZ_CG_OUT) leaves the public page alone, so its test server address never ends up on the website
 if (!process.env.SCORZ_CG_OUT) fs.writeFileSync(path.join(ROOT, 'docs', 'index.html'), page);
