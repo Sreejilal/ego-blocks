@@ -29,7 +29,7 @@ const FAKE_SDK = `(() => {
       gameplayStart: rec('gameplayStart'), gameplayStop: rec('gameplayStop'), loadingStart: rec('loadingStart'), loadingStop: rec('loadingStop'), happytime: rec('happytime'),
       get settings() { return cg.settings; },
       addSettingsChangeListener: (f) => { cg.listeners.settings = f; }, addJoinRoomListener: (f) => { cg.listeners.join = f; },
-      updateRoom: rec('updateRoom'), leftRoom: rec('leftRoom'),
+      updateRoom: rec('updateRoom'), leftRoom: rec('leftRoom'), reportGameCompletedPercentage: rec('completed'),
       inviteLink: (p) => { cg.calls.push('inviteLink:' + JSON.stringify(p)); const l = 'https://www.crazygames.com/game/scorz?room=' + p.room; return P.asyncLink ? new Promise((r) => setTimeout(() => r(l), 50)) : l; }, // their docs show it both ways
       get inviteParams() { return cg.invite; }, get isInstantMultiplayer() { return cg.instant; },
       getInviteParam: (k) => (cg.invite && cg.invite[k]) || null,
@@ -92,8 +92,8 @@ const FAKE_SDK = `(() => {
   const c1 = await calls(A);
   const gp = c1.filter((c) => /^gameplay/.test(c));
   check('gameplay start when the match starts, stop when paused, start again on resume (P pauses too)', paused === 'paused' && gp.join(',') === 'gameplayStart,gameplayStop,gameplayStart', gp);
-  // a win: happytime, the results, and the ad
-  await A.evaluate(() => { const m = EGO.Game.match; m.score = [2, 0]; m.result = { res: 'win', human: { goals: 2, assists: 0, shots: 3, tackles: 1 } }; EGO.Game.finishMatch(false); });
+  // a win: happytime, the results, and the ad (4 goals before + 2 now: the first SCORE GOALS step is done)
+  await A.evaluate(() => { EGO.Save.data.stats.goals = 4; const m = EGO.Game.match; m.score = [2, 0]; m.result = { res: 'win', human: { goals: 2, assists: 0, shots: 3, tackles: 1 } }; EGO.Game.finishMatch(false); });
   await sleep(250);
   const during = await A.evaluate(() => ({ block: !document.getElementById('ad-block').hidden, muted: EGO.Sfx.muted, ad: window.__cg.adOn }));
   await sleep(1200);
@@ -102,6 +102,8 @@ const FAKE_SDK = `(() => {
   check('the final whistle: gameplay stop, happytime for a win, then a midgame ad', c2.slice(c1.length).filter((c) => /gameplay|happytime|ad:/.test(c)).join(',') === 'gameplayStop,happytime,ad:midgame', c2.slice(c1.length));
   check('during the ad the screen is blocked and the sound is off', during.block && during.muted && during.ad, during);
   check('after the ad: unblocked, sound back on, progress saved in their Data module', !after.block && !after.muted && after.saved === 1, after);
+  const comp = c2.filter((c) => /^completed/.test(c));
+  check('game completion is reported: 0% when the game loads, then up when a GOAL step is done (1 of 31 steps: 3%)', c0.includes('completed:0') && comp.join(',') === 'completed:0,completed:3', comp);
   await A.evaluate(() => EGO.Game.toLobby()); await sleep(300);
 
   // their account

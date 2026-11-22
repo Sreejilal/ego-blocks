@@ -272,6 +272,7 @@ const Game = {
     UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name + (!forfeit && m.result.battle ? ' · FREE KICK BATTLE ' + m.result.battle.join('-') : ''), xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && (fun ? 'fun' : m.result.noReward), daily, goalsDone });
     if (res === 'win') Sfx.fanfare(2);
     if (res === 'win' && !idle) Portal.happy();
+    Portal.progress(); // a GOAL step done: their portal hears how far you are now
     Portal.midgame();
     Sfx.setCrowd(0.3);
   },

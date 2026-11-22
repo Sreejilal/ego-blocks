@@ -4,7 +4,8 @@
    It reports gameplay start and stop, keeps progress in their Data
    module, uses the CrazyGames username, follows their mute and chat
    settings, asks for a video ad at the final whistle (their SDK
-   decides how often) and shares online rooms for their invite button.
+   decides how often), shares online rooms for their invite button and
+   reports how far you are through the GOALS list.
    ===================================================================== */
 const Portal = {
   on: false, sdk: null, user: null, live: false, adMute: false, sdkMute: false, noChat: false, inRoom: false, adT: 0,
@@ -52,7 +53,7 @@ const Portal = {
   /** their SDK came up after the game had started: the same finishing touches as ready() */
   lateReady() {
     if (!this.on) return;
-    this.applyMute(); Touch.layout(); this.renderAcct();
+    this.applyMute(); Touch.layout(); this.renderAcct(); this.progress();
     if (!$('ad-block')) { const blk = document.createElement('div'); blk.id = 'ad-block'; blk.hidden = true; $('app').appendChild(blk); }
     if (this.user) this.useName();
     const nameIn = $('on-name'); if (nameIn) nameIn.readOnly = true;
@@ -63,7 +64,7 @@ const Portal = {
     this.applyMute();
     if (!this.on) return;
     this.try(() => this.sdk.game.loadingStop());
-    this.renderAcct();
+    this.renderAcct(); this.progress();
     const blk = document.createElement('div'); blk.id = 'ad-block'; blk.hidden = true; $('app').appendChild(blk);
     if (this.user) this.useName();
     const nameIn = $('on-name'); if (nameIn) nameIn.readOnly = true; // their rule: no typed names, guests keep the PLAYER name until they sign in
@@ -85,6 +86,19 @@ const Portal = {
     if (live === this.live) return;
     this.live = live;
     this.try(() => (live ? this.sdk.game.gameplayStart() : this.sdk.game.gameplayStop()));
+  },
+  /** how far you are through the game, for their portal (reportGameCompletedPercentage, 0 to 100): every step of every
+      GOAL (score goals, win matches, ...), so it goes up from any match that gives rewards. Their docs: send it when the
+      game loads and as it goes up (owner, Nov 2026: their checklist said "Game completion reported" was missing) */
+  done: -1,
+  progress() {
+    if (!this.on || !Save.data) return;
+    let have = 0, all = 0;
+    for (const g of GOALS) { all += g.steps.length; have += clamp(Save.data.goalSteps[g.id] || 0, 0, g.steps.length); }
+    const pct = all ? Math.round((100 * have) / all) : 0;
+    if (pct === this.done) return;
+    this.done = pct;
+    this.try(() => this.sdk.game.reportGameCompletedPercentage(pct));
   },
   /** a win: their page celebrates with you */
   happy() { if (this.on) { this.tick(); this.try(() => this.sdk.game.happytime()); } },
@@ -119,7 +133,7 @@ const Portal = {
   signedIn(u) {
     this.user = u || null; if (!this.user) return;
     // their SDK has now loaded this account's progress (or moved the guest progress into it)
-    Save.load(); Save.validate(); this.useName(); this.applyMute();
+    Save.load(); Save.validate(); this.useName(); this.applyMute(); this.progress();
     UI.renderLobby(); Showcase.ensure(); this.renderAcct(); if (UI.cur === 'profile') UI.renderProfile();
   },
   /** their profile picture (CrazyGames: "show their username and profile picture in your game") */
