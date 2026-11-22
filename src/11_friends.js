@@ -119,7 +119,7 @@ const Friends = {
     Net.open(); Net.join(code);
   },
   copyLink() {
-    const go = () => { const link = Net.inviteLink(); const ok = () => this.setNote('INVITE LINK COPIED. SEND IT TO YOUR FRIEND'); try { navigator.clipboard.writeText(link).then(ok, () => this.setNote(link)); } catch (e) { this.setNote(link); } };
+    const go = () => Promise.resolve(Net.inviteLink()).then((link) => { const ok = () => this.setNote('INVITE LINK COPIED. SEND IT TO YOUR FRIEND'); try { navigator.clipboard.writeText(link).then(ok, () => this.setNote(link)); } catch (e) { this.setNote(link); } }); // on CrazyGames the link can come as a promise
     if (Net.room) { go(); return; }
     if (!Game.match && UI.cur !== 'online') Net.open();
     this.afterRoom = go;

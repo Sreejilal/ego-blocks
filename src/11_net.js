@@ -394,9 +394,10 @@ const Net = {
     return base + '?room=' + (this.room ? this.room.code : '') + (sameHost ? '' : '&server=' + encodeURIComponent(this.url));
   },
   copyInvite() {
-    const link = this.inviteLink();
-    const done = () => { $('on-wait').textContent = 'INVITE LINK COPIED. SEND IT TO A FRIEND.'; };
-    try { navigator.clipboard.writeText(link).then(done, () => { $('on-wait').textContent = link; }); } catch (e) { $('on-wait').textContent = link; }
+    Promise.resolve(this.inviteLink()).then((link) => { // on CrazyGames the link can come as a promise
+      const done = () => { $('on-wait').textContent = 'INVITE LINK COPIED. SEND IT TO A FRIEND.'; };
+      try { navigator.clipboard.writeText(link).then(done, () => { $('on-wait').textContent = link; }); } catch (e) { $('on-wait').textContent = link; }
+    });
   },
   /* ---------- chat ---------- */
   quickBtns() { return QUICK_CHAT.map((t, i) => `<button class="btn small" type="button" data-q="${i}">${i < 4 ? `<span class="key">${i + 1}</span> ` : ''}${t}</button>`).join(''); },

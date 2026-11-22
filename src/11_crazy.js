@@ -145,11 +145,23 @@ const Portal = {
   room(R) {
     if (!this.on) return;
     this.try(() => {
-      if (R) { this.inRoom = true; this.sdk.game.updateRoom({ roomId: R.code, isJoinable: R.players.length < (R.size - 1) * 2, inviteParams: { room: R.code } }); }
+      if (R) { this.inRoom = true; this.sdk.game.updateRoom({ roomId: R.code, isJoinable: R.players.length < (R.size - 1) * 2, inviteParams: { room: R.code } }); this.inviteLink(R.code); }
       else if (this.inRoom) { this.inRoom = false; this.sdk.game.leftRoom(); }
     });
   },
-  inviteLink(code) { return this.try(() => this.sdk.game.inviteLink({ room: code })) || ''; },
+  /** their invite link for a room. Asked for as soon as you are in a room (so COPY INVITE LINK is instant, and their
+      developer portal sees the invite link in use: owner, Nov 2026, it said "Not detected"). Their docs show it both
+      returning the link and returning a promise of it, so this gives back a string or a promise of one; callers use
+      Promise.resolve(Net.inviteLink()) */
+  links: {},
+  inviteLink(code) {
+    if (!code) return '';
+    if (this.links[code]) return this.links[code];
+    const r = this.try(() => this.sdk.game.inviteLink({ room: code }));
+    if (r && typeof r.then === 'function') return r.then((s) => (typeof s === 'string' && s ? (this.links[code] = s) : ''), () => '');
+    if (typeof r === 'string' && r) this.links[code] = r;
+    return r || '';
+  },
   /** a friend pressed JOIN on their page */
   joinFrom(p) {
     const code = p && String(p.room || '').toUpperCase();

@@ -30,7 +30,7 @@ const FAKE_SDK = `(() => {
       get settings() { return cg.settings; },
       addSettingsChangeListener: (f) => { cg.listeners.settings = f; }, addJoinRoomListener: (f) => { cg.listeners.join = f; },
       updateRoom: rec('updateRoom'), leftRoom: rec('leftRoom'),
-      inviteLink: (p) => 'https://www.crazygames.com/game/scorz?room=' + p.room,
+      inviteLink: (p) => { cg.calls.push('inviteLink:' + JSON.stringify(p)); const l = 'https://www.crazygames.com/game/scorz?room=' + p.room; return P.asyncLink ? new Promise((r) => setTimeout(() => r(l), 50)) : l; }, // their docs show it both ways
       get inviteParams() { return cg.invite; }, get isInstantMultiplayer() { return cg.instant; },
       getInviteParam: (k) => (cg.invite && cg.invite[k]) || null,
     },
@@ -135,6 +135,7 @@ const FAKE_SDK = `(() => {
   check('online uses the CrazyGames name (and it cannot be changed)', nameBox.v === 'COOL KID77' && nameBox.ro, nameBox);
   check('the room is shared with their page (room id, joinable, invite params)', upd.length && upd[upd.length - 1].roomId === code && upd[upd.length - 1].isJoinable === true && upd[upd.length - 1].inviteParams.room === code, upd.slice(-1));
   check('the invite link is their link', link === 'https://www.crazygames.com/game/scorz?room=' + code, link);
+  check('their invite link is asked for as soon as the room exists, before COPY is pressed (their portal said "Not detected")', c3.some((c) => c === 'inviteLink:' + JSON.stringify({ room: code })), c3.filter((c) => /^inviteLink/.test(c)));
   const chat0 = await A.evaluate(() => ({ panel: !document.getElementById('on-chat').hidden, type: !document.querySelector('#on-chat .chat-type').hidden, note: document.querySelector('#on-chat .chat-guest').textContent }));
   check('quick chat only (typed chat needs our accounts, which are off here)', chat0.panel && !chat0.type && /TYPED CHAT IS OFF/.test(chat0.note), chat0);
   await A.evaluate(() => window.__cg.listeners.settings({ muteAudio: false, disableChat: true })); await sleep(200);
@@ -156,10 +157,14 @@ const FAKE_SDK = `(() => {
   const bBack = await B.evaluate(() => EGO.Net.room && EGO.Net.room.code);
   check('leaving the room tells their page, and their JOIN button brings you back', bLeft && bBack === code, { bLeft, bBack });
   // instant multiplayer: straight into a new room
-  const D = await mk({ viewport: { width: 1280, height: 720 } }, { instant: true });
+  const D = await mk({ viewport: { width: 1280, height: 720 } }, { instant: true, asyncLink: true });
   for (let i = 0; i < 30; i++) { if (await D.evaluate(() => !!(EGO.Net.room)).catch(() => false)) break; await sleep(250); }
   const dIn = await D.evaluate(() => ({ room: !!EGO.Net.room, host: EGO.Net.room && EGO.Net.room.host === EGO.Net.id }));
   check('instant multiplayer: you land in your own new room', dIn.room && dIn.host, dIn);
+  // their invite link as a promise: COPY INVITE LINK still copies (or shows) the real link, never "[object Promise]"
+  await D.click('#on-copy'); await sleep(400);
+  const dCopy = await D.evaluate(() => ({ t: document.getElementById('on-wait').textContent, code: EGO.Net.room && EGO.Net.room.code }));
+  check('when their invite link comes as a promise, COPY INVITE LINK still gives the real link', !/object/i.test(dCopy.t) && (/COPIED/.test(dCopy.t) || dCopy.t.includes('scorz?room=' + dCopy.code)), dCopy);
   // a CrazyGames build without a server hides online play
   const E = await mk({ viewport: { width: 1280, height: 720 } }, {}, CG_NOSERVER);
   const eOnline = await E.evaluate(() => document.getElementById('go-online').hidden);
