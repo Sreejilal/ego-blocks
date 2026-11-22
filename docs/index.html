@@ -681,6 +681,10 @@ body.touch .fk-row b { font-size: 20px; }
 .in-role .sub { font-size: 11px; display: block; }
 .in-role[aria-pressed="true"] { background: var(--gold); color: var(--ink); }
 .in-role[aria-pressed="true"] .sub { color: var(--ink); }
+/* the spot your character is made for (its role) */
+.in-role.fit { box-shadow: inset 0 0 0 2px var(--gold); }
+.in-fit { font-style: normal; font-size: 10px; letter-spacing: .08em; vertical-align: middle; padding: 2px 5px; margin-left: 4px; background: var(--gold); color: var(--ink); }
+.in-role[aria-pressed="true"] .in-fit { background: var(--ink); color: var(--gold); }
 #in-go { min-width: 220px; }
 .in-keys:empty { display: none; }
 body.intro #touch, body.intro #hud, body.intro #labels { visibility: hidden; }
@@ -757,26 +761,56 @@ body.replaying #hud, body.replaying #labels { display: none !important; }
 @keyframes awkSlot { 50% { box-shadow: 0 0 0 3px #ffffff, 0 0 26px var(--aura, #ffcb3d); } }
 /* the Awakening flashback: a faded memory, then a flash in their colour and what they say now (UI.awakenStory) */
 #app > #awk { pointer-events: none; }
+/* the Awakening (owner, Nov 2026: "make the animations cooler like [anime] awakenings"), 2.9s: a black and white memory
+   panel with speed lines, a close-up of the eyes lighting up with a streak of light, the screen breaking, AWAKENING */
 #awk { position: absolute; inset: 0; z-index: 28; overflow: hidden; }
-#awk::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(40,26,12,.72), rgba(10,6,2,.94)); opacity: 0; }
-#awk canvas { position: absolute; left: 50%; top: 42%; width: min(68vw, 112vh, 760px); height: auto; aspect-ratio: 16 / 9; transform: translate(-50%, -50%) rotate(-1.5deg); image-rendering: pixelated; opacity: 0; filter: sepia(.55) contrast(1.05); border: 8px solid #ecd9b0; box-shadow: 0 0 0 3px #2e2014, 10px 12px 0 rgba(0,0,0,.5); } /* an old photo */
+#awk::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(28,28,34,.78), rgba(4,4,8,.96)); opacity: 0; }
+#awk .awk-lines, #awk .awk-lines2 { position: absolute; inset: -30%; opacity: 0; -webkit-mask-image: radial-gradient(circle, transparent 18%, #000 46%); mask-image: radial-gradient(circle, transparent 18%, #000 46%); }
+#awk .awk-lines { background: repeating-conic-gradient(from 0deg, transparent 0deg 3.2deg, rgba(255,255,255,.5) 3.2deg 3.9deg, transparent 3.9deg 7.1deg, rgba(255,255,255,.22) 7.1deg 7.5deg); }
+#awk .awk-lines2 { background: repeating-conic-gradient(from 2deg, transparent 0deg 2.6deg, var(--ci, #fff) 2.6deg 3.6deg, transparent 3.6deg 6deg, rgba(255,255,255,.7) 6deg 6.4deg); }
+#awk canvas#awk-scene { position: absolute; left: 50%; top: 42%; width: min(64vw, 104vh, 720px); height: auto; aspect-ratio: 16 / 9; transform: translate(-50%, -50%) rotate(-3deg); image-rendering: pixelated; opacity: 0; filter: grayscale(1) contrast(1.6) brightness(1.08); border: 7px solid #f4f4f4; box-shadow: 0 0 0 4px #050508, 12px 14px 0 rgba(0,0,0,.55); } /* a comic panel */
+#awk .awk-mem { position: absolute; left: 50%; bottom: 10%; transform: translateX(-50%) skewX(-8deg); display: grid; gap: 4px; text-align: center; padding: 10px 20px; opacity: 0; max-width: calc(100% - 32px); box-sizing: border-box; background: #f4f4f4; color: #050508; box-shadow: 6px 6px 0 #050508; }
+#awk .awk-mem .label { color: #55555f; }
+#awk .awk-mem b { font-family: var(--font-display); font-size: clamp(17px, 3vw, 30px); letter-spacing: 1px; }
+#awk .awk-eye { position: absolute; left: 0; right: 0; top: 50%; height: min(25vw, 38vh); transform: translateY(-50%) scaleY(0); opacity: 0; border-block: 6px solid #050508; box-shadow: 0 0 0 3px var(--ci, #fff); overflow: hidden; }
+#awk .awk-eye canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; object-fit: cover; filter: contrast(1.15); }
+#awk .awk-iris { position: absolute; top: 62%; width: 12%; aspect-ratio: 1; transform: translate(-50%, -50%) scale(.2); border-radius: 50%; background: radial-gradient(circle, #fff 0 12%, var(--ci, #fff) 30%, transparent 70%); mix-blend-mode: screen; opacity: 0; }
+#awk .awk-iris.l { left: 33.6%; } #awk .awk-iris.r { left: 66.4%; }
+#awk .awk-flare { position: absolute; left: 66.4%; top: 62%; width: 70%; height: 7%; transform-origin: 0 50%; transform: translateY(-50%) scaleX(0); background: linear-gradient(90deg, #fff, var(--ci, #fff) 30%, transparent); box-shadow: 0 0 18px 6px var(--ci, #fff); border-radius: 99px; opacity: 0; }
 #awk .awk-flash { position: absolute; inset: 0; background: var(--ci, #fff); opacity: 0; mix-blend-mode: screen; }
-#awk .awk-mem { position: absolute; left: 50%; bottom: 12%; transform: translateX(-50%); display: grid; gap: 4px; text-align: center; padding: 10px 18px; opacity: 0; max-width: calc(100% - 32px); box-sizing: border-box; }
-#awk .awk-mem b { font-family: var(--font-display); font-size: clamp(18px, 3.2vw, 30px); letter-spacing: 1px; color: #f4e6c4; }
-#awk .awk-now { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; gap: clamp(12px, 3vw, 28px); padding: 16px; background: linear-gradient(90deg, transparent, rgba(9,11,22,.88) 18%, rgba(9,11,22,.88) 82%, transparent); border-block: 6px solid var(--ci, #fff); opacity: 0; }
-#awk .awk-face canvas { width: clamp(80px, 13vw, 140px); height: auto; display: block; border: 4px solid var(--ci, #fff); }
-#awk .awk-words { display: grid; gap: 6px; max-width: 60%; }
-#awk .awk-words b { font-family: var(--font-display); font-size: clamp(24px, 4.6vw, 52px); line-height: 1.05; color: #fff; text-shadow: 4px 4px 0 rgba(0,0,0,.5), 0 0 22px var(--ci, #fff); }
+#awk .awk-shards { position: absolute; inset: 0; }
+#awk .awk-shards i { position: absolute; inset: 0; background: linear-gradient(135deg, #ffffff, var(--ci, #fff)); opacity: 0; filter: drop-shadow(0 0 2px #050508); }
+#awk .awk-big { position: absolute; left: 0; right: 0; top: 14%; text-align: center; font-family: var(--font-display); font-size: clamp(44px, 12.5vw, 168px); line-height: 1; letter-spacing: .02em; color: #fff; -webkit-text-stroke: 3px var(--ci, #fff); text-shadow: 0 0 28px var(--ci, #fff), 7px 7px 0 #050508; opacity: 0; transform: skewX(-10deg); white-space: nowrap; }
+#awk .awk-now { position: absolute; left: 0; right: 0; top: 64%; transform: translateY(-50%); display: flex; align-items: center; justify-content: center; gap: clamp(12px, 3vw, 28px); padding: 14px 16px; background: linear-gradient(90deg, transparent, rgba(5,5,8,.9) 16%, rgba(5,5,8,.9) 84%, transparent); border-block: 6px solid var(--ci, #fff); opacity: 0; }
+#awk .awk-face canvas { width: clamp(72px, 12vw, 132px); height: auto; display: block; border: 4px solid var(--ci, #fff); box-shadow: 0 0 22px var(--ci, #fff); }
+#awk .awk-words { display: grid; gap: 6px; max-width: 64%; }
+#awk .awk-words b { font-family: var(--font-display); font-size: clamp(22px, 4.2vw, 48px); line-height: 1.05; color: #fff; text-shadow: 4px 4px 0 rgba(0,0,0,.5), 0 0 22px var(--ci, #fff); }
 #awk .awk-words span { font-family: var(--font-display); font-size: clamp(13px, 1.8vw, 18px); color: var(--ci, #fff); letter-spacing: 1px; }
-#awk.go canvas, #awk.go::before { animation: awkScene 2.9s linear forwards; }
-#awk.go .awk-mem { animation: awkMem 2.9s steps(12) forwards; }
+#awk.go::before { animation: awkBg 2.9s linear forwards; }
+#awk.go .awk-lines { animation: awkLines 2.9s linear forwards; }
+#awk.go .awk-lines2 { animation: awkLines2 2.9s linear forwards; }
+#awk.go canvas#awk-scene { animation: awkScene 2.9s linear forwards; }
+#awk.go .awk-mem { animation: awkMem 2.9s steps(14) forwards; }
+#awk.go .awk-eye { animation: awkEye 2.9s cubic-bezier(.2,.9,.3,1) forwards; }
+#awk.go .awk-iris { animation: awkIris 2.9s ease-out forwards; }
+#awk.go .awk-flare { animation: awkFlare 2.9s cubic-bezier(.1,.9,.2,1) forwards; }
 #awk.go .awk-flash { animation: awkFlash 2.9s ease-out forwards; }
-#awk.go .awk-now { animation: awkNow 2.9s cubic-bezier(.2,1.4,.4,1) forwards; }
-@keyframes awkScene { 0% { opacity: 0; } 8% { opacity: 1; } 48% { opacity: 1; } 52% { opacity: 0; } 100% { opacity: 0; } }
-@keyframes awkMem { 0%, 6% { opacity: 0; clip-path: inset(0 100% 0 0); } 10% { opacity: 1; clip-path: inset(0 100% 0 0); } 36% { opacity: 1; clip-path: inset(0 0 0 0); } 48% { opacity: 1; clip-path: inset(0 0 0 0); } 52%, 100% { opacity: 0; } }
-@keyframes awkFlash { 0%, 49% { opacity: 0; } 52% { opacity: .95; } 66% { opacity: .2; } 100% { opacity: 0; } }
-@keyframes awkNow { 0%, 51% { opacity: 0; transform: translateY(-50%) scale(1.4); } 58% { opacity: 1; transform: translateY(-50%) scale(1); } 92% { opacity: 1; transform: translateY(-50%) scale(1); } 100% { opacity: 0; transform: translateY(-50%) scale(.96); } }
-@media (prefers-reduced-motion: reduce) { #awk.go .awk-now, #awk.go canvas { animation-timing-function: linear; } }
+#awk.go .awk-shards i { animation: awkShard 2.9s cubic-bezier(.15,.8,.3,1) forwards; }
+#awk.go .awk-big { animation: awkBig 2.9s cubic-bezier(.2,1.5,.4,1) forwards; }
+#awk.go .awk-now { animation: awkNow 2.9s cubic-bezier(.2,1.3,.4,1) forwards; }
+@keyframes awkBg { 0% { opacity: 0; } 5% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes awkLines { 0% { opacity: 0; transform: rotate(0deg) scale(1.1); } 5% { opacity: .55; } 34% { opacity: .55; } 37% { opacity: .9; transform: rotate(6deg) scale(1); } 53% { opacity: .5; transform: rotate(10deg) scale(.96); } 55%, 100% { opacity: 0; transform: rotate(10deg) scale(.96); } }
+@keyframes awkLines2 { 0%, 53% { opacity: 0; transform: rotate(0deg) scale(1.3); } 56% { opacity: .9; transform: rotate(4deg) scale(1); } 90% { opacity: .55; transform: rotate(18deg) scale(1); } 100% { opacity: 0; transform: rotate(20deg) scale(1); } }
+@keyframes awkScene { 0% { opacity: 0; transform: translate(-50%, -50%) rotate(-3deg) scale(1.08); } 5% { opacity: 1; transform: translate(-50%, -50%) rotate(-3deg) scale(1); } 33% { opacity: 1; transform: translate(-50%, -50%) rotate(-3deg) scale(1.03); } 36% { opacity: 1; transform: translate(-50%, -50%) rotate(-5deg) scale(1.25); } 37%, 100% { opacity: 0; transform: translate(-50%, -50%) rotate(-5deg) scale(1.25); } }
+@keyframes awkMem { 0%, 5% { opacity: 0; clip-path: inset(0 100% 0 0); } 8% { opacity: 1; clip-path: inset(0 100% 0 0); } 28% { opacity: 1; clip-path: inset(0 0 0 0); } 35% { opacity: 1; clip-path: inset(0 0 0 0); } 37%, 100% { opacity: 0; } }
+@keyframes awkEye { 0%, 37% { opacity: 0; transform: translateY(-50%) scaleY(0); } 40% { opacity: 1; transform: translateY(-50%) scaleY(1); } 51% { opacity: 1; transform: translateY(-50%) scaleY(1) scale(1.04); } 53% { opacity: 1; transform: translateY(-50%) scaleY(1.06) scale(1.06) translateX(-1%); } 54%, 100% { opacity: 0; transform: translateY(-50%) scaleY(1.06) scale(1.06); } }
+@keyframes awkIris { 0%, 41% { opacity: 0; transform: translate(-50%, -50%) scale(.2); } 45% { opacity: 1; transform: translate(-50%, -50%) scale(1.25); } 51% { opacity: .95; transform: translate(-50%, -50%) scale(1); } 54%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); } }
+@keyframes awkFlare { 0%, 44% { opacity: 0; transform: translateY(-50%) scaleX(0); } 49% { opacity: 1; transform: translateY(-50%) scaleX(1); } 53% { opacity: 1; transform: translateY(-50%) scaleX(1.1); } 54%, 100% { opacity: 0; transform: translateY(-50%) scaleX(1.1); } }
+@keyframes awkFlash { 0%, 35% { opacity: 0; } 36% { opacity: .9; } 37% { opacity: 0; } 53% { opacity: 0; } 55% { opacity: .95; } 68% { opacity: .15; } 100% { opacity: 0; } }
+@keyframes awkShard { 0%, 54% { opacity: 0; transform: none; } 55% { opacity: 1; transform: scale(1.02); } 74% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--r)) scale(.9); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--r)) scale(.9); } }
+@keyframes awkBig { 0%, 55% { opacity: 0; transform: skewX(-10deg) scale(2.3); } 60% { opacity: 1; transform: skewX(-10deg) scale(1); } 64% { transform: skewX(-10deg) scale(1.03) translateX(-.5%); } 66% { transform: skewX(-10deg) scale(1); } 92% { opacity: 1; transform: skewX(-10deg) scale(1.02); } 100% { opacity: 0; transform: skewX(-10deg) scale(1.06); } }
+@keyframes awkNow { 0%, 59% { opacity: 0; transform: translateY(-50%) translateX(-30%); } 65% { opacity: 1; transform: translateY(-50%) translateX(0); } 92% { opacity: 1; transform: translateY(-50%) translateX(1%); } 100% { opacity: 0; transform: translateY(-50%) translateX(3%); } }
+@media (prefers-reduced-motion: reduce) { #awk .awk-lines, #awk .awk-lines2, #awk .awk-shards { display: none; } #awk.go .awk-big, #awk.go .awk-now, #awk.go canvas#awk-scene { animation-timing-function: linear; } }
 #cutin .ci-lines { position: absolute; inset: -20%; opacity: 0;
   background: repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,0) 0deg 4deg, rgba(255,255,255,.5) 4deg 5deg, rgba(255,255,255,0) 5deg 9deg, var(--ci, #fff) 9deg 9.6deg);
   -webkit-mask-image: radial-gradient(circle, transparent 26%, #000 62%); mask-image: radial-gradient(circle, transparent 26%, #000 62%); }
@@ -1127,7 +1161,7 @@ const Save = {
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
       spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false, tips: [],
-      fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
+      posFor: null, fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
       // outfit presets (owner, Nov 2026: "1 preset its like striker then goalie", up to 20, names typed by you): each has
@@ -1173,13 +1207,16 @@ const Save = {
     out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
     out.tone = clamp(Math.floor(Number(out.tone)), 0, 7); if (!Number.isFinite(out.tone)) out.tone = 1;
     out.pos = typeof out.pos === 'string' && /^(GK|ST|FW|MID|LW|RW|DEF|DEF2)$/.test(out.pos) ? out.pos : null; // the position you like to play (the match intro)
+    // posFor: the style you picked that position with. Another style starts in its own role (roleSpot) until you pick again;
+    // a save from before roles keeps its position for the style it has now
+    out.posFor = typeof out.posFor === 'string' ? out.posFor.slice(0, 24) : d && typeof d === 'object' && !('posFor' in d) && out.pos ? out.style : null;
     // presets: 1 to PRESET_MAX; a missing or broken list gets the four starters back (ids are checked against the game's lists in validate)
-    const posName = { ST: 'STRIKER', GK: 'KEEPER', MID: 'MIDFIELD', DEF: 'DEFENDER' };
+    const posName = { ST: 'STRIKER', GK: 'KEEPER', LW: 'WINGER', MID: 'MIDFIELD', DEF: 'DEFENDER' };
     const rawP = Array.isArray(out.presets) && out.presets.length ? out.presets.slice(0, PRESET_MAX) : def.presets;
     out.presets = rawP.map((p, i) => {
       const pd = def.presets[i] || { n: 'PRESET ' + (i + 1), pos: null };
       if (!p || typeof p !== 'object') return { n: pd.n, pos: pd.pos, s: null };
-      const pos = p.pos === null || (typeof p.pos === 'string' && /^(GK|ST|MID|DEF)$/.test(p.pos)) ? p.pos : pd.pos;
+      const pos = p.pos === null || (typeof p.pos === 'string' && /^(GK|ST|LW|MID|DEF)$/.test(p.pos)) ? p.pos : pd.pos;
       const nm = typeof p.n === 'string' ? p.n.replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, PRESET_NAME_MAX) : '';
       const n = nm || (pos ? posName[pos] : 'PRESET ' + (i + 1)); // saves from before names: named after the position
       const s = p.s && typeof p.s === 'object' && typeof p.s.style === 'string' ? {
@@ -3185,11 +3222,21 @@ const FX = {
     this.aura(p, p.aura, dt * 2.6);
     if (Math.random() < dt * 40) this.glow.spawn(p.pos.x + rand(-0.5, 0.5), p.pos.y + 0.1, p.pos.z + rand(-0.5, 0.5), 0, rand(5, 8), 0, rand(0.06, 0.1), 0.45, col('#ffffff'), -0.3, 0.3, 0);
     // owner: "make the awakenings better": rings pulse out from your feet, sparks crackle round you, and you leave a trail of light when you run
-    p._awFx = (p._awFx || 0) - dt;
-    if (p._awFx <= 0) { p._awFx = 0.7; this.ring(p.pos.x, 0.15, p.pos.z, p.aura, 1.4, 22); }
+    p._awRing = (p._awRing || 0) - dt; // its own timer: p._awFx marks the stages of the Awakening jump (Player.animate)
+    if (p._awRing <= 0) { p._awRing = 0.7; this.ring(p.pos.x, 0.15, p.pos.z, p.aura, 1.4, 22); }
     if (Math.random() < dt * 8) this.sparks(p.pos.x + rand(-0.5, 0.5), p.pos.y + rand(0.4, 1.9), p.pos.z + rand(-0.5, 0.5), p.aura, 3, 2.5, 0.12, 0.35);
     const sp = Math.hypot(p.vel.x, p.vel.z);
     if (sp > 5 && Math.random() < dt * 50) this.glow.spawn(p.pos.x - p.vel.x * 0.04, p.pos.y + rand(0.4, 1.4), p.pos.z - p.vel.z * 0.04, 0, rand(0.2, 0.6), 0, rand(0.1, 0.18), 0.5, col(p.aura), 0, 0.2, 0);
+    // owner, Nov 2026 ("cooler like [anime] awakenings"): a streak of light trails from the glowing eyes as you move
+    const P = p.P;
+    if (P && P.headP && P.root.visible) {
+      const e = this._eye || (this._eye = new THREE.Vector3()), c = col(p.aura);
+      p._eyeAcc = (p._eyeAcc || 0) + dt * 70;
+      while (p._eyeAcc > 1) {
+        p._eyeAcc -= 1;
+        for (const sx of [-0.12, 0.12]) { P.headP.localToWorld(e.set(sx, 0.21, 0.27)); this.glow.spawn(e.x, e.y, e.z, 0, 0.15, 0, 0.07, 0.3, c, 0, 0.5, 0); }
+      }
+    }
   },
   /** the moment you awaken: sparks, two rings and a pillar of light */
   awakenBurst(p) {
@@ -3198,6 +3245,8 @@ const FX = {
     this.ring(x, 0.2, z, p.aura, 1.6, 30); this.ring(x, 0.25, z, '#ffffff', 2.6, 36); this.ring(x, 0.3, z, p.aura, 4.2, 44); // a bigger shockwave
     this.sparks(x, 2.2, z, p.aura, 40, 14, 0.2, 1.0);
     for (let i = 0; i < 44; i++) this.glow.spawn(x + rand(-0.35, 0.35), rand(0, 0.5), z + rand(-0.35, 0.35), 0, rand(8, 16), 0, rand(0.12, 0.22), rand(0.5, 0.9), col(i % 3 ? p.aura : '#ffffff'), -0.2, 0.6, 0);
+    this.beam(V3(x, 0, z), { pos: V3(x, 18, z) }, p.aura); // a pillar of light into the sky
+    this.shatter(x, 0.1, z, 14); // the ground cracks under you
   },
   /** each Flow has its own look: wind, afterimage, venom, coins, blue fire, a crown. No Flow: your style's aura */
   flow(p, id, dt) {
@@ -4118,14 +4167,44 @@ const STYLES = {
     awaken: { move: { name: 'GROUND SLAM', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'THE WALL', desc: '+15% shot power, and tackles reach 30% further.', mods: { shot: 1.15, tackleRange: 1.3 } } },
   LYNX: { name: 'LYNX', rarity: 'Epic', gk: true, hair: '#d9d2c5', hairShape: 'spiky', aura: '#7dff9a', blurb: 'Springy reflexes. Leaps right across the goal, slows shots down and throws it out in a flash. Its powers work in goal.', abilities: ['catLeap', 'slowShot', 'quickThrow'],
     awaken: { move: { name: 'NINE LIVES', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'CAT REFLEXES', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
+  // Nov 2026 (owner: "add another generational person", "add more content"): a second Generational (a winger, with a power of
+  // its own: FLASH STEP), a defender and a third keeper
+  ZENITH: { name: 'ZENITH', rarity: 'Generational', hair: '#f3eeff', hairShape: 'undercut', aura: '#d65cff', blurb: 'The winger of a generation. Blinks past defenders in a flash of light, then bends it into the top corner.', abilities: ['flashStep', 'zigzag', 'curler'],
+    awaken: { move: { name: 'WORLD STOP', kind: 'worldstop', desc: 'Every opponent within 12 blocks freezes for 1.5s while you burst away.' }, name: 'HIGHEST POINT', desc: '+15% speed, +15% shot power, and abilities recharge faster.', mods: { speed: 1.15, shot: 1.15, cdRate: 1.3 } } },
+  BASTION: { name: 'BASTION', rarity: 'Epic', hair: '#1d1d24', hairShape: 'flattop', aura: '#ff6b3d', blurb: 'A defender who never gives an inch. Swipes attackers off the ball, keeps the whole back line standing and sends it long.', abilities: ['armSwipe', 'rally', 'clearance'],
+    awaken: { move: { name: 'LAST STAND', kind: 'steal', desc: 'Lunge at a carrier up to 10 blocks away and take the ball.' }, name: 'IMMOVABLE', desc: 'Nobody can tackle you, and tackles reach 40% further.', perk: 'tank', mods: { tackleRange: 1.4 } } },
+  AEGIS: { name: 'AEGIS', rarity: 'Legendary', gk: true, hair: '#e9e4d8', hairShape: 'long', aura: '#ffe066', blurb: 'A keeper like a golden shield. Holds every shot, leaps right across the goal and slows shots down. Its powers work in goal.', abilities: ['ironHands', 'catLeap', 'slowShot'],
+    awaken: { move: { name: 'SHIELD WALL', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'GUARDIAN', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
 };
+/** each character's role (owner, Nov 2026: "place each character's role so one defender one winger"): shown in the Locker,
+    where you start a match (until you pick another spot for that style) and where bots play it */
+const ROLES = { ST: { name: 'STRIKER', spots: ['ST', 'FW'] }, WING: { name: 'WINGER', spots: ['LW', 'RW'] }, MID: { name: 'MIDFIELD', spots: ['MID'] }, DEF: { name: 'DEFENDER', spots: ['DEF', 'DEF2'] }, GK: { name: 'KEEPER', spots: ['GK'] } };
+const ROLE_WHERE = { ST: 'STARTS UP FRONT', WING: 'STARTS ON THE WING', MID: 'STARTS IN MIDFIELD', DEF: 'STARTS AT THE BACK', GK: 'STARTS IN GOAL' };
+const STYLE_ROLE = {
+  ROOKIE: 'ST', PROWLER: 'ST', MAGNET: 'ST', THUNDER: 'ST', COMET: 'ST', RAILGUN: 'ST', NOVA: 'ST', ACE: 'ST',
+  SPRINTER: 'WING', PHANTOM: 'WING', TRICKSTER: 'WING', FEATHER: 'WING', SPARK: 'WING', VORTEX: 'WING', JESTER: 'WING', ZENITH: 'WING',
+  ENFORCER: 'MID', MAESTRO: 'MID', BLITZ: 'MID', KESTREL: 'MID', CAPTAIN: 'MID', TEMPEST: 'MID',
+  SHAMBLER: 'DEF', WARDEN: 'DEF', ANCHOR: 'DEF', GLACIER: 'DEF', TITAN: 'DEF', SENTINEL: 'DEF', BASTION: 'DEF',
+};
+for (const k in STYLES) STYLES[k].role = STYLES[k].gk ? 'GK' : STYLE_ROLE[k] || 'MID';
+/** the spot a style starts in, and whether a spot suits it */
+const roleSpot = (id) => ROLES[(STYLES[id] || STYLES.ROOKIE).role].spots[0];
+const roleFits = (id, spot) => !!STYLES[id] && ROLES[STYLES[id].role].spots.includes(spot);
 const STYLE_IDS = Object.keys(STYLES);
 const GK_IDS = STYLE_IDS.filter((k) => STYLES[k].gk); // keeper styles
 /** a bot's style: common styles most of the time, the rare ones now and then (like the spins) */
 const BOT_STYLE_ODDS = { Rare: 40, Epic: 30, Legendary: 15, Mythic: 10, Generational: 5 };
-function botStyle() {
+function botStyle(spot) {
   let r = Math.random() * 100;
-  for (const rar of RARITIES) { r -= BOT_STYLE_ODDS[rar]; if (r < 0) { const pool = STYLE_IDS.filter((k) => STYLES[k].rarity === rar && !STYLES[k].gk); if (pool.length) return pick(pool); } } // bots never play a keeper style
+  const fit = spot && spot !== 'GK' && Math.random() < 0.8; // most bots play a character made for their spot (a defender at the back, a winger on the wing)
+  for (const rar of RARITIES) {
+    r -= BOT_STYLE_ODDS[rar];
+    if (r < 0) {
+      const pool = STYLE_IDS.filter((k) => STYLES[k].rarity === rar && !STYLES[k].gk), mine = fit ? pool.filter((k) => roleFits(k, spot)) : pool; // bots never play a keeper style
+      if (mine.length) return pick(mine);
+      if (pool.length) return pick(pool);
+    }
+  }
   return 'ROOKIE';
 }
 
@@ -4215,6 +4294,19 @@ const ABILITIES = {
       return true;
     },
     ai(p, m, c) { return c.hasBall && c.nearOpp < 3.4 && c.oppInFront && c.dGoal < 24 && c.dGoal > 10; }, // bots: to get a shot away, not to escape anywhere
+  },
+  flashStep: { // ZENITH (Nov 2026): a blink, a very fast short dash with the ball and a flash of light
+    name: 'FLASH STEP', cd: 11, icon: 'dash',
+    desc: 'With the ball: blink about 6 blocks the way you face in a flash of light. Nobody can tackle you on the way.',
+    use(p, m) {
+      if (m.ball.owner !== p) return NEED_BALL;
+      const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+      FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.4, 20); FX.sparks(p.pos.x, 1, p.pos.z, '#ffffff', 14, 6, 0.15);
+      m.dashP(p, fx, fz, 34, 0.18, { onEnd: () => { p.vel.x *= 0.3; p.vel.z *= 0.3; } }); p.tackleProof = Math.max(p.tackleProof, 0.45); // a blink: it stops sharp, no long slide after
+      Sfx.dodge();
+      return true;
+    },
+    ai(p, m, c) { return c.hasBall && c.nearOpp < 3.6 && c.oppInFront && c.dGoal > 8; },
   },
   curler: {
     name: 'CURLER', cd: 20, icon: 'shot', big: true,
@@ -4611,6 +4703,9 @@ const AWAKEN_STORY = {
   JESTER: ['crowd', 'THEY TOLD ME FOOTBALL IS NOT A SHOW', 'THEN WHY IS EVERYONE WATCHING?'],
   TEMPEST: ['rain', 'I WAS SCARED OF STORMS', 'NOW I AM THE STORM!'],
   ACE: ['race', 'I WASTED THE LAST CHANCE OF THE FINAL', 'EVERY CHANCE COUNTS NOW!'],
+  ZENITH: ['night', 'I TRAINED ALONE UNDER THE LIGHTS EVERY NIGHT', 'NOW I STAND AT THE TOP. ALONE.'],
+  BASTION: ['rain', 'THEY RAN PAST ME LIKE I WAS NOT THERE', 'NOT ONE STEP FURTHER!'],
+  AEGIS: ['goal', 'I PROMISED MY TEAM I WOULD KEEP THEM SAFE', 'NOTHING GETS THROUGH MY SHIELD!'],
 };
 /** the feint (C): a step-over cut nobody can tackle you through, once every FEINT_CD seconds */
 const FEINT_CD = 5;
@@ -4929,7 +5024,9 @@ const FK_TOL = 0.08; // how far from the perfect power you can be (the green zon
 /** the perfect power for a distance: further out needs more */
 const fkIdeal = (D) => clamp(0.42 + (D - 16) / 12 * 0.36, 0.4, 0.86);
 const ROSTERS = { 2: ['GK', 'ST'], 3: ['GK', 'DEF', 'ST'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] };
-const SETUPS_5 = { defensive: { name: 'ULTRA DEFENSIVE', roles: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] }, attacking: { name: 'ULTRA ATTACKING', roles: ['GK', 'DEF', 'MID', 'ST', 'FW'] } };
+const SETUPS_5 = { defensive: { name: 'ULTRA DEFENSIVE', roles: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] }, attacking: { name: 'ULTRA ATTACKING', roles: ['GK', 'DEF', 'MID', 'ST', 'FW'] }, wide: { name: 'WIDE', roles: ['GK', 'DEF', 'LW', 'RW', 'ST'] } };
+/** 4v4: the usual line-up, or WIDE with a left winger instead of the midfielder (your team plays it when you are a winger) */
+const SETUPS_4 = { classic: { name: 'CLASSIC', roles: ['GK', 'DEF', 'MID', 'ST'] }, wide: { name: 'WIDE', roles: ['GK', 'DEF', 'LW', 'ST'] } };
 /** the most attacking role first: you play it, and it takes the kickoff */
 const ROLE_ORDER = ['ST', 'FW', 'MID', 'LW', 'RW', 'DEF', 'DEF2'];
 /** what each outfield spot is called on the position picker (the match intro), and what you do there */
@@ -5257,18 +5354,27 @@ class Match {
     if (this.cfg.practice && this.human) this.startFreeKicks(); else if (this.cfg.tutorial && this.human) this.startTutorial(); else this.setupKickoff(0, true, !!opts.intro); // the intro (Game.beginIntro): no kickoff banner until it is over
   }
   /* ---------- setup ---------- */
-  /** 5v5: each team plays ultra defensive or ultra attacking, picked at random (opts.setups to choose) */
+  /** a team's line-up (opts.setups to choose). 5v5: ultra defensive, ultra attacking or wide; 4v4: classic or wide (a left
+      winger instead of the midfielder). Your team plays wide when you start on a wing (a winger: Match option role) */
+  pickSetups(opts) {
+    const wing = opts.role === 'LW' || opts.role === 'RW';
+    if (this.size === 5) return [0, 1].map((t) => (t === 0 && wing && !opts.humans ? 'wide' : t === 0 && !opts.humans ? pick(['defensive', 'attacking']) : pick(['defensive', 'attacking', 'wide'])));
+    if (this.size === 4) return [0, 1].map((t) => (t === 0 && !opts.humans ? (wing ? 'wide' : 'classic') : Math.random() < 0.3 ? 'wide' : 'classic'));
+    return [null, null];
+  }
+  setupOf(team) { const S = this.size === 5 ? SETUPS_5 : this.size === 4 ? SETUPS_4 : null; return S && S[this.setups[team]] || null; }
   rolesFor(team) {
     if (this.cfg.practice && this.cfg.keeper) return team === 0 ? ['GK', 'DEF', 'DEF2'] : ['GK', 'ST', 'MID']; // keeper practice: you in goal with two in your wall, their taker
     if (this.cfg.practice) return team === 0 ? ['ST'] : ['GK', 'DEF', 'DEF2', 'MID', 'ST']; // free kicks: you against a keeper, a wall and defenders in the box
     if (this.cfg.tutorial) return team === 0 ? ['ST', 'MID'] : ['DEF']; // the tutorial: you, a teammate and one defender (an empty goal)
     if (this.cfg.roster && this.cfg.roster.length === this.size) return this.cfg.roster; // a mode's own line-up (Quick Match: a winger)
-    return this.size === 5 ? SETUPS_5[this.setups[team]].roles : ROSTERS[this.size];
+    const S = this.setupOf(team);
+    return S ? S.roles : ROSTERS[this.size];
   }
   buildTeams(opts) {
     const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
     const used = new Set([1, 10]);
-    this.setups = opts.setups || [pick(['defensive', 'attacking']), pick(['defensive', 'attacking'])];
+    this.setups = opts.setups || this.pickSetups(opts);
     // online: each player takes an outfield role on their team, striker first
     const seat = {};
     if (opts.humans) for (const t of [0, 1]) {
@@ -5286,7 +5392,7 @@ class Match {
         const human = opts.humans ? !!net : team === 0 && role === mine && !opts.noHuman; // you play the most attacking spot, or the one you picked
         let num = role === 'GK' ? 1 : human && !net ? 10 : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
-        const style = net ? net.style : human ? (opts.style || Save.data.style) : opts.teamStyle ? opts.teamStyle[team] : botStyle(); // teamStyle: [home, away] for balance tests
+        const style = net ? net.style : human ? (opts.style || Save.data.style) : opts.teamStyle ? opts.teamStyle[team] : botStyle(role); // teamStyle: [home, away] for balance tests; bots mostly play a character made for their spot
         const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
         const look = net ? net.look : human ? (opts.look || Save.data.look) : botLook();
         const tone = net ? net.tone : Save.data.tone;
@@ -5438,7 +5544,7 @@ class Match {
     else if (first) Hud.banner(this.cfg.name, this.mode === 'ranked' ? 'WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15' : this.mode === 'lawless' ? (Touch.on ? 'GRAB THE ? BLOCKS \u00b7 TAP ITEM TO USE' : 'GRAB THE ? BLOCKS \u00b7 X USES YOUR ITEM') : 'NO RANK ON THE LINE', TEAM[0].hex);
     else Hud.banner('KICKOFF', TEAM[team].name + ' BALL', TEAM[team].hex);
     if (!first && this.human && Touch.on) Touch.faceGoal(this);
-    if (first && this.size === 5 && this.human) this.toast('THEY PLAY ' + SETUPS_5[this.setups[1 - this.human.team]].name + ' · YOU PLAY ' + SETUPS_5[this.setups[this.human.team]].name, 'gold', this.human);
+    if (first && this.size === 5 && this.human) this.toast('THEY PLAY ' + this.setupOf(1 - this.human.team).name + ' · YOU PLAY ' + this.setupOf(this.human.team).name, 'gold', this.human);
   }
   startPlay() {
     this.phase = 'play'; this.phaseT = 0;
@@ -6610,6 +6716,10 @@ class Match {
         this.dashP(p, dx / (d || 1), dz / (d || 1), Math.max(16, d / 0.32), 0.32, { home: o, onEnd: () => { const c = this.ball.owner; if (c && c.team !== p.team && !this.safeGK(c) && dist2D(c.pos, p.pos) < 2.8 && !(c.fx.bubble > 0)) { this.ball.release(); c.pickBlock = 0.6; this.possess(p); this.label(p, 'STOLEN', p.aura); } } });
         break;
       }
+      case 'worldstop': // ZENITH: the world stops around you, and you go
+        for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 12) this.stun(o, 1.5, 'frozen');
+        p.fx.burst = Math.max(p.fx.burst || 0, 3); p.tackleProof = Math.max(p.tackleProof, 0.8);
+        FX.ring(p.pos.x, 0.2, p.pos.z, '#ffffff', 6, 48); FX.ring(p.pos.x, 0.3, p.pos.z, p.aura, 10, 60); Shake.add(0.3); break;
       case 'starfall':
         if (!p.onGround) return 'ON THE GROUND ONLY';
         p.vel.y = 15; p.onGround = false; p.starfall = true; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.6, 24); break;
@@ -7997,6 +8107,7 @@ const Input = {
 };
 
 const CAM_EYE = 1.55; // first person: eye height above the feet
+const GOALCAM_D = 2.5, GOALCAM_Y = 2.3, GOALCAM_SIDE = 0.8, GOALCAM_IN = 1.9; // you in goal, third person (Cam.goalCam): closest distance, height, over the right shoulder, how far into the goal mouth it may go
 /** the letter printed on the key at a position (`code`): W A S D on QWERTY, Z Q S D on a French AZERTY keyboard.
     Chrome and Edge can tell (navigator.keyboard); elsewhere the QWERTY letter */
 const KeyNames = {
@@ -8034,7 +8145,9 @@ const Cam = {
   unhide() { if (this.hidden && this.hidden.P) this.hidden.P.root.visible = true; this.hidden = null; },
   look(realDt) {
     const s = Save.data.settings, sens = s.sens || 1, inv = s.invertY ? -1 : 1;
-    const E = Input.edges;
+    const E = Input.edges, kd = Input.down;
+    const turning = Input.mdx || Input.mdy || Touch.lookDX || Touch.lookDY || kd.has('ArrowLeft') || kd.has('ArrowRight') || kd.has('ArrowUp') || kd.has('ArrowDown') || Math.abs(Input.axis(2)) > 0.15 || Math.abs(Input.axis(3)) > 0.15;
+    this.idleLook = turning ? 0 : (this.idleLook || 0) + realDt; // how long since you last turned the camera (Cam.keeperLook)
     if (E.has('KeyV') || E.has('T_cam') || (E.has('PadRS') && !Replay.offer)) { this.toggle(); E.delete('KeyV'); E.delete('T_cam'); E.delete('PadRS'); } // one press, one switch
     if (E.has('KeyL')) { E.delete('KeyL'); this.toggleShiftLock(); }
     if (Input.mdx || Input.mdy) this.snapYaw = this.snapPitch = null;
@@ -8096,6 +8209,8 @@ const Cam = {
     pk *= this.punchAmt == null ? 1 : this.punchAmt;
     if (pk > 0 || this.punchK > 0) { cam.fov = World.baseFov - pk * 10; cam.updateProjectionMatrix(); }
     this.punchK = pk;
+    if (p === m.human && !wide) this.keeperLook(realDt, m, p);
+    this.gcSide = 0; // set again by goalCam below while you are in goal in third person
     // first person, except for goals and the final whistle (wide shots) and when you are on the grass
     const fp = this.first() && !wide && p.state !== 'down' && p.state !== 'celebrate' && (p.state !== 'dive' || p.isGK); // owner: a keeper's dive stays in first person
     if (fp) {
@@ -8110,13 +8225,12 @@ const Cam = {
       const dist = this.dist + (wide ? 2.6 : 0) + (tall ? 1.7 : 0) - pk * 2;
       // behind and above you, a little higher than eye level so the pitch ahead shows over your head
       let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.85 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
-      if (Save.data.settings.shiftLock && !wide) { tx += -Math.cos(this.yaw) * 1.0; tz += Math.sin(this.yaw) * 1.0; ty -= 0.25; } // shift lock: over your right shoulder
+      let mouth = false; // the camera is inside your own goal mouth, under the bar (you in goal)
+      const gc = p.isGK && !wide && m.ownGoalZ ? this.goalCam(p, m, dist, ty) : null;
+      if (gc) { tx = gc.x; ty = gc.y; tz = gc.z; mouth = gc.mouth; }
+      if (Save.data.settings.shiftLock && !wide && !gc) { tx += -Math.cos(this.yaw) * 1.0; tz += Math.sin(this.yaw) * 1.0; ty -= 0.25; } // shift lock: over your right shoulder
       tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
-      if (p.isGK && !wide && m.ownGoalZ) { // you in goal (owner's video: the posts and bar hid the top corners): the camera stays in front of your goal line, just over your shoulder
-        const s = m.dir(p.team), lim = m.ownGoalZ(p.team) + s * (F.POST + 0.55); // in front of the posts and bar, not inside them
-        if ((tz - lim) * s < 0) { const k = clamp((lim - tz) * s / 4, 0, 1); tz = lim; ty = Math.max(ty, p.pos.y + 3.5 + 0.5 * k); }
-      }
-      if (Math.abs(tz) > F.L - 0.6 && Math.abs(tz) < F.L + F.GD + 0.8 && Math.abs(tx) < F.GW + F.POST + 0.6) ty = Math.max(ty, F.GH + F.POST + 0.7); // never inside the goal net: up over the bar
+      if (!mouth && Math.abs(tz) > F.L - 0.6 && Math.abs(tz) < F.L + F.GD + 0.8 && Math.abs(tx) < F.GW + F.POST + 0.6) ty = Math.max(ty, F.GH + F.POST + 0.7); // never inside the goal net: up over the bar
       const k = 1 - Math.exp(-16 * realDt);
       this.pos.x += (tx - this.pos.x) * k; this.pos.y += (ty - this.pos.y) * k; this.pos.z += (tz - this.pos.z) * k;
     }
@@ -8125,6 +8239,47 @@ const Cam = {
     _v1.copy(cam.position).add(this.fwd);
     cam.lookAt(_v1);
     this.computeAim(m, p);
+  },
+  /** you in goal, third person (owner, Nov 2026: "the goalie is very off ... his camera ... 3rd person"). Right behind you is
+      the net, so the camera used to stop in front of the posts, which on your line is straight over your head: you could
+      not see your keeper, and turning pushed him into a corner with a post filling the screen. Now it closes in as you back
+      up to your line: from the normal spot to just behind your shoulder, low, inside the goal mouth under the bar
+      (from there the posts and bar are out of the picture, so the top corners still show). null: the normal spot is fine */
+  goalCam(p, m, dist, ty) {
+    const s = m.dir(p.team), line = m.ownGoalZ(p.team), front = line + s * (F.POST + 0.3); // s: the way you attack; front: just in front of the posts
+    const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
+    this.gcSide = 0;
+    if (fz * s < 0.05) return null; // looking back at your goal or along it: the camera is up the pitch or to the side
+    const a = ((p.pos.z - front) * s) / (fz * s); // how far you are from the posts, looking back along the camera
+    if (a - dist > 1.3) return null; // the normal spot is well in front of the posts
+    // u: 0 normal .. 1 close. Over the right shoulder, or the left one once you turn right: the shoulder that takes the
+    // camera forward, away from the post you are turning towards (sh glides from 1 to -1)
+    const d = clamp(a + GOALCAM_IN, GOALCAM_D, dist), u = (dist - d) / (dist - GOALCAM_D), sh = clamp(1 + (fx * s) / 0.2, -1, 1), side = GOALCAM_SIDE * u * sh;
+    this.gcSide = u * sh; // where your keeper sits on screen (1: left of the crosshair, -1: right), for keeperLook
+    let x = p.pos.x - fx * d - Math.cos(this.yaw) * side, z = p.pos.z - fz * d + Math.sin(this.yaw) * side, y = lerp(ty, p.pos.y + GOALCAM_Y, u);
+    const depth = (line - z) * s, inner = F.GW - 0.4, outer = F.GW + F.POST + 0.65; // depth > 0: behind the goal line
+    let mouth = false;
+    if (depth > -(F.POST + 0.35) && Math.abs(x) > inner && Math.abs(x) < outer) x = Math.sign(x || 1) * (Math.abs(p.pos.x) < F.GW ? inner : outer); // never inside a post or the side netting
+    if (Math.abs(x) <= inner && depth > -(F.POST + 1.6)) {
+      mouth = depth > -(F.POST + 0.6);
+      y = Math.min(y, F.GH - 0.6 + Math.max(0, -depth - F.POST - 0.35)); // under the bar, rising smoothly once in front of the posts
+      if (depth > F.GD - F.POST - 0.45) z = line - s * (F.GD - F.POST - 0.45); // in front of the back of the net
+    }
+    return { x, y, z, mouth };
+  },
+  /** you in goal and not turning the camera yourself: it turns slowly to keep the ball in view (a keeper has to watch the
+      ball, and on a phone you cannot dive and turn at once) */
+  keeperLook(realDt, m, p) {
+    const b = m.ball;
+    if (!p.isGK || m.phase !== 'play' || b.owner === p || this.idleLook < 0.8 || this.snapYaw != null) return;
+    const dx = b.pos.x - p.pos.x, dz = b.pos.z - p.pos.z;
+    if (dx * dx + dz * dz < 9) return; // right next to you: the angle jumps about
+    // the ball near the crosshair, on the other side from your keeper (Cam.gcSide), so he never stands in front of it
+    const off = wrapA(Math.atan2(dx, dz) - this.yaw) + (this.gcSide || 0) * 0.14, lim = 0.08;
+    if (Math.abs(off) <= lim) return;
+    this.yaw = wrapA(this.yaw + (off - Math.sign(off) * lim) * (1 - Math.exp(-3 * realDt)));
+    const cp = Math.cos(this.pitch);
+    this.fwd.set(Math.sin(this.yaw) * cp, Math.sin(this.pitch), Math.cos(this.yaw) * cp);
   },
   computeAim(m, p) {
     const o = World.camera.position, d = this.fwd;
@@ -11318,21 +11473,52 @@ const UI = {
     return `<div id="cutin" hidden aria-hidden="true"><div class="ci-lines"></div><div class="ci-panel"><span class="ci-face" id="ci-face"></span><div class="ci-text"><b id="ci-name"></b><span id="ci-style"></span></div></div></div>`;
   },
   tplAwake() {
-    return `<div id="awk" hidden aria-hidden="true"><canvas id="awk-scene" width="160" height="90"></canvas><div class="awk-flash"></div>
-      <div class="awk-mem panel"><span class="label">A MEMORY</span><b id="awk-mem"></b></div>
+    // the screen breaking: 8 shards round the middle, each flying its own way (--dx, --dy, --r)
+    const shards = Array.from({ length: 8 }, (_, i) => {
+      const a0 = (i / 8) * TAU, a1 = ((i + 1) / 8) * TAU, am = (a0 + a1) / 2, P = (a, r) => `${(50 + Math.cos(a) * r).toFixed(1)}% ${(50 + Math.sin(a) * r).toFixed(1)}%`;
+      const poly = [P(am + 0.3, 4), P(a0, 90), P(am, 70 + (i % 3) * 12), P(a1, 90)].join(',');
+      return `<i style="clip-path:polygon(${poly});--dx:${(Math.cos(am) * 60).toFixed(0)}vw;--dy:${(Math.sin(am) * 60).toFixed(0)}vh;--r:${i % 2 ? 24 : -18}deg"></i>`;
+    }).join('');
+    return `<div id="awk" hidden aria-hidden="true"><div class="awk-lines"></div><canvas id="awk-scene" width="160" height="90"></canvas>
+      <div class="awk-mem"><span class="label">A MEMORY</span><b id="awk-mem"></b></div>
+      <div class="awk-eye"><canvas id="awk-eye" width="64" height="16"></canvas><i class="awk-iris l"></i><i class="awk-iris r"></i><i class="awk-flare"></i></div>
+      <div class="awk-flash"></div><div class="awk-shards">${shards}</div><div class="awk-lines2"></div>
+      <div class="awk-big">AWAKENING</div>
       <div class="awk-now"><span class="awk-face" id="awk-face"></span><div class="awk-words"><b id="awk-quote"></b><span id="awk-name"></span></div></div></div>`;
   },
-  /** the Awakening flashback (about 2.9s, the match in slow motion): their memory in faded colours, then a flash in their
-      colour and what they say now. Each style's story is in AWAKEN_STORY */
+  /** the Awakening (about 2.9s, the match in slow motion). Owner, Nov 2026: "make the animations cooler like [anime]
+      awakenings". Like a comic-book anime moment, all our own drawing: the memory as a black and white panel with speed
+      lines, then a close-up of their eyes lighting up in their colour with a streak of light, the screen breaking, and
+      AWAKENING with what they say now. Each style's story is in AWAKEN_STORY */
   awakenStory(p) {
     const el = $('awk'), st = AWAKEN_STORY[p.styleId] || ['crowd', 'THEY SAID I COULD NOT DO IT', 'WATCH ME NOW!'];
     el.style.setProperty('--ci', p.aura);
     this.drawMemory(st[0], $('awk-scene'));
+    this.drawEyes(p, $('awk-eye'));
     $('awk-mem').textContent = st[1]; $('awk-quote').textContent = st[2];
-    $('awk-name').textContent = p.style.name + ' · AWAKENING · ' + p.style.awaken.name;
+    $('awk-name').textContent = p.style.name + ' · ' + p.style.awaken.name;
     const face = $('awk-face'); face.innerHTML = ''; face.appendChild(portraitCanvas(p.styleId, 140, p.look));
     el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
     clearTimeout(this.awkT); this.awkT = setTimeout(() => { el.hidden = true; el.classList.remove('go'); }, 3000);
+  },
+  /** a pixel close-up of their eyes (64x16, drawn big): skin, a fringe of their hair, fierce brows, and eyes in their colour */
+  drawEyes(p, c) {
+    const g = c.getContext('2d'), L = p.look || {}, skin = L.skin || SKIN_TONES[1], hair = L.hair || p.style.hair || '#3b2a22';
+    const shade = (hex, k) => { const n = parseInt(String(hex).slice(1, 7), 16) || 0; const f = (v) => Math.max(0, Math.min(255, Math.round(v * k))); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
+    g.fillStyle = skin; g.fillRect(0, 0, 64, 16);
+    g.fillStyle = shade(skin, 0.82); g.fillRect(0, 12, 64, 4); // shadow under the eyes
+    g.fillStyle = hair; g.fillRect(0, 0, 64, 3); // the fringe, with a jagged edge
+    for (let x = 0; x < 64; x += 4) g.fillRect(x, 3, 3, (x * 7) % 3 + 1);
+    for (const s of [1, -1]) { // left eye (s 1) and right eye, mirrored round the middle
+      const X = (x) => (s > 0 ? x : 63 - x - 0);
+      g.fillStyle = shade(hair, 0.55); // brows sloping down to the middle: fierce
+      for (let i = 0; i < 12; i++) g.fillRect(Math.min(X(15 + i), X(15 + i)), 5 + (i > 7 ? 1 : 0), 1, 2);
+      g.fillStyle = '#ffffff'; g.fillRect(Math.min(X(16), X(27)), 8, 12, 4);
+      g.fillStyle = p.aura; g.fillRect(Math.min(X(19), X(24)), 8, 6, 4); // the iris in their colour
+      g.fillStyle = '#0b0b12'; g.fillRect(Math.min(X(21), X(22)), 9, 2, 3);
+      g.fillStyle = '#ffffff'; g.fillRect(X(20), 8, 1, 1); // a shine
+      g.fillStyle = shade(skin, 0.6); g.fillRect(Math.min(X(16), X(27)), 7, 12, 1); // the upper lid
+    }
   },
   /** a little faded picture of the memory: a race, a goal, the rain, a night sky, a crowd or the park */
   drawMemory(kind, c) {
@@ -11894,7 +12080,7 @@ const UI = {
     const back = (r) => (r === 'GK' ? 99 : ROLE_ORDER.indexOf(r));
     this.introRoles = m.teams[m.human.team].map((p) => p.role).sort((a, b) => back(b) - back(a));
     $('in-keys').textContent = Touch.on ? '' : 'KEYS 1-' + this.introRoles.length + ' PICK · ENTER PLAYS';
-    $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${ROLE_INFO[r][1]}</span></button>`).join('');
+    $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role${roleFits(m.human.styleId, r) ? ' fit' : ''}" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}${roleFits(m.human.styleId, r) ? ' <i class="in-fit">YOUR ROLE</i>' : ''}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${ROLE_INFO[r][1]}</span></button>`).join('');
     this.renderIntro(m);
     $('intro').hidden = false;
   },
@@ -12028,7 +12214,7 @@ const UI = {
   /** what a card in the current tab stands for */
   lockerItem(id) {
     const d = Save.data, tab = this.lockerTab;
-    if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { gk: !!st.gk, name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
+    if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { gk: !!st.gk, role: ROLES[st.role].name, name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
     if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
     if (tab === 'preset') {
       if (id === 'PNEW') return { name: '+ NEW PRESET', rarity: 'Rare', chip: d.presets.length + '/' + PRESET_MAX, base: true, owned: true, preset: true, add: true };
@@ -12061,7 +12247,7 @@ const UI = {
     const grid = $('locker-grid');
     grid.innerHTML = ids.map((id) => {
       const it = this.lockerItem(id);
-      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.gk ? 'KEEPER · ' : ''}${it.preset ? (it.add ? 'TAP TO ADD' : it.equipped ? 'WEARING' : it.empty ? 'EMPTY' : 'TAP TO WEAR') : it.equipped ? 'EQUIPPED' : it.spun ? 'FROM SPIN' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
+      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.role ? it.role + ' · ' : ''}${it.preset ? (it.add ? 'TAP TO ADD' : it.equipped ? 'WEARING' : it.empty ? 'EMPTY' : 'TAP TO WEAR') : it.equipped ? 'EQUIPPED' : it.spun ? 'FROM SPIN' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
     }).join('');
     grid.querySelectorAll('.lcard').forEach((b) => {
       b.querySelector('.cv').replaceWith(this.lockerArt(b.dataset.id, 40));
@@ -12084,7 +12270,7 @@ const UI = {
     const head = (sub, blurb) => `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px">${it.chip ? `<span class="chip" style="justify-self:start">${it.chip}</span>` : it.base ? '<span class="chip" style="justify-self:start">FREE</span>' : `<span class="rar" data-r="${it.rarity}" style="justify-self:start">${it.rarity.toUpperCase()}</span>`}<h3>${esc(it.name)}</h3>${sub ? `<span class="label">${sub}</span>` : ''}${blurb ? `<p style="margin:0;color:var(--muted);max-width:46ch">${esc(blurb)}</p>` : ''}</div></div>`;
     if (tab === 'style') {
       const st = STYLES[id];
-      det.innerHTML = head(st.gk ? 'KEEPER STYLE · ITS POWERS WORK IN GOAL' : '', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KeyNames.of(KEYS3[i])}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
+      det.innerHTML = head(st.gk ? 'KEEPER STYLE · ITS POWERS WORK IN GOAL' : 'ROLE: ' + ROLES[st.role].name + ' · ' + ROLE_WHERE[st.role], st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KeyNames.of(KEYS3[i])}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
         + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)}</p></div></div>` : '')
         + (st.awaken && st.awaken.move ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><div><div class="t"><span class="key">Z</span><b>${esc(st.awaken.move.name)}</b><span class="label">AWAKENED · ONCE</span></div><p>${esc(st.awaken.move.desc)}</p></div></div>` : '') + '</div>';
     } else if (tab === 'club') {
@@ -12099,7 +12285,7 @@ const UI = {
     } else if (tab === 'preset') {
       const i = +id.slice(1), p = d.presets[i], on = d.preset === i && this.presetOn(i);
       const sum = p.s ? '<div class="pre-sum">' + [['STYLE', STYLES[p.s.style].name], ['FLOW', p.s.flow ? FLOWS[p.s.flow].name : 'NONE']].concat(SKIN_SLOTS.filter((sl) => ['kit', 'hair', 'boots', 'gloves', 'acc', 'ball'].includes(sl.id)).map((sl) => [sl.name, SKINS[p.s.look[sl.id]].name])).map(([k, v]) => `<span class="label">${k}</span><b>${esc(v)}</b>`).join('') + '</div>' : '';
-      const pos = ['ST', 'MID', 'DEF', 'GK', null].map((r) => `<button class="tab" type="button" data-ppos="${r || ''}" aria-selected="${(p.pos || null) === r}">${r ? ROLE_INFO[r][0] : 'ANY'}</button>`).join('');
+      const pos = ['ST', 'LW', 'MID', 'DEF', 'GK', null].map((r) => `<button class="tab" type="button" data-ppos="${r || ''}" aria-selected="${(p.pos || null) === r}">${r ? ROLE_INFO[r][0] : 'ANY'}</button>`).join('');
       det.innerHTML = head(on ? 'YOU ARE WEARING THIS' : p.s ? 'PRESET ' + (i + 1) : 'EMPTY PRESET', on ? 'Anything you EQUIP in the other tabs now goes into this preset by itself.' : p.s ? 'Tap its card to wear all of it at once.' : 'Tap its card to start it from what you are wearing.')
         + (this.presetWarn && this.presetWarn.length ? `<p class="pre-warn">NOT YOURS ANY MORE, SO IT STAYED AS IT WAS: ${esc(this.presetWarn.join(', '))}</p>` : '')
         + `<label class="label" for="pre-name">NAME: TYPE ANYTHING</label><input class="on-in pre-name" id="pre-name" type="text" maxlength="${PRESET_NAME_MAX}" autocomplete="off" spellcheck="false" value="${esc(p.n)}">`
@@ -12157,7 +12343,7 @@ const UI = {
     if (!s.flow || d.flows.includes(s.flow)) d.flow = s.flow || null; else missing.push(FLOWS[s.flow].name);
     d.tone = s.tone;
     for (const sl of SKIN_SLOTS) { const id = s.look[sl.id], sk = SKINS[id]; if (sk && sk.slot === sl.id && (sk.base || d.skins.includes(id))) d.look[sl.id] = id; else if (id !== d.look[sl.id]) missing.push(sk ? sk.name : sl.name); }
-    d.pos = p.pos || null; d.preset = i;
+    d.pos = p.pos || null; d.posFor = d.style; d.preset = i;
     Save.save();
     return missing;
   },
@@ -12165,7 +12351,7 @@ const UI = {
   savePreset(i) {
     const d = Save.data;
     d.presets[i].s = { style: d.style, flow: d.flow || null, tone: d.tone, look: Object.assign({}, d.look) };
-    d.pos = d.presets[i].pos || null; d.preset = i;
+    d.pos = d.presets[i].pos || null; d.posFor = d.style; d.preset = i;
     Save.save();
   },
   /** tap a card: wear it (an empty one starts from what you wear); the + card adds one. The 3D player spins round to show the change */
@@ -12208,7 +12394,7 @@ const UI = {
   setPresetPos(i, pos) {
     const d = Save.data;
     d.presets[i].pos = pos;
-    if (d.preset === i) d.pos = pos; // wearing it: your next match starts there too
+    if (d.preset === i) { d.pos = pos; d.posFor = d.style; } // wearing it: your next match starts there too
     Save.save();
   },
   /** a preset's card picture: its own player, or a plus when it is empty (or the + card) */
@@ -12338,7 +12524,7 @@ const Game = {
     if (!o) return false;
     m.swapRoles(h, o); // in goal: the keeper's kit and number 1 come with it
     m.setupKickoff(0, true, true);
-    Save.data.pos = r; Save.save();
+    Save.data.pos = r; Save.data.posFor = h.styleId; Save.save(); // remembered for this style (another style starts in its own role)
     UI.renderIntro(m);
     return true;
   },
@@ -12381,9 +12567,9 @@ const Game = {
     const ramp = this.rampFor(mode);
     if (ramp) { size = Math.min(size, ramp[0]); skill = Math.min(skill, ramp[1]); }
     const intro = !o.noIntro && this.introOn(mode);
-    const st = STYLES[Save.data.style];
+    const sd = Save.data, pos = sd.pos && sd.posFor === sd.style ? sd.pos : roleSpot(sd.style); // the spot you picked with this style, or its role (a keeper style: in goal)
     applyBallLook(); // your ball
-    this.match = new Match(mode, skill, { size, role: Save.data.pos || (st && st.gk ? 'GK' : null), intro }); // a keeper style with no position picked yet starts in goal
+    this.match = new Match(mode, skill, { size, role: pos, intro }); // a winger's team plays wide (Match.pickSetups)
     this.lastMode = mode; this.ended = false;
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
@@ -12599,7 +12785,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {

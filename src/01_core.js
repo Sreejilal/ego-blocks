@@ -94,7 +94,7 @@ const Save = {
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
       spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false, tips: [],
-      fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
+      posFor: null, fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
       // outfit presets (owner, Nov 2026: "1 preset its like striker then goalie", up to 20, names typed by you): each has
@@ -140,13 +140,16 @@ const Save = {
     out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
     out.tone = clamp(Math.floor(Number(out.tone)), 0, 7); if (!Number.isFinite(out.tone)) out.tone = 1;
     out.pos = typeof out.pos === 'string' && /^(GK|ST|FW|MID|LW|RW|DEF|DEF2)$/.test(out.pos) ? out.pos : null; // the position you like to play (the match intro)
+    // posFor: the style you picked that position with. Another style starts in its own role (roleSpot) until you pick again;
+    // a save from before roles keeps its position for the style it has now
+    out.posFor = typeof out.posFor === 'string' ? out.posFor.slice(0, 24) : d && typeof d === 'object' && !('posFor' in d) && out.pos ? out.style : null;
     // presets: 1 to PRESET_MAX; a missing or broken list gets the four starters back (ids are checked against the game's lists in validate)
-    const posName = { ST: 'STRIKER', GK: 'KEEPER', MID: 'MIDFIELD', DEF: 'DEFENDER' };
+    const posName = { ST: 'STRIKER', GK: 'KEEPER', LW: 'WINGER', MID: 'MIDFIELD', DEF: 'DEFENDER' };
     const rawP = Array.isArray(out.presets) && out.presets.length ? out.presets.slice(0, PRESET_MAX) : def.presets;
     out.presets = rawP.map((p, i) => {
       const pd = def.presets[i] || { n: 'PRESET ' + (i + 1), pos: null };
       if (!p || typeof p !== 'object') return { n: pd.n, pos: pd.pos, s: null };
-      const pos = p.pos === null || (typeof p.pos === 'string' && /^(GK|ST|MID|DEF)$/.test(p.pos)) ? p.pos : pd.pos;
+      const pos = p.pos === null || (typeof p.pos === 'string' && /^(GK|ST|LW|MID|DEF)$/.test(p.pos)) ? p.pos : pd.pos;
       const nm = typeof p.n === 'string' ? p.n.replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, PRESET_NAME_MAX) : '';
       const n = nm || (pos ? posName[pos] : 'PRESET ' + (i + 1)); // saves from before names: named after the position
       const s = p.s && typeof p.s === 'object' && typeof p.s.style === 'string' ? {

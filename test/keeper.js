@@ -44,8 +44,19 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   check('FORTRESS (a keeper style) in goal: its three powers in the power slots', sw.style === 'FORTRESS' && sw.abil.join(',') === 'bigGloves,ironHands,cannonKick' && sw.slot === 'GIANT GLOVES', sw);
   await page.evaluate(() => EGO.Game.stepManual(260));
   await shot('keeper1_intro');
-  const nets = await page.evaluate(() => { const m = EGO.Game.match, c = EGO.World.camera.position, h = m.human; return { camZ: +c.z.toFixed(1), line: +m.ownGoalZ(0).toFixed(1), camY: +c.y.toFixed(1), me: +h.pos.y.toFixed(1), net: +EGO.World.nets.find((n) => n.s < 0).mat.opacity.toFixed(2) }; });
-  check('in goal the camera stays in front of your goal line, over your shoulder (the posts and bar never hide the top corners)', nets.camZ > nets.line + 0.2 && nets.camY > nets.me + 2.5 && nets.net > 0.95, nets);
+  // third person in goal (owner: "the goalie is very off ... 3rd person"): the camera used to sit right over your head, so
+  // your keeper was off the bottom of the screen. Now it is just behind your shoulder, low in the goal mouth under the bar
+  const camAt = () => page.evaluate(() => {
+    const m = EGO.Game.match, c = EGO.World.camera, h = m.human, P = c.position;
+    const pr = (y) => { const v = new THREE.Vector3(h.pos.x, h.pos.y + y, h.pos.z).project(c); return { x: +v.x.toFixed(2), y: +v.y.toFixed(2) }; };
+    const inFrame = EGO.World.goalBoxes.some((b) => P.x > b.min.x - 0.15 && P.x < b.max.x + 0.15 && P.y > b.min.y - 0.15 && P.y < b.max.y + 0.15 && P.z > b.min.z - 0.15 && P.z < b.max.z + 0.15);
+    return { cam: [P.x, P.y, P.z].map((v) => +v.toFixed(1)), line: +m.ownGoalZ(0).toFixed(1), head: pr(1.8), chest: pr(1.2), inFrame, underBar: P.y < EGO.PITCH.GH, net: +EGO.World.nets.find((n) => n.s < 0).mat.opacity.toFixed(2) };
+  });
+  const on = (q) => Math.abs(q.x) < 0.9 && Math.abs(q.y) < 0.9;
+  await page.evaluate(() => { EGO.Save.data.settings.cam = 'third'; EGO.Cam.yaw = 0; EGO.Game.stepManual(30); });
+  const nets = await camAt();
+  check('in goal (third person) you can see your keeper: the camera is just behind your shoulder, under the bar, never inside a post or the net', on(nets.head) && on(nets.chest) && nets.head.x < -0.1 && !nets.inFrame && nets.underBar && nets.net > 0.95, nets);
+  await shot('keeper1b_cam');
   await page.click('#in-go'); await page.waitForTimeout(150);
   await page.evaluate(() => EGO.Game.stepManual(200));
   const st = await page.evaluate(() => { const m = EGO.Game.match, h = m.human; return { phase: m.phase, z: +h.pos.z.toFixed(1), box: m.inOwnBox(h), chat: !document.getElementById('hud-chat').hidden }; });
@@ -176,6 +187,23 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   check('the Locker lists them with the other styles, marked KEEPER (no separate tab)', /^KEEPER · /.test(lk.fortress) && /^KEEPER · /.test(lk.lynx) && /KEEPER STYLE/.test(lk.detail) && !/KEEPERS/.test(lk.tabs), lk);
   check('every character card has its own face (not all your look)', lk.unique === lk.n, { cards: lk.n, different: lk.unique });
   await page.waitForTimeout(400); await shot('keeper3_locker');
+
+  // the ball out on the wing and you not touching the camera: it turns to keep the ball near the crosshair, your keeper
+  // off to the other side; still never inside a post or the net
+  const wing = await page.evaluate(() => {
+    const G = EGO.Game; G.toLobby(); G.introTest = false; EGO.Save.data.pos = 'GK'; EGO.Save.data.settings.cam = 'third'; G.startMatch('quick'); G.stepManual(5);
+    const m = G.match, h = m.human, b = m.ball, gz = m.ownGoalZ(0);
+    for (const p of m.players) if (p !== h) { p.wall = true; p.setState('free'); p.pos.set(p.pos.x, 0, 10); }
+    if (b.owner) b.release();
+    m.phase = 'play'; m.phaseT = 0; b.reset(-14, gz + 8); b.vel.set(0, 0, 0); b.kick = null;
+    h.pos.set(0, 0, gz + 1.2); h.vel.set(0, 0, 0); h.setState('free'); EGO.Cam.yaw = 0; EGO.Cam.snapYaw = null;
+    EGO.Game.stepManual(100);
+    const c = EGO.World.camera, v = b.pos.clone().project(c), k = new THREE.Vector3(h.pos.x, h.pos.y + 1.5, h.pos.z).project(c);
+    return { yaw: +EGO.Cam.yaw.toFixed(2), ball: +v.x.toFixed(2), keeper: +k.x.toFixed(2) };
+  });
+  const wc = await camAt();
+  check('the ball on the wing: the camera turns to it by itself (you were not turning it), your keeper is not in front of it', wing.yaw < -0.6 && Math.abs(wing.ball) < 0.15 && Math.abs(wing.keeper - wing.ball) > 0.12 && !wc.inFrame && wc.underBar, Object.assign(wing, { inFrame: wc.inFrame }));
+  await shot('keeper1c_wing');
 
   // the next match remembers; No Keepers, free kicks and the tutorial do not put you in goal
   const next = await page.evaluate(() => {

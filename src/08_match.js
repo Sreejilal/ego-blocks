@@ -55,18 +55,27 @@ class Match {
     if (this.cfg.practice && this.human) this.startFreeKicks(); else if (this.cfg.tutorial && this.human) this.startTutorial(); else this.setupKickoff(0, true, !!opts.intro); // the intro (Game.beginIntro): no kickoff banner until it is over
   }
   /* ---------- setup ---------- */
-  /** 5v5: each team plays ultra defensive or ultra attacking, picked at random (opts.setups to choose) */
+  /** a team's line-up (opts.setups to choose). 5v5: ultra defensive, ultra attacking or wide; 4v4: classic or wide (a left
+      winger instead of the midfielder). Your team plays wide when you start on a wing (a winger: Match option role) */
+  pickSetups(opts) {
+    const wing = opts.role === 'LW' || opts.role === 'RW';
+    if (this.size === 5) return [0, 1].map((t) => (t === 0 && wing && !opts.humans ? 'wide' : t === 0 && !opts.humans ? pick(['defensive', 'attacking']) : pick(['defensive', 'attacking', 'wide'])));
+    if (this.size === 4) return [0, 1].map((t) => (t === 0 && !opts.humans ? (wing ? 'wide' : 'classic') : Math.random() < 0.3 ? 'wide' : 'classic'));
+    return [null, null];
+  }
+  setupOf(team) { const S = this.size === 5 ? SETUPS_5 : this.size === 4 ? SETUPS_4 : null; return S && S[this.setups[team]] || null; }
   rolesFor(team) {
     if (this.cfg.practice && this.cfg.keeper) return team === 0 ? ['GK', 'DEF', 'DEF2'] : ['GK', 'ST', 'MID']; // keeper practice: you in goal with two in your wall, their taker
     if (this.cfg.practice) return team === 0 ? ['ST'] : ['GK', 'DEF', 'DEF2', 'MID', 'ST']; // free kicks: you against a keeper, a wall and defenders in the box
     if (this.cfg.tutorial) return team === 0 ? ['ST', 'MID'] : ['DEF']; // the tutorial: you, a teammate and one defender (an empty goal)
     if (this.cfg.roster && this.cfg.roster.length === this.size) return this.cfg.roster; // a mode's own line-up (Quick Match: a winger)
-    return this.size === 5 ? SETUPS_5[this.setups[team]].roles : ROSTERS[this.size];
+    const S = this.setupOf(team);
+    return S ? S.roles : ROSTERS[this.size];
   }
   buildTeams(opts) {
     const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
     const used = new Set([1, 10]);
-    this.setups = opts.setups || [pick(['defensive', 'attacking']), pick(['defensive', 'attacking'])];
+    this.setups = opts.setups || this.pickSetups(opts);
     // online: each player takes an outfield role on their team, striker first
     const seat = {};
     if (opts.humans) for (const t of [0, 1]) {
@@ -84,7 +93,7 @@ class Match {
         const human = opts.humans ? !!net : team === 0 && role === mine && !opts.noHuman; // you play the most attacking spot, or the one you picked
         let num = role === 'GK' ? 1 : human && !net ? 10 : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
-        const style = net ? net.style : human ? (opts.style || Save.data.style) : opts.teamStyle ? opts.teamStyle[team] : botStyle(); // teamStyle: [home, away] for balance tests
+        const style = net ? net.style : human ? (opts.style || Save.data.style) : opts.teamStyle ? opts.teamStyle[team] : botStyle(role); // teamStyle: [home, away] for balance tests; bots mostly play a character made for their spot
         const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
         const look = net ? net.look : human ? (opts.look || Save.data.look) : botLook();
         const tone = net ? net.tone : Save.data.tone;
@@ -236,7 +245,7 @@ class Match {
     else if (first) Hud.banner(this.cfg.name, this.mode === 'ranked' ? 'WIN +25 RP \u00b7 DRAW +5 \u00b7 LOSS -15' : this.mode === 'lawless' ? (Touch.on ? 'GRAB THE ? BLOCKS \u00b7 TAP ITEM TO USE' : 'GRAB THE ? BLOCKS \u00b7 X USES YOUR ITEM') : 'NO RANK ON THE LINE', TEAM[0].hex);
     else Hud.banner('KICKOFF', TEAM[team].name + ' BALL', TEAM[team].hex);
     if (!first && this.human && Touch.on) Touch.faceGoal(this);
-    if (first && this.size === 5 && this.human) this.toast('THEY PLAY ' + SETUPS_5[this.setups[1 - this.human.team]].name + ' · YOU PLAY ' + SETUPS_5[this.setups[this.human.team]].name, 'gold', this.human);
+    if (first && this.size === 5 && this.human) this.toast('THEY PLAY ' + this.setupOf(1 - this.human.team).name + ' · YOU PLAY ' + this.setupOf(this.human.team).name, 'gold', this.human);
   }
   startPlay() {
     this.phase = 'play'; this.phaseT = 0;
@@ -1408,6 +1417,10 @@ class Match {
         this.dashP(p, dx / (d || 1), dz / (d || 1), Math.max(16, d / 0.32), 0.32, { home: o, onEnd: () => { const c = this.ball.owner; if (c && c.team !== p.team && !this.safeGK(c) && dist2D(c.pos, p.pos) < 2.8 && !(c.fx.bubble > 0)) { this.ball.release(); c.pickBlock = 0.6; this.possess(p); this.label(p, 'STOLEN', p.aura); } } });
         break;
       }
+      case 'worldstop': // ZENITH: the world stops around you, and you go
+        for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 12) this.stun(o, 1.5, 'frozen');
+        p.fx.burst = Math.max(p.fx.burst || 0, 3); p.tackleProof = Math.max(p.tackleProof, 0.8);
+        FX.ring(p.pos.x, 0.2, p.pos.z, '#ffffff', 6, 48); FX.ring(p.pos.x, 0.3, p.pos.z, p.aura, 10, 60); Shake.add(0.3); break;
       case 'starfall':
         if (!p.onGround) return 'ON THE GROUND ONLY';
         p.vel.y = 15; p.onGround = false; p.starfall = true; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.6, 24); break;

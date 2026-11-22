@@ -122,6 +122,7 @@ const Input = {
 };
 
 const CAM_EYE = 1.55; // first person: eye height above the feet
+const GOALCAM_D = 2.5, GOALCAM_Y = 2.3, GOALCAM_SIDE = 0.8, GOALCAM_IN = 1.9; // you in goal, third person (Cam.goalCam): closest distance, height, over the right shoulder, how far into the goal mouth it may go
 /** the letter printed on the key at a position (`code`): W A S D on QWERTY, Z Q S D on a French AZERTY keyboard.
     Chrome and Edge can tell (navigator.keyboard); elsewhere the QWERTY letter */
 const KeyNames = {
@@ -159,7 +160,9 @@ const Cam = {
   unhide() { if (this.hidden && this.hidden.P) this.hidden.P.root.visible = true; this.hidden = null; },
   look(realDt) {
     const s = Save.data.settings, sens = s.sens || 1, inv = s.invertY ? -1 : 1;
-    const E = Input.edges;
+    const E = Input.edges, kd = Input.down;
+    const turning = Input.mdx || Input.mdy || Touch.lookDX || Touch.lookDY || kd.has('ArrowLeft') || kd.has('ArrowRight') || kd.has('ArrowUp') || kd.has('ArrowDown') || Math.abs(Input.axis(2)) > 0.15 || Math.abs(Input.axis(3)) > 0.15;
+    this.idleLook = turning ? 0 : (this.idleLook || 0) + realDt; // how long since you last turned the camera (Cam.keeperLook)
     if (E.has('KeyV') || E.has('T_cam') || (E.has('PadRS') && !Replay.offer)) { this.toggle(); E.delete('KeyV'); E.delete('T_cam'); E.delete('PadRS'); } // one press, one switch
     if (E.has('KeyL')) { E.delete('KeyL'); this.toggleShiftLock(); }
     if (Input.mdx || Input.mdy) this.snapYaw = this.snapPitch = null;
@@ -221,6 +224,8 @@ const Cam = {
     pk *= this.punchAmt == null ? 1 : this.punchAmt;
     if (pk > 0 || this.punchK > 0) { cam.fov = World.baseFov - pk * 10; cam.updateProjectionMatrix(); }
     this.punchK = pk;
+    if (p === m.human && !wide) this.keeperLook(realDt, m, p);
+    this.gcSide = 0; // set again by goalCam below while you are in goal in third person
     // first person, except for goals and the final whistle (wide shots) and when you are on the grass
     const fp = this.first() && !wide && p.state !== 'down' && p.state !== 'celebrate' && (p.state !== 'dive' || p.isGK); // owner: a keeper's dive stays in first person
     if (fp) {
@@ -235,13 +240,12 @@ const Cam = {
       const dist = this.dist + (wide ? 2.6 : 0) + (tall ? 1.7 : 0) - pk * 2;
       // behind and above you, a little higher than eye level so the pitch ahead shows over your head
       let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.85 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
-      if (Save.data.settings.shiftLock && !wide) { tx += -Math.cos(this.yaw) * 1.0; tz += Math.sin(this.yaw) * 1.0; ty -= 0.25; } // shift lock: over your right shoulder
+      let mouth = false; // the camera is inside your own goal mouth, under the bar (you in goal)
+      const gc = p.isGK && !wide && m.ownGoalZ ? this.goalCam(p, m, dist, ty) : null;
+      if (gc) { tx = gc.x; ty = gc.y; tz = gc.z; mouth = gc.mouth; }
+      if (Save.data.settings.shiftLock && !wide && !gc) { tx += -Math.cos(this.yaw) * 1.0; tz += Math.sin(this.yaw) * 1.0; ty -= 0.25; } // shift lock: over your right shoulder
       tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
-      if (p.isGK && !wide && m.ownGoalZ) { // you in goal (owner's video: the posts and bar hid the top corners): the camera stays in front of your goal line, just over your shoulder
-        const s = m.dir(p.team), lim = m.ownGoalZ(p.team) + s * (F.POST + 0.55); // in front of the posts and bar, not inside them
-        if ((tz - lim) * s < 0) { const k = clamp((lim - tz) * s / 4, 0, 1); tz = lim; ty = Math.max(ty, p.pos.y + 3.5 + 0.5 * k); }
-      }
-      if (Math.abs(tz) > F.L - 0.6 && Math.abs(tz) < F.L + F.GD + 0.8 && Math.abs(tx) < F.GW + F.POST + 0.6) ty = Math.max(ty, F.GH + F.POST + 0.7); // never inside the goal net: up over the bar
+      if (!mouth && Math.abs(tz) > F.L - 0.6 && Math.abs(tz) < F.L + F.GD + 0.8 && Math.abs(tx) < F.GW + F.POST + 0.6) ty = Math.max(ty, F.GH + F.POST + 0.7); // never inside the goal net: up over the bar
       const k = 1 - Math.exp(-16 * realDt);
       this.pos.x += (tx - this.pos.x) * k; this.pos.y += (ty - this.pos.y) * k; this.pos.z += (tz - this.pos.z) * k;
     }
@@ -250,6 +254,47 @@ const Cam = {
     _v1.copy(cam.position).add(this.fwd);
     cam.lookAt(_v1);
     this.computeAim(m, p);
+  },
+  /** you in goal, third person (owner, Nov 2026: "the goalie is very off ... his camera ... 3rd person"). Right behind you is
+      the net, so the camera used to stop in front of the posts, which on your line is straight over your head: you could
+      not see your keeper, and turning pushed him into a corner with a post filling the screen. Now it closes in as you back
+      up to your line: from the normal spot to just behind your shoulder, low, inside the goal mouth under the bar
+      (from there the posts and bar are out of the picture, so the top corners still show). null: the normal spot is fine */
+  goalCam(p, m, dist, ty) {
+    const s = m.dir(p.team), line = m.ownGoalZ(p.team), front = line + s * (F.POST + 0.3); // s: the way you attack; front: just in front of the posts
+    const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
+    this.gcSide = 0;
+    if (fz * s < 0.05) return null; // looking back at your goal or along it: the camera is up the pitch or to the side
+    const a = ((p.pos.z - front) * s) / (fz * s); // how far you are from the posts, looking back along the camera
+    if (a - dist > 1.3) return null; // the normal spot is well in front of the posts
+    // u: 0 normal .. 1 close. Over the right shoulder, or the left one once you turn right: the shoulder that takes the
+    // camera forward, away from the post you are turning towards (sh glides from 1 to -1)
+    const d = clamp(a + GOALCAM_IN, GOALCAM_D, dist), u = (dist - d) / (dist - GOALCAM_D), sh = clamp(1 + (fx * s) / 0.2, -1, 1), side = GOALCAM_SIDE * u * sh;
+    this.gcSide = u * sh; // where your keeper sits on screen (1: left of the crosshair, -1: right), for keeperLook
+    let x = p.pos.x - fx * d - Math.cos(this.yaw) * side, z = p.pos.z - fz * d + Math.sin(this.yaw) * side, y = lerp(ty, p.pos.y + GOALCAM_Y, u);
+    const depth = (line - z) * s, inner = F.GW - 0.4, outer = F.GW + F.POST + 0.65; // depth > 0: behind the goal line
+    let mouth = false;
+    if (depth > -(F.POST + 0.35) && Math.abs(x) > inner && Math.abs(x) < outer) x = Math.sign(x || 1) * (Math.abs(p.pos.x) < F.GW ? inner : outer); // never inside a post or the side netting
+    if (Math.abs(x) <= inner && depth > -(F.POST + 1.6)) {
+      mouth = depth > -(F.POST + 0.6);
+      y = Math.min(y, F.GH - 0.6 + Math.max(0, -depth - F.POST - 0.35)); // under the bar, rising smoothly once in front of the posts
+      if (depth > F.GD - F.POST - 0.45) z = line - s * (F.GD - F.POST - 0.45); // in front of the back of the net
+    }
+    return { x, y, z, mouth };
+  },
+  /** you in goal and not turning the camera yourself: it turns slowly to keep the ball in view (a keeper has to watch the
+      ball, and on a phone you cannot dive and turn at once) */
+  keeperLook(realDt, m, p) {
+    const b = m.ball;
+    if (!p.isGK || m.phase !== 'play' || b.owner === p || this.idleLook < 0.8 || this.snapYaw != null) return;
+    const dx = b.pos.x - p.pos.x, dz = b.pos.z - p.pos.z;
+    if (dx * dx + dz * dz < 9) return; // right next to you: the angle jumps about
+    // the ball near the crosshair, on the other side from your keeper (Cam.gcSide), so he never stands in front of it
+    const off = wrapA(Math.atan2(dx, dz) - this.yaw) + (this.gcSide || 0) * 0.14, lim = 0.08;
+    if (Math.abs(off) <= lim) return;
+    this.yaw = wrapA(this.yaw + (off - Math.sign(off) * lim) * (1 - Math.exp(-3 * realDt)));
+    const cp = Math.cos(this.pitch);
+    this.fwd.set(Math.sin(this.yaw) * cp, Math.sin(this.pitch), Math.cos(this.yaw) * cp);
   },
   computeAim(m, p) {
     const o = World.camera.position, d = this.fwd;

@@ -182,11 +182,21 @@ const FX = {
     this.aura(p, p.aura, dt * 2.6);
     if (Math.random() < dt * 40) this.glow.spawn(p.pos.x + rand(-0.5, 0.5), p.pos.y + 0.1, p.pos.z + rand(-0.5, 0.5), 0, rand(5, 8), 0, rand(0.06, 0.1), 0.45, col('#ffffff'), -0.3, 0.3, 0);
     // owner: "make the awakenings better": rings pulse out from your feet, sparks crackle round you, and you leave a trail of light when you run
-    p._awFx = (p._awFx || 0) - dt;
-    if (p._awFx <= 0) { p._awFx = 0.7; this.ring(p.pos.x, 0.15, p.pos.z, p.aura, 1.4, 22); }
+    p._awRing = (p._awRing || 0) - dt; // its own timer: p._awFx marks the stages of the Awakening jump (Player.animate)
+    if (p._awRing <= 0) { p._awRing = 0.7; this.ring(p.pos.x, 0.15, p.pos.z, p.aura, 1.4, 22); }
     if (Math.random() < dt * 8) this.sparks(p.pos.x + rand(-0.5, 0.5), p.pos.y + rand(0.4, 1.9), p.pos.z + rand(-0.5, 0.5), p.aura, 3, 2.5, 0.12, 0.35);
     const sp = Math.hypot(p.vel.x, p.vel.z);
     if (sp > 5 && Math.random() < dt * 50) this.glow.spawn(p.pos.x - p.vel.x * 0.04, p.pos.y + rand(0.4, 1.4), p.pos.z - p.vel.z * 0.04, 0, rand(0.2, 0.6), 0, rand(0.1, 0.18), 0.5, col(p.aura), 0, 0.2, 0);
+    // owner, Nov 2026 ("cooler like [anime] awakenings"): a streak of light trails from the glowing eyes as you move
+    const P = p.P;
+    if (P && P.headP && P.root.visible) {
+      const e = this._eye || (this._eye = new THREE.Vector3()), c = col(p.aura);
+      p._eyeAcc = (p._eyeAcc || 0) + dt * 70;
+      while (p._eyeAcc > 1) {
+        p._eyeAcc -= 1;
+        for (const sx of [-0.12, 0.12]) { P.headP.localToWorld(e.set(sx, 0.21, 0.27)); this.glow.spawn(e.x, e.y, e.z, 0, 0.15, 0, 0.07, 0.3, c, 0, 0.5, 0); }
+      }
+    }
   },
   /** the moment you awaken: sparks, two rings and a pillar of light */
   awakenBurst(p) {
@@ -195,6 +205,8 @@ const FX = {
     this.ring(x, 0.2, z, p.aura, 1.6, 30); this.ring(x, 0.25, z, '#ffffff', 2.6, 36); this.ring(x, 0.3, z, p.aura, 4.2, 44); // a bigger shockwave
     this.sparks(x, 2.2, z, p.aura, 40, 14, 0.2, 1.0);
     for (let i = 0; i < 44; i++) this.glow.spawn(x + rand(-0.35, 0.35), rand(0, 0.5), z + rand(-0.35, 0.35), 0, rand(8, 16), 0, rand(0.12, 0.22), rand(0.5, 0.9), col(i % 3 ? p.aura : '#ffffff'), -0.2, 0.6, 0);
+    this.beam(V3(x, 0, z), { pos: V3(x, 18, z) }, p.aura); // a pillar of light into the sky
+    this.shatter(x, 0.1, z, 14); // the ground cracks under you
   },
   /** each Flow has its own look: wind, afterimage, venom, coins, blue fire, a crown. No Flow: your style's aura */
   flow(p, id, dt) {

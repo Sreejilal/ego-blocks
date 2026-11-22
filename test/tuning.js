@@ -21,7 +21,7 @@ function runSpeed(charge) {
 const free = runSpeed(null), small = runSpeed(0), big = runSpeed(1);
 check('winding up a shot slows you, more for a bigger shot', small < free * 0.55 && big < small * 0.6, { free, small, big });
 
-const m = new G.Match('quick', 0.5, { noHuman: true, autopilot: true, size: G.teamSizeFor('quick', 0) });
+const m = new G.Match('quick', 0.5, { noHuman: true, autopilot: true, size: G.teamSizeFor('quick', 0), setups: ['classic', 'classic'] }); // (a team can also play WIDE: a left winger instead of the midfielder, test/roles.js)
 const roles = m.teams.map((t) => t.map((p) => p.role).join(','));
 // the midfielder plays behind the striker (owner: a midfielder that played up front like a striker was confusing)
 let behind = 0, n = 0;

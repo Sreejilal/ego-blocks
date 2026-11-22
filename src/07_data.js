@@ -58,14 +58,44 @@ const STYLES = {
     awaken: { move: { name: 'GROUND SLAM', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'THE WALL', desc: '+15% shot power, and tackles reach 30% further.', mods: { shot: 1.15, tackleRange: 1.3 } } },
   LYNX: { name: 'LYNX', rarity: 'Epic', gk: true, hair: '#d9d2c5', hairShape: 'spiky', aura: '#7dff9a', blurb: 'Springy reflexes. Leaps right across the goal, slows shots down and throws it out in a flash. Its powers work in goal.', abilities: ['catLeap', 'slowShot', 'quickThrow'],
     awaken: { move: { name: 'NINE LIVES', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'CAT REFLEXES', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
+  // Nov 2026 (owner: "add another generational person", "add more content"): a second Generational (a winger, with a power of
+  // its own: FLASH STEP), a defender and a third keeper
+  ZENITH: { name: 'ZENITH', rarity: 'Generational', hair: '#f3eeff', hairShape: 'undercut', aura: '#d65cff', blurb: 'The winger of a generation. Blinks past defenders in a flash of light, then bends it into the top corner.', abilities: ['flashStep', 'zigzag', 'curler'],
+    awaken: { move: { name: 'WORLD STOP', kind: 'worldstop', desc: 'Every opponent within 12 blocks freezes for 1.5s while you burst away.' }, name: 'HIGHEST POINT', desc: '+15% speed, +15% shot power, and abilities recharge faster.', mods: { speed: 1.15, shot: 1.15, cdRate: 1.3 } } },
+  BASTION: { name: 'BASTION', rarity: 'Epic', hair: '#1d1d24', hairShape: 'flattop', aura: '#ff6b3d', blurb: 'A defender who never gives an inch. Swipes attackers off the ball, keeps the whole back line standing and sends it long.', abilities: ['armSwipe', 'rally', 'clearance'],
+    awaken: { move: { name: 'LAST STAND', kind: 'steal', desc: 'Lunge at a carrier up to 10 blocks away and take the ball.' }, name: 'IMMOVABLE', desc: 'Nobody can tackle you, and tackles reach 40% further.', perk: 'tank', mods: { tackleRange: 1.4 } } },
+  AEGIS: { name: 'AEGIS', rarity: 'Legendary', gk: true, hair: '#e9e4d8', hairShape: 'long', aura: '#ffe066', blurb: 'A keeper like a golden shield. Holds every shot, leaps right across the goal and slows shots down. Its powers work in goal.', abilities: ['ironHands', 'catLeap', 'slowShot'],
+    awaken: { move: { name: 'SHIELD WALL', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'GUARDIAN', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
 };
+/** each character's role (owner, Nov 2026: "place each character's role so one defender one winger"): shown in the Locker,
+    where you start a match (until you pick another spot for that style) and where bots play it */
+const ROLES = { ST: { name: 'STRIKER', spots: ['ST', 'FW'] }, WING: { name: 'WINGER', spots: ['LW', 'RW'] }, MID: { name: 'MIDFIELD', spots: ['MID'] }, DEF: { name: 'DEFENDER', spots: ['DEF', 'DEF2'] }, GK: { name: 'KEEPER', spots: ['GK'] } };
+const ROLE_WHERE = { ST: 'STARTS UP FRONT', WING: 'STARTS ON THE WING', MID: 'STARTS IN MIDFIELD', DEF: 'STARTS AT THE BACK', GK: 'STARTS IN GOAL' };
+const STYLE_ROLE = {
+  ROOKIE: 'ST', PROWLER: 'ST', MAGNET: 'ST', THUNDER: 'ST', COMET: 'ST', RAILGUN: 'ST', NOVA: 'ST', ACE: 'ST',
+  SPRINTER: 'WING', PHANTOM: 'WING', TRICKSTER: 'WING', FEATHER: 'WING', SPARK: 'WING', VORTEX: 'WING', JESTER: 'WING', ZENITH: 'WING',
+  ENFORCER: 'MID', MAESTRO: 'MID', BLITZ: 'MID', KESTREL: 'MID', CAPTAIN: 'MID', TEMPEST: 'MID',
+  SHAMBLER: 'DEF', WARDEN: 'DEF', ANCHOR: 'DEF', GLACIER: 'DEF', TITAN: 'DEF', SENTINEL: 'DEF', BASTION: 'DEF',
+};
+for (const k in STYLES) STYLES[k].role = STYLES[k].gk ? 'GK' : STYLE_ROLE[k] || 'MID';
+/** the spot a style starts in, and whether a spot suits it */
+const roleSpot = (id) => ROLES[(STYLES[id] || STYLES.ROOKIE).role].spots[0];
+const roleFits = (id, spot) => !!STYLES[id] && ROLES[STYLES[id].role].spots.includes(spot);
 const STYLE_IDS = Object.keys(STYLES);
 const GK_IDS = STYLE_IDS.filter((k) => STYLES[k].gk); // keeper styles
 /** a bot's style: common styles most of the time, the rare ones now and then (like the spins) */
 const BOT_STYLE_ODDS = { Rare: 40, Epic: 30, Legendary: 15, Mythic: 10, Generational: 5 };
-function botStyle() {
+function botStyle(spot) {
   let r = Math.random() * 100;
-  for (const rar of RARITIES) { r -= BOT_STYLE_ODDS[rar]; if (r < 0) { const pool = STYLE_IDS.filter((k) => STYLES[k].rarity === rar && !STYLES[k].gk); if (pool.length) return pick(pool); } } // bots never play a keeper style
+  const fit = spot && spot !== 'GK' && Math.random() < 0.8; // most bots play a character made for their spot (a defender at the back, a winger on the wing)
+  for (const rar of RARITIES) {
+    r -= BOT_STYLE_ODDS[rar];
+    if (r < 0) {
+      const pool = STYLE_IDS.filter((k) => STYLES[k].rarity === rar && !STYLES[k].gk), mine = fit ? pool.filter((k) => roleFits(k, spot)) : pool; // bots never play a keeper style
+      if (mine.length) return pick(mine);
+      if (pool.length) return pick(pool);
+    }
+  }
   return 'ROOKIE';
 }
 
@@ -155,6 +185,19 @@ const ABILITIES = {
       return true;
     },
     ai(p, m, c) { return c.hasBall && c.nearOpp < 3.4 && c.oppInFront && c.dGoal < 24 && c.dGoal > 10; }, // bots: to get a shot away, not to escape anywhere
+  },
+  flashStep: { // ZENITH (Nov 2026): a blink, a very fast short dash with the ball and a flash of light
+    name: 'FLASH STEP', cd: 11, icon: 'dash',
+    desc: 'With the ball: blink about 6 blocks the way you face in a flash of light. Nobody can tackle you on the way.',
+    use(p, m) {
+      if (m.ball.owner !== p) return NEED_BALL;
+      const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+      FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.4, 20); FX.sparks(p.pos.x, 1, p.pos.z, '#ffffff', 14, 6, 0.15);
+      m.dashP(p, fx, fz, 34, 0.18, { onEnd: () => { p.vel.x *= 0.3; p.vel.z *= 0.3; } }); p.tackleProof = Math.max(p.tackleProof, 0.45); // a blink: it stops sharp, no long slide after
+      Sfx.dodge();
+      return true;
+    },
+    ai(p, m, c) { return c.hasBall && c.nearOpp < 3.6 && c.oppInFront && c.dGoal > 8; },
   },
   curler: {
     name: 'CURLER', cd: 20, icon: 'shot', big: true,
@@ -551,6 +594,9 @@ const AWAKEN_STORY = {
   JESTER: ['crowd', 'THEY TOLD ME FOOTBALL IS NOT A SHOW', 'THEN WHY IS EVERYONE WATCHING?'],
   TEMPEST: ['rain', 'I WAS SCARED OF STORMS', 'NOW I AM THE STORM!'],
   ACE: ['race', 'I WASTED THE LAST CHANCE OF THE FINAL', 'EVERY CHANCE COUNTS NOW!'],
+  ZENITH: ['night', 'I TRAINED ALONE UNDER THE LIGHTS EVERY NIGHT', 'NOW I STAND AT THE TOP. ALONE.'],
+  BASTION: ['rain', 'THEY RAN PAST ME LIKE I WAS NOT THERE', 'NOT ONE STEP FURTHER!'],
+  AEGIS: ['goal', 'I PROMISED MY TEAM I WOULD KEEP THEM SAFE', 'NOTHING GETS THROUGH MY SHIELD!'],
 };
 /** the feint (C): a step-over cut nobody can tackle you through, once every FEINT_CD seconds */
 const FEINT_CD = 5;
@@ -869,7 +915,9 @@ const FK_TOL = 0.08; // how far from the perfect power you can be (the green zon
 /** the perfect power for a distance: further out needs more */
 const fkIdeal = (D) => clamp(0.42 + (D - 16) / 12 * 0.36, 0.4, 0.86);
 const ROSTERS = { 2: ['GK', 'ST'], 3: ['GK', 'DEF', 'ST'], 4: ['GK', 'DEF', 'MID', 'ST'], 5: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] };
-const SETUPS_5 = { defensive: { name: 'ULTRA DEFENSIVE', roles: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] }, attacking: { name: 'ULTRA ATTACKING', roles: ['GK', 'DEF', 'MID', 'ST', 'FW'] } };
+const SETUPS_5 = { defensive: { name: 'ULTRA DEFENSIVE', roles: ['GK', 'DEF', 'DEF2', 'MID', 'ST'] }, attacking: { name: 'ULTRA ATTACKING', roles: ['GK', 'DEF', 'MID', 'ST', 'FW'] }, wide: { name: 'WIDE', roles: ['GK', 'DEF', 'LW', 'RW', 'ST'] } };
+/** 4v4: the usual line-up, or WIDE with a left winger instead of the midfielder (your team plays it when you are a winger) */
+const SETUPS_4 = { classic: { name: 'CLASSIC', roles: ['GK', 'DEF', 'MID', 'ST'] }, wide: { name: 'WIDE', roles: ['GK', 'DEF', 'LW', 'ST'] } };
 /** the most attacking role first: you play it, and it takes the kickoff */
 const ROLE_ORDER = ['ST', 'FW', 'MID', 'LW', 'RW', 'DEF', 'DEF2'];
 /** what each outfield spot is called on the position picker (the match intro), and what you do there */

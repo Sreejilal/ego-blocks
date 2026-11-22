@@ -8,7 +8,7 @@ for (const st of list) {
   let w = 0, d = 0, l = 0, gf = 0, ga = 0;
   for (let i = 0; i < N; i++) {
     const side = i % 2;
-    const m = new G.Match('quick', 0.6, { noHuman: true, autopilot: true, length: 240, size: SIZE, teamD: [0.6, 0.6], teamStyle: side ? [VS, st] : [st, VS] });
+    const m = new G.Match('quick', 0.6, { noHuman: true, autopilot: true, length: 240, size: SIZE, teamD: [0.6, 0.6], teamStyle: side ? [VS, st] : [st, VS], setups: SIZE === 4 ? ['classic', 'classic'] : undefined }); // the same line-up every time (less noise)
     for (let t = 0; m.phase !== 'end' && t < 900; t += 1 / 60) m.update(1 / 60);
     const a = m.score[side], b = m.score[1 - side];
     gf += a; ga += b; if (a > b) w++; else if (a < b) l++; else d++;

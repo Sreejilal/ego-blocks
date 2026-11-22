@@ -413,21 +413,52 @@ const UI = {
     return `<div id="cutin" hidden aria-hidden="true"><div class="ci-lines"></div><div class="ci-panel"><span class="ci-face" id="ci-face"></span><div class="ci-text"><b id="ci-name"></b><span id="ci-style"></span></div></div></div>`;
   },
   tplAwake() {
-    return `<div id="awk" hidden aria-hidden="true"><canvas id="awk-scene" width="160" height="90"></canvas><div class="awk-flash"></div>
-      <div class="awk-mem panel"><span class="label">A MEMORY</span><b id="awk-mem"></b></div>
+    // the screen breaking: 8 shards round the middle, each flying its own way (--dx, --dy, --r)
+    const shards = Array.from({ length: 8 }, (_, i) => {
+      const a0 = (i / 8) * TAU, a1 = ((i + 1) / 8) * TAU, am = (a0 + a1) / 2, P = (a, r) => `${(50 + Math.cos(a) * r).toFixed(1)}% ${(50 + Math.sin(a) * r).toFixed(1)}%`;
+      const poly = [P(am + 0.3, 4), P(a0, 90), P(am, 70 + (i % 3) * 12), P(a1, 90)].join(',');
+      return `<i style="clip-path:polygon(${poly});--dx:${(Math.cos(am) * 60).toFixed(0)}vw;--dy:${(Math.sin(am) * 60).toFixed(0)}vh;--r:${i % 2 ? 24 : -18}deg"></i>`;
+    }).join('');
+    return `<div id="awk" hidden aria-hidden="true"><div class="awk-lines"></div><canvas id="awk-scene" width="160" height="90"></canvas>
+      <div class="awk-mem"><span class="label">A MEMORY</span><b id="awk-mem"></b></div>
+      <div class="awk-eye"><canvas id="awk-eye" width="64" height="16"></canvas><i class="awk-iris l"></i><i class="awk-iris r"></i><i class="awk-flare"></i></div>
+      <div class="awk-flash"></div><div class="awk-shards">${shards}</div><div class="awk-lines2"></div>
+      <div class="awk-big">AWAKENING</div>
       <div class="awk-now"><span class="awk-face" id="awk-face"></span><div class="awk-words"><b id="awk-quote"></b><span id="awk-name"></span></div></div></div>`;
   },
-  /** the Awakening flashback (about 2.9s, the match in slow motion): their memory in faded colours, then a flash in their
-      colour and what they say now. Each style's story is in AWAKEN_STORY */
+  /** the Awakening (about 2.9s, the match in slow motion). Owner, Nov 2026: "make the animations cooler like [anime]
+      awakenings". Like a comic-book anime moment, all our own drawing: the memory as a black and white panel with speed
+      lines, then a close-up of their eyes lighting up in their colour with a streak of light, the screen breaking, and
+      AWAKENING with what they say now. Each style's story is in AWAKEN_STORY */
   awakenStory(p) {
     const el = $('awk'), st = AWAKEN_STORY[p.styleId] || ['crowd', 'THEY SAID I COULD NOT DO IT', 'WATCH ME NOW!'];
     el.style.setProperty('--ci', p.aura);
     this.drawMemory(st[0], $('awk-scene'));
+    this.drawEyes(p, $('awk-eye'));
     $('awk-mem').textContent = st[1]; $('awk-quote').textContent = st[2];
-    $('awk-name').textContent = p.style.name + ' · AWAKENING · ' + p.style.awaken.name;
+    $('awk-name').textContent = p.style.name + ' · ' + p.style.awaken.name;
     const face = $('awk-face'); face.innerHTML = ''; face.appendChild(portraitCanvas(p.styleId, 140, p.look));
     el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
     clearTimeout(this.awkT); this.awkT = setTimeout(() => { el.hidden = true; el.classList.remove('go'); }, 3000);
+  },
+  /** a pixel close-up of their eyes (64x16, drawn big): skin, a fringe of their hair, fierce brows, and eyes in their colour */
+  drawEyes(p, c) {
+    const g = c.getContext('2d'), L = p.look || {}, skin = L.skin || SKIN_TONES[1], hair = L.hair || p.style.hair || '#3b2a22';
+    const shade = (hex, k) => { const n = parseInt(String(hex).slice(1, 7), 16) || 0; const f = (v) => Math.max(0, Math.min(255, Math.round(v * k))); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
+    g.fillStyle = skin; g.fillRect(0, 0, 64, 16);
+    g.fillStyle = shade(skin, 0.82); g.fillRect(0, 12, 64, 4); // shadow under the eyes
+    g.fillStyle = hair; g.fillRect(0, 0, 64, 3); // the fringe, with a jagged edge
+    for (let x = 0; x < 64; x += 4) g.fillRect(x, 3, 3, (x * 7) % 3 + 1);
+    for (const s of [1, -1]) { // left eye (s 1) and right eye, mirrored round the middle
+      const X = (x) => (s > 0 ? x : 63 - x - 0);
+      g.fillStyle = shade(hair, 0.55); // brows sloping down to the middle: fierce
+      for (let i = 0; i < 12; i++) g.fillRect(Math.min(X(15 + i), X(15 + i)), 5 + (i > 7 ? 1 : 0), 1, 2);
+      g.fillStyle = '#ffffff'; g.fillRect(Math.min(X(16), X(27)), 8, 12, 4);
+      g.fillStyle = p.aura; g.fillRect(Math.min(X(19), X(24)), 8, 6, 4); // the iris in their colour
+      g.fillStyle = '#0b0b12'; g.fillRect(Math.min(X(21), X(22)), 9, 2, 3);
+      g.fillStyle = '#ffffff'; g.fillRect(X(20), 8, 1, 1); // a shine
+      g.fillStyle = shade(skin, 0.6); g.fillRect(Math.min(X(16), X(27)), 7, 12, 1); // the upper lid
+    }
   },
   /** a little faded picture of the memory: a race, a goal, the rain, a night sky, a crowd or the park */
   drawMemory(kind, c) {
@@ -989,7 +1020,7 @@ const UI = {
     const back = (r) => (r === 'GK' ? 99 : ROLE_ORDER.indexOf(r));
     this.introRoles = m.teams[m.human.team].map((p) => p.role).sort((a, b) => back(b) - back(a));
     $('in-keys').textContent = Touch.on ? '' : 'KEYS 1-' + this.introRoles.length + ' PICK · ENTER PLAYS';
-    $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${ROLE_INFO[r][1]}</span></button>`).join('');
+    $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role${roleFits(m.human.styleId, r) ? ' fit' : ''}" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}${roleFits(m.human.styleId, r) ? ' <i class="in-fit">YOUR ROLE</i>' : ''}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${ROLE_INFO[r][1]}</span></button>`).join('');
     this.renderIntro(m);
     $('intro').hidden = false;
   },
@@ -1123,7 +1154,7 @@ const UI = {
   /** what a card in the current tab stands for */
   lockerItem(id) {
     const d = Save.data, tab = this.lockerTab;
-    if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { gk: !!st.gk, name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
+    if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { gk: !!st.gk, role: ROLES[st.role].name, name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
     if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
     if (tab === 'preset') {
       if (id === 'PNEW') return { name: '+ NEW PRESET', rarity: 'Rare', chip: d.presets.length + '/' + PRESET_MAX, base: true, owned: true, preset: true, add: true };
@@ -1156,7 +1187,7 @@ const UI = {
     const grid = $('locker-grid');
     grid.innerHTML = ids.map((id) => {
       const it = this.lockerItem(id);
-      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.gk ? 'KEEPER · ' : ''}${it.preset ? (it.add ? 'TAP TO ADD' : it.equipped ? 'WEARING' : it.empty ? 'EMPTY' : 'TAP TO WEAR') : it.equipped ? 'EQUIPPED' : it.spun ? 'FROM SPIN' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
+      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.role ? it.role + ' · ' : ''}${it.preset ? (it.add ? 'TAP TO ADD' : it.equipped ? 'WEARING' : it.empty ? 'EMPTY' : 'TAP TO WEAR') : it.equipped ? 'EQUIPPED' : it.spun ? 'FROM SPIN' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
     }).join('');
     grid.querySelectorAll('.lcard').forEach((b) => {
       b.querySelector('.cv').replaceWith(this.lockerArt(b.dataset.id, 40));
@@ -1179,7 +1210,7 @@ const UI = {
     const head = (sub, blurb) => `<div class="head"><span class="cv"></span><div style="display:grid;gap:6px">${it.chip ? `<span class="chip" style="justify-self:start">${it.chip}</span>` : it.base ? '<span class="chip" style="justify-self:start">FREE</span>' : `<span class="rar" data-r="${it.rarity}" style="justify-self:start">${it.rarity.toUpperCase()}</span>`}<h3>${esc(it.name)}</h3>${sub ? `<span class="label">${sub}</span>` : ''}${blurb ? `<p style="margin:0;color:var(--muted);max-width:46ch">${esc(blurb)}</p>` : ''}</div></div>`;
     if (tab === 'style') {
       const st = STYLES[id];
-      det.innerHTML = head(st.gk ? 'KEEPER STYLE · ITS POWERS WORK IN GOAL' : '', st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KeyNames.of(KEYS3[i])}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
+      det.innerHTML = head(st.gk ? 'KEEPER STYLE · ITS POWERS WORK IN GOAL' : 'ROLE: ' + ROLES[st.role].name + ' · ' + ROLE_WHERE[st.role], st.blurb) + `<div class="ab-list">${st.abilities.map((a, i) => { const A = ABILITIES[a]; return `<div class="ab"><img class="px" src="${iconURL(A.icon, st.aura)}" alt=""><div><div class="t"><span class="key">${KeyNames.of(KEYS3[i])}</span><b>${esc(A.name)}</b><span class="label">${A.cd}S COOLDOWN</span></div><p>${esc(A.desc)}</p></div></div>`; }).join('')}`
         + (st.awaken ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', st.aura)}" alt=""><div><div class="t"><span class="key">Z</span><b>AWAKENING · ${esc(st.awaken.name)}</b><span class="label">${AWAKEN_TIME}S</span></div><p>${esc(st.awaken.desc + ' ' + AWAKEN_ALL)}</p></div></div>` : '')
         + (st.awaken && st.awaken.move ? `<div class="ab awaken"><img class="px" src="${iconURL('flame', '#ffffff')}" alt=""><div><div class="t"><span class="key">Z</span><b>${esc(st.awaken.move.name)}</b><span class="label">AWAKENED · ONCE</span></div><p>${esc(st.awaken.move.desc)}</p></div></div>` : '') + '</div>';
     } else if (tab === 'club') {
@@ -1194,7 +1225,7 @@ const UI = {
     } else if (tab === 'preset') {
       const i = +id.slice(1), p = d.presets[i], on = d.preset === i && this.presetOn(i);
       const sum = p.s ? '<div class="pre-sum">' + [['STYLE', STYLES[p.s.style].name], ['FLOW', p.s.flow ? FLOWS[p.s.flow].name : 'NONE']].concat(SKIN_SLOTS.filter((sl) => ['kit', 'hair', 'boots', 'gloves', 'acc', 'ball'].includes(sl.id)).map((sl) => [sl.name, SKINS[p.s.look[sl.id]].name])).map(([k, v]) => `<span class="label">${k}</span><b>${esc(v)}</b>`).join('') + '</div>' : '';
-      const pos = ['ST', 'MID', 'DEF', 'GK', null].map((r) => `<button class="tab" type="button" data-ppos="${r || ''}" aria-selected="${(p.pos || null) === r}">${r ? ROLE_INFO[r][0] : 'ANY'}</button>`).join('');
+      const pos = ['ST', 'LW', 'MID', 'DEF', 'GK', null].map((r) => `<button class="tab" type="button" data-ppos="${r || ''}" aria-selected="${(p.pos || null) === r}">${r ? ROLE_INFO[r][0] : 'ANY'}</button>`).join('');
       det.innerHTML = head(on ? 'YOU ARE WEARING THIS' : p.s ? 'PRESET ' + (i + 1) : 'EMPTY PRESET', on ? 'Anything you EQUIP in the other tabs now goes into this preset by itself.' : p.s ? 'Tap its card to wear all of it at once.' : 'Tap its card to start it from what you are wearing.')
         + (this.presetWarn && this.presetWarn.length ? `<p class="pre-warn">NOT YOURS ANY MORE, SO IT STAYED AS IT WAS: ${esc(this.presetWarn.join(', '))}</p>` : '')
         + `<label class="label" for="pre-name">NAME: TYPE ANYTHING</label><input class="on-in pre-name" id="pre-name" type="text" maxlength="${PRESET_NAME_MAX}" autocomplete="off" spellcheck="false" value="${esc(p.n)}">`
@@ -1252,7 +1283,7 @@ const UI = {
     if (!s.flow || d.flows.includes(s.flow)) d.flow = s.flow || null; else missing.push(FLOWS[s.flow].name);
     d.tone = s.tone;
     for (const sl of SKIN_SLOTS) { const id = s.look[sl.id], sk = SKINS[id]; if (sk && sk.slot === sl.id && (sk.base || d.skins.includes(id))) d.look[sl.id] = id; else if (id !== d.look[sl.id]) missing.push(sk ? sk.name : sl.name); }
-    d.pos = p.pos || null; d.preset = i;
+    d.pos = p.pos || null; d.posFor = d.style; d.preset = i;
     Save.save();
     return missing;
   },
@@ -1260,7 +1291,7 @@ const UI = {
   savePreset(i) {
     const d = Save.data;
     d.presets[i].s = { style: d.style, flow: d.flow || null, tone: d.tone, look: Object.assign({}, d.look) };
-    d.pos = d.presets[i].pos || null; d.preset = i;
+    d.pos = d.presets[i].pos || null; d.posFor = d.style; d.preset = i;
     Save.save();
   },
   /** tap a card: wear it (an empty one starts from what you wear); the + card adds one. The 3D player spins round to show the change */
@@ -1303,7 +1334,7 @@ const UI = {
   setPresetPos(i, pos) {
     const d = Save.data;
     d.presets[i].pos = pos;
-    if (d.preset === i) d.pos = pos; // wearing it: your next match starts there too
+    if (d.preset === i) { d.pos = pos; d.posFor = d.style; } // wearing it: your next match starts there too
     Save.save();
   },
   /** a preset's card picture: its own player, or a plus when it is empty (or the + card) */
