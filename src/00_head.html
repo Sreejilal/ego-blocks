@@ -241,6 +241,11 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
 .lk-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
 .lk-body .detail { position: sticky; top: 0; }
 .tabs.slots .tab { font-size: 20px; padding: 4px 10px 7px; }
+/* presets (the Locker's PRESETS tab): what is saved, the position buttons, the save button */
+.pre-sum { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; align-items: baseline; }
+.pre-sum b { font-family: var(--font-display); font-size: 22px; font-weight: 400; line-height: 1; overflow-wrap: anywhere; }
+.pre-act { display: flex; gap: 8px; flex-wrap: wrap; }
+.pre-warn { margin: 0; color: var(--gold); font-family: var(--font-label); font-size: 12px; letter-spacing: .06em; }
 .lcard .art { display: flex; gap: 8px; align-items: center; min-width: 0; }
 .lcard canvas { width: 40px; height: 40px; flex: none; }
 .kits { display: flex; gap: 12px; flex-wrap: wrap; }

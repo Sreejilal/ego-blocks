@@ -91,7 +91,7 @@ const UI = {
         <div class="locker">
           <div class="lk-stage"><div class="lk-fit" id="lk-fit" title="Drag to turn your player"><span class="label lk-drag">DRAG TO TURN</span></div><div class="lk-cap panel" id="lk-cap"></div></div>
           <div class="lk-side">
-            <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button><button class="tab" id="ltab-skin" role="tab" type="button">SKINS</button><button class="tab" id="ltab-club" role="tab" type="button">CLUB</button></div>
+            <div class="tabs" role="tablist"><button class="tab" id="ltab-style" role="tab" type="button">STYLES</button><button class="tab" id="ltab-flow" role="tab" type="button">FLOWS</button><button class="tab" id="ltab-skin" role="tab" type="button">SKINS</button><button class="tab" id="ltab-club" role="tab" type="button">CLUB</button><button class="tab" id="ltab-preset" role="tab" type="button">PRESETS</button></div>
             <div class="tabs slots" id="lk-slots" role="tablist" hidden></div>
             <div class="lk-body"><div class="grid-cards" id="locker-grid"></div><div class="panel detail" id="locker-detail"></div></div>
           </div>
@@ -595,6 +595,7 @@ const UI = {
     click('ltab-style', () => { this.lockerTab = 'style'; this.lockerSel = Save.data.style; this.renderLocker(); });
     click('ltab-flow', () => { this.lockerTab = 'flow'; this.lockerSel = Save.data.flow || 'NONE'; this.renderLocker(); });
     click('ltab-club', () => { this.lockerTab = 'club'; this.lockerSel = Save.data.club; this.renderLocker(); });
+    click('ltab-preset', () => { const on = Save.data.presets.findIndex((p, i) => this.presetOn(i)); this.lockerTab = 'preset'; this.lockerSel = 'P' + Math.max(0, on); this.presetWarn = null; this.renderLocker(); });
     click('ltab-skin', () => { this.lockerTab = 'skin'; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
     $('lk-slots').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); this.skinSlot = b.dataset.slot; this.lockerSel = this.skinSlot === 'tone' ? 'TONE' + Save.data.tone : Save.data.look[this.skinSlot]; this.renderLocker(); });
     click('btn-mute', () => { // SOUND ON, then MUSIC OFF (sounds but no music), then SOUND OFF
@@ -1124,6 +1125,7 @@ const UI = {
     const d = Save.data, tab = this.lockerTab;
     if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { gk: !!st.gk, name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
     if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
+    if (tab === 'preset') { const i = +id.slice(1), p = d.presets[i]; return { name: this.presetName(i), rarity: p.s ? STYLES[p.s.style].rarity : 'Rare', chip: p.s ? null : 'EMPTY', base: !p.s, owned: true, equipped: this.presetOn(i), preset: true, empty: !p.s }; }
     if (tab === 'flow') { const fl = id === 'NONE' ? null : FLOWS[id]; return { name: fl ? fl.name : 'NO FLOW', rarity: fl ? fl.rarity : 'Rare', base: !fl, owned: !fl || d.flows.includes(id), equipped: (d.flow || 'NONE') === id, from: 'FLOW SPINS' }; }
     if (id.startsWith('TONE')) { const n = +id.slice(4); return { name: 'SKIN ' + (n + 1), rarity: 'Rare', base: true, owned: true, equipped: d.tone === n }; }
     const sk = SKINS[id];
@@ -1132,24 +1134,25 @@ const UI = {
   lockerArt(id, size) {
     const tab = this.lockerTab;
     if (tab === 'club') return crestCanvas(id, size);
+    if (tab === 'preset') return this.presetArt(+id.slice(1), size);
     const look = Object.assign(lookFor(Save.data.style, Save.data.look), { skin: SKIN_TONES[Save.data.tone] });
     if (id.startsWith && id.startsWith('TONE')) return portraitCanvas(Save.data.style, size, Object.assign(look, { skin: SKIN_TONES[+id.slice(4)] }));
     return tab === 'style' ? portraitCanvas(id, size, { skin: SKIN_TONES[Save.data.tone], sig: true }) : tab === 'flow' ? flowEmblemCanvas(id === 'NONE' ? null : id, size) : skinCanvas(id, size);
   },
   renderLocker() {
     const d = Save.data, tab = this.lockerTab;
-    for (const t of ['style', 'flow', 'skin', 'club']) $('ltab-' + t).setAttribute('aria-selected', tab === t);
+    for (const t of ['style', 'flow', 'skin', 'club', 'preset']) $('ltab-' + t).setAttribute('aria-selected', tab === t);
     const slots = $('lk-slots');
     slots.hidden = tab !== 'skin';
     if (tab === 'skin') slots.innerHTML = `<button class="tab" type="button" role="tab" data-slot="tone" aria-selected="${this.skinSlot === 'tone'}">SKIN</button>` + SKIN_SLOTS.map((sl) => `<button class="tab" type="button" role="tab" data-slot="${sl.id}" aria-selected="${this.skinSlot === sl.id}">${sl.name}</button>`).join('');
     const byRar = (M) => (a, b) => RARITIES.indexOf(M[a].rarity) - RARITIES.indexOf(M[b].rarity); // Rare first, Generational last
-    const ids = tab === 'club' ? CLUB_IDS : tab === 'style' ? STYLE_IDS.slice().sort(byRar(STYLES)) : tab === 'flow' ? ['NONE'].concat(FLOW_IDS.slice().sort(byRar(FLOWS)))
+    const ids = tab === 'preset' ? d.presets.map((p, i) => 'P' + i) : tab === 'club' ? CLUB_IDS : tab === 'style' ? STYLE_IDS.slice().sort(byRar(STYLES)) : tab === 'flow' ? ['NONE'].concat(FLOW_IDS.slice().sort(byRar(FLOWS)))
       : this.skinSlot === 'tone' ? SKIN_TONES.map((t, i) => 'TONE' + i)
       : Object.keys(SKINS).filter((k) => SKINS[k].base && SKINS[k].slot === this.skinSlot).concat(LOCKER_SKIN_IDS.filter((k) => SKINS[k].slot === this.skinSlot).sort((a, b) => RARITIES.indexOf(SKINS[a].rarity) - RARITIES.indexOf(SKINS[b].rarity)));
     const grid = $('locker-grid');
     grid.innerHTML = ids.map((id) => {
       const it = this.lockerItem(id);
-      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.gk ? 'KEEPER · ' : ''}${it.equipped ? 'EQUIPPED' : it.spun ? 'FROM SPIN' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
+      return `<button type="button" class="lcard ${it.owned ? '' : 'locked'}" data-id="${id}" aria-pressed="${this.lockerSel === id}" style="--rc:${it.base ? '#5a5f78' : RARITY_HEX[it.rarity]}"><span class="art"><span class="cv"></span><span class="nm">${esc(it.name)}</span></span><span class="meta">${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<span class="label">${it.gk ? 'KEEPER · ' : ''}${it.preset ? (it.equipped ? 'WEARING' : it.empty ? 'NOT SAVED' : 'SAVED') : it.equipped ? 'EQUIPPED' : it.spun ? 'FROM SPIN' : it.owned ? 'OWNED' : 'LOCKED'}</span></span></button>`;
     }).join('');
     grid.querySelectorAll('.lcard').forEach((b) => {
       b.querySelector('.cv').replaceWith(this.lockerArt(b.dataset.id, 40));
@@ -1158,7 +1161,8 @@ const UI = {
     this.renderLockerDetail();
     // the 3D player tries on whatever card is picked, owned or not
     const id = this.lockerSel, spec = { look: {} };
-    if (tab === 'style') spec.style = id;
+    if (tab === 'preset') { const p = d.presets[+id.slice(1)]; if (p.s) Object.assign(spec, { style: p.s.style, flow: p.s.flow || null, tone: p.s.tone, look: Object.assign({}, p.s.look) }); }
+    else if (tab === 'style') spec.style = id;
     else if (tab === 'club') spec.club = id;
     else if (tab === 'flow') spec.flow = id === 'NONE' ? null : id;
     else if (id.startsWith('TONE')) spec.tone = +id.slice(4);
@@ -1183,6 +1187,17 @@ const UI = {
       const fl = id === 'NONE' ? null : FLOWS[id];
       det.innerHTML = head('', '') + `<p style="margin:0;font-size:22px">${esc(fl ? fl.desc : RAW_FLOW_DESC)}</p>
         <p style="margin:0;color:var(--muted)">Fill the Flow bar with completed passes, feints, tackles and shots on target. Press G for 15 seconds of Flow: glowing eyes, a swirling aura and this buff.</p>`;
+    } else if (tab === 'preset') {
+      const i = +id.slice(1), p = d.presets[i];
+      const sum = p.s ? '<div class="pre-sum">' + [['STYLE', STYLES[p.s.style].name], ['FLOW', p.s.flow ? FLOWS[p.s.flow].name : 'NONE']].concat(SKIN_SLOTS.filter((sl) => ['kit', 'hair', 'boots', 'gloves', 'acc', 'ball'].includes(sl.id)).map((sl) => [sl.name, SKINS[p.s.look[sl.id]].name])).map(([k, v]) => `<span class="label">${k}</span><b>${esc(v)}</b>`).join('') + '</div>' : '';
+      const pos = ['ST', 'MID', 'DEF', 'GK', null].map((r) => `<button class="tab" type="button" data-ppos="${r || ''}" aria-selected="${(p.pos || null) === r}">${r ? ROLE_INFO[r][0] : 'ANY'}</button>`).join('');
+      det.innerHTML = head(p.s ? 'PRESET ' + (i + 1) : 'EMPTY PRESET', p.s ? 'Your saved style, Flow, skins and position. USE puts all of it on at once.' : 'Dress your player the way you want in the other tabs, then come back here and save it.')
+        + (this.presetWarn && this.presetWarn.length ? `<p class="pre-warn">NOT YOURS ANY MORE, SO IT STAYED AS IT WAS: ${esc(this.presetWarn.join(', '))}</p>` : '')
+        + sum + `<div class="label">START MATCHES IN THIS POSITION</div><div class="tabs slots" id="pre-pos" role="tablist">${pos}</div>`
+        + `<div class="pre-act"><button class="btn small" id="pre-save" type="button">${p.s ? 'SAVE MY LOOK HERE INSTEAD' : 'SAVE MY LOOK HERE'}</button></div>`
+        + '<p style="margin:0;color:var(--muted)">Skins never change your stats. Online, the room picks the positions.</p>';
+      det.querySelectorAll('[data-ppos]').forEach((b) => b.addEventListener('click', () => { this.setPresetPos(i, b.dataset.ppos || null); this.renderLocker(); }));
+      $('pre-save').addEventListener('click', () => { this.savePreset(i); Sfx.equip(); this.presetWarn = null; this.renderLocker(); });
     } else if (id.startsWith('TONE')) {
       det.innerHTML = head('SKIN COLOUR', 'Pick the skin colour of your player. All of them are free, and you can change any time.');
     } else {
@@ -1193,14 +1208,58 @@ const UI = {
     // name, rarity and the equip button sit under the 3D preview
     const cap = $('lk-cap');
     cap.innerHTML = `${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<b>${esc(it.name)}</b>`
-      + (it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" data-sfx="equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`)
+      + (it.preset ? (it.empty ? '<span class="label lk-lock">SAVE YOUR LOOK HERE FIRST</span>' : `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" data-sfx="equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'WEARING' : 'USE'}</button>`)
+      : it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" data-sfx="equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`)
       + (tab === 'style' && (it.spun || !it.owned) ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
     const kp = $('lk-keep');
     if (kp) kp.addEventListener('click', () => { if (Goals.unlock(d, id)) { d.style = id; Save.save(); Sfx.coin(); this.renderLocker(); this.renderLobby(); } });
     const eq = $('lk-equip');
     if (eq) eq.addEventListener('click', () => {
+      if (tab === 'preset') { this.presetWarn = this.usePreset(+id.slice(1)); this.renderLocker(); return; }
       if (tab === 'style') d.style = id; else if (tab === 'club') d.club = id; else if (tab === 'flow') d.flow = id === 'NONE' ? null : id; else if (id.startsWith('TONE')) d.tone = +id.slice(4); else d.look[SKINS[id].slot] = id;
       Save.save(); this.renderLocker();
     });
+  },
+  /* ---------- presets (owner, Nov 2026: "1 preset its like striker then goalie") ---------- */
+  presetName(i) { const p = Save.data.presets[i]; return (i + 1) + ' · ' + (p.pos ? ROLE_INFO[p.pos][0] : 'ANY POSITION'); },
+  /** true when you are wearing exactly this preset right now */
+  presetOn(i) {
+    const d = Save.data, p = d.presets[i];
+    if (!p || !p.s) return false;
+    return p.s.style === d.style && (p.s.flow || null) === (d.flow || null) && p.s.tone === d.tone && (p.pos || null) === (d.pos || null) && SKIN_SLOTS.every((sl) => p.s.look[sl.id] === d.look[sl.id]);
+  },
+  /** put a preset on: style, Flow, skin colour, every skin and the position. Returns the names of what you no longer own (left as it was) */
+  usePreset(i) {
+    const d = Save.data, p = d.presets[i], missing = [];
+    if (!p || !p.s) return missing;
+    const s = p.s;
+    if (d.styles.includes(s.style) || d.spunStyle === s.style) d.style = s.style; else missing.push(STYLES[s.style].name);
+    if (!s.flow || d.flows.includes(s.flow)) d.flow = s.flow || null; else missing.push(FLOWS[s.flow].name);
+    d.tone = s.tone;
+    for (const sl of SKIN_SLOTS) { const id = s.look[sl.id], sk = SKINS[id]; if (sk && sk.slot === sl.id && (sk.base || d.skins.includes(id))) d.look[sl.id] = id; else if (id !== d.look[sl.id]) missing.push(sk ? sk.name : sl.name); }
+    d.pos = p.pos || null;
+    Save.save();
+    return missing;
+  },
+  /** keep what you are wearing now in a preset (its position stays). You are wearing it from now on, position too */
+  savePreset(i) {
+    const d = Save.data;
+    d.presets[i].s = { style: d.style, flow: d.flow || null, tone: d.tone, look: Object.assign({}, d.look) };
+    d.pos = d.presets[i].pos || null;
+    Save.save();
+  },
+  setPresetPos(i, pos) {
+    const d = Save.data, on = this.presetOn(i);
+    d.presets[i].pos = pos;
+    if (on) d.pos = pos; // wearing it: your next match starts there too
+    Save.save();
+  },
+  /** a preset's card picture: its own player, or a plus when it is empty */
+  presetArt(i, size) {
+    const p = Save.data.presets[i];
+    if (p.s) return portraitCanvas(p.s.style, size, Object.assign(lookFor(p.s.style, p.s.look), { skin: SKIN_TONES[p.s.tone] || SKIN_TONES[1] }));
+    const c = document.createElement('canvas'); c.width = c.height = 16; c.className = 'px';
+    const g = c.getContext('2d'); g.fillStyle = '#2a2f45'; g.fillRect(0, 0, 16, 16); g.fillStyle = '#8a90b0'; g.fillRect(7, 3, 2, 10); g.fillRect(3, 7, 10, 2);
+    return c;
   },
 };

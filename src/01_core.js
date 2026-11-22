@@ -97,6 +97,9 @@ const Save = {
       fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
+      // outfit presets (owner, Nov 2026: "1 preset its like striker then goalie"): each keeps a position and, once saved,
+      // s = { style, flow, tone, look }. USE in the Locker's PRESETS tab puts all of it on (UI.usePreset)
+      presets: [{ pos: 'ST', s: null }, { pos: 'GK', s: null }, { pos: 'MID', s: null }, { pos: 'DEF', s: null }],
     };
   },
   load() {
@@ -137,6 +140,18 @@ const Save = {
     out.bp = Math.max(0, Math.floor(Number(out.bp) || 0));
     out.tone = clamp(Math.floor(Number(out.tone)), 0, 7); if (!Number.isFinite(out.tone)) out.tone = 1;
     out.pos = typeof out.pos === 'string' && /^(GK|ST|FW|MID|LW|RW|DEF|DEF2)$/.test(out.pos) ? out.pos : null; // the position you like to play (the match intro)
+    // presets: always four; anything odd falls back to an empty one (the ids are checked against the game's lists in validate)
+    out.presets = def.presets.map((pd, i) => {
+      const p = Array.isArray(out.presets) ? out.presets[i] : null;
+      if (!p || typeof p !== 'object') return { pos: pd.pos, s: null };
+      const pos = p.pos === null || (typeof p.pos === 'string' && /^(GK|ST|MID|DEF)$/.test(p.pos)) ? p.pos : pd.pos;
+      const s = p.s && typeof p.s === 'object' && typeof p.s.style === 'string' ? {
+        style: p.s.style.slice(0, 24), flow: typeof p.s.flow === 'string' ? p.s.flow.slice(0, 24) : null,
+        tone: clamp(Math.floor(Number(p.s.tone)) || 0, 0, 7),
+        look: p.s.look && typeof p.s.look === 'object' ? Object.fromEntries(Object.entries(p.s.look).filter(([, v]) => typeof v === 'string').slice(0, 20)) : {},
+      } : null;
+      return { pos, s };
+    });
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
     out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
@@ -192,6 +207,15 @@ const Save = {
       look[sl.id] = sk && sk.slot === sl.id && (sk.base || d.skins.includes(id)) ? id : sl.base;
     }
     d.look = look;
+    // presets keep only real ids (a style or skin you lost is skipped when you USE it, not here)
+    for (const p of d.presets) {
+      if (!p.s) continue;
+      if (!STYLES[p.s.style]) p.s.style = 'ROOKIE';
+      if (p.s.flow && !FLOWS[p.s.flow]) p.s.flow = null;
+      const pl = {};
+      for (const sl of SKIN_SLOTS) { const sk = SKINS[p.s.look[sl.id]]; pl[sl.id] = sk && sk.slot === sl.id ? p.s.look[sl.id] : sl.base; }
+      p.s.look = pl;
+    }
   },
   save() {
     try { this.store().setItem(this.key, JSON.stringify(this.data)); this.ok = true; }
