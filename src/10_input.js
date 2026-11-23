@@ -122,7 +122,7 @@ const Input = {
 };
 
 const CAM_EYE = 1.55; // first person: eye height above the feet
-const GOALCAM_D = 2.5, GOALCAM_Y = 2.3, GOALCAM_SIDE = 0.8, GOALCAM_IN = 1.9; // you in goal, third person (Cam.goalCam): closest distance, height, over the right shoulder, how far into the goal mouth it may go
+const GOALCAM_D = 2.6, GOALCAM_Y = 2.45, GOALCAM_SIDE = 1.0, GOALCAM_IN = 1.85; // you in goal, third person (Cam.goalCam): closest distance, height, over the right shoulder, how far into the goal mouth it may go
 /** the letter printed on the key at a position (`code`): W A S D on QWERTY, Z Q S D on a French AZERTY keyboard.
     Chrome and Edge can tell (navigator.keyboard); elsewhere the QWERTY letter */
 const KeyNames = {
@@ -232,7 +232,13 @@ const Cam = {
       // at your eyes, a little in front of the face so the head never fills the screen
       const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
       this.pos.set(p.pos.x + fx * 0.3, p.pos.y + CAM_EYE, p.pos.z + fz * 0.3);
-      if (p.state === 'dive' && p.P && p.P.headP) { p.P.root.updateMatrixWorld(true); p.P.headP.localToWorld(_v3.set(0, 0.32, 0.12)); this.pos.copy(_v3); } // diving: your eyes go with your head
+      // diving: the view goes part of the way with your head, but never down on the grass or into the net (owner's video:
+      // after a dive it showed the sky, the grass or a giant glove), and it glides back up as you stand
+      if (p.state === 'dive' && p.P && p.P.headP) { p.P.root.updateMatrixWorld(true); p.P.headP.localToWorld(_v3.set(0, 0.32, 0.12)); this.pos.lerp(_v3, 0.55); this.pos.y = Math.max(this.pos.y, p.pos.y + 1.05); }
+      this.fpGlide = p.state === 'dive' ? 0.5 : Math.max(0, (this.fpGlide || 0) - realDt); // during the dive and half a second after
+      this.fpY = this.fpY == null || !this.fpGlide ? this.pos.y : damp(this.fpY, this.pos.y, 9, realDt);
+      this.pos.y = this.fpY;
+      if (p.isGK && m.ownGoalZ) { const s = m.dir(p.team), lim = m.ownGoalZ(p.team) - s * 0.3; if ((this.pos.z - lim) * s < 0) this.pos.z = lim; } // not behind your own goal line, in the net
       if (this.hidden !== p) { this.unhide(); this.hidden = p; }
       p.P.root.visible = false;
     } else {
@@ -241,7 +247,7 @@ const Cam = {
       // behind and above you, a little higher than eye level so the pitch ahead shows over your head
       let tx = p.pos.x - this.fwd.x * dist, ty = this.pivotY - this.fwd.y * dist + 0.85 + (tall ? 0.7 : 0), tz = p.pos.z - this.fwd.z * dist;
       let mouth = false; // the camera is inside your own goal mouth, under the bar (you in goal)
-      const gc = p.isGK && !wide && m.ownGoalZ ? this.goalCam(p, m, dist, ty) : null;
+      const gc = p.isGK && !wide && m.ownGoalZ ? this.goalCam(p, m, dist, ty, realDt) : null;
       if (gc) { tx = gc.x; ty = gc.y; tz = gc.z; mouth = gc.mouth; }
       if (Save.data.settings.shiftLock && !wide && !gc) { tx += -Math.cos(this.yaw) * 1.0; tz += Math.sin(this.yaw) * 1.0; ty -= 0.25; } // shift lock: over your right shoulder
       tx = clamp(tx, -F.BOARD_X - 1.2, F.BOARD_X + 1.2); tz = clamp(tz, -F.BOARD_Z - 2.1, F.BOARD_Z + 2.1); ty = Math.max(0.45, ty);
@@ -260,16 +266,19 @@ const Cam = {
       not see your keeper, and turning pushed him into a corner with a post filling the screen. Now it closes in as you back
       up to your line: from the normal spot to just behind your shoulder, low, inside the goal mouth under the bar
       (from there the posts and bar are out of the picture, so the top corners still show). null: the normal spot is fine */
-  goalCam(p, m, dist, ty) {
+  goalCam(p, m, dist, ty, realDt) {
     const s = m.dir(p.team), line = m.ownGoalZ(p.team), front = line + s * (F.POST + 0.3); // s: the way you attack; front: just in front of the posts
     const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
     this.gcSide = 0;
     if (fz * s < 0.05) return null; // looking back at your goal or along it: the camera is up the pitch or to the side
     const a = ((p.pos.z - front) * s) / (fz * s); // how far you are from the posts, looking back along the camera
     if (a - dist > 1.3) return null; // the normal spot is well in front of the posts
-    // u: 0 normal .. 1 close. Over the right shoulder, or the left one once you turn right: the shoulder that takes the
-    // camera forward, away from the post you are turning towards (sh glides from 1 to -1)
-    const d = clamp(a + GOALCAM_IN, GOALCAM_D, dist), u = (dist - d) / (dist - GOALCAM_D), sh = clamp(1 + (fx * s) / 0.2, -1, 1), side = GOALCAM_SIDE * u * sh;
+    // u: 0 normal .. 1 close. Over the right shoulder, or the left one once you turn well right: the shoulder that takes
+    // the camera forward, away from the post you are turning towards. It only swaps past a clear turn (owner's video: it
+    // swapped at small turns, which left your keeper in the middle of the screen in front of the shooter) and glides over
+    const want = fx * s < -0.42 ? -1 : fx * s > 0.42 ? 1 : this.gcShT || 1;
+    this.gcShT = want; this.gcSh = this.gcSh == null ? want : this.gcSh + (want - this.gcSh) * (1 - Math.exp(-5 * (realDt || 0.016)));
+    const d = clamp(a + GOALCAM_IN, GOALCAM_D, dist), u = (dist - d) / (dist - GOALCAM_D), sh = this.gcSh, side = GOALCAM_SIDE * u * sh;
     this.gcSide = u * sh; // where your keeper sits on screen (1: left of the crosshair, -1: right), for keeperLook
     let x = p.pos.x - fx * d - Math.cos(this.yaw) * side, z = p.pos.z - fz * d + Math.sin(this.yaw) * side, y = lerp(ty, p.pos.y + GOALCAM_Y, u);
     const depth = (line - z) * s, inner = F.GW - 0.4, outer = F.GW + F.POST + 0.65; // depth > 0: behind the goal line
@@ -277,7 +286,7 @@ const Cam = {
     if (depth > -(F.POST + 0.35) && Math.abs(x) > inner && Math.abs(x) < outer) x = Math.sign(x || 1) * (Math.abs(p.pos.x) < F.GW ? inner : outer); // never inside a post or the side netting
     if (Math.abs(x) <= inner && depth > -(F.POST + 1.6)) {
       mouth = depth > -(F.POST + 0.6);
-      y = Math.min(y, F.GH - 0.6 + Math.max(0, -depth - F.POST - 0.35)); // under the bar, rising smoothly once in front of the posts
+      y = Math.min(y, F.GH - 0.5 + Math.max(0, -depth - F.POST - 0.35)); // under the bar, rising smoothly once in front of the posts
       if (depth > F.GD - F.POST - 0.45) z = line - s * (F.GD - F.POST - 0.45); // in front of the back of the net
     }
     return { x, y, z, mouth };

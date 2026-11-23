@@ -157,7 +157,9 @@ const Game = {
     const ramp = this.rampFor(mode);
     if (ramp) { size = Math.min(size, ramp[0]); skill = Math.min(skill, ramp[1]); }
     const intro = !o.noIntro && this.introOn(mode);
-    const sd = Save.data, pos = sd.pos && sd.posFor === sd.style ? sd.pos : roleSpot(sd.style); // the spot you picked with this style, or its role (a keeper style: in goal)
+    // in goal if you chose goal (with any style: the owner plays keeper with other styles' moves), else the spot you picked
+    // with this style, else its role (a keeper style: in goal)
+    const sd = Save.data, pos = sd.pos === 'GK' ? 'GK' : sd.pos && sd.posFor === sd.style ? sd.pos : roleSpot(sd.style);
     applyBallLook(); // your ball
     this.match = new Match(mode, skill, { size, role: pos, intro }); // a winger's team plays wide (Match.pickSetups)
     this.lastMode = mode; this.ended = false;
