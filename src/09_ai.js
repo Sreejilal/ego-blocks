@@ -95,7 +95,7 @@ const AI = {
     c.carrierOpp = !!owner && owner.team !== p.team;
     c.defending = c.carrierOpp || (!owner && b.lastTeam >= 0 && b.lastTeam !== p.team);
     const gz = m.oppGoalZ(p.team);
-    c.dGoal = Math.hypot(p.pos.x, gz - p.pos.z);
+    c.dGoal = Math.hypot(F.GW > 10 ? Math.max(0, Math.abs(p.pos.x) - F.GW + 2) : p.pos.x, gz - p.pos.z); // MEGA GOAL: the goal is right in front of everyone
     c.dOwnGoal = Math.hypot(p.pos.x, m.ownGoalZ(p.team) - p.pos.z);
     const a1 = Math.atan2(-F.GW + 0.4 - p.pos.x, gz - p.pos.z), a2 = Math.atan2(F.GW - 0.4 - p.pos.x, gz - p.pos.z);
     c.angle = Math.abs(wrapA(a2 - a1));
@@ -219,7 +219,7 @@ const AI = {
     // a defender right on them: SLOW-MO and dribble past
     if (p.slowRe <= 0 && !p.isGK && c.pressure < 3.2 && c.dGoal < 38 && chance(0.15 + 0.3 * sk) && m.slowMo(p)) { this.dribble(m, p, c); return; }
     const gk = m.keeperOf(1 - p.team), vsYou = !!(gk && gk.isHuman && !m.online); // owner: bots ran into the box to score every time against you in goal
-    const range = 12 + 9 * sk + (p.flowT > 0 ? 3 : 0) + (vsYou ? 7 : 0);
+    const range = 12 + 9 * sk + (p.flowT > 0 ? 3 : 0) + (vsYou ? 7 : 0) + (F.GW > 10 ? 8 : 0); // MEGA GOAL: shoot from further out
     if (c.dGoal < range && c.angleOK) {
       const pShoot = clamp((range - c.dGoal) / range * 1.3 + (c.pressure < 2.6 ? 0.25 : 0) + (c.dGoal < 9 ? 0.4 : 0), 0.1, 0.97);
       if (chance(pShoot)) { this.shoot(m, p, c, sk); return; }
@@ -328,7 +328,8 @@ const AI = {
     if (sk == null) sk = m.skill(p);
     const gz = m.oppGoalZ(p.team), gk = m.keeperOf(1 - p.team);
     const side = gk && gk.pos.x > 0.5 ? -1 : gk && gk.pos.x < -0.5 ? 1 : (chance(0.5) ? 1 : -1);
-    let x = side * (corner ? rand(3.3, F.GW - 0.45) : rand(2.0, F.GW - 0.55)), y = corner ? rand(0.4, 2.6) : rand(0.45, 2.3);
+    let x = side * (corner ? rand(F.GW - 1.2, F.GW - 0.45) : rand(2.0, F.GW - 0.55)), y = corner ? rand(0.4, F.GH - 0.4) : rand(0.45, F.GH - 0.7);
+    if (F.GW > 10) { const away = gk ? (gk.pos.x > p.pos.x ? -1 : 1) : side; x = clamp(p.pos.x + away * rand(5, 13), -F.GW + 1, F.GW - 1); } // MEGA GOAL: away from the keeper, not at a far post 30 blocks off
     const err = (1 - sk) * 2.1 + 0.4;
     x += rand(-err, err); y += rand(-err * 0.45, err * 0.45);
     return V3(x, clamp(y, 0.3, 3.8), gz);
@@ -336,6 +337,7 @@ const AI = {
   bestShotPoint(m, p) {
     const gz = m.oppGoalZ(p.team), gk = m.keeperOf(1 - p.team);
     const side = gk ? (gk.pos.x > 0 ? -1 : 1) : (p.pos.x > 0 ? -1 : 1);
+    if (F.GW > 10) return V3(clamp(p.pos.x + (gk && gk.pos.x > p.pos.x ? -5 : 5), -F.GW + 1, F.GW - 1), 0.9, gz); // MEGA GOAL
     return V3(side * (F.GW - 0.85), 0.9, gz);
   },
   bestPass(m, p, sk) {
@@ -553,7 +555,8 @@ const AI = {
       (also where you step to in goal when you let go of the stick) */
   keeperSpot(m, p) {
     const b = m.ball, s = m.dir(p.team), gz = m.ownGoalZ(p.team), o = b.owner;
-    let x = clamp(b.pos.x * 0.36, -3.3, 3.3), z = gz + s * 1.2;
+    const lim = F.GW - 1.2; // follows the ball across the goal (all the way in MEGA GOAL)
+    let x = clamp(b.pos.x * Math.min(1, 0.08 * F.GW), -lim, lim), z = gz + s * 1.2;
     if (o && o.team !== p.team) {
       const dg = Math.hypot(o.pos.x, gz - o.pos.z);
       if (dg < 16) {
@@ -581,7 +584,7 @@ const AI = {
     return null;
   },
   dive(m, p, dx, ky, tk, sk) {
-    const side = sgn(dx), dur = 0.4, rs = 10 + 5 * sk; // a 9-wide goal: keepers dive far (they also step across first and dive late)
+    const side = sgn(dx), dur = 0.4, rs = 10 + 5 * sk; // an 11-wide goal: keepers dive far (they also step across first and dive late)
     const vx = clamp(dx / Math.max(0.16, Math.min(tk, dur)), -rs, rs);
     const s = m.dir(p.team);
     p.yaw = s > 0 ? 0 : Math.PI;

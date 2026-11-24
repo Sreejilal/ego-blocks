@@ -248,10 +248,11 @@ const World = {
     boards.position.y = -0.001; boards.scale.set(1, 0.999, 1);
     this.scene.add(boards);
   },
-  buildGoals() {
-    const vb = new VoxBuilder();
-    this.goalBoxes = [];
-    const P = F.POST, gw = F.GW, gh = F.GH, L = F.L, back = F.L + F.GD;
+  /** the solid parts of both goal frames for a goal mouth gw (half width) by gh (the ball bounces off these), kept per size */
+  goalBoxesFor(gw, gh) {
+    const key = gw + 'x' + gh; this._gbs = this._gbs || {};
+    if (this._gbs[key]) return this._gbs[key];
+    const P = F.POST, L = F.L, back = F.L + F.GD, out = [];
     for (const s of [1, -1]) {
       const z0 = s * (L - P), z1 = s * L, zb0 = s * (back - P), zb1 = s * back;
       const boxes = [
@@ -260,14 +261,31 @@ const World = {
         [-gw - P, gh, z1, -gw, gh + P, zb0], [gw, gh, z1, gw + P, gh + P, zb0],
         [-gw - P, 0, z1, -gw, 0.25, zb0], [gw, 0, z1, gw + P, 0.25, zb0], [-gw, 0, zb0, gw, 0.25, zb1],
       ];
-      for (const b of boxes) {
-        vb.box(b[0], b[1], b[2], b[3], b[4], b[5], '#ffffff', { uv: 2, ao: 0.82 });
-        this.goalBoxes.push({ min: V3(Math.min(b[0], b[3]), Math.min(b[1], b[4]), Math.min(b[2], b[5])), max: V3(Math.max(b[0], b[3]), Math.max(b[1], b[4]), Math.max(b[2], b[5])) });
-      }
+      for (const b of boxes) out.push({ r: b, min: V3(Math.min(b[0], b[3]), Math.min(b[1], b[4]), Math.min(b[2], b[5])), max: V3(Math.max(b[0], b[3]), Math.max(b[1], b[4]), Math.max(b[2], b[5])) });
     }
+    return (this._gbs[key] = out);
+  },
+  /** this match's goal size (no arguments: the normal one). Matches set it every step, like BALL_G, because the server runs
+      many rooms at once; on a screen the frames and nets are built again when the size changes */
+  setGoal(gw = GOAL_W0, gh = GOAL_H0) {
+    F.GW = gw; F.GH = gh;
+    this.goalBoxes = this.goalBoxesFor(gw, gh);
+    if (this.renderer && this.goalKey !== gw + 'x' + gh) this.buildGoals();
+  },
+  buildGoals() {
+    if (this.goalGroup) { // a new size: drop the old frames and nets (the textures stay)
+      this.scene.remove(this.goalGroup);
+      this.goalGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+    }
+    const grpAll = this.goalGroup = new THREE.Group(); this.scene.add(grpAll);
+    const vb = new VoxBuilder();
+    const P = F.POST, gw = F.GW, gh = F.GH, L = F.L, back = F.L + F.GD;
+    this.goalKey = gw + 'x' + gh;
+    this.goalBoxes = this.goalBoxesFor(gw, gh);
+    for (const b of this.goalBoxes) vb.box(b.r[0], b.r[1], b.r[2], b.r[3], b.r[4], b.r[5], '#ffffff', { uv: 2, ao: 0.82 });
     const frame = vb.mesh(new THREE.MeshLambertMaterial({ map: this.T.white, vertexColors: true }));
     frame.castShadow = true; frame.receiveShadow = true;
-    this.scene.add(frame);
+    grpAll.add(frame);
     const netMat = new THREE.MeshLambertMaterial({ map: this.T.net, alphaTest: 0.5, side: THREE.DoubleSide });
     this.nets = [];
     let nm = netMat;
@@ -278,9 +296,10 @@ const World = {
       const backNet = mkNet(gw * 2, gh, gw * 2, gh); backNet.position.set(0, gh / 2, s * (back - P / 2)); grp.add(backNet);
       const top = mkNet(gw * 2, F.GD - P, gw * 2, F.GD - P); top.rotation.x = -Math.PI / 2; top.position.set(0, gh + P / 2, s * (L + (F.GD - P) / 2)); grp.add(top);
       for (const sx of [1, -1]) { const side = mkNet(F.GD - P, gh, F.GD - P, gh); side.rotation.y = Math.PI / 2; side.position.set(sx * (gw + P / 2), gh / 2, s * (L + (F.GD - P) / 2)); grp.add(side); }
-      this.scene.add(grp);
+      grpAll.add(grp);
       this.nets.push({ s, back: backNet, baseZ: backNet.position.z, grp, mat: nm });
     }
+    netMat.dispose();
   },
   buildStands() {
     const T = this.T;

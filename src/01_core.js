@@ -50,8 +50,8 @@ function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return Math.floor(s / 60) +
 const F = {
   W: 35,            // touchline outer edge (x). A big field (was 21.5 x 34, then 27 x 42); players run 10% faster to match
   L: 55,            // goal line outer edge (z)
-  GW: 4.5,          // half width of the goal mouth (inner): 9 wide, so a keeper at one post has to dive across
-  GH: 3.0,          // goal mouth height (inner, crossbar underside)
+  GW: 5.5,          // half width of the goal mouth (inner): 11 wide (owner, Nov 2026: "make the posts bigger but not too big"; was 9), so a keeper at one post has to dive across
+  GH: 3.5,          // goal mouth height (inner, crossbar underside; was 3). A mode can change both for its match (MODES goalW / goalH, World.setGoal)
   GD: 2.5,          // net depth behind the goal line
   POST: 0.5,        // post / bar thickness
   BOARD_X: 38.5,    // advertising boards (ball bounces off these)
@@ -60,6 +60,7 @@ const F = {
   BOX_D: 10,        // penalty box depth from goal line
   CIRCLE: 10,       // centre circle radius
 };
+const GOAL_W0 = F.GW, GOAL_H0 = F.GH; // the normal goal (MEGA GOAL makes it the whole width of the pitch)
 // bot positions were tuned on the first, smaller pitch (20.5 x 32.5); they are scaled by these to fit this one
 const PITCH_KX = F.W / 20.5, PITCH_KZ = F.L / 32.5;
 // the stands: rows of steps behind the boards, a corner block in each corner and a wall at the back (World.buildStands draws them)

@@ -2,7 +2,7 @@
    Match: rules, possession, kicking, tackling, abilities, goals,
    restarts, Flow, Lawless items
    ===================================================================== */
-const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {}, lightning() {} }; // filled in by the UI
+const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {}, lightning() {}, steal() {} }; // filled in by the UI
 const BOT_NAMES = ['BLOK', 'CUBO', 'PIXL', 'VOXX', 'CHUNK', 'BRIK', 'TILE', 'STAK', 'OBBY', 'GRAV', 'LOAM', 'SLAB', 'COBB', 'FLINT', 'QUARTZ', 'MOSS', 'DUSK', 'EMBR', 'RUNE', 'KRYS', 'BYTE', 'NOVA', 'REDS', 'TUFF'];
 const MODES = {
   // rewards: offline, only these full-time matches give rewards (online with friends, every mode does)
@@ -16,6 +16,9 @@ const MODES = {
   nokeep: { name: 'NO KEEPERS', ranked: false, items: false, noKeeper: true, tip: 'NO KEEPERS · SHOOT FROM ANYWHERE' },
   turbo: { name: 'TURBO', ranked: false, items: false, speed: 1.25, tip: 'EVERYTHING IS FASTER' },
   moon: { name: 'MOON BALL', ranked: false, items: false, ballG: 6.5, tip: 'THE BALL FLOATS · JUMP FOR IT' },
+  // Nov 2026 (owner: "a gamemode where the goalpost is the entire field"; and one from the new trends: the steal games)
+  mega: { name: 'MEGA GOAL', ranked: false, items: false, goalW: F.W - F.POST, tip: 'THE GOAL IS AS WIDE AS THE PITCH' },
+  heist: { name: 'BLOCK HEIST', ranked: false, items: false, heist: true, tip: 'SCORE TO STEAL THEIR BEST BLOCK · MOST VALUE WINS' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
   freekick: { name: 'FREE KICKS', ranked: false, items: false, practice: true },
   fkkeeper: { name: 'KEEPER PRACTICE', ranked: false, items: false, practice: true, keeper: true }, // owner: you in goal for their free kicks
@@ -32,7 +35,8 @@ class Match {
     this.tier = opts.tier != null ? opts.tier : tierOf(Save.data.rp);
     this.size = ROSTERS[opts.size] ? opts.size : teamSizeFor(mode, Save.data.rp);
     this.scene = World.scene;
-    this.time = 0; this.clock = opts.length || MATCH_LEN; this.golden = false; this.goldenLen = opts.goldenLength || GOLDEN_LEN; this.goldenClock = this.goldenLen;
+    World.setGoal(this.cfg.goalW, this.cfg.goalH); // MEGA GOAL: the whole width of the pitch (set again every step)
+    this.time = 0; this.clock = this.len = opts.length || MATCH_LEN; this.golden = false; this.goldenLen = opts.goldenLength || GOLDEN_LEN; this.goldenClock = this.goldenLen;
     this.phase = 'kickoff'; this.phaseT = 0; this.paused = false; this.kickDelay = 2.6;
     this.score = [0, 0]; this.players = []; this.teams = [[], []];
     this.ball = new Ball(this);
@@ -49,6 +53,7 @@ class Match {
     const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
     [TEAM[0], TEAM[1]] = matchSides(home, away);
     if (this.cfg.hill) this.buildHill();
+    if (this.cfg.heist) this.buildHeist();
     this.buildTeams(opts);
     // whose PASS calls make teammates look up (the human; in a test match, a bot striker that calls like a human)
     this.caller = opts.caller ? this.teams[0].find((p) => p.role === leadRole(this.rolesFor(0))) : this.autopilot ? null : this.human;
@@ -125,6 +130,8 @@ class Match {
     return p;
   }
   dispose() {
+    World.setGoal(); // the normal goals again
+    if (this.vaultView) this.vaultView.dispose();
     if (this.hill) { this.scene.remove(this.hill.mesh); this.hill.mesh.children.forEach((c) => { c.geometry.dispose(); c.material.dispose(); }); }
     for (const p of this.players) p.dispose();
     this.ball.dispose();
@@ -259,6 +266,7 @@ class Match {
   update(dt) {
     if (this.paused) return;
     BALL_G = this.cfg.ballG || BALL_G0; // Moon Ball: a floaty ball (set every step: the server runs many rooms at once)
+    World.setGoal(this.cfg.goalW, this.cfg.goalH); // the same for MEGA GOAL's goals
     if (this.cfg.speed) dt *= this.cfg.speed; // Turbo: the whole match runs faster, the clock too
     this.time += dt; this.phaseT += dt;
     const ph = this.phase;
@@ -268,6 +276,7 @@ class Match {
     if (ph === 'out' && this.phaseT >= 1.05) this.doRestart();
     if ((ph === 'play' || ph === 'out') && !this.fk && !this.tut) this.tickClock(dt);
     if (this.hill && ph === 'play' && !this.fk) this.updateHill(dt);
+    if (this.heist) this.updateHeist(dt);
 
     for (const p of this.players) { p.tickTimers(dt); p.computeMods(); }
     if (ph === 'play' || ph === 'out' || ph === 'goal') AI.update(this, dt);
@@ -323,7 +332,7 @@ class Match {
     const humanTeam = this.human ? this.human.team : 0;
     const res = a === b ? 'draw' : ((a > b ? 0 : 1) === humanTeam ? 'win' : 'loss');
     this.result = { res, score: [a, b], human: this.human ? Object.assign({}, this.human.stats) : null, players: this.players.map((p) => ({ netId: p.netId, feats: p.feats, name: p.name, team: p.team, number: p.number, style: p.styleId, role: p.role, isHuman: p.isHuman, stats: Object.assign({}, p.stats) })) };
-    Hud.banner('FULL TIME', a + ' : ' + b, res === 'win' ? '#2ee38f' : res === 'loss' ? '#ff4d5e' : '#ffcb3d');
+    Hud.banner(this.heist && this.heist.cleaned != null ? 'CLEANED OUT!' : 'FULL TIME', a + ' : ' + b, res === 'win' ? '#2ee38f' : res === 'loss' ? '#ff4d5e' : '#ffcb3d');
     for (const p of this.players) {
       p.charging = false; p.mx = p.mz = 0;
       const won = a !== b && (a > b ? 0 : 1) === p.team;
@@ -1492,6 +1501,33 @@ class Match {
     c[1].material.color.copy(c[0].material.color);
     c[0].material.opacity = 0.7 + Math.sin(this.time * 6) * 0.15;
   }
+  /** BLOCK HEIST: both vaults start the same; the score is what each vault is worth */
+  buildHeist() {
+    this.heist = { v: [HEIST_START.slice(), HEIST_START.slice()], jack: 0, last: null, cleaned: null };
+    this.score[0] = this.score[1] = heistValue(HEIST_START);
+    if (World.renderer) this.vaultView = new VaultView(this.scene); // the blocks on the crossbars (screens only, not the server)
+  }
+  updateHeist(dt) {
+    const H = this.heist;
+    // half way through, the GENERATIONAL block drops over the centre spot: the next goal takes it as well
+    if (H.jack === 0 && !this.golden && this.phase === 'play' && this.clock <= this.len / 2) {
+      H.jack = 1;
+      Hud.banner('JACKPOT!', 'A GENERATIONAL BLOCK DROPPED · THE NEXT GOAL TAKES IT (+' + HEIST_VAL[HEIST_JACK] + ')', '#c9d2dc');
+      Sfx.roar(0.6); Sfx.coin();
+    }
+    if (this.vaultView) { this.vaultView.set(H.v, H.jack); this.vaultView.update(dt); }
+  }
+  /** a goal for team: take the other vault's best block (and the GENERATIONAL one if it is out) */
+  heistSteal(team) {
+    const H = this.heist, from = H.v[1 - team], to = H.v[team];
+    let r = -1;
+    if (from.length) { let bi = 0; for (let i = 1; i < from.length; i++) if (from[i] > from[bi]) bi = i; r = from.splice(bi, 1)[0]; to.push(r); }
+    const jack = H.jack === 1;
+    if (jack) { H.jack = 2; to.push(HEIST_JACK); }
+    H.last = { team, r, jack, t: this.time };
+    this.score[0] = heistValue(H.v[0]); this.score[1] = heistValue(H.v[1]);
+    if (!from.length) { H.cleaned = 1 - team; this.pendingEnd = true; } // their vault is empty: the match is over
+  }
   /** shots with a personality: the long bomb dips late, the knuckleball wobbles */
   updateBallSpecials(dt) {
     const b = this.ball, k = b.kick;
@@ -1604,7 +1640,7 @@ class Match {
       const d = gk.dive;
       ax = gk.pos.x - d.ux * 0.4; ay = gk.pos.y + 0.55; az = gk.pos.z - d.uz * 0.4;
       const far = d.big ? 2.0 : gk.isHuman ? 1.75 : 1.45; // CAT LEAP: stretched right out; you in goal reach a little further
-      bx = gk.pos.x + d.ux * far; by = gk.pos.y + (d.high ? (gk.isHuman ? 1.5 : 1.15) : 1.0); bz = gk.pos.z + d.uz * far; // a computer keeper's high dive does not reach right up into the top corner
+      bx = gk.pos.x + d.ux * far; by = gk.pos.y + (d.high ? (gk.isHuman ? 1.5 : 1.15) + Math.max(0, F.GH - 3) : 1.0); bz = gk.pos.z + d.uz * far; // a computer keeper's high dive does not reach right up into the top corner (a taller goal than the first 3: the hands reach up that much more, so the top corners stay about as hard)
     } else { ax = gk.pos.x; ay = gk.pos.y + 0.2; az = gk.pos.z; bx = gk.pos.x; by = gk.pos.y + 2.25; bz = gk.pos.z; }
     const abx = bx - ax, aby = by - ay, abz = bz - az, l2 = abx * abx + aby * aby + abz * abz;
     const t = clamp(((b.pos.x - ax) * abx + (b.pos.y - ay) * aby + (b.pos.z - az) * abz) / l2, 0, 1);
@@ -1655,7 +1691,7 @@ class Match {
       Hud.banner('NO GOAL', 'ONLY VOLLEYS AND HEADERS COUNT', '#ff4d5e', true); Sfx.deny();
       return;
     }
-    this.score[team] += this.cfg.hill ? 3 : 1;
+    if (this.heist) this.heistSteal(team); else this.score[team] += this.cfg.hill ? 3 : 1;
     if (this.fk && this.fk.state === 'flight') { this.fk.state = 'goal'; this.fk.log.push('GOAL'); }
     if (this.cfg.firstTo && this.score[team] >= this.cfg.firstTo) this.pendingEnd = true;
     this.phase = 'goal'; this.phaseT = 0;
@@ -1715,7 +1751,7 @@ class Match {
     const az = Math.abs(b.pos.z), sx = sgn(b.pos.x), sz = sgn(b.pos.z);
     if (az > F.L + BALL_R) {
       const defending = sz > 0 ? 1 : 0;
-      if (award === defending) rs = { type: 'GOAL KICK', team: award, x: 0, z: sz * (F.L - 3.2) };
+      if (award === defending || this.cfg.goalW) rs = { type: 'GOAL KICK', team: defending, x: 0, z: sz * (F.L - 3.2) }; // MEGA GOAL: no room for a corner (over the bar is always a goal kick)
       else rs = { type: 'CORNER', team: award, x: sx * (F.W - 0.7), z: sz * (F.L - 0.7) };
     } else rs = { type: 'THROW-IN', team: award, x: sx * (F.W + 0.35), z: clamp(b.pos.z, -F.L + 1.5, F.L - 1.5) };
     this.restart = rs;
@@ -2063,5 +2099,75 @@ class Match {
       FX.pathLine(V3(this.ball.pos.x, Math.max(0.35, this.ball.pos.y), this.ball.pos.z), tgt, '#ffd23d', 1.0, this.time);
       FX.pathEnd();
     } else if (FX.paths.count) { FX.paths.count = 0; }
+  }
+}
+
+/** BLOCK HEIST on screen: each vault's blocks stand on that team's crossbar (the best in the middle), a stolen block flies
+    over to the other goal, and the GENERATIONAL block floats over the centre spot while it is up for grabs.
+    set() takes the vaults (offline from the match, online from the snapshots) and works out what moved */
+class VaultView {
+  constructor(scene) {
+    this.scene = scene; this.blocks = []; this.key = null; this.time = 0; this.jackMesh = null;
+    this.geo = new THREE.BoxGeometry(0.95, 0.95, 0.95); this.edges = new THREE.EdgesGeometry(this.geo);
+    this.lineMat = new THREE.LineBasicMaterial({ color: col('#14121c') });
+    this.mats = RARITIES.map((r) => new THREE.MeshLambertMaterial({ color: col(RARITY_HEX[r]), emissive: col(RARITY_HEX[r]), emissiveIntensity: r === 'Generational' ? 0.6 : 0.4 }));
+  }
+  make(r, size = 1) {
+    const mesh = new THREE.Mesh(this.geo, this.mats[r]); mesh.add(new THREE.LineSegments(this.edges, this.lineMat));
+    mesh.scale.setScalar(size); this.scene.add(mesh);
+    return { r, team: -1, mesh, from: V3(), to: V3(), t: 1, dur: 1, arc: 0 };
+  }
+  /** where block i of n stands on team's crossbar: the best one (first) in the middle, then right, left, right... */
+  slot(team, i, n) {
+    const off = i === 0 ? 0 : (i % 2 ? 1 : -1) * Math.ceil(i / 2);
+    return V3(off * 1.08, F.GH + F.POST + 0.5, (team === 0 ? -1 : 1) * (F.L - F.POST / 2)); // team 0 defends -Z
+  }
+  set(v, jack) {
+    const key = v[0].join() + '|' + v[1].join() + '|' + jack;
+    if (key === this.key) return;
+    const first = this.key == null; this.key = key;
+    const want = [0, 1].map((t) => v[t].slice().sort((a, b) => b - a));
+    const pool = this.blocks; this.blocks = [];
+    let got = null; // what one team just took (a goal takes the best block, and the GENERATIONAL one when it is out)
+    for (const team of [0, 1]) want[team].forEach((r, i) => {
+      let k = pool.findIndex((b) => b.team === team && b.r === r), moved = false, b;
+      if (k < 0) { k = pool.findIndex((q) => q.r === r); moved = k >= 0; }
+      if (k >= 0) b = pool.splice(k, 1)[0];
+      else { b = this.make(r); if (r === HEIST_JACK && this.jackMesh) { b.mesh.position.copy(this.jackMesh.position); moved = true; } }
+      const to = this.slot(team, i, want[team].length);
+      b.team = team; b.to.copy(to);
+      if (first || (!moved && b.t >= 1 && b.mesh.position.distanceToSquared(to) < 1e-4)) { b.mesh.position.copy(to); b.t = 1; }
+      else if (!moved && b.mesh.position.lengthSq() === 0) { b.mesh.position.copy(to); b.t = 1; }
+      else { b.from.copy(b.mesh.position); b.t = 0; b.dur = moved ? 1.5 : 0.4; b.arc = moved ? 8 : 0.5; }
+      if (moved && !first) { if (!got) got = { team, rs: [] }; got.rs.push(r); }
+      this.blocks.push(b);
+    });
+    for (const b of pool) this.scene.remove(b.mesh);
+    if (jack === 1 && !this.jackMesh) { this.jackMesh = this.make(HEIST_JACK, 1.5).mesh; this.jackMesh.position.set(0, 2.6, 0); }
+    if (jack !== 1 && this.jackMesh) { this.scene.remove(this.jackMesh); this.jackMesh = null; }
+    if (got) Hud.steal(got.team, got.rs);
+  }
+  update(dt) {
+    this.time += dt;
+    for (const b of this.blocks) {
+      const p = b.mesh.position;
+      if (b.t < 1) {
+        b.t = Math.min(1, b.t + dt / b.dur);
+        const e = b.t * b.t * (3 - 2 * b.t), big = b.arc > 1;
+        p.lerpVectors(b.from, b.to, e); p.y += Math.sin(Math.PI * b.t) * b.arc;
+        b.mesh.rotation.set(big ? b.t * TAU * 2 : 0, big ? b.t * TAU : 0, 0);
+        if (b.t >= 1 && big) { FX.sparks(b.to.x, b.to.y, b.to.z, RARITY_HEX[RARITIES[b.r]], 24, 6); Sfx.coin(); }
+      } else {
+        const shiny = b.r >= 3; // Mythic and Generational turn slowly and bob
+        b.mesh.rotation.set(0, shiny ? this.time * 1.2 : 0, 0); p.y = b.to.y + (shiny ? Math.sin(this.time * 3 + b.to.x) * 0.07 : 0);
+      }
+    }
+    if (this.jackMesh) { const j = this.jackMesh; j.rotation.set(0.3, this.time * 1.6, 0.2); j.position.y = 2.6 + Math.sin(this.time * 2.4) * 0.35; }
+  }
+  dispose() {
+    for (const b of this.blocks) this.scene.remove(b.mesh);
+    if (this.jackMesh) this.scene.remove(this.jackMesh);
+    this.blocks = []; this.jackMesh = null;
+    this.geo.dispose(); this.edges.dispose(); this.lineMat.dispose(); this.mats.forEach((m) => m.dispose());
   }
 }

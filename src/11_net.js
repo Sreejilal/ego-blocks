@@ -7,7 +7,7 @@
    ===================================================================== */
 const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken', 'emote'];
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
-const NET_MODES = [['quick', 'QUICK'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL'], ['golden', 'GOLDEN GOAL'], ['nokeep', 'NO KEEPERS'], ['turbo', 'TURBO'], ['moon', 'MOON BALL']];
+const NET_MODES = [['quick', 'QUICK'], ['heist', 'BLOCK HEIST'], ['mega', 'MEGA GOAL'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL'], ['golden', 'GOLDEN GOAL'], ['nokeep', 'NO KEEPERS'], ['turbo', 'TURBO'], ['moon', 'MOON BALL']];
 const NET_FLY = 2.4; // online: the camera flight at the start of a match (inside the server's first kickoff wait, so nobody loses play time)
 const NET_DELAY = 0.12; // the least the picture runs behind the server (more on a jittery connection: Net.delay)
 const NET_COAST = 0.1; // a late snapshot: everything keeps moving the way it was going for up to this long instead of freezing
@@ -30,6 +30,8 @@ class NetMatch {
     });
     for (const p of this.players) if (p.isHuman && p !== this.human) p.isHuman = false; // only you are "you" on this screen
     if (this.cfg.hill) this.buildHill();
+    World.setGoal(this.cfg.goalW, this.cfg.goalH); // MEGA GOAL
+    if (this.cfg.heist) { this.heist = { v: [HEIST_START.slice(), HEIST_START.slice()], jack: 0 }; this.vaultView = new VaultView(this.scene); } // BLOCK HEIST: the vaults come with the snapshots
   }
   /** a friend joined mid-match and took over player i (a bot): build that player again in their style and look */
   swap(i, r, myId) {
@@ -43,6 +45,8 @@ class NetMatch {
     if (this.ball.owner === old) this.ball.owner = p;
   }
   dispose() {
+    World.setGoal();
+    if (this.vaultView) this.vaultView.dispose();
     for (const p of this.players) p.dispose();
     this.ball.dispose();
     if (this.hill) { this.scene.remove(this.hill.mesh); this.hill.mesh.children.forEach((c) => { c.geometry.dispose(); c.material.dispose(); }); }
@@ -615,6 +619,8 @@ const Net = {
     ball.mesh.position.copy(ball.pos); ball.mesh.quaternion.copy(ball.quat);
     ball.blob.position.set(ball.pos.x, 0.02, ball.pos.z);
     if (nm.hill && b.hill) { const H = nm.hill; H.x = b.hill[0]; H.z = b.hill[1]; H.holder = b.hill[2]; H.mesh.position.set(H.x, 0.04, H.z); const c = H.mesh.children; c[0].material.color.copy(col(H.holder >= 0 ? TEAM[H.holder].hex : '#f5efe0')); c[1].material.color.copy(c[0].material.color); }
+    if (nm.heist && b.vt) { nm.heist.v = [b.vt[0], b.vt[1]]; nm.heist.jack = b.vt[2]; }
+    if (nm.vaultView) { nm.vaultView.set(nm.heist.v, nm.heist.jack); nm.vaultView.update(rdt); }
   },
   /** remember button presses until the next send, so a quick tap is never lost */
   collect(c) {

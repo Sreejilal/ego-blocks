@@ -7,11 +7,11 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   const { browser, page, logs } = await open({ wait: 1500 });
   const sched = await page.evaluate(() => {
     const H = 3600 * 1000, base = Date.UTC(2026, 9, 28, 0, 0, 0);
-    const modes = [0, 1, 2, 3, 4].map((i) => EGO.featuredAt(base + i * 3 * H + 60000).mode);
+    const modes = [0, 1, 2, 3, 4, 5, 6].map((i) => EGO.featuredAt(base + i * 3 * H + 60000).mode);
     const a = EGO.featuredAt(base + 30 * 60000), b = EGO.featuredAt(base + 31 * 60000);
     return { modes, leftA: Math.round(a.left / 60000), drop: Math.round((a.left - b.left) / 1000), same: a.mode === b.mode };
   });
-  check('featured mode rotates every 3 hours through all four', new Set(sched.modes.slice(0, 4)).size === 4 && sched.modes[4] === sched.modes[0] && ['koth', 'volleys', 'duel', 'lawless'].every((m) => sched.modes.includes(m)), sched.modes);
+  check('featured mode rotates every 3 hours through all six', new Set(sched.modes.slice(0, 6)).size === 6 && sched.modes[6] === sched.modes[0] && ['heist', 'koth', 'mega', 'volleys', 'duel', 'lawless'].every((m) => sched.modes.includes(m)), sched.modes);
   check('the countdown runs down to the next one', sched.leftA === 150 && sched.drop === 60 && sched.same, sched);
 
   await page.click('#go-modes');
@@ -20,7 +20,7 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
     const tagged = cards.filter((c) => c.querySelector('.tag')).map((c) => c.dataset.mode);
     return { open: !document.getElementById('scr-modes').hidden, modes: cards.map((c) => c.dataset.mode), tagged, feat: EGO.featuredAt().mode };
   });
-  check('MORE MODES lists King of the Hill, Volleys, Duel, Free Kicks and the Tutorial', panel.open && ['koth', 'volleys', 'duel', 'freekick', 'tutorial'].every((k) => panel.modes.includes(k)), panel);
+  check('MORE MODES lists Block Heist, Mega Goal, King of the Hill, Volleys, Duel, Free Kicks and the Tutorial', panel.open && ['heist', 'mega', 'koth', 'volleys', 'duel', 'freekick', 'tutorial'].every((k) => panel.modes.includes(k)), panel);
   check('the featured one is tagged (or none when Lawless is featured, it is on the main menu)', panel.feat === 'lawless' ? panel.tagged.length === 0 : panel.tagged.join() === panel.feat, panel);
   await page.screenshot({ path: __dirname + '/shots/f1_modes.png' });
   await page.click('#md-grid [data-mode="volleys"]');

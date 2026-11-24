@@ -33,7 +33,7 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
   }, where);
 
   const pitch = await A.evaluate(() => ({ W: EGO.PITCH.W, L: EGO.PITCH.L, GW: EGO.PITCH.GW, GH: EGO.PITCH.GH }));
-  check('the pitch is 35 x 55 and the goal 9 x 3', pitch.W === 35 && pitch.L === 55 && pitch.GW === 4.5 && pitch.GH === 3, pitch);
+  check('the pitch is 35 x 55 and the goal 11 x 3.5', pitch.W === 35 && pitch.L === 55 && pitch.GW === 5.5 && pitch.GH === 3.5, pitch);
 
   const t = await restart('side');
   check('a throw-in: it is yours, with the ball over your head', t.type === 'throw' && t.mine && t.ballY > 1.9, t);

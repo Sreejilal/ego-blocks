@@ -927,7 +927,14 @@ const ROLE_INFO = { GK: ['KEEPER', 'SAVE THEIR SHOTS'], ST: ['STRIKER', 'SCORE G
 const leadRole = (roles) => roles.filter((r) => r !== 'GK').sort((a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b))[0];
 const teamSizeFor = (mode, rp) => { if (mode === 'duel') return 2; if (mode === 'quick') return 4; if (mode !== 'ranked') return 3; const t = tierOf(rp); return t >= 4 ? 5 : t >= 2 ? 4 : 3; };
 /* the featured mode changes every 3 hours on a fixed schedule from the clock (UTC), so everyone sees the same one */
-const FEATURED = ['koth', 'volleys', 'duel', 'lawless'], FEATURED_MS = 3 * 3600 * 1000;
+const FEATURED = ['heist', 'koth', 'mega', 'volleys', 'duel', 'lawless'], FEATURED_MS = 3 * 3600 * 1000;
+/* BLOCK HEIST (Nov 2026, from the "steal" games that top the charts): each team's vault of rarity blocks sits on its own
+   crossbar, a goal steals the other team's best one, and the team whose blocks are worth more at the end wins. Half way
+   through, a GENERATIONAL block drops over the centre spot and the next goal takes it too */
+const HEIST_START = [0, 0, 1, 2, 3]; // RARITIES indexes: Rare, Rare, Epic, Legendary, Mythic (worth 15)
+const HEIST_VAL = [1, 2, 4, 7, 12];  // what a block of each rarity is worth
+const HEIST_JACK = 4;                // the GENERATIONAL block (the jackpot)
+const heistValue = (v) => v.reduce((a, r) => a + HEIST_VAL[r], 0);
 function featuredAt(now = Date.now()) { const k = Math.floor(now / FEATURED_MS); return { mode: FEATURED[((k % FEATURED.length) + FEATURED.length) % FEATURED.length], left: (k + 1) * FEATURED_MS - now }; }
 
 /* ---------- XP and levels: from matches; each level needs 50 more XP than the last ---------- */

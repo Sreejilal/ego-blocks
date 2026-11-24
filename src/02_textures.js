@@ -198,8 +198,9 @@ function pitchLineAt(x, z) {
   const bz = F.L - az;
   if (bz <= F.BOX_D && ax >= F.BOX_W - 0.5 && ax <= F.BOX_W) return true;
   if (bz >= F.BOX_D - 0.5 && bz <= F.BOX_D && ax <= F.BOX_W) return true;
-  if (bz <= 3.0 && ax >= 5.0 && ax <= 5.5) return true;
-  if (bz >= 2.5 && bz <= 3.0 && ax <= 5.5) return true;
+  const gb = GOAL_W0 + 2; // the six-yard box: 2 blocks wider than the goal each side
+  if (bz <= 3.0 && ax >= gb - 0.5 && ax <= gb) return true;
+  if (bz >= 2.5 && bz <= 3.0 && ax <= gb) return true;
   const dr = Math.hypot(x, az - (F.L - 6.5));
   if (dr <= 0.32) return true;
   if (bz > F.BOX_D && Math.abs(dr - 4.5) <= hw) return true;
