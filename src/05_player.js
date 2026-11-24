@@ -484,6 +484,17 @@ class Player {
           const u = Math.abs(Math.sin(t * 4)); aL = aR = -2.8 + u * 0.25; aLz = 0.35; aRz = -0.35; by = 0.72 + u * 0.06; hx = -0.3;
           const k = Math.floor(t / 0.6);
           if (this._fw !== k) { this._fw = k; const hex = ['#ff4d5e', '#ffd54a', '#4aa8ff', '#7dff6a', '#ff5fb0'][k % 5]; FX.sparks(this.pos.x + rand(-1.5, 1.5), 4.5 + rand(0, 1.5), this.pos.z + rand(-1.5, 1.5), hex, 22, 5, 0.18, 0.8); }
+        } else if (c === 'claim') { // OMEGA CORES: catch the core overhead, bring it down, lock it into the band on the left forearm, show it off
+          if (t < 0.5) { const k = Math.min(1, t / 0.18); aR = -2.95 * k; aRz = 0.12; aL = 0.15; aLz = 0.2; hx = -0.4 * k; by = 0.72 + 0.06 * k; }
+          else if (t < 0.95) { aR = -1.0; aRz = 0.7; aL = -1.05; aLz = -0.45; hx = 0.3; bx = 0.1; }
+          else if (t < 1.2) { aR = -1.2; aRz = 0.6; aL = -1.35; aLz = -0.35; bx = 0.16; hx = 0.3; by = 0.69; }
+          else { const k = Math.min(1, (t - 1.2) / 0.2); aL = -1.35 - 1.5 * k; aLz = -0.35 + 0.5 * k; aR = 0.25; aRz = -0.2; bx = -0.12 * k; hx = -0.25 * k; by = 0.72 + Math.sin(t * 5) * 0.015; }
+        } else if (c === 'crush') { // the OMEGA CRUSH: fist up with every core round it, then a punch into the ground
+          if (t < CRUSH_T) { const k = Math.min(1, t / 0.3), q = t / CRUSH_T; aR = -3.0 * k; aRz = 0.05; aL = -0.6 * k; aLz = 0.9 * k; bx = -0.1 * k; hx = -0.35 * k; bz = Math.sin(t * 40) * 0.025 * q; by = 0.72 + 0.04 * k; }
+          else if (t < 2.9) { const k = Math.min(1, (t - CRUSH_T) / 0.12); by = 0.72 - 0.38 * k; bx = 0.5 * k; lL = lR = 1.2 * k; aR = -0.55; aRz = 0.1; aL = 0.3; aLz = 0.5; hx = -0.15 - 0.2 * Math.min(1, (t - CRUSH_T) / 1.2); }
+          else { const k = Math.min(1, (t - 2.9) / 0.3); by = 0.34 + 0.38 * k; bx = 0.5 * (1 - k); lL = lR = 1.2 * (1 - k); aLz = 0.5 + 0.6 * k; aRz = -0.6 * k; aR = -0.55 * (1 - k); hx = -0.3 * k; }
+        } else if (c === 'sad') { // lost at full time: down on the knees, head down
+          const k = Math.min(1, t / 0.5); by = 0.72 - 0.42 * k + Math.sin(t * 2) * 0.01; bx = 0.32 * k; lL = lR = 1.2 * k; aL = aR = 0.25 * k; aLz = 0.12; aRz = -0.12; hx = 0.5 * k;
         } else { const j = Math.abs(Math.sin(t * 9)); by = 0.72 + j * 0.25; aLz = 2.6 + Math.sin(t * 14) * 0.3; aRz = -2.6 - Math.sin(t * 14) * 0.3; }
         break;
       }

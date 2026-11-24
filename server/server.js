@@ -102,6 +102,8 @@ const MAX_SIZE = 5, MAX_PLAYERS = 2 * (MAX_SIZE - 1); // 5v5 with computer keepe
    one by itself after the results, so the same group keeps playing */
 const PUB_MAX = 6, PUB_WAIT = Number(process.env.PUB_WAIT_MS) || 15000, PUB_JOIN_WAIT = Math.min(5000, PUB_WAIT), PUB_NEXT = Number(process.env.PUB_NEXT_MS) || 20000;
 // the modes a random room plays, a different one each match (Quick Match comes up most). Never a Duel: a random room is for a crowd
+// an emote for the snapshot: its place in EMOTES, or 100 + its place in CINE_EMOTES (the core grab, the OMEGA CRUSH, losing)
+const emoteCode = (id) => { const i = G.EMOTES.findIndex((e) => e.id === id); if (i >= 0) return i; const c = G.CINE_EMOTES.indexOf(id); return c >= 0 ? 100 + c : -1; };
 const PUB_MODES = (process.env.PUB_MODES || 'quick,quick,heist,mega,turbo,moon,golden,nokeep,koth,volleys').split(',').filter((m) => MODES_OK.includes(m) && m !== 'duel');
 function pubMode(last) {
   const list = PUB_MODES.length ? PUB_MODES : ['quick'], other = list.filter((m) => m !== last), from = other.length ? other : list;
@@ -327,7 +329,7 @@ function snapshot(room) {
     if (p.fx.shuffle > 0) flags |= 16; if (p.fx.lockdown > 0) flags |= 32; if (p.fx.bubble > 0) flags |= 64; if (p.awakeT > 0) flags |= 128; if (p.setPiece && p.setPiece.type === 'throw') flags |= 256;
     if (p.fx.slowed > 0) flags |= 512; if (p.fx.slowmo > 0) flags |= 1024;
     return [r2(p.pos.x), r2(p.pos.y), r2(p.pos.z), r2(p.vel.x), r2(p.vel.z), r2(p.yaw), STATES.indexOf(p.state), r2(p.stateT), r2(p.stateDur), r2(p.kickT), KICKS.indexOf(p.kickStyle || null), flags, r2(p.charge),
-      p.dive ? p.dive.side : 0, p.dive ? (p.dive.high ? 1 : 0) : 0, p.dive ? r2(p.dive.dur) : 0, r2(p.flipT), p.state === 'emote' ? G.EMOTES.findIndex((e) => e.id === p.emote) : -1];
+      p.dive ? p.dive.side : 0, p.dive ? (p.dive.high ? 1 : 0) : 0, p.dive ? r2(p.dive.dur) : 0, r2(p.flipT), p.state === 'emote' ? emoteCode(p.emote) : -1];
   });
   const base = { t: 'snap', n: room.steps, ph: m.phase, pt: r2(m.phaseT), c: r2(m.clock), g: m.golden ? r2(m.goldenClock) : -1, s: m.score, b: [r2(b.pos.x), r2(b.pos.y), r2(b.pos.z), idx(b.owner)], pl,
     hill: m.hill ? [r2(m.hill.x), r2(m.hill.z), m.hill.holder] : null, vt: m.heist ? [m.heist.v[0], m.heist.v[1], m.heist.jack] : null, ev: room.events };
@@ -361,7 +363,7 @@ function tick(room) {
     if (m.phase === 'play') for (const h of m.humans.slice()) idleStep(room, h);
     room.steps++;
     if (room.steps % SNAP_EVERY === 0) snapshot(room);
-    if (m.phase === 'end' && m.phaseT > 3.2) { endMatch(room); return; }
+    if (m.phase === 'end' && m.phaseT > m.outroLen()) { endMatch(room); return; } // after the ending (Cine on the screens)
   }
 }
 

@@ -18,7 +18,7 @@ const MODES = {
   moon: { name: 'MOON BALL', ranked: false, items: false, ballG: 6.5, tip: 'THE BALL FLOATS · JUMP FOR IT' },
   // Nov 2026 (owner: "a gamemode where the goalpost is the entire field"; and one from the new trends: the steal games)
   mega: { name: 'MEGA GOAL', ranked: false, items: false, goalW: F.W - F.POST, tip: 'THE GOAL IS AS WIDE AS THE PITCH' },
-  heist: { name: 'BLOCK HEIST', ranked: false, items: false, heist: true, tip: 'SCORE TO STEAL THEIR BEST BLOCK · MOST VALUE WINS' },
+  heist: { name: 'OMEGA CORES', ranked: false, items: false, heist: true, tip: 'SCORE TO TAKE THEIR BEST CORE · TAKE THEM ALL TO SHATTER THEM' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
   freekick: { name: 'FREE KICKS', ranked: false, items: false, practice: true },
   fkkeeper: { name: 'KEEPER PRACTICE', ranked: false, items: false, practice: true, keeper: true }, // owner: you in goal for their free kicks
@@ -324,6 +324,12 @@ class Match {
       if (this.goldenClock <= 0) { this.goldenClock = 0; if (this.score[0] === this.score[1] && this.human && !this.online) this.startBattle(); else this.endMatch(); } // still level: a free kick battle
     }
   }
+  /** how long the final whistle lasts before the results: the ending (Cine) for a real result, longer after an OMEGA CRUSH */
+  outroLen() {
+    const r = this.result && this.result.res;
+    if (r !== 'win' && r !== 'loss' && r !== 'draw') return 3.2;
+    return this.heist && this.heist.cleaned != null ? 8.6 : 6.2;
+  }
   endMatch() {
     if (this.phase === 'end') return;
     this.phase = 'end'; this.phaseT = 0;
@@ -332,11 +338,18 @@ class Match {
     const humanTeam = this.human ? this.human.team : 0;
     const res = a === b ? 'draw' : ((a > b ? 0 : 1) === humanTeam ? 'win' : 'loss');
     this.result = { res, score: [a, b], human: this.human ? Object.assign({}, this.human.stats) : null, players: this.players.map((p) => ({ netId: p.netId, feats: p.feats, name: p.name, team: p.team, number: p.number, style: p.styleId, role: p.role, isHuman: p.isHuman, stats: Object.assign({}, p.stats) })) };
-    Hud.banner(this.heist && this.heist.cleaned != null ? 'CLEANED OUT!' : 'FULL TIME', a + ' : ' + b, res === 'win' ? '#2ee38f' : res === 'loss' ? '#ff4d5e' : '#ffcb3d');
+    const crush = this.heist && this.heist.cleaned != null; // OMEGA CORES: one team took every core
+    Hud.banner(crush ? 'EVERY CORE!' : 'FULL TIME', crush ? 'OMEGA CRUSH' : a + ' : ' + b, crush ? '#ffffff' : res === 'win' ? '#2ee38f' : res === 'loss' ? '#ff4d5e' : '#ffcb3d', true);
     for (const p of this.players) {
       p.charging = false; p.mx = p.mz = 0;
-      const won = a !== b && (a > b ? 0 : 1) === p.team;
-      p.setState(won ? 'celebrate' : 'free', won ? 99 : 0);
+      const won = a !== b && (a > b ? 0 : 1) === p.team, lost = a !== b && !won;
+      if (lost) { p.emote = 'sad'; p.setState('emote', 99); } // the ending: the losers drop to their knees
+      else p.setState(won ? 'celebrate' : 'free', won ? 99 : 0);
+    }
+    if (crush) { // the winner who does the OMEGA CRUSH: you if you are on that team, else whoever took the last core
+      const w = 1 - this.heist.cleaned, sc = this.lastGoal && this.lastGoal.scorer;
+      const hero = (this.human && this.human.team === w && this.human) || (sc && sc.team === w && sc) || this.teams[w].find((p) => !p.isGK) || this.teams[w][0];
+      if (hero) { hero.emote = 'crush'; hero.setState('emote', 99); }
     }
     World.excite[a > b ? 0 : 1] = a === b ? 0.3 : 1;
   }
@@ -1501,23 +1514,23 @@ class Match {
     c[1].material.color.copy(c[0].material.color);
     c[0].material.opacity = 0.7 + Math.sin(this.time * 6) * 0.15;
   }
-  /** BLOCK HEIST: both vaults start the same; the score is what each vault is worth */
+  /** OMEGA CORES: both teams start with the same cores; the score is what each team's cores are worth */
   buildHeist() {
     this.heist = { v: [HEIST_START.slice(), HEIST_START.slice()], jack: 0, last: null, cleaned: null };
     this.score[0] = this.score[1] = heistValue(HEIST_START);
-    if (World.renderer) this.vaultView = new VaultView(this.scene); // the blocks on the crossbars (screens only, not the server)
+    if (World.renderer) this.vaultView = new VaultView(this); // the cores on the crossbars and the arm bands (screens only, not the server)
   }
   updateHeist(dt) {
     const H = this.heist;
-    // half way through, the GENERATIONAL block drops over the centre spot: the next goal takes it as well
+    // half way through, the GENERATIONAL core drops over the centre spot: the next goal takes it as well
     if (H.jack === 0 && !this.golden && this.phase === 'play' && this.clock <= this.len / 2) {
       H.jack = 1;
-      Hud.banner('JACKPOT!', 'A GENERATIONAL BLOCK DROPPED · THE NEXT GOAL TAKES IT (+' + HEIST_VAL[HEIST_JACK] + ')', '#c9d2dc');
+      Hud.banner('JACKPOT!', 'A GENERATIONAL CORE DROPPED · THE NEXT GOAL TAKES IT (+' + HEIST_VAL[HEIST_JACK] + ')', '#c9d2dc');
       Sfx.roar(0.6); Sfx.coin();
     }
     if (this.vaultView) { this.vaultView.set(H.v, H.jack); this.vaultView.update(dt); }
   }
-  /** a goal for team: take the other vault's best block (and the GENERATIONAL one if it is out) */
+  /** a goal for team: take the other team's best core (and the GENERATIONAL one if it is out) */
   heistSteal(team) {
     const H = this.heist, from = H.v[1 - team], to = H.v[team];
     let r = -1;
@@ -1526,7 +1539,7 @@ class Match {
     if (jack) { H.jack = 2; to.push(HEIST_JACK); }
     H.last = { team, r, jack, t: this.time };
     this.score[0] = heistValue(H.v[0]); this.score[1] = heistValue(H.v[1]);
-    if (!from.length) { H.cleaned = 1 - team; this.pendingEnd = true; } // their vault is empty: the match is over
+    if (!from.length) { H.cleaned = 1 - team; this.pendingEnd = true; } // they have no cores left: OMEGA CRUSH at the whistle
   }
   /** shots with a personality: the long bomb dips late, the knuckleball wobbles */
   updateBallSpecials(dt) {
@@ -1704,7 +1717,9 @@ class Match {
       const lp = this.lastPass;
       if (lp && lp.to === scorer && lp.from.team === team && lp.from !== scorer && this.time - lp.t < 14) { assister = lp.from; assister.stats.assists++; this.flowAdd(assister, 15); }
       this.flowAdd(scorer, 35);
-      scorer.setState('celebrate', 3.2); scorer.charging = false;
+      if (this.heist) { scorer.emote = 'claim'; scorer.setState('emote', 3.2); } // OMEGA CORES: catch their core and lock it into your band
+      else scorer.setState('celebrate', 3.2);
+      scorer.charging = false;
     }
     this.lastGoal = { team, scorer, assister, own };
     if (scorer && scorer.isHuman && k && (k.type === 'shot' || k.type === 'header')) {
@@ -2102,20 +2117,57 @@ class Match {
   }
 }
 
-/** BLOCK HEIST on screen: each vault's blocks stand on that team's crossbar (the best in the middle), a stolen block flies
-    over to the other goal, and the GENERATIONAL block floats over the centre spot while it is up for grabs.
+/** which team won the match that just ended (-1: a draw); a free kick battle's winner comes from the result */
+function winnerOf(m) {
+  const r = m.result && m.result.res, ht = m.human ? m.human.team : 0;
+  if (r === 'win') return ht;
+  if (r === 'loss') return 1 - ht;
+  if (r === 'draw') return -1;
+  return m.score[0] === m.score[1] ? -1 : m.score[0] > m.score[1] ? 0 : 1;
+}
+/** the player the ending is about: the one doing the OMEGA CRUSH, else you if your team won or drew, else the winners' top scorer */
+function pickHero(m, w = winnerOf(m)) {
+  const crush = m.players.find((p) => p.state === 'emote' && p.emote === 'crush');
+  if (crush) return crush;
+  const h = m.human;
+  if (h && (w < 0 || h.team === w)) return h;
+  const T = m.players.filter((p) => p.team === (w < 0 ? 0 : w));
+  return T.slice().sort((a, b) => (b.stats.goals - a.stats.goals) || ((a.isGK ? 1 : 0) - (b.isGK ? 1 : 0)))[0] || m.players[0];
+}
+
+const CORE_SOCKET = [0.16, -0.5, 0]; // where a core locks in: the outside of the left forearm, in the band
+const CRUSH_T = 1.55; // when the OMEGA CRUSH lands (seconds into the final whistle); Cine shatters the other team from then
+/** OMEGA CORES on screen: each team's cores stand on its crossbar (the best in the middle) and every player wears a band
+    on the left forearm. A goal: the core flies to the scorer, who catches it overhead and locks it into the band
+    (Match.onGoal plays the 'claim' pose, Cine cuts to a close-up), then at the kickoff it flies on to the crossbar.
+    At an OMEGA CRUSH the winners' cores circle the hero's raised fist, vanish into it, then ring the hero.
     set() takes the vaults (offline from the match, online from the snapshots) and works out what moved */
 class VaultView {
-  constructor(scene) {
-    this.scene = scene; this.blocks = []; this.key = null; this.time = 0; this.jackMesh = null;
+  constructor(m) {
+    this.m = m; this.scene = m.scene; this.blocks = []; this.key = null; this.time = 0; this.jackMesh = null; this.claim = null; this.fin = null; this._v = V3();
     this.geo = new THREE.BoxGeometry(0.95, 0.95, 0.95); this.edges = new THREE.EdgesGeometry(this.geo);
     this.lineMat = new THREE.LineBasicMaterial({ color: col('#14121c') });
-    this.mats = RARITIES.map((r) => new THREE.MeshLambertMaterial({ color: col(RARITY_HEX[r]), emissive: col(RARITY_HEX[r]), emissiveIntensity: r === 'Generational' ? 0.6 : 0.4 }));
+    this.mats = RARITIES.map((r) => new THREE.MeshLambertMaterial({ color: col(RARITY_HEX[r]), emissive: col(RARITY_HEX[r]), emissiveIntensity: r === 'Generational' ? 0.75 : 0.55 }));
+    this.glows = RARITIES.map((r) => new THREE.MeshBasicMaterial({ color: col(RARITY_HEX[r]), transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+    this.bandGeo = new THREE.BoxGeometry(0.27, 0.16, 0.27); this.stripGeo = new THREE.BoxGeometry(0.285, 0.035, 0.285);
+    this.bandMat = new THREE.MeshLambertMaterial({ color: col('#1c1828') }); this.stripMats = [];
   }
   make(r, size = 1) {
     const mesh = new THREE.Mesh(this.geo, this.mats[r]); mesh.add(new THREE.LineSegments(this.edges, this.lineMat));
+    const glow = new THREE.Mesh(this.geo, this.glows[r]); glow.scale.setScalar(1.32); mesh.add(glow); // a soft glow round the core
     mesh.scale.setScalar(size); this.scene.add(mesh);
-    return { r, team: -1, mesh, from: V3(), to: V3(), t: 1, dur: 1, arc: 0 };
+    return { r, team: -1, mesh, from: V3(), to: V3(), t: 1, dur: 1, arc: 0, s0: null, claim: null, size };
+  }
+  /** every player wears a band on the left forearm (a dark band with stripes in the team colour); built again after a swap */
+  bands() {
+    for (const p of this.m.players) {
+      if (!p.P || p.P.armL.userData.band) continue;
+      const sm = this.stripMats[p.team] || (this.stripMats[p.team] = new THREE.MeshBasicMaterial({ color: col(TEAM[p.team].hex), toneMapped: false }));
+      const g = new THREE.Group(); g.position.set(0, CORE_SOCKET[1], 0);
+      g.add(new THREE.Mesh(this.bandGeo, this.bandMat));
+      for (const y of [-0.06, 0.06]) { const st = new THREE.Mesh(this.stripGeo, sm); st.position.y = y; g.add(st); }
+      p.P.armL.add(g); p.P.armL.userData.band = g;
+    }
   }
   /** where block i of n stands on team's crossbar: the best one (first) in the middle, then right, left, right... */
   slot(team, i, n) {
@@ -2128,7 +2180,8 @@ class VaultView {
     const first = this.key == null; this.key = key;
     const want = [0, 1].map((t) => v[t].slice().sort((a, b) => b - a));
     const pool = this.blocks; this.blocks = [];
-    let got = null; // what one team just took (a goal takes the best block, and the GENERATIONAL one when it is out)
+    const sc = this.m.lastGoal && this.m.lastGoal.scorer;
+    let got = null; // what one team just took (a goal takes the best core, and the GENERATIONAL one when it is out)
     for (const team of [0, 1]) want[team].forEach((r, i) => {
       let k = pool.findIndex((b) => b.team === team && b.r === r), moved = false, b;
       if (k < 0) { k = pool.findIndex((q) => q.r === r); moved = k >= 0; }
@@ -2136,38 +2189,112 @@ class VaultView {
       else { b = this.make(r); if (r === HEIST_JACK && this.jackMesh) { b.mesh.position.copy(this.jackMesh.position); moved = true; } }
       const to = this.slot(team, i, want[team].length);
       b.team = team; b.to.copy(to);
-      if (first || (!moved && b.t >= 1 && b.mesh.position.distanceToSquared(to) < 1e-4)) { b.mesh.position.copy(to); b.t = 1; }
+      if (first || (!moved && b.t >= 1 && !b.claim && b.mesh.position.distanceToSquared(to) < 1e-4)) { b.mesh.position.copy(to); b.t = 1; }
       else if (!moved && b.mesh.position.lengthSq() === 0) { b.mesh.position.copy(to); b.t = 1; }
-      else { b.from.copy(b.mesh.position); b.t = 0; b.dur = moved ? 1.5 : 0.4; b.arc = moved ? 8 : 0.5; }
-      if (moved && !first) { if (!got) got = { team, rs: [] }; got.rs.push(r); }
+      else if (!b.claim) { b.from.copy(b.mesh.position); b.t = 0; b.dur = moved ? 1.5 : 0.4; b.arc = moved ? 8 : 0.5; }
+      if (moved && !first) {
+        if (!got) got = { team, rs: [] };
+        got.rs.push(r);
+        if (sc && sc.team === team && sc.P) { b.claim = { p: sc, k: got.rs.length - 1 }; b.from.copy(b.mesh.position); } // the scorer catches it
+      }
       this.blocks.push(b);
     });
     for (const b of pool) this.scene.remove(b.mesh);
     if (jack === 1 && !this.jackMesh) { this.jackMesh = this.make(HEIST_JACK, 1.5).mesh; this.jackMesh.position.set(0, 2.6, 0); }
     if (jack !== 1 && this.jackMesh) { this.scene.remove(this.jackMesh); this.jackMesh = null; }
-    if (got) Hud.steal(got.team, got.rs);
+    if (got) {
+      if (this.blocks.some((b) => b.claim && b.claim.p === sc)) this.claim = { p: sc, t: 0, team: got.team, rs: got.rs, locked: false };
+      else Hud.steal(got.team, got.rs, null);
+    }
+  }
+  /** the OMEGA CRUSH at the final whistle (offline from the match, online from the empty vault): { w, hero, list, t } */
+  finisher() {
+    const m = this.m, H = m.heist;
+    if (m.phase !== 'end' || !H || H.cleaned == null) { this.fin = null; return null; }
+    const w = 1 - H.cleaned;
+    if (!this.fin) {
+      const hero = m.players.find((p) => p.team === w && p.state === 'emote' && p.emote === 'crush');
+      if (!hero || !hero.P) return null;
+      this.fin = { w, hero, list: this.blocks.filter((b) => b.team === w) };
+      for (const b of this.fin.list) b.claim = null;
+    }
+    this.fin.t = m.phaseT;
+    return this.fin;
   }
   update(dt) {
-    this.time += dt;
+    this.time += dt; this.bands();
+    const m = this.m, C = this.claim, v = this._v;
+    if (C) {
+      C.t += dt;
+      if (!C.locked && C.t >= 0.95) { // locked in: a flash at the band and the cut-in
+        C.locked = true;
+        if (C.p.P) {
+          C.p.P.root.updateMatrixWorld(true); C.p.P.armL.localToWorld(v.set(CORE_SOCKET[0], CORE_SOCKET[1], CORE_SOCKET[2]));
+          const hex = RARITY_HEX[RARITIES[Math.max(...C.rs)]];
+          FX.ring(v.x, v.y, v.z, hex, 0.7, 18); FX.sparks(v.x, v.y, v.z, hex, 30, 5, 0.14, 0.5);
+        }
+        Sfx.punch(); Sfx.coin();
+        Hud.steal(C.team, C.rs, C.p);
+      }
+      if (C.t > 3.6 || (m.phase !== 'goal' && C.t > 1.2)) this.claim = null;
+    }
+    const fin = this.finisher();
+    if (fin) fin.ang = (fin.ang || 0) + dt * (fin.t < CRUSH_T ? 3 + fin.t * 3 : 1.6); // the ring turns faster and faster until the punch
     for (const b of this.blocks) {
       const p = b.mesh.position;
+      if (fin && b.team === fin.w) { this.crushBlock(b, fin, dt); continue; }
+      if (b.claim && this.claimBlock(b)) continue;
       if (b.t < 1) {
         b.t = Math.min(1, b.t + dt / b.dur);
         const e = b.t * b.t * (3 - 2 * b.t), big = b.arc > 1;
         p.lerpVectors(b.from, b.to, e); p.y += Math.sin(Math.PI * b.t) * b.arc;
         b.mesh.rotation.set(big ? b.t * TAU * 2 : 0, big ? b.t * TAU : 0, 0);
-        if (b.t >= 1 && big) { FX.sparks(b.to.x, b.to.y, b.to.z, RARITY_HEX[RARITIES[b.r]], 24, 6); Sfx.coin(); }
+        if (b.s0 != null) b.mesh.scale.setScalar(lerp(b.s0, b.size, e));
+        if (b.t >= 1) { b.s0 = null; if (big) { FX.sparks(b.to.x, b.to.y, b.to.z, RARITY_HEX[RARITIES[b.r]], 24, 6); Sfx.coin(); } }
       } else {
         const shiny = b.r >= 3; // Mythic and Generational turn slowly and bob
-        b.mesh.rotation.set(0, shiny ? this.time * 1.2 : 0, 0); p.y = b.to.y + (shiny ? Math.sin(this.time * 3 + b.to.x) * 0.07 : 0);
+        if (b.mesh.scale.x !== b.size) b.mesh.scale.setScalar(b.size);
+        b.mesh.rotation.set(0, shiny ? this.time * 1.2 : 0, 0); p.copy(b.to); p.y += shiny ? Math.sin(this.time * 3 + b.to.x) * 0.07 : 0;
       }
     }
     if (this.jackMesh) { const j = this.jackMesh; j.rotation.set(0.3, this.time * 1.6, 0.2); j.position.y = 2.6 + Math.sin(this.time * 2.4) * 0.35; }
   }
+  /** a core the scorer is taking: to the raised right hand, down to the band, locked in on the left forearm */
+  claimBlock(b) {
+    const C = this.claim, P = b.claim.p, p = b.mesh.position;
+    if (!C || C.p !== P || !P.P) { b.claim = null; b.from.copy(p); b.t = 0; b.dur = 0.9; b.arc = 3; b.s0 = b.mesh.scale.x; return false; } // on to the crossbar
+    P.P.root.updateMatrixWorld(true);
+    const t = C.t;
+    if (t < 0.45) {
+      const hand = P.P.armR.localToWorld(this._v.set(0, -0.68, 0)), u = t / 0.45, e = u * u * (3 - 2 * u);
+      p.lerpVectors(b.from, hand, e); p.y += Math.sin(Math.PI * e) * 2.5;
+      b.mesh.rotation.set(t * 14, t * 9, 0); b.mesh.scale.setScalar(lerp(1, 0.2, e));
+    } else if (t < 0.95) { P.P.armR.localToWorld(p.set(0, -0.74, 0.06)); b.mesh.scale.setScalar(0.2); b.mesh.rotation.set(0, t * 6, 0); } // small in the hand: the camera is close
+    else { P.P.armL.localToWorld(p.set(CORE_SOCKET[0], CORE_SOCKET[1] + b.claim.k * 0.17, CORE_SOCKET[2])); b.mesh.scale.setScalar(0.17); P.P.armL.getWorldQuaternion(b.mesh.quaternion); }
+    return true;
+  }
+  /** OMEGA CRUSH: circle the hero's raised fist faster and faster, close in, vanish into it, then ring the hero */
+  crushBlock(b, fin, dt) {
+    const H = fin.hero, p = b.mesh.position, n = fin.list.length, i = fin.list.indexOf(b), t = fin.t;
+    if (!H.P) return;
+    H.P.root.updateMatrixWorld(true);
+    const before = t < CRUSH_T, c = before ? H.P.armR.localToWorld(this._v.set(0, -0.8, 0)) : this._v.set(H.pos.x, H.pos.y + 2.5, H.pos.z);
+    const r = before ? (t < CRUSH_T - 0.4 ? 1.0 : 1.0 * (CRUSH_T - t) / 0.4) : 1.2;
+    const a = fin.ang + i / n * TAU;
+    // before the punch the ring stands up facing the camera (Cine films from the middle side), after it lies round the hero's head
+    const l = Math.hypot(H.pos.x, H.pos.z) || 1, sx = before ? -H.pos.z / l : 1, sz = before ? H.pos.x / l : 0;
+    const tx = c.x + (before ? sx * Math.cos(a) : Math.cos(a)) * r, ty = c.y + (before ? Math.sin(a) * r : 0), tz = c.z + (before ? sz * Math.cos(a) : Math.sin(a)) * r;
+    const k = 1 - Math.exp(-(t < 0.9 ? 5 : 18) * dt);
+    p.x += (tx - p.x) * k; p.y += (ty - p.y) * k; p.z += (tz - p.z) * k;
+    b.mesh.scale.setScalar(before ? 0.32 : t < CRUSH_T + 0.25 ? 0.01 : Math.min(0.5, (t - CRUSH_T - 0.25) * 1.5));
+    b.mesh.rotation.set(this.time * 3, this.time * 2, 0);
+  }
   dispose() {
     for (const b of this.blocks) this.scene.remove(b.mesh);
     if (this.jackMesh) this.scene.remove(this.jackMesh);
-    this.blocks = []; this.jackMesh = null;
-    this.geo.dispose(); this.edges.dispose(); this.lineMat.dispose(); this.mats.forEach((m) => m.dispose());
+    for (const p of this.m.players) if (p.P && p.P.armL.userData.band) { p.P.armL.remove(p.P.armL.userData.band); p.P.armL.userData.band = null; }
+    this.blocks = []; this.jackMesh = null; this.claim = null;
+    this.geo.dispose(); this.edges.dispose(); this.lineMat.dispose(); this.bandGeo.dispose(); this.stripGeo.dispose(); this.bandMat.dispose();
+    this.mats.forEach((q) => q.dispose()); this.glows.forEach((q) => q.dispose()); this.stripMats.forEach((q) => q && q.dispose());
   }
 }

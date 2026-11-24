@@ -7,7 +7,7 @@
    ===================================================================== */
 const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken', 'emote'];
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
-const NET_MODES = [['quick', 'QUICK'], ['heist', 'BLOCK HEIST'], ['mega', 'MEGA GOAL'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL'], ['golden', 'GOLDEN GOAL'], ['nokeep', 'NO KEEPERS'], ['turbo', 'TURBO'], ['moon', 'MOON BALL']];
+const NET_MODES = [['quick', 'QUICK'], ['heist', 'OMEGA CORES'], ['mega', 'MEGA GOAL'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL'], ['golden', 'GOLDEN GOAL'], ['nokeep', 'NO KEEPERS'], ['turbo', 'TURBO'], ['moon', 'MOON BALL']];
 const NET_FLY = 2.4; // online: the camera flight at the start of a match (inside the server's first kickoff wait, so nobody loses play time)
 const NET_DELAY = 0.12; // the least the picture runs behind the server (more on a jittery connection: Net.delay)
 const NET_COAST = 0.1; // a late snapshot: everything keeps moving the way it was going for up to this long instead of freezing
@@ -31,7 +31,7 @@ class NetMatch {
     for (const p of this.players) if (p.isHuman && p !== this.human) p.isHuman = false; // only you are "you" on this screen
     if (this.cfg.hill) this.buildHill();
     World.setGoal(this.cfg.goalW, this.cfg.goalH); // MEGA GOAL
-    if (this.cfg.heist) { this.heist = { v: [HEIST_START.slice(), HEIST_START.slice()], jack: 0 }; this.vaultView = new VaultView(this.scene); } // BLOCK HEIST: the vaults come with the snapshots
+    if (this.cfg.heist) { this.heist = { v: [HEIST_START.slice(), HEIST_START.slice()], jack: 0 }; this.vaultView = new VaultView(this); } // OMEGA CORES: the cores come with the snapshots
   }
   /** a friend joined mid-match and took over player i (a bot): build that player again in their style and look */
   swap(i, r, myId) {
@@ -551,7 +551,7 @@ const Net = {
     if (e.to && e.to !== this.id) return;
     if (e.e === 'banner') UI.banner(e.big, e.small, e.color, e.quick ? 1.1 : 2.0);
     else if (e.e === 'label') { const p = P(e.i); if (p) UI.flabel(p, e.text, e.color, e.dur); }
-    else if (e.e === 'goal') { UI.goalBanner(e.team, P(e.s), P(e.a), e.own); Sfx.roar(1); Sfx.whistle(1); World.excite[e.team] = 1; if (P(e.s) === nm.human) Shake.add(0.5); }
+    else if (e.e === 'goal') { nm.lastGoal = { team: e.team, scorer: P(e.s) }; UI.goalBanner(e.team, P(e.s), P(e.a), e.own); Sfx.roar(1); Sfx.whistle(1); World.excite[e.team] = 1; if (P(e.s) === nm.human) Shake.add(0.5); }
     else if (e.e === 'toast') UI.toast(e.text, e.cls);
     else if (e.e === 'idle') this.idleWarn('ARE YOU THERE?', 'MOVE OR PRESS ANY BUTTON. A BOT TAKES OVER IN ' + e.s, true);
     else if (e.e === 'idleok') this.idleWarn(null);
@@ -586,7 +586,7 @@ const Net = {
       p.vel.set(B[3], 0, B[4]);
       p.yaw = A[5] + wrapA(B[5] - A[5]) * k;
       const st = NET_STATES[B[6]] || 'free';
-      if (B[17] >= 0 && EMOTES[B[17]]) p.emote = EMOTES[B[17]].id;
+      if (B[17] >= 0 && EMOTES[B[17]]) p.emote = EMOTES[B[17]].id; else if (B[17] >= 100 && CINE_EMOTES[B[17] - 100]) p.emote = CINE_EMOTES[B[17] - 100]; // the cinematic poses
       if (p.state !== st) p.setState(st, B[8]);
       p.stateT = B[7] + since; p.stateDur = B[8];
       p.kickT = B[9] >= 0 ? Math.min(0.999, B[9] + since / 0.3) : -1; p.kickStyle = NET_KICKS[B[10]] || null;
@@ -619,7 +619,7 @@ const Net = {
     ball.mesh.position.copy(ball.pos); ball.mesh.quaternion.copy(ball.quat);
     ball.blob.position.set(ball.pos.x, 0.02, ball.pos.z);
     if (nm.hill && b.hill) { const H = nm.hill; H.x = b.hill[0]; H.z = b.hill[1]; H.holder = b.hill[2]; H.mesh.position.set(H.x, 0.04, H.z); const c = H.mesh.children; c[0].material.color.copy(col(H.holder >= 0 ? TEAM[H.holder].hex : '#f5efe0')); c[1].material.color.copy(c[0].material.color); }
-    if (nm.heist && b.vt) { nm.heist.v = [b.vt[0], b.vt[1]]; nm.heist.jack = b.vt[2]; }
+    if (nm.heist && b.vt) { nm.heist.v = [b.vt[0], b.vt[1]]; nm.heist.jack = b.vt[2]; nm.heist.cleaned = nm.phase === 'end' ? (!b.vt[0].length ? 0 : !b.vt[1].length ? 1 : null) : null; } // no cores left at the whistle: OMEGA CRUSH
     if (nm.vaultView) { nm.vaultView.set(nm.heist.v, nm.heist.jack); nm.vaultView.update(rdt); }
   },
   /** remember button presses until the next send, so a quick tap is never lost */
@@ -656,7 +656,7 @@ const Net = {
     FX.update(rdt); Shake.update(rdt);
     const I = this.intro;
     if (I) { I.t += rdt; if (I.t >= I.fly + 0.1 || nm.phase === 'play') this.endIntro(); else Cam.intro(rdt, nm, I.t, I.yaw, I.fly); }
-    if (!this.intro) Cam.follow(rdt, nm);
+    if (!this.intro) { Cam.follow(rdt, nm); Cine.update(nm, rdt); }
     UI.updateHud(nm, rdt);
   },
   endIntro() { if (!this.intro) return; this.intro = null; document.body.classList.remove('intro'); UI.hideIntro(); },

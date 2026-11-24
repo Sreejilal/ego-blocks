@@ -75,6 +75,7 @@ const Game = {
   },
   applyQuality() { const q = Save.data.settings.quality; if (q === 'auto') World.setQuality(...AUTO_STEPS[this.autoStep]); else World.setQuality(q); },
   toLobby() {
+    Cine.stop();
     Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false); UI.toggleEmotes(false); FKHud.hide(); ShotHud.hide();
     if (this.match) { this.match.dispose(); this.match = null; }
     Net.nm = null; Net.paused = false; this.gate = false; $('tut-gate').hidden = true; this.stopIntro();
@@ -212,6 +213,7 @@ const Game = {
   finishMatch(forfeit) {
     if (this.ended || !this.match) return;
     this.ended = true;
+    Cine.stop();
     const m = this.match, d = Save.data;
     Replay.offer = null; Replay.hideOffer();
     if (m.cfg.tutorial) { // the tutorial: a small reward the first time, then off to a real match
@@ -328,6 +330,7 @@ const Game = {
         UI.emoteKeys();
         Cam.look(rdt);
         m.ctl = Input.controls();
+        const skip = m.phase === 'end' && (m.ctl.shootDown || m.ctl.passDown || m.ctl.jump); // SHOOT, PASS or JUMP skips the ending
         const sdt = this.gate ? 0 : TimeCtl.step(rdt); // the first visit waits at kickoff for the click
         if (sdt > 0) {
           let rem = sdt, first = true;
@@ -340,6 +343,7 @@ const Game = {
         FX.update(sdt);
         Shake.update(rdt);
         Cam.follow(rdt, m);
+        Cine.update(m, rdt); // the core grab close-up, the OMEGA CRUSH and the ending, over the normal camera
         if (sdt > 0) Replay.record(m);
         Replay.tick(m, rdt);
         UI.updateHud(m, rdt);
@@ -350,7 +354,7 @@ const Game = {
           const b = m.ball, near = Math.max(0, 1 - (F.L - Math.abs(b.pos.z)) / 18);
           Sfx.setCrowd(0.45 + near * 0.7);
         }
-        if (m.phase === 'end' && m.phaseT > 3.2 && !this.ended) this.finishMatch(false);
+        if (m.phase === 'end' && !this.ended && (m.phaseT > this.endLen(m) || (skip && m.phaseT > 0.8))) this.finishMatch(false);
       } else { Shake.update(rdt); }
     } else if (this.state === 'online' && Net.nm) {
       Net.frame(rdt);
@@ -368,13 +372,16 @@ const Game = {
     if (doRender) World.render();
   },
   /** test hook: advance n frames at a fixed 60fps without waiting on the GPU */
+  /** how long the final whistle shows before the results: the whole ending (Cine) for players; test robots and the video
+      tools (navigator.webdriver) keep the old 3.2 s unless Game.outroTest, like the intro and the tips */
+  endLen(m) { return navigator.webdriver && !this.outroTest ? Math.min(3.2, m.outroLen()) : m.outroLen(); },
   stepManual(n, render) { this.manual = true; for (let i = 0; i < n; i++) this.loop(this.last + 1000 / 60, render && i === n - 1); },
 };
 
 /* debug + test hooks (harmless in normal play) */
 window.EGO = {
   TIER_SKILL, tierOf, featuredAt, MODES, levelOf, matchXp, Pass, passXp, seasonAt, weekChallenges, CHALLENGES, PASS_REWARDS,
-  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
+  Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Cine, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
   CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,

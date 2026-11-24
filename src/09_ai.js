@@ -513,6 +513,7 @@ const AI = {
       return;
     }
     if (p.state !== 'free') { p.mx = 0; p.mz = 0; return; }
+    if (b.owner === p) { p.ai.kt = (p.ai.kt || 0) + dt; if (p.ai.kt > 0.35) { p.ai.kt = 0; this.distribute(m, p); } p.mx = p.mz = 0; return; } // the ball at his feet outside the box (he only holds it inside): pass it on (MEGA GOAL keepers roam the whole line; he used to stand there with it)
     // 1) shots coming at goal
     if (!b.owner && b.vel.z * s < -0.5 && b.vel.lengthSq() > 64) { // any fast ball coming this way: a curler from wide starts out almost sideways
       const X = this.crossAt(b, gz); // where it crosses the goal line, following its real path (curling shots too)

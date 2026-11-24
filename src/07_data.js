@@ -928,12 +928,16 @@ const leadRole = (roles) => roles.filter((r) => r !== 'GK').sort((a, b) => ROLE_
 const teamSizeFor = (mode, rp) => { if (mode === 'duel') return 2; if (mode === 'quick') return 4; if (mode !== 'ranked') return 3; const t = tierOf(rp); return t >= 4 ? 5 : t >= 2 ? 4 : 3; };
 /* the featured mode changes every 3 hours on a fixed schedule from the clock (UTC), so everyone sees the same one */
 const FEATURED = ['heist', 'koth', 'mega', 'volleys', 'duel', 'lawless'], FEATURED_MS = 3 * 3600 * 1000;
-/* BLOCK HEIST (Nov 2026, from the "steal" games that top the charts): each team's vault of rarity blocks sits on its own
-   crossbar, a goal steals the other team's best one, and the team whose blocks are worth more at the end wins. Half way
-   through, a GENERATIONAL block drops over the centre spot and the next goal takes it too */
-const HEIST_START = [0, 0, 1, 2, 3]; // RARITIES indexes: Rare, Rare, Epic, Legendary, Mythic (worth 15)
-const HEIST_VAL = [1, 2, 4, 7, 12];  // what a block of each rarity is worth
-const HEIST_JACK = 4;                // the GENERATIONAL block (the jackpot)
+/* OMEGA CORES (Nov 2026, from the "steal" games that top the charts; owner: "the team with all of them wins and the
+   other team is no more"): each team's power cores sit on its own crossbar, a goal takes the other team's best one (the
+   scorer catches it and locks it into the band on their arm), the team whose cores are worth more at the end wins, and a
+   team that takes every core shatters the other one (OMEGA CRUSH). Half way through, a GENERATIONAL core drops over the
+   centre spot and the next goal takes it too. Our own idea and look: no names or art from films or other games */
+const HEIST_START = [0, 1, 2, 3]; // RARITIES indexes: Rare, Epic, Legendary, Mythic (worth 14). Four up wipes them out
+const HEIST_VAL = [1, 2, 4, 7, 12];  // what a core of each rarity is worth
+const HEIST_JACK = 4;                // the GENERATIONAL core (the jackpot)
+// poses only the cinematics use (the core grab, the OMEGA CRUSH, losing at full time); online they go as 100 + index
+const CINE_EMOTES = ['claim', 'crush', 'sad'];
 const heistValue = (v) => v.reduce((a, r) => a + HEIST_VAL[r], 0);
 function featuredAt(now = Date.now()) { const k = Math.floor(now / FEATURED_MS); return { mode: FEATURED[((k % FEATURED.length) + FEATURED.length) % FEATURED.length], left: (k + 1) * FEATURED_MS - now }; }
 
