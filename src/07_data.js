@@ -930,14 +930,26 @@ const teamSizeFor = (mode, rp) => { if (mode === 'duel') return 2; if (mode === 
 const FEATURED = ['heist', 'koth', 'mega', 'volleys', 'duel', 'lawless'], FEATURED_MS = 3 * 3600 * 1000;
 /* OMEGA CORES (Nov 2026, from the "steal" games that top the charts; owner: "the team with all of them wins and the
    other team is no more"): each team's power cores sit on its own crossbar, a goal takes the other team's best one (the
-   scorer catches it and locks it into the band on their arm), the team whose cores are worth more at the end wins, and a
-   team that takes every core shatters the other one (OMEGA CRUSH). Half way through, a GENERATIONAL core drops over the
-   centre spot and the next goal takes it too. Our own idea and look: no names or art from films or other games */
+   scorer catches it and locks it into the band on their arm), the team whose cores are worth more at the end wins, and the
+   winners take every core the other team has left and snap: the other team shatters (OMEGA SNAP; four up ends it early).
+   Half way through, a GENERATIONAL core drops over the centre spot and the next goal takes it too. Every core has its own
+   power (CORE_POWERS). Our own idea and look: no names or art from films or other games */
 const HEIST_START = [0, 1, 2, 3]; // RARITIES indexes: Rare, Epic, Legendary, Mythic (worth 14). Four up wipes them out
 const HEIST_VAL = [1, 2, 4, 7, 12];  // what a core of each rarity is worth
 const HEIST_JACK = 4;                // the GENERATIONAL core (the jackpot)
-// poses only the cinematics use (the core grab, the OMEGA CRUSH, losing at full time); online they go as 100 + index
-const CINE_EMOTES = ['claim', 'crush', 'sad'];
+// poses only the cinematics use (the core grab, the OMEGA SNAP, losing at full time); online they go as 100 + index
+const CINE_EMOTES = ['claim', 'snap', 'sad'];
+/** every core has its own power (owner, Nov 24 2026: "i want each stone to have its own ability"), by rarity index.
+    A goal gives the power of the best core it took to the scorer (to a person on that team when a bot scored), for the
+    item button (X, D-pad down, ITEM on a phone), once. kind: the move it does (Match.powerMove, shared with Awakenings) */
+const CORE_POWERS = [
+  { name: 'QUAKE', kind: 'shockwave', icon: 'boom', desc: 'Knock down every opponent near you.', ai: (p, m, c) => c.nearOpp < 4 && (c.hasBall || c.carrierOpp) },
+  { name: 'PULL', kind: 'pull', icon: 'magnet', desc: 'Pull the ball to your feet from up to 14 blocks away.', ai: (p, m, c) => !c.hasBall && !c.mateHasBall && ((c.looseDist > 3 && c.looseDist < 13) || (c.carrierOpp && c.carrierDist < 12 && !m.safeGK(m.ball.owner))) },
+  { name: 'CANNON', kind: 'bolt', icon: 'flame', desc: 'With the ball: a dead straight shot so hard the keeper cannot catch it.', ai: (p, m, c) => c.hasBall && c.dGoal < 30 && c.angleOK },
+  { name: 'FREEZE', kind: 'worldstop', icon: 'snow', desc: 'Every opponent within 12 blocks freezes for 1.5s while you burst away.', ai: (p, m, c) => (c.hasBall && c.nearOpp < 6) || (c.carrierOpp && c.carrierDist < 9) },
+  { name: 'GIANT', kind: 'giant', icon: 'buff', desc: 'Grow giant for 8s: faster, harder shots, and nobody can tackle you.', ai: (p, m, c) => c.hasBall || (c.defending && c.carrierDist < 12) },
+];
+const GIANT_TIME = 8, GIANT_SIZE = 1.6;
 const heistValue = (v) => v.reduce((a, r) => a + HEIST_VAL[r], 0);
 function featuredAt(now = Date.now()) { const k = Math.floor(now / FEATURED_MS); return { mode: FEATURED[((k % FEATURED.length) + FEATURED.length) % FEATURED.length], left: (k + 1) * FEATURED_MS - now }; }
 

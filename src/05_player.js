@@ -109,7 +109,7 @@ class Player {
     this.dash = null; this.slide = null; this.dive = null; this.fallDir = 1; this.flipT = -1;
     this.abil = this.style.abilities.map((id) => ({ id, def: ABILITIES[id], cd: 0 }));
     this.flow = 0; this.flowT = 0; this.gamble = null; this.awake = 0; this.awakeT = 0;
-    this.fx = {}; this.item = null; this.callT = 0;
+    this.fx = {}; this.item = null; this.corePow = null; this.callT = 0; // corePow: an OMEGA CORES power to use (CORE_POWERS index)
     this.speedMul = 1; this.fit = 1; // fit: sprint drain (bots: fitter with skill)
     this.mods = { speed: 1, shot: 1, stamRegen: 1, stamDrain: 1, cdRate: 1, tackleRange: 1, tackleCd: 1 };
     this.stats = { goals: 0, assists: 0, shots: 0, onTarget: 0, tackles: 0, saves: 0, passes: 0, steals: 0 };
@@ -229,6 +229,7 @@ class Player {
     if (fx.hunt > 0 && this.m.ball.owner !== this) { m.speed *= 1.2; m.stamDrain = 0; } // BLITZ's HUNT
     if (fx.scent > 0 && !this.m.ball.owner) m.speed *= 1.2;
     if (fx.loaded > 0) m.shot *= 1.2;
+    if (fx.giant > 0) { m.speed *= 1.2; m.shot *= 1.3; } // the GIANT core
   }
   tickTimers(dt) {
     this.stateT += dt;
@@ -252,6 +253,7 @@ class Player {
       const perk = this.style.awaken && this.style.awaken.perk;
       if (perk === 'tank') this.tackleProof = Math.max(this.tackleProof, 0.2);
     }
+    if (this.fx.giant > 0) this.tackleProof = Math.max(this.tackleProof, 0.2); // nobody can tackle a GIANT
     if (this.kickT >= 0) { this.kickT += dt / this.kickDur; if (this.kickT >= 1) this.kickT = -1; }
     if (this.flipT >= 0) { this.flipT += dt / 0.55; if (this.flipT >= 1) this.flipT = -1; }
   }
@@ -489,10 +491,12 @@ class Player {
           else if (t < 0.95) { aR = -1.0; aRz = 0.7; aL = -1.05; aLz = -0.45; hx = 0.3; bx = 0.1; }
           else if (t < 1.2) { aR = -1.2; aRz = 0.6; aL = -1.35; aLz = -0.35; bx = 0.16; hx = 0.3; by = 0.69; }
           else { const k = Math.min(1, (t - 1.2) / 0.2); aL = -1.35 - 1.5 * k; aLz = -0.35 + 0.5 * k; aR = 0.25; aRz = -0.2; bx = -0.12 * k; hx = -0.25 * k; by = 0.72 + Math.sin(t * 5) * 0.015; }
-        } else if (c === 'crush') { // the OMEGA CRUSH: fist up with every core round it, then a punch into the ground
-          if (t < CRUSH_T) { const k = Math.min(1, t / 0.3), q = t / CRUSH_T; aR = -3.0 * k; aRz = 0.05; aL = -0.6 * k; aLz = 0.9 * k; bx = -0.1 * k; hx = -0.35 * k; bz = Math.sin(t * 40) * 0.025 * q; by = 0.72 + 0.04 * k; }
-          else if (t < 2.9) { const k = Math.min(1, (t - CRUSH_T) / 0.12); by = 0.72 - 0.38 * k; bx = 0.5 * k; lL = lR = 1.2 * k; aR = -0.55; aRz = 0.1; aL = 0.3; aLz = 0.5; hx = -0.15 - 0.2 * Math.min(1, (t - CRUSH_T) / 1.2); }
-          else { const k = Math.min(1, (t - 2.9) / 0.3); by = 0.34 + 0.38 * k; bx = 0.5 * (1 - k); lL = lR = 1.2 * (1 - k); aLz = 0.5 + 0.6 * k; aRz = -0.6 * k; aR = -0.55 * (1 - k); hx = -0.3 * k; }
+        } else if (c === 'snap') { // the OMEGA SNAP: the arm with the band goes up with every core round the hand, one snap, and it stays up
+          ease = 40; aR = 0.15; aRz = -0.25;
+          if (t < SNAP_T - 0.14) { const k = Math.min(1, t / 0.3), q = t / SNAP_T; aL = -3.0 * k; aLz = -0.05; bx = -0.08 * k; hx = -0.35 * k; bz = Math.sin(t * 40) * 0.02 * q; by = 0.72 + 0.03 * k; }
+          else if (t < SNAP_T) { aL = -2.7; aLz = -0.1; bx = -0.06; hx = -0.3; by = 0.75; } // the hand draws back a little
+          else if (t < SNAP_T + 1.1) { const j = Math.max(0, 1 - (t - SNAP_T) / 0.12); aL = -3.05 - 0.15 * j; aLz = -0.05; bx = -0.1; hx = -0.4 + 0.1 * j; bz = 0.05 * j; by = 0.75; } // snap
+          else { const k = Math.min(1, (t - SNAP_T - 1.1) / 0.9), e = k * k * (3 - 2 * k); aL = lerp(-3.05, 0.1, e); aLz = lerp(-0.05, 0.12, e); bx = lerp(-0.1, -0.04, e); hx = lerp(-0.4, -0.12, e); by = 0.74; } // the arm comes down slowly, standing tall
         } else if (c === 'sad') { // lost at full time: down on the knees, head down
           const k = Math.min(1, t / 0.5); by = 0.72 - 0.42 * k + Math.sin(t * 2) * 0.01; bx = 0.32 * k; lL = lR = 1.2 * k; aL = aR = 0.25 * k; aLz = 0.12; aRz = -0.12; hx = 0.5 * k;
         } else { const j = Math.abs(Math.sin(t * 9)); by = 0.72 + j * 0.25; aLz = 2.6 + Math.sin(t * 14) * 0.3; aRz = -2.6 - Math.sin(t * 14) * 0.3; }
@@ -510,7 +514,9 @@ class Player {
     r(P.headP, 'x', hx);
     P.root.position.copy(this.pos);
     P.root.rotation.y = this.yaw + spinY; // SPIN celebration turns you round
-    const bs = clamp(1 - this.pos.y / 5, 0.3, 1) * (st === 'down' ? 1.6 : st === 'dive' ? 1.5 : 1);
+    const gs = this.fx.giant > 0 ? GIANT_SIZE : 1, s0 = P.root.scale.x; // the GIANT core: grow, and shrink back after
+    if (s0 !== gs) P.root.scale.setScalar(Math.abs(gs - s0) < 0.01 ? gs : s0 + (gs - s0) * Math.min(1, dt * 7));
+    const bs = clamp(1 - this.pos.y / 5, 0.3, 1) * (st === 'down' ? 1.6 : st === 'dive' ? 1.5 : 1) * P.root.scale.x;
     this.blob.position.set(this.pos.x, 0.025, this.pos.z); this.blob.scale.set(bs, 1, bs);
     P.eyes.visible = this.flowT > 0 || this.awakeT > 0;
     // awakened, your hair glows in your style's colour
@@ -541,6 +547,10 @@ class Player {
       if (!this.bubble) { this.bubble = new THREE.Mesh(PlayerGeo.get().cube, new THREE.MeshBasicMaterial({ color: lin('#8fd8ff'), transparent: true, opacity: 0.22, depthWrite: false, toneMapped: false })); this.m.scene.add(this.bubble); }
       this.bubble.visible = true; this.bubble.position.set(this.pos.x, this.pos.y + 1.0, this.pos.z); this.bubble.scale.set(1.5, 2.3, 1.5); this.bubble.rotation.y = this.yaw;
     } else if (this.bubble) this.bubble.visible = false;
+    if (this.fx.giant > 0 && P.root.visible) { // a GIANT leaves a white shimmer
+      this.giantT = (this.giantT || 0) - dt;
+      if (this.giantT <= 0) { this.giantT = 0.07; FX.trail(this.pos.x + rand(-0.4, 0.4), this.pos.y + rand(0.6, 2.6), this.pos.z + rand(-0.4, 0.4), '#ffffff', 0.5, 0.35); }
+    }
     // SLOW-MO: a blue ring under everyone caught in it, and the player who used it leaves a ghost trail
     if (this.fx.slowed > 0) {
       if (!this.slowRing) { this.slowRing = new THREE.Mesh(PlayerGeo.get().ring, new THREE.MeshBasicMaterial({ color: lin('#9fb4ff'), transparent: true, opacity: 0.6, toneMapped: false, depthWrite: false })); this.m.scene.add(this.slowRing); }

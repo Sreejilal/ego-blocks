@@ -343,7 +343,7 @@ const Game = {
         FX.update(sdt);
         Shake.update(rdt);
         Cam.follow(rdt, m);
-        Cine.update(m, rdt); // the core grab close-up, the OMEGA CRUSH and the ending, over the normal camera
+        Cine.update(m, rdt); // the core grab close-up, the OMEGA SNAP and the ending, over the normal camera
         if (sdt > 0) Replay.record(m);
         Replay.tick(m, rdt);
         UI.updateHud(m, rdt);

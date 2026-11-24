@@ -449,6 +449,7 @@ const Sfx = (() => {
     boom() { noise(0.9, { vol: 0.45, type: 'lowpass', freq: 900, slide: 70 }); tone(62, 0.55, { type: 'sine', vol: 0.42, slide: 28 }); },
     zap() { tone(1800, 0.12, { type: 'sawtooth', vol: 0.06, slide: 300 }); noise(0.1, { vol: 0.1, type: 'highpass', freq: 3000 }); },
     freeze() { tone(2400, 0.25, { type: 'triangle', vol: 0.07, slide: 3600 }); noise(0.3, { vol: 0.1, type: 'highpass', freq: 4000 }); },
+    snap() { noise(0.03, { vol: 0.55, type: 'bandpass', freq: 2700, q: 1.3 }); noise(0.012, { vol: 0.3, type: 'highpass', freq: 5200 }); tone(2100, 0.018, { type: 'triangle', vol: 0.08 }); }, // a finger snap: one dry click
     punch() { noise(0.08, { vol: 0.3, type: 'lowpass', freq: 1200 }); tone(110, 0.1, { type: 'square', vol: 0.15, slide: 60 }); },
     boing() { tone(260, 0.22, { type: 'sine', vol: 0.15, slide: 620 }); },
     beam() { tone(90, 0.6, { type: 'sawtooth', vol: 0.1, slide: 40 }); noise(0.5, { vol: 0.2, type: 'bandpass', freq: 2500, slide: 400, q: 1 }); },

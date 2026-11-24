@@ -102,7 +102,7 @@ const MAX_SIZE = 5, MAX_PLAYERS = 2 * (MAX_SIZE - 1); // 5v5 with computer keepe
    one by itself after the results, so the same group keeps playing */
 const PUB_MAX = 6, PUB_WAIT = Number(process.env.PUB_WAIT_MS) || 15000, PUB_JOIN_WAIT = Math.min(5000, PUB_WAIT), PUB_NEXT = Number(process.env.PUB_NEXT_MS) || 20000;
 // the modes a random room plays, a different one each match (Quick Match comes up most). Never a Duel: a random room is for a crowd
-// an emote for the snapshot: its place in EMOTES, or 100 + its place in CINE_EMOTES (the core grab, the OMEGA CRUSH, losing)
+// an emote for the snapshot: its place in EMOTES, or 100 + its place in CINE_EMOTES (the core grab, the OMEGA SNAP, losing)
 const emoteCode = (id) => { const i = G.EMOTES.findIndex((e) => e.id === id); if (i >= 0) return i; const c = G.CINE_EMOTES.indexOf(id); return c >= 0 ? 100 + c : -1; };
 const PUB_MODES = (process.env.PUB_MODES || 'quick,quick,heist,mega,turbo,moon,golden,nokeep,koth,volleys').split(',').filter((m) => MODES_OK.includes(m) && m !== 'duel');
 function pubMode(last) {
@@ -156,11 +156,11 @@ function toCtl(m, prev) {
   return {
     moveX: Math.max(-1, Math.min(1, +m.mx || 0)), moveY: Math.max(-1, Math.min(1, +m.my || 0)), sprint: b('sp'),
     jump: b('jump'), jumpHeld: b('jh'), shootDown: b('sd'), shootHeld: b('sh'), shootUp: b('su'), passDown: b('pd'), passUp: b('pu'), passHeld: m && 'ps' in m ? b('ps') : undefined,
-    dodge: b('dodge'), tackle: b('tackle'), ab: [b('a0'), b('a1'), b('a2')], flow: b('flow'), awaken: b('aw'), shiftLock: b('sl'), emote: Number.isInteger(m && m.em) && m.em >= 0 && m.em < G.EMOTES.length ? m.em : -1, item: false, board: false,
+    dodge: b('dodge'), tackle: b('tackle'), ab: [b('a0'), b('a1'), b('a2')], flow: b('flow'), awaken: b('aw'), shiftLock: b('sl'), emote: Number.isInteger(m && m.em) && m.em >= 0 && m.em < G.EMOTES.length ? m.em : -1, item: b('it'), board: false, // item: an OMEGA CORES power
     camYaw: Number.isFinite(+m.cy) ? +m.cy : 0, aim,
   };
 }
-const EDGES = ['jump', 'shootDown', 'shootUp', 'passDown', 'passUp', 'dodge', 'tackle', 'flow', 'awaken'];
+const EDGES = ['jump', 'shootDown', 'shootUp', 'passDown', 'passUp', 'dodge', 'tackle', 'flow', 'awaken', 'item'];
 function clearEdges(c) { for (const k of EDGES) c[k] = false; c.ab = [false, false, false]; c.emote = -1; }
 /** moving or pressing anything counts; only turning the camera does not */
 const active = (c) => Math.abs(c.moveX) > 0.2 || Math.abs(c.moveY) > 0.2 || c.sprint || c.jumpHeld || c.shootHeld || EDGES.some((k) => c[k]) || c.ab.some(Boolean);
@@ -327,7 +327,7 @@ function snapshot(room) {
     let flags = 0;
     if (p.charging) flags |= 1; if (p.onGround) flags |= 2; if (p.flowT > 0) flags |= 4; if (p.callT > 0 || p.fx.call > 0) flags |= 8;
     if (p.fx.shuffle > 0) flags |= 16; if (p.fx.lockdown > 0) flags |= 32; if (p.fx.bubble > 0) flags |= 64; if (p.awakeT > 0) flags |= 128; if (p.setPiece && p.setPiece.type === 'throw') flags |= 256;
-    if (p.fx.slowed > 0) flags |= 512; if (p.fx.slowmo > 0) flags |= 1024;
+    if (p.fx.slowed > 0) flags |= 512; if (p.fx.slowmo > 0) flags |= 1024; if (p.fx.giant > 0) flags |= 2048;
     return [r2(p.pos.x), r2(p.pos.y), r2(p.pos.z), r2(p.vel.x), r2(p.vel.z), r2(p.yaw), STATES.indexOf(p.state), r2(p.stateT), r2(p.stateDur), r2(p.kickT), KICKS.indexOf(p.kickStyle || null), flags, r2(p.charge),
       p.dive ? p.dive.side : 0, p.dive ? (p.dive.high ? 1 : 0) : 0, p.dive ? r2(p.dive.dur) : 0, r2(p.flipT), p.state === 'emote' ? emoteCode(p.emote) : -1];
   });
@@ -336,7 +336,7 @@ function snapshot(room) {
   room.events = [];
   for (const rp of room.players) {
     const p = m.humans.find((h) => h.netId === rp.id);
-    const me = p ? { i: idx(p), cd: p.abil.map((a) => r2(a.cd)), fl: r2(p.flow), ft: r2(p.flowT), aw: r2(p.awake), awt: r2(p.awakeT), amu: p.awakeMoveUsed ? 1 : 0, st: r2(p.stamina), ex: p.exhausted ? 1 : 0, dc: p.dodgeCharges, dr: r2(p.dodgeRe), sr: r2(p.slowRe), tc: r2(p.tackleCd), tk: r2(p.mods.tackleCd), ph: r2(p.passHold || 0),
+    const me = p ? { i: idx(p), cd: p.abil.map((a) => r2(a.cd)), fl: r2(p.flow), ft: r2(p.flowT), aw: r2(p.awake), awt: r2(p.awakeT), amu: p.awakeMoveUsed ? 1 : 0, st: r2(p.stamina), ex: p.exhausted ? 1 : 0, dc: p.dodgeCharges, dr: r2(p.dodgeRe), sr: r2(p.slowRe), tc: r2(p.tackleCd), tk: r2(p.mods.tackleCd), ph: r2(p.passHold || 0), cp: p.corePow == null ? -1 : p.corePow,
       fx: FX_SENT.reduce((o, k) => (p.fx[k] > 0 ? (o[k] = r2(p.fx[k]), o) : o), {}) } : null;
     send(rp.ws, Object.assign({ me }, base));
   }

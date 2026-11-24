@@ -18,7 +18,7 @@ const MODES = {
   moon: { name: 'MOON BALL', ranked: false, items: false, ballG: 6.5, tip: 'THE BALL FLOATS · JUMP FOR IT' },
   // Nov 2026 (owner: "a gamemode where the goalpost is the entire field"; and one from the new trends: the steal games)
   mega: { name: 'MEGA GOAL', ranked: false, items: false, goalW: F.W - F.POST, tip: 'THE GOAL IS AS WIDE AS THE PITCH' },
-  heist: { name: 'OMEGA CORES', ranked: false, items: false, heist: true, tip: 'SCORE TO TAKE THEIR BEST CORE · TAKE THEM ALL TO SHATTER THEM' },
+  heist: { name: 'OMEGA CORES', ranked: false, items: false, heist: true, tip: 'SCORE TO TAKE THEIR BEST CORE AND ITS POWER · WIN AND YOU SNAP THEM AWAY' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
   freekick: { name: 'FREE KICKS', ranked: false, items: false, practice: true },
   fkkeeper: { name: 'KEEPER PRACTICE', ranked: false, items: false, practice: true, keeper: true }, // owner: you in goal for their free kicks
@@ -324,7 +324,7 @@ class Match {
       if (this.goldenClock <= 0) { this.goldenClock = 0; if (this.score[0] === this.score[1] && this.human && !this.online) this.startBattle(); else this.endMatch(); } // still level: a free kick battle
     }
   }
-  /** how long the final whistle lasts before the results: the ending (Cine) for a real result, longer after an OMEGA CRUSH */
+  /** how long the final whistle lasts before the results: the ending (Cine) for a real result, longer with an OMEGA SNAP */
   outroLen() {
     const r = this.result && this.result.res;
     if (r !== 'win' && r !== 'loss' && r !== 'draw') return 3.2;
@@ -338,18 +338,23 @@ class Match {
     const humanTeam = this.human ? this.human.team : 0;
     const res = a === b ? 'draw' : ((a > b ? 0 : 1) === humanTeam ? 'win' : 'loss');
     this.result = { res, score: [a, b], human: this.human ? Object.assign({}, this.human.stats) : null, players: this.players.map((p) => ({ netId: p.netId, feats: p.feats, name: p.name, team: p.team, number: p.number, style: p.styleId, role: p.role, isHuman: p.isHuman, stats: Object.assign({}, p.stats) })) };
-    const crush = this.heist && this.heist.cleaned != null; // OMEGA CORES: one team took every core
-    Hud.banner(crush ? 'EVERY CORE!' : 'FULL TIME', crush ? 'OMEGA CRUSH' : a + ' : ' + b, crush ? '#ffffff' : res === 'win' ? '#2ee38f' : res === 'loss' ? '#ff4d5e' : '#ffcb3d', true);
+    const H = this.heist;
+    if (H && a !== b && H.cleaned == null) { // OMEGA CORES: the winners take every core the other team has left (the score stays)
+      const w = a > b ? 0 : 1; H.v[w].push(...H.v[1 - w]); H.v[1 - w] = []; H.cleaned = 1 - w; H.rest = true;
+    }
+    const snap = !!(H && H.cleaned != null); // one team holds every core: the OMEGA SNAP (Cine and VaultView)
+    Hud.banner(snap ? 'OMEGA SNAP' : 'FULL TIME', snap ? (H.rest ? a + ' : ' + b + ' · THE WINNERS TAKE EVERY CORE' : 'THEY HAVE NO CORES LEFT') : a + ' : ' + b, snap ? '#ffffff' : res === 'win' ? '#2ee38f' : res === 'loss' ? '#ff4d5e' : '#ffcb3d', true);
     for (const p of this.players) {
       p.charging = false; p.mx = p.mz = 0;
       const won = a !== b && (a > b ? 0 : 1) === p.team, lost = a !== b && !won;
       if (lost) { p.emote = 'sad'; p.setState('emote', 99); } // the ending: the losers drop to their knees
       else p.setState(won ? 'celebrate' : 'free', won ? 99 : 0);
     }
-    if (crush) { // the winner who does the OMEGA CRUSH: you if you are on that team, else whoever took the last core
-      const w = 1 - this.heist.cleaned, sc = this.lastGoal && this.lastGoal.scorer;
-      const hero = (this.human && this.human.team === w && this.human) || (sc && sc.team === w && sc) || this.teams[w].find((p) => !p.isGK) || this.teams[w][0];
-      if (hero) { hero.emote = 'crush'; hero.setState('emote', 99); }
+    if (snap) { // the winner who snaps: you if you are on that team, else whoever took the last core, else their top scorer
+      const w = 1 - H.cleaned, sc = this.lastGoal && this.lastGoal.scorer;
+      const top = this.teams[w].filter((p) => !p.isGK).sort((x, y) => y.stats.goals - x.stats.goals)[0];
+      const hero = (this.human && this.human.team === w && this.human) || (sc && sc.team === w && sc) || top || this.teams[w][0];
+      if (hero) { hero.emote = 'snap'; hero.setState('emote', 99); }
     }
     World.excite[a > b ? 0 : 1] = a === b ? 0.3 : 1;
   }
@@ -421,7 +426,7 @@ class Match {
     }
     // the Flow button also awakens you when the Awakening bar is full and Flow is not
     if (c.flow) { if (!this.activateFlow(p) && !(p.awakeT > 0 && !p.awakeMoveUsed && this.tryAwakenMove(p)) && p.flow < 100 && p.flowT <= 0) { this.toast('FLOW NOT READY', 'bad', p); Sfx.deny(); } }
-    if (c.item) this.useItem(p);
+    if (c.item) { if (this.heist) this.tryCore(p); else this.useItem(p); } // OMEGA CORES: the item button is your core power
   }
   /** you are the keeper. JUMP with the stick pushed left or right (A or D) dives that way, and the FEINT button (C, B,
       DIVE on a phone) dives too. At a shot coming in, the dive goes to where the ball is going (push the other way to
@@ -1382,30 +1387,72 @@ class Match {
   }
   /** each style's signature move, once per Awakening. Returns true, or a reason it cannot happen now */
   awakenMove(p) {
-    const aw = p.style.awaken, mv = aw && aw.move, b = this.ball;
+    const aw = p.style.awaken, mv = aw && aw.move;
     if (!mv || p.awakeT <= 0 || p.awakeMoveUsed) return false;
     if (!this.canAct(p)) return 'NOT NOW';
-    const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), aim = p.aimV || this.aim;
-    switch (mv.kind) {
+    const r = this.powerMove(p, mv.kind, p.aura);
+    if (r !== true) return r;
+    p.awakeMoveUsed = true;
+    this.label(p, mv.name, p.aura, 1.8);
+    FX.sparks(p.pos.x, 1.2, p.pos.z, p.aura, 30, 8, 0.2); Sfx.cutin();
+    if (p.isHuman) this.cinematic(p, mv.name);
+    return true;
+  }
+  /** OMEGA CORES: a person presses the item button for their core power; say why when it cannot happen */
+  tryCore(p) {
+    if (p.corePow == null) { if (this.phase === 'play') { this.toast('SCORE TO TAKE A CORE AND ITS POWER', 'bad', p); Sfx.deny(); } return false; }
+    const r = this.useCore(p);
+    if (typeof r === 'string') { this.toast(r, 'bad', p); Sfx.deny(); return false; }
+    return r;
+  }
+  /** use the power of the core you took (CORE_POWERS), once. Returns true, or a reason it cannot happen now */
+  useCore(p) {
+    if (p.corePow == null || this.phase !== 'play') return false;
+    if (!this.canAct(p)) return 'NOT NOW';
+    const cp = CORE_POWERS[p.corePow], hex = RARITY_HEX[RARITIES[p.corePow]];
+    const r = this.powerMove(p, cp.kind, hex);
+    if (r !== true) return r;
+    p.corePow = null;
+    this.label(p, cp.name, hex, 1.8);
+    FX.sparks(p.pos.x, 1.2, p.pos.z, hex, 30, 8, 0.2); FX.ring(p.pos.x, 1.0, p.pos.z, hex, 1.2, 20); Sfx.cutin();
+    if (p.isHuman) this.cinematic(p, cp.name);
+    return true;
+  }
+  /** a goal in OMEGA CORES: the power of the best core it took goes to the scorer, or to a person on that team when a bot
+      scored (playing with bots you get your team's powers); someone already holding a better power keeps theirs */
+  heistPower(team, r, scorer) {
+    if (r == null || r < 0) return null;
+    const T = this.teams[team], mine = scorer && scorer.team === team ? scorer : null;
+    const p = (mine && mine.isHuman && mine) || T.find((q) => q.isHuman && q.corePow == null) || mine || T.find((q) => !q.isGK && q.corePow == null);
+    if (!p || (p.corePow != null && p.corePow > r)) return null;
+    p.corePow = r;
+    return p;
+  }
+  /** the big moves, shared by the Awakenings and the OMEGA CORES powers (hex: their colour). Returns true, or a reason it
+      cannot happen now (false: no such move) */
+  powerMove(p, kind, hex) {
+    const b = this.ball, fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+    const aim = p.isHuman ? p.aimV || this.aim : AI.shotTarget(p, this); // a bot aims for itself, not where you aim
+    switch (kind) {
       case 'vision': p.fx.vision = Math.max(p.fx.vision || 0, 8); p.fx.burst = Math.max(p.fx.burst || 0, 3); break;
-      case 'lightspeed': p.tackleProof = Math.max(p.tackleProof, 0.8); this.dashP(p, fx, fz, 30, 0.55); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.6, 24); break;
+      case 'lightspeed': p.tackleProof = Math.max(p.tackleProof, 0.8); this.dashP(p, fx, fz, 30, 0.55); FX.ring(p.pos.x, 0.2, p.pos.z, hex, 1.6, 24); break;
       case 'shadow':
         p.tackleProof = Math.max(p.tackleProof, 0.6); this.dashP(p, fx, fz, 26, 0.32);
         for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 5.5) this.stun(o, 1.1, 'frozen');
         FX.feathers(p.pos.x, 1, p.pos.z, '#121018', 16); break;
       case 'storm':
-        for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 7 && this.stun(o, 1.3)) this.label(o, 'ANKLES', p.aura);
-        FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 4, 36); break;
+        for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 7 && this.stun(o, 1.3)) this.label(o, 'ANKLES', hex);
+        FX.ring(p.pos.x, 0.2, p.pos.z, hex, 4, 36); break;
       case 'shockwave':
         for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 5.5) this.knockDown(o, 1.4, o.pos.x - p.pos.x, o.pos.z - p.pos.z, 4, p);
-        FX.ring(p.pos.x, 0.3, p.pos.z, p.aura, 5, 40); FX.ring(p.pos.x, 0.3, p.pos.z, '#ffffff', 3, 30); Shake.add(0.3); break;
+        FX.ring(p.pos.x, 0.3, p.pos.z, hex, 5, 40); FX.ring(p.pos.x, 0.3, p.pos.z, '#ffffff', 3, 30); Shake.add(0.3); break;
       case 'pull': {
         if (b.owner === p) return 'YOU HAVE THE BALL';
         if (b.owner && b.owner.team === p.team) return 'A TEAMMATE HAS IT';
         if (this.safeGK(b.owner)) return 'THE KEEPER HAS IT';
         if (dist2D(b.pos, p.pos) > 14) return 'THE BALL IS TOO FAR';
         if (b.owner) { const o = b.owner; b.release(); o.pickBlock = 0.6; }
-        FX.trail(b.pos.x, b.pos.y, b.pos.z, p.aura, 0.4, 0.5); this.possess(p); break;
+        FX.trail(b.pos.x, b.pos.y, b.pos.z, hex, 0.4, 0.5); this.possess(p); break;
       }
       case 'pounce': {
         if (b.owner === p) return 'YOU HAVE THE BALL';
@@ -1419,16 +1466,16 @@ class Match {
       }
       case 'skycannon':
         if (b.owner !== p) return 'NEED THE BALL';
-        this.shootAt(p, aim, 1.25, { aerial: true, mult: 1.1 }); FX.sparks(b.pos.x, 1.4, b.pos.z, p.aura, 24, 6); break;
+        this.shootAt(p, aim, 1.25, { aerial: true, mult: 1.1 }); FX.sparks(b.pos.x, 1.4, b.pos.z, hex, 24, 6); break;
       case 'bolt':
         if (b.owner !== p) return 'NEED THE BALL';
         this.impactShot(p, aim); Shake.add(0.35); break;
       case 'fortress':
         for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 7) o.fx.slimed = 3;
-        FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 7, 48); break;
+        FX.ring(p.pos.x, 0.2, p.pos.z, hex, 7, 48); break;
       case 'symphony':
         for (const q of this.teams[p.team]) if (!q.isGK) q.fx.burst = Math.max(q.fx.burst || 0, 3);
-        p.fx.vision = Math.max(p.fx.vision || 0, 6); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 4, 36); break;
+        p.fx.vision = Math.max(p.fx.vision || 0, 6); FX.ring(p.pos.x, 0.2, p.pos.z, hex, 4, 36); break;
       case 'steal': {
         const o = b.owner;
         if (!o || o.team === p.team) return 'NO CARRIER NEAR';
@@ -1436,22 +1483,21 @@ class Match {
         const dx = o.pos.x - p.pos.x, dz = o.pos.z - p.pos.z, d = len2D(dx, dz);
         if (d > 10) return 'TOO FAR';
         p.tackleProof = Math.max(p.tackleProof, 0.6);
-        this.dashP(p, dx / (d || 1), dz / (d || 1), Math.max(16, d / 0.32), 0.32, { home: o, onEnd: () => { const c = this.ball.owner; if (c && c.team !== p.team && !this.safeGK(c) && dist2D(c.pos, p.pos) < 2.8 && !(c.fx.bubble > 0)) { this.ball.release(); c.pickBlock = 0.6; this.possess(p); this.label(p, 'STOLEN', p.aura); } } });
+        this.dashP(p, dx / (d || 1), dz / (d || 1), Math.max(16, d / 0.32), 0.32, { home: o, onEnd: () => { const c = this.ball.owner; if (c && c.team !== p.team && !this.safeGK(c) && dist2D(c.pos, p.pos) < 2.8 && !(c.fx.bubble > 0)) { this.ball.release(); c.pickBlock = 0.6; this.possess(p); this.label(p, 'STOLEN', hex); } } });
         break;
       }
       case 'worldstop': // ZENITH: the world stops around you, and you go
         for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 12) this.stun(o, 1.5, 'frozen');
         p.fx.burst = Math.max(p.fx.burst || 0, 3); p.tackleProof = Math.max(p.tackleProof, 0.8);
-        FX.ring(p.pos.x, 0.2, p.pos.z, '#ffffff', 6, 48); FX.ring(p.pos.x, 0.3, p.pos.z, p.aura, 10, 60); Shake.add(0.3); break;
+        FX.ring(p.pos.x, 0.2, p.pos.z, '#ffffff', 6, 48); FX.ring(p.pos.x, 0.3, p.pos.z, hex, 10, 60); Shake.add(0.3); break;
       case 'starfall':
         if (!p.onGround) return 'ON THE GROUND ONLY';
-        p.vel.y = 15; p.onGround = false; p.starfall = true; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.6, 24); break;
+        p.vel.y = 15; p.onGround = false; p.starfall = true; FX.ring(p.pos.x, 0.2, p.pos.z, hex, 1.6, 24); break;
+      case 'giant': // the GIANT core: bigger, faster, harder shots, nobody can tackle you (Player.computeMods, animate)
+        p.fx.giant = GIANT_TIME; p.tackleProof = Math.max(p.tackleProof, 0.5);
+        FX.ring(p.pos.x, 0.2, p.pos.z, hex, 3, 36); FX.ring(p.pos.x, 0.3, p.pos.z, '#ffd54a', 2, 24); Shake.add(0.25); Sfx.punch(); break;
       default: return false;
     }
-    p.awakeMoveUsed = true;
-    this.label(p, mv.name, p.aura, 1.8);
-    FX.sparks(p.pos.x, 1.2, p.pos.z, p.aura, 30, 8, 0.2); Sfx.cutin();
-    if (p.isHuman) this.cinematic(p, mv.name);
     return true;
   }
   activateFlow(p) {
@@ -1539,7 +1585,7 @@ class Match {
     if (jack) { H.jack = 2; to.push(HEIST_JACK); }
     H.last = { team, r, jack, t: this.time };
     this.score[0] = heistValue(H.v[0]); this.score[1] = heistValue(H.v[1]);
-    if (!from.length) { H.cleaned = 1 - team; this.pendingEnd = true; } // they have no cores left: OMEGA CRUSH at the whistle
+    if (!from.length) { H.cleaned = 1 - team; this.pendingEnd = true; } // they have no cores left: the OMEGA SNAP at the whistle
   }
   /** shots with a personality: the long bomb dips late, the knuckleball wobbles */
   updateBallSpecials(dt) {
@@ -1722,6 +1768,7 @@ class Match {
       scorer.charging = false;
     }
     this.lastGoal = { team, scorer, assister, own };
+    if (this.heist && this.heist.last && !this.pendingEnd) { const L = this.heist.last; this.heistPower(team, L.jack ? HEIST_JACK : L.r, scorer); } // the core's power
     if (scorer && scorer.isHuman && k && (k.type === 'shot' || k.type === 'header')) {
       const F = this.featsOf(scorer);
       if (k.special === 'curl' || k.curved) F.curler++;
@@ -2125,10 +2172,10 @@ function winnerOf(m) {
   if (r === 'draw') return -1;
   return m.score[0] === m.score[1] ? -1 : m.score[0] > m.score[1] ? 0 : 1;
 }
-/** the player the ending is about: the one doing the OMEGA CRUSH, else you if your team won or drew, else the winners' top scorer */
+/** the player the ending is about: the one doing the OMEGA SNAP, else you if your team won or drew, else the winners' top scorer */
 function pickHero(m, w = winnerOf(m)) {
-  const crush = m.players.find((p) => p.state === 'emote' && p.emote === 'crush');
-  if (crush) return crush;
+  const snap = m.players.find((p) => p.state === 'emote' && p.emote === 'snap');
+  if (snap) return snap;
   const h = m.human;
   if (h && (w < 0 || h.team === w)) return h;
   const T = m.players.filter((p) => p.team === (w < 0 ? 0 : w));
@@ -2136,11 +2183,13 @@ function pickHero(m, w = winnerOf(m)) {
 }
 
 const CORE_SOCKET = [0.16, -0.5, 0]; // where a core locks in: the outside of the left forearm, in the band
-const CRUSH_T = 1.55; // when the OMEGA CRUSH lands (seconds into the final whistle); Cine shatters the other team from then
+const SNAP_T = 1.8; // when the OMEGA SNAP happens (seconds into the final whistle); Cine shatters the other team soon after
+const SNAP_FLY = 1.1; // the cores the winners take at the whistle fly across the pitch to the hand for this long
 /** OMEGA CORES on screen: each team's cores stand on its crossbar (the best in the middle) and every player wears a band
     on the left forearm. A goal: the core flies to the scorer, who catches it overhead and locks it into the band
     (Match.onGoal plays the 'claim' pose, Cine cuts to a close-up), then at the kickoff it flies on to the crossbar.
-    At an OMEGA CRUSH the winners' cores circle the hero's raised fist, vanish into it, then ring the hero.
+    At the OMEGA SNAP the winners' cores (with the ones they took at the whistle, flying across the pitch) circle the
+    hero's raised hand, the one with the band, and vanish into it at the snap; after it they ring the hero's head.
     set() takes the vaults (offline from the match, online from the snapshots) and works out what moved */
 class VaultView {
   constructor(m) {
@@ -2180,7 +2229,7 @@ class VaultView {
     const first = this.key == null; this.key = key;
     const want = [0, 1].map((t) => v[t].slice().sort((a, b) => b - a));
     const pool = this.blocks; this.blocks = [];
-    const sc = this.m.lastGoal && this.m.lastGoal.scorer;
+    const sc = this.m.lastGoal && this.m.lastGoal.scorer, ending = this.m.phase === 'end'; // at the whistle the snap takes them
     let got = null; // what one team just took (a goal takes the best core, and the GENERATIONAL one when it is out)
     for (const team of [0, 1]) want[team].forEach((r, i) => {
       let k = pool.findIndex((b) => b.team === team && b.r === r), moved = false, b;
@@ -2192,7 +2241,7 @@ class VaultView {
       if (first || (!moved && b.t >= 1 && !b.claim && b.mesh.position.distanceToSquared(to) < 1e-4)) { b.mesh.position.copy(to); b.t = 1; }
       else if (!moved && b.mesh.position.lengthSq() === 0) { b.mesh.position.copy(to); b.t = 1; }
       else if (!b.claim) { b.from.copy(b.mesh.position); b.t = 0; b.dur = moved ? 1.5 : 0.4; b.arc = moved ? 8 : 0.5; }
-      if (moved && !first) {
+      if (moved && !first && !ending) {
         if (!got) got = { team, rs: [] };
         got.rs.push(r);
         if (sc && sc.team === team && sc.P) { b.claim = { p: sc, k: got.rs.length - 1 }; b.from.copy(b.mesh.position); } // the scorer catches it
@@ -2207,16 +2256,17 @@ class VaultView {
       else Hud.steal(got.team, got.rs, null);
     }
   }
-  /** the OMEGA CRUSH at the final whistle (offline from the match, online from the empty vault): { w, hero, list, t } */
+  /** the OMEGA SNAP at the final whistle (offline from the match, online from the empty vault): { w, hero, list, t, ang } */
   finisher() {
     const m = this.m, H = m.heist;
     if (m.phase !== 'end' || !H || H.cleaned == null) { this.fin = null; return null; }
     const w = 1 - H.cleaned;
     if (!this.fin) {
-      const hero = m.players.find((p) => p.team === w && p.state === 'emote' && p.emote === 'crush');
+      const hero = m.players.find((p) => p.team === w && p.state === 'emote' && p.emote === 'snap');
       if (!hero || !hero.P) return null;
       this.fin = { w, hero, list: this.blocks.filter((b) => b.team === w) };
-      for (const b of this.fin.list) b.claim = null;
+      this.claim = null;
+      for (const b of this.fin.list) { b.claim = null; b.f0 = b.mesh.position.clone(); b.far = dist2D(b.f0, hero.pos) > 6; } // far: across the pitch
     }
     this.fin.t = m.phaseT;
     return this.fin;
@@ -2239,10 +2289,10 @@ class VaultView {
       if (C.t > 3.6 || (m.phase !== 'goal' && C.t > 1.2)) this.claim = null;
     }
     const fin = this.finisher();
-    if (fin) fin.ang = (fin.ang || 0) + dt * (fin.t < CRUSH_T ? 3 + fin.t * 3 : 1.6); // the ring turns faster and faster until the punch
+    if (fin) fin.ang = (fin.ang || 0) + dt * (fin.t < SNAP_T ? 2.5 + fin.t * 2.6 : 1.6); // the ring turns faster and faster until the snap
     for (const b of this.blocks) {
       const p = b.mesh.position;
-      if (fin && b.team === fin.w) { this.crushBlock(b, fin, dt); continue; }
+      if (fin && b.team === fin.w) { this.snapBlock(b, fin, dt); continue; }
       if (b.claim && this.claimBlock(b)) continue;
       if (b.t < 1) {
         b.t = Math.min(1, b.t + dt / b.dur);
@@ -2273,20 +2323,27 @@ class VaultView {
     else { P.P.armL.localToWorld(p.set(CORE_SOCKET[0], CORE_SOCKET[1] + b.claim.k * 0.17, CORE_SOCKET[2])); b.mesh.scale.setScalar(0.17); P.P.armL.getWorldQuaternion(b.mesh.quaternion); }
     return true;
   }
-  /** OMEGA CRUSH: circle the hero's raised fist faster and faster, close in, vanish into it, then ring the hero */
-  crushBlock(b, fin, dt) {
+  /** OMEGA SNAP: circle the hero's raised hand faster and faster, close in, vanish into it at the snap, then ring the hero.
+      The cores taken at the whistle first fly across the pitch in a high arc */
+  snapBlock(b, fin, dt) {
     const H = fin.hero, p = b.mesh.position, n = fin.list.length, i = fin.list.indexOf(b), t = fin.t;
     if (!H.P) return;
     H.P.root.updateMatrixWorld(true);
-    const before = t < CRUSH_T, c = before ? H.P.armR.localToWorld(this._v.set(0, -0.8, 0)) : this._v.set(H.pos.x, H.pos.y + 2.5, H.pos.z);
-    const r = before ? (t < CRUSH_T - 0.4 ? 1.0 : 1.0 * (CRUSH_T - t) / 0.4) : 1.2;
+    const before = t < SNAP_T, c = before ? H.P.armL.localToWorld(this._v.set(0, -0.8, 0)) : this._v.set(H.pos.x, H.pos.y + 2.5, H.pos.z);
+    const r = before ? (t < SNAP_T - 0.4 ? 1.0 : 1.0 * (SNAP_T - t) / 0.4) : 1.2;
     const a = fin.ang + i / n * TAU;
-    // before the punch the ring stands up facing the camera (Cine films from the middle side), after it lies round the hero's head
+    // before the snap the ring stands up facing the camera (Cine films from the middle side), after it lies round the hero's head
     const l = Math.hypot(H.pos.x, H.pos.z) || 1, sx = before ? -H.pos.z / l : 1, sz = before ? H.pos.x / l : 0;
     const tx = c.x + (before ? sx * Math.cos(a) : Math.cos(a)) * r, ty = c.y + (before ? Math.sin(a) * r : 0), tz = c.z + (before ? sz * Math.cos(a) : Math.sin(a)) * r;
+    if (b.far && t < SNAP_FLY) { // across the pitch to the hand
+      const u = t / SNAP_FLY, e = u * u * (3 - 2 * u);
+      p.set(lerp(b.f0.x, tx, e), lerp(b.f0.y, ty, e) + Math.sin(Math.PI * u) * 7, lerp(b.f0.z, tz, e));
+      b.mesh.scale.setScalar(lerp(b.size, 0.32, e)); b.mesh.rotation.set(t * 9, t * 6, 0);
+      return;
+    }
     const k = 1 - Math.exp(-(t < 0.9 ? 5 : 18) * dt);
     p.x += (tx - p.x) * k; p.y += (ty - p.y) * k; p.z += (tz - p.z) * k;
-    b.mesh.scale.setScalar(before ? 0.32 : t < CRUSH_T + 0.25 ? 0.01 : Math.min(0.5, (t - CRUSH_T - 0.25) * 1.5));
+    b.mesh.scale.setScalar(before ? 0.32 : t < SNAP_T + 2.2 ? 0.01 : Math.min(0.35, (t - SNAP_T - 2.2) * 1.2)); // back as a halo once the other team is gone
     b.mesh.rotation.set(this.time * 3, this.time * 2, 0);
   }
   dispose() {

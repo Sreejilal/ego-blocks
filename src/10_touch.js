@@ -125,7 +125,7 @@ const Touch = {
     put('pass', ...pol(180, R1), 68 * s);
     put('dt', ...pol(135, R1), 64 * s);
     put('jump', ...pol(90, R1), 64 * s);
-    const lawless = !!(Game.match && Game.match.cfg.items);
+    const lawless = !!(Game.match && (Game.match.cfg.items || Game.match.cfg.heist)); // OMEGA CORES: the ITEM button is your core power
     const arc = lawless ? [['item', 180], ['ab0', 157.5], ['ab1', 135], ['ab2', 112.5], ['flow', 90]] : [['ab0', 170], ['ab1', 146], ['ab2', 122], ['flow', 98]];
     for (const [a, deg] of arc) put(a, ...pol(deg, R2), 58 * s);
     this.b.item.hidden = !lawless;
@@ -329,6 +329,14 @@ const Touch = {
         this.parts.item.ic.style.backgroundImage = 'url(' + (it ? iconURL(it.icon) : iconURL('lock')) + ')';
         this.fitLabel(this.parts.item.lb, it ? (ITEM_SHORT[key] || it.name) : 'ITEM');
         this.tog(b.item, 'off', !it); this.tog(b.item, 'ready', !!it);
+      }
+    } else if (m.cfg.heist) {
+      const r = p.corePow, cp = r != null ? CORE_POWERS[r] : null, key = cp ? 'core' + r : '';
+      if (c.item !== key) {
+        c.item = key;
+        this.parts.item.ic.style.backgroundImage = 'url(' + (cp ? iconURL(cp.icon, RARITY_HEX[RARITIES[r]]) : iconURL('lock')) + ')';
+        this.fitLabel(this.parts.item.lb, cp ? cp.name : 'POWER');
+        this.tog(b.item, 'off', !cp); this.tog(b.item, 'ready', !!cp);
       }
     }
     this.tog(b.shoot, 'charging', !!p.charging);

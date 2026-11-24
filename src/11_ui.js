@@ -140,7 +140,7 @@ const UI = {
             ${row(kk('KeyQ') + kk('KeyE') + kk('KeyR'), 'Style abilities. Big moves get a quick cut-in; turn them off in the pause menu')}
             ${row(key('G'), 'Activate Flow when the bar is full')}
             ${row(kk('KeyZ'), 'Awakened, your style\'s signature move (once). Awakening comes by itself at random moments, sooner after big plays')}
-            ${row(key('X'), 'Use item (Lawless)')}
+            ${row(key('X'), 'Use item (Lawless) or core power (Omega Cores)')}
             ${row(key('TAB'), 'Scoreboard')}
             ${row(key('1') + key('2') + key('3') + key('4'), 'Online: quick chat. PASS!, NICE!, GG, ON ME')}
             ${row(key('T'), 'Online: open chat (or the CHAT button over the map, and CHAT in the pause menu). Typing needs an account, quick chat works for everyone')}
@@ -187,7 +187,7 @@ const UI = {
             <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
             <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
-            <li><b>More modes</b> (the MORE MODES button): Omega Cores (each team has power cores on its crossbar; score and your player grabs their best core and locks it into the band on their arm; the team whose cores are worth more at the end wins, and a team that takes every core does the OMEGA CRUSH and the other team shatters; half way through a Generational core drops and the next goal takes it), Mega Goal (the goal is as wide as the whole pitch), King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3), Free Kicks and the Tutorial. One of them is FEATURED, and it changes every 3 hours.</li>
+            <li><b>More modes</b> (the MORE MODES button): Omega Cores (each team has power cores on its crossbar; score and your player grabs their best core and locks it into the band on their arm; every core has its own power that you get when you take it, used once with the item button: Quake, Pull, Cannon, Freeze and Giant; the team whose cores are worth more at the end wins, takes every core and snaps, and the other team shatters; half way through a Generational core drops and the next goal takes it), Mega Goal (the goal is as wide as the whole pitch), King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3), Free Kicks and the Tutorial. One of them is FEATURED, and it changes every 3 hours.</li>
             <li><b>Rewards</b> (emeralds, XP, pass, GOALS) come from full-time matches: Quick Match, Ranked and Lawless. King of the Hill, Volleys and Duels are just for fun, unless you play them with friends: every friends match gives rewards. Leaving early gives nothing.</li>
             <li><b>Team size:</b> Quick Match is 4v4: a keeper, a defender, a midfielder and a striker. Lawless is 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
@@ -311,7 +311,7 @@ const UI = {
       <div class="hud-mode"><span class="chip" id="hud-mode">RANKED</span><img class="px" id="hud-badge" alt=""></div>
       <div class="scorebar"><div class="team blue"><span class="nm" id="sc0-nm">HOME</span><span id="sc0">0</span></div><div class="clock"><span id="clock">4:00</span><small id="clock-sub"></small></div><div class="team orange"><span id="sc1">0</span><span class="nm" id="sc1-nm">AWAY</span></div></div>
       <div class="vaultbar" id="vaultbar" hidden><div class="vb blue" id="vault0"></div><span class="label">CORES</span><div class="vb orange" id="vault1"></div></div>
-      <div class="steal" id="steal" hidden><div class="st-band"><i class="st-lines"></i><div class="st-face" id="steal-face"></div><div class="st-words"><b id="steal-big"></b><span id="steal-small"></span></div></div></div>
+      <div class="steal" id="steal" hidden><div class="st-band"><i class="st-lines"></i><div class="st-face" id="steal-face"></div><div class="st-words"><b id="steal-big"></b><span id="steal-small"></span><span class="st-pow" id="steal-pow"></span></div></div></div>
       <div class="hud-em emer"><img class="px" id="hud-em-ico" alt=""><span id="hud-em">0</span></div>
       <div class="slowfx" id="slowfx" hidden><b id="slowfx-txt">SLOW-MO</b></div>
       <div class="crosshair" id="xhair"></div>
@@ -361,7 +361,7 @@ const UI = {
   /** in a match: B opens the wheel; while it is open 1 to 9 pick, or the D-pad moves and A picks */
   emoteKeys() {
     const E = Input.edges;
-    if (E.has('KeyB') || (E.has('PadDown') && !this.emoteOpen && !(Game.match && Game.match.cfg && Game.match.cfg.items))) { E.delete('KeyB'); E.delete('PadDown'); this.toggleEmotes(); return; }
+    if (E.has('KeyB') || (E.has('PadDown') && !this.emoteOpen && !(Game.match && Game.match.cfg && (Game.match.cfg.items || Game.match.cfg.heist)))) { E.delete('KeyB'); E.delete('PadDown'); this.toggleEmotes(); return; }
     if (!this.emoteOpen) return;
     for (let i = 0; i < EMOTES.length; i++) if (E.has('Digit' + (i + 1)) || E.has('Numpad' + (i + 1))) { E.delete('Digit' + (i + 1)); E.delete('Numpad' + (i + 1)); this.pickEmote(i); return; }
     const mv = { PadLeft: -1, PadRight: 1, PadUp: -3, PadDown: 3 };
@@ -381,7 +381,7 @@ const UI = {
     </section>`;
   },
   openModes() {
-    const desc = { heist: 'TAKE THEIR POWER CORES. TAKE THEM ALL AND THEY SHATTER', mega: 'THE GOAL IS AS WIDE AS THE WHOLE PITCH', fkkeeper: 'YOU IN GOAL. SAVE THEIR 10 FREE KICKS', koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', golden: 'THE NEXT GOAL WINS THE MATCH', nokeep: 'NO KEEPERS. SHOOT FROM ANYWHERE', turbo: 'EVERYTHING IS FASTER, THE CLOCK TOO', moon: 'THE BALL FLOATS LIKE ON THE MOON', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
+    const desc = { heist: 'TAKE THEIR CORES AND THEIR POWERS. WIN AND SNAP THEM AWAY', mega: 'THE GOAL IS AS WIDE AS THE WHOLE PITCH', fkkeeper: 'YOU IN GOAL. SAVE THEIR 10 FREE KICKS', koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', golden: 'THE NEXT GOAL WINS THE MATCH', nokeep: 'NO KEEPERS. SHOOT FROM ANYWHERE', turbo: 'EVERYTHING IS FASTER, THE CLOCK TOO', moon: 'THE BALL FLOATS LIKE ON THE MOON', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
     const feat = featuredAt().mode;
     $('md-grid').innerHTML = Object.keys(desc).map((k) => `<button class="btn md-card" type="button" data-mode="${k}">${MODES[k].name}${k === feat ? '<span class="tag">FEATURED</span>' : ''}<span class="sub">${desc[k]}</span></button>`).join('');
     $('scr-modes').hidden = false;
@@ -780,7 +780,7 @@ const UI = {
     $('awakeside').style.setProperty('--aura', p.aura); $('awakeside').hidden = true;
     $('aws-name').textContent = p.style.awaken ? p.style.awaken.name : '';
     $('awake-name').textContent = p.style.awaken ? (Touch.on ? '' : 'AWAKENING · ') + p.style.awaken.name : 'AWAKENING'; // phones: just the name, the bar is narrow
-    $('itemslot').hidden = !m.cfg.items;
+    $('itemslot').hidden = !(m.cfg.items || m.cfg.heist); // OMEGA CORES: the slot holds your core power
     $('vaultbar').hidden = !m.cfg.heist; $('steal').hidden = true; clearTimeout(this.stealTO);
     this.mm = $('minimap').getContext('2d');
     this.hudCache = {};
@@ -866,6 +866,13 @@ const UI = {
       const it = p.item ? ITEMS[p.item] : null;
       const key = it ? p.item : '';
       if (this.hudCache.item !== key) { this.hudCache.item = key; $('item-img').src = it ? iconURL(it.icon) : iconURL('lock'); $('item-nm').textContent = it ? it.name : 'NO ITEM'; $('item-img').style.opacity = it ? 1 : 0.35; }
+    } else if (m.cfg.heist) { // your core power, in the core's colour
+      const r = p.corePow, cp = r != null ? CORE_POWERS[r] : null, key = cp ? 'core' + r : '';
+      if (this.hudCache.item !== key) {
+        this.hudCache.item = key;
+        $('item-img').src = cp ? iconURL(cp.icon, RARITY_HEX[RARITIES[r]]) : iconURL('lock'); $('item-nm').textContent = cp ? cp.name : 'NO POWER'; $('item-img').style.opacity = cp ? 1 : 0.35;
+        $('itemslot').style.setProperty('--rc', cp ? RARITY_HEX[RARITIES[r]] : ''); $('itemslot').classList.toggle('core', !!cp);
+      }
     }
     if (this.bannerT > 0) { this.bannerT -= dt; if (this.bannerT <= 0) $('banner').hidden = true; }
     if (this.hintT > 0) { this.hintT -= dt; if (this.hintT <= 0) this.lockHint(); }
@@ -984,6 +991,8 @@ const UI = {
     const best = Math.max(...rs), names = rs.slice().sort((a, b) => b - a).map((r) => RARITIES[r].toUpperCase());
     $('steal-big').textContent = (best === HEIST_JACK ? 'JACKPOT! ' : '') + names.join(' + ') + (rs.length > 1 ? ' CORES' : ' CORE');
     $('steal-small').textContent = (p ? 'LOCKED IN' : 'TAKEN') + ' · +' + rs.reduce((a, r) => a + HEIST_VAL[r], 0) + ' TO ' + (mine ? 'YOUR TEAM' : TEAM[team].name);
+    const cp = CORE_POWERS[best], yours = m && m.human && m.human.corePow === best; // the core's power, and whether it is yours now
+    $('steal-pow').textContent = 'POWER: ' + cp.name + (yours ? ' · YOURS, ' + (Touch.on && !Input.usingPad ? 'TAP ITEM' : Input.usingPad ? 'D-PAD DOWN' : 'PRESS X') : '');
     const face = $('steal-face'); face.innerHTML = ''; face.hidden = !p;
     if (p) face.appendChild(portraitCanvas(p.styleId, 96, p.look));
     el.style.setProperty('--rc', RARITY_HEX[RARITIES[best]]); el.style.setProperty('--tc', TEAM[team].hex);
