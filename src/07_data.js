@@ -67,12 +67,22 @@ const STYLES = {
   AEGIS: { name: 'AEGIS', rarity: 'Legendary', gk: true, hair: '#e9e4d8', hairShape: 'long', aura: '#ffe066', blurb: 'A keeper like a golden shield. Holds every shot, leaps right across the goal and slows shots down. Its powers work in goal.', abilities: ['ironHands', 'catLeap', 'slowShot'],
     awaken: { move: { name: 'SHIELD WALL', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'GUARDIAN', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
 };
+/* STORY characters (owner, Nov 25 2026: "one time only characters"): you only get them by finishing a STORY chapter. Never in
+   spins, never on bots, never for blueprints (story: true) */
+Object.assign(STYLES, {
+  ROGUE: { name: 'ROGUE', rarity: 'Epic', story: true, hair: '#2b2b33', hairShape: 'swept', aura: '#3dffb0', blurb: 'A street winger from the back pitches. Cuts inside, nutmegs anyone and never stops running.', abilities: ['cutInside', 'nutmeg', 'burst'],
+    awaken: { move: { name: 'STREET DASH', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'BACK PITCH', desc: '+14% speed, and abilities recharge faster.', mods: { speed: 1.14, cdRate: 1.3 } } },
+  IRONCLAD: { name: 'IRONCLAD', rarity: 'Legendary', story: true, hair: '#8a8f9e', hairShape: 'flattop', aura: '#9fb4ff', blurb: 'The wall of the City League. Nothing gets past, and every clearance lands at a teammate\'s feet.', abilities: ['bodyBlock', 'clearance', 'lockdown'],
+    awaken: { move: { name: 'IRON GATE', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'UNBREAKABLE', desc: 'Nobody can tackle you, and tackles reach 40% further.', perk: 'tank', mods: { tackleRange: 1.4 } } },
+  SOLARIS: { name: 'SOLARIS', rarity: 'Generational', story: true, hair: '#ffd23d', hairShape: 'spiky', aura: '#ff9d2e', blurb: 'The champion of the Voxel Cup. Shots burn like the sun, and keepers never see them coming.', abilities: ['impactShot', 'volley', 'loaded'],
+    awaken: { move: { name: 'SOLAR FLARE', kind: 'worldstop', desc: 'Every opponent within 12 blocks freezes for 1.5s while you burst away.' }, name: 'SUPERNOVA HEART', desc: '+15% speed, +20% shot power, and abilities recharge faster.', mods: { speed: 1.15, shot: 1.2, cdRate: 1.3 } } },
+});
 /** each character's role (owner, Nov 2026: "place each character's role so one defender one winger"): shown in the Locker,
     where you start a match (until you pick another spot for that style) and where bots play it */
 const ROLES = { ST: { name: 'STRIKER', spots: ['ST', 'FW'] }, WING: { name: 'WINGER', spots: ['LW', 'RW'] }, MID: { name: 'MIDFIELD', spots: ['MID'] }, DEF: { name: 'DEFENDER', spots: ['DEF', 'DEF2'] }, GK: { name: 'KEEPER', spots: ['GK'] } };
 const ROLE_WHERE = { ST: 'STARTS UP FRONT', WING: 'STARTS ON THE WING', MID: 'STARTS IN MIDFIELD', DEF: 'STARTS AT THE BACK', GK: 'STARTS IN GOAL' };
 const STYLE_ROLE = {
-  ROOKIE: 'ST', PROWLER: 'ST', MAGNET: 'ST', THUNDER: 'ST', COMET: 'ST', RAILGUN: 'ST', NOVA: 'ST', ACE: 'ST',
+  ROOKIE: 'ST', PROWLER: 'ST', MAGNET: 'ST', THUNDER: 'ST', COMET: 'ST', RAILGUN: 'ST', NOVA: 'ST', ACE: 'ST', SOLARIS: 'ST', ROGUE: 'WING', IRONCLAD: 'DEF',
   SPRINTER: 'WING', PHANTOM: 'WING', TRICKSTER: 'WING', FEATHER: 'WING', SPARK: 'WING', VORTEX: 'WING', JESTER: 'WING', ZENITH: 'WING',
   ENFORCER: 'MID', MAESTRO: 'MID', BLITZ: 'MID', KESTREL: 'MID', CAPTAIN: 'MID', TEMPEST: 'MID',
   SHAMBLER: 'DEF', WARDEN: 'DEF', ANCHOR: 'DEF', GLACIER: 'DEF', TITAN: 'DEF', SENTINEL: 'DEF', BASTION: 'DEF',
@@ -91,7 +101,7 @@ function botStyle(spot) {
   for (const rar of RARITIES) {
     r -= BOT_STYLE_ODDS[rar];
     if (r < 0) {
-      const pool = STYLE_IDS.filter((k) => STYLES[k].rarity === rar && !STYLES[k].gk), mine = fit ? pool.filter((k) => roleFits(k, spot)) : pool; // bots never play a keeper style
+      const pool = STYLE_IDS.filter((k) => STYLES[k].rarity === rar && !STYLES[k].gk && !STYLES[k].story), mine = fit ? pool.filter((k) => roleFits(k, spot)) : pool; // bots never play a keeper style
       if (mine.length) return pick(mine);
       if (pool.length) return pick(pool);
     }
@@ -595,6 +605,9 @@ const AWAKEN_STORY = {
   TEMPEST: ['rain', 'I WAS SCARED OF STORMS', 'NOW I AM THE STORM!'],
   ACE: ['race', 'I WASTED THE LAST CHANCE OF THE FINAL', 'EVERY CHANCE COUNTS NOW!'],
   ZENITH: ['night', 'I TRAINED ALONE UNDER THE LIGHTS EVERY NIGHT', 'NOW I STAND AT THE TOP. ALONE.'],
+  ROGUE: ['park', 'NOBODY PICKED ME FOR THEIR TEAM ON THE BACK PITCH', 'NOW EVERYONE WANTS ME.'],
+  IRONCLAD: ['rain', 'WE LOST THE CITY DERBY 5 TO 0 IN THE POURING RAIN', 'NOBODY GETS PAST ME AGAIN.'],
+  SOLARIS: ['crowd', 'I WATCHED THE VOXEL CUP FINAL FROM THE TOP SEAT', 'TODAY I PLAY IN IT.'],
   BASTION: ['rain', 'THEY RAN PAST ME LIKE I WAS NOT THERE', 'NOT ONE STEP FURTHER!'],
   AEGIS: ['goal', 'I PROMISED MY TEAM I WOULD KEEP THEM SAFE', 'NOTHING GETS THROUGH MY SHIELD!'],
 };
@@ -618,6 +631,9 @@ const ITEMS = {
   bubble: { name: 'BUBBLE', icon: 'bubble', desc: '4s forcefield. Tackles, shoves and items bounce off you.', use(p) { p.fx.bubble = 4; return true; }, ai(p, m, c) { return c.hasBall && c.nearOpp < 3.5; } },
   wall: { name: 'BLOCK WALL', icon: 'wall', desc: 'Drops a 4-block stone wall in front of you for 6s.', use(p, m) { return m.dropHazard(p, 'wall'); }, ai(p, m, c) { return c.defending && c.carrierDist < 10 && c.carrierDist > 4 && c.dOwnGoal < 22; } },
   mine: { name: 'LANDMINE', icon: 'mine', desc: 'Plants a mine. The first opponent to step on it gets launched.', use(p, m) { return m.dropHazard(p, 'mine'); }, ai(p, m, c) { return c.chasedBy; } },
+  // guns (owner, Nov 25 2026: "add guns to lawless"): toy blasters that fire energy shots; a hit knocks you over, like the other items
+  blaster: { name: 'BLASTER', icon: 'blaster', desc: 'Three quick shots. Each one knocks over the first opponent it hits.', use(p) { p.gun = { left: 3, t: 0 }; return true; }, ai(p, m, c) { return (c.carrierOpp && c.carrierDist < 20 && c.carrierInFront) || (c.hasBall && c.nearOpp < 5); } },
+  scatter: { name: 'SCATTER BLASTER', icon: 'scatter', desc: 'Six shots in a spread up close. Knocks over everyone in front of you.', use(p, m) { return m.fireScatter(p); }, ai(p, m, c) { return c.nearOpp < 6 && (c.carrierOpp || c.hasBall); } },
   bolt: { name: 'SUPERCHARGE', icon: 'bolt', desc: '4s of +50% speed with free sprinting.', use(p) { p.fx.supercharge = 4; return true; }, ai(p, m, c) { return (c.hasBall && c.spaceAhead) || (c.chasing && c.chaseDist > 8); } },
 };
 const ITEM_IDS = Object.keys(ITEMS);
@@ -932,7 +948,7 @@ const FEATURED = ['heist', 'koth', 'mega', 'volleys', 'duel', 'lawless'], FEATUR
     (ICON_MAPS, drawn in its colour), its colour, one plain line, and its group in MORE MODES (none: not listed there) */
 const MODE_ART = {
   quick: { icon: 'ball', hex: '#3d7dff', line: 'A normal match.' },
-  lawless: { icon: 'boom', hex: '#ff8a2a', line: 'Item blocks drop on the pitch. Rocket fists, slime, jetpacks.' },
+  lawless: { icon: 'blaster', hex: '#ff8a2a', group: 'party', line: 'Item blocks drop on the pitch: blasters, rocket fists, slime and jetpacks. Gives rewards.' },
   chaos: { icon: 'dice', hex: '#ff5fb0', group: 'new', line: 'The rules change every 25 seconds: moon ball, turbo, giants and more.' },
   bomb: { icon: 'bomb', hex: '#ff8a2a', group: 'new', line: 'The ball is a bomb. If it goes off in your half, they score.' },
   tiny: { icon: 'goal', hex: '#7ff5bd', group: 'new', line: 'Tiny goals and no keepers. Aim carefully.' },
@@ -951,6 +967,66 @@ const MODE_ART = {
 };
 const MODE_GROUPS = [['new', 'NEW'], ['party', 'PARTY MODES'], ['practice', 'PRACTICE']];
 const modeIcon = (k) => iconURL(MODE_ART[k].icon, MODE_ART[k].hex);
+
+/* ---------- STORY mode (owner, Nov 25 2026: "a story mode where you progress through a story of events that give you
+   emeralds, blueprints and one time only characters", "pass to one guy who now you can control", "customise your team").
+   Chapters of events played in order. Each event is a match with its own mode, size, opponent, bot skill and goal; meet the
+   goal the first time and you get its reward. In story matches you take control of whoever you pass to (Match.switchTo),
+   and your team plays the characters you picked (Save.data.squad, SQUAD_SLOTS) ---------- */
+const STORY = [
+  { name: 'THE BACK PITCH', events: [
+    { id: 'bp1', title: 'FIRST TOUCH', mode: 'quick', size: 2, skill: 0.08, foe: 'MOSSWOOD', goal: { win: true }, reward: { em: 150 }, text: 'Your club is bottom of the league and nobody knows your name. Coach Brick gives you one chance: win a two on two on the back pitch.' },
+    { id: 'bp2', title: 'MAKE A NAME', mode: 'quick', size: 3, skill: 0.15, foe: 'HARBOUR', goal: { win: true, mine: 2 }, reward: { bp: 2 }, text: 'The coach wants goals, not excuses. Win, and score at least two of them yourself.' },
+    { id: 'bp3', title: 'THE BOMB ON THE BLOCK', mode: 'bomb', size: 3, skill: 0.2, foe: 'EMBER', goal: { win: true }, reward: { em: 250 }, text: 'Ember City play a wild game on their street: the ball is a bomb. Keep it out of your half and beat them.' },
+    { id: 'bp4', title: 'CUP DEBUT', mode: 'quick', size: 4, skill: 0.3, foe: 'NIGHTFALL', goal: { win: true, by: 2 }, reward: { style: 'ROGUE', em: 300 }, text: 'Your first real cup match. A street winger called ROGUE is watching from the fence. Win by two and ROGUE joins your team.' },
+  ] },
+  { name: 'THE CITY LEAGUE', events: [
+    { id: 'cl1', title: 'CHAOS DERBY', mode: 'chaos', size: 4, skill: 0.35, foe: 'EMBER', goal: { win: true }, reward: { bp: 3 }, text: 'The city derby, and the league has gone mad: the rules change every 25 seconds. Keep your head and win.' },
+    { id: 'cl2', title: 'NOBODY GETS THROUGH', mode: 'quick', size: 4, skill: 0.4, foe: 'MOSSWOOD', goal: { win: true, clean: true }, reward: { em: 400 }, text: 'Mosswood only score on the break. Win without letting a single goal in.' },
+    { id: 'cl3', title: 'TINY GOAL TRIALS', mode: 'tiny', size: 3, skill: 0.45, foe: 'HARBOUR', goal: { win: true, by: 3 }, reward: { bp: 4 }, text: 'Training day. Tiny goals and no keepers. Win by three to prove your aim is real.' },
+    { id: 'cl4', title: 'THE IRON WALL', mode: 'quick', size: 4, skill: 0.55, foe: 'SUNSPIRE', goal: { win: true }, reward: { style: 'IRONCLAD', em: 500 }, text: 'Sunspire have the best defender in the city, IRONCLAD. Beat them and IRONCLAD wants to play for you.' },
+  ] },
+  { name: 'THE VOXEL CUP', events: [
+    { id: 'vc1', title: 'QUARTER FINAL', mode: 'heist', size: 4, skill: 0.6, foe: 'NIGHTFALL', goal: { win: true }, reward: { bp: 5 }, text: 'The cup quarter final is played for power cores. Take theirs, keep yours, and snap them away.' },
+    { id: 'vc2', title: 'SEMI FINAL', mode: 'quick', size: 5, skill: 0.65, foe: 'EMBER', goal: { win: true, mine: 2 }, reward: { em: 600 }, text: 'Five a side in front of a full stadium. The fans want a hero: win, and score two yourself.' },
+    { id: 'vc3', title: 'THE STORM', mode: 'turbo', size: 4, skill: 0.7, foe: 'HARBOUR', goal: { win: true, by: 2 }, reward: { bp: 6 }, text: 'A storm hits the cup and everything moves faster. Win by two and you are in the final.' },
+    { id: 'vc4', title: 'THE FINAL', mode: 'quick', size: 5, skill: 0.85, foe: 'SUNSPIRE', goal: { win: true }, reward: { style: 'SOLARIS', em: 1000, bp: 10 }, text: 'The Voxel Cup final. The champion SOLARIS has never lost. Win the cup, and SOLARIS joins the best team in the land: yours.' },
+  ] },
+];
+const STORY_EVENTS = [];
+STORY.forEach((c, ci) => c.events.forEach((e) => { e.ch = ci; e.n = STORY_EVENTS.length + 1; STORY_EVENTS.push(e); }));
+/** your team in story matches: one character per kind of spot (the spot you play yourself uses your own style) */
+const SQUAD_SLOTS = [['ST', 'STRIKER'], ['MID', 'MIDFIELD'], ['DEF', 'DEFENDER']];
+const SQUAD_OF = { ST: 'ST', FW: 'ST', MID: 'MID', LW: 'MID', RW: 'MID', DEF: 'DEF', DEF2: 'DEF' }; // a line-up spot -> its squad slot
+const Story = {
+  goalText(g) { return 'WIN' + (g.by ? ' BY ' + g.by : '') + (g.mine ? ' AND SCORE ' + g.mine + ' YOURSELF' : '') + (g.clean ? ' WITHOUT LETTING ONE IN' : ''); },
+  rewardList(r) { return [r.em ? '+' + r.em + ' EMERALDS' : null, r.bp ? '+' + r.bp + ' BLUEPRINTS' : null, r.style ? 'NEW CHARACTER: ' + STYLES[r.style].name : null].filter(Boolean); },
+  done(d, e) { return d.story.done.includes(e.id); },
+  /** the event you are on: the first one not done (null when the story is finished) */
+  next(d) { return STORY_EVENTS.find((e) => !d.story.done.includes(e.id)) || null; },
+  open(d, e) { return this.done(d, e) || this.next(d) === e; },
+  /** did this match meet the event's goal? (m.myGoals: goals by whoever you were controlling) */
+  met(m, e) {
+    const r = m.result; if (!r || r.res !== 'win') return false;
+    const me = m.human ? m.human.team : 0, gf = m.score[me], ga = m.score[1 - me], g = e.goal;
+    return !(g.by && gf - ga < g.by) && !((m.myGoals || 0) < (g.mine || 0)) && !(g.clean && ga > 0);
+  },
+  /** after a story match: the reward the first time the goal is met. Returns { ok, first, got, next } */
+  finish(d, e, m) {
+    const ok = this.met(m, e), first = ok && !this.done(d, e), got = [];
+    if (first) {
+      d.story.done.push(e.id);
+      const r = e.reward, had = !!r.style && d.styles.includes(r.style); // a character you already have: 300 emeralds instead
+      if (r.em) d.emeralds += r.em;
+      if (r.bp) d.bp += r.bp;
+      if (r.style) { if (had) d.emeralds += 300; else d.styles.push(r.style); }
+      got.push(...this.rewardList(r).map((t) => (had && /^NEW CHARACTER/.test(t) ? 'YOU HAD ' + STYLES[r.style].name + ': +300 EMERALDS' : t)));
+    }
+    return { ok, first, got, e, next: ok ? this.next(d) : null };
+  },
+  /** where a story character comes from, for the Locker */
+  chapterOf(id) { const e = STORY_EVENTS.find((x) => x.reward.style === id); return e ? 'CHAPTER ' + (e.ch + 1) + ': ' + STORY[e.ch].name : 'STORY MODE'; },
+};
 /* OMEGA CORES (Nov 2026, from the "steal" games that top the charts; owner: "the team with all of them wins and the
    other team is no more"): each team's power cores sit on its own crossbar, a goal takes the other team's best one (the
    scorer catches it and locks it into the band on their arm), the team whose cores are worth more at the end wins, and the
@@ -1106,7 +1182,7 @@ const Goals = {
   /** keep a style for good */
   unlock(d, id) {
     const st = STYLES[id];
-    if (!st || d.styles.includes(id) || d.bp < BP_COST[st.rarity]) return false;
+    if (!st || st.story || d.styles.includes(id) || d.bp < BP_COST[st.rarity]) return false; // STORY characters: only from STORY mode
     d.bp -= BP_COST[st.rarity]; d.styles.push(id);
     if (d.spunStyle === id) d.spunStyle = null;
     return true;
@@ -1245,5 +1321,5 @@ function poolFor(kind, rarityIdx) {
   const rar = RARITIES[rarityIdx];
   if (kind === 'skin') return SKIN_IDS.filter((k) => SKINS[k].rarity === rar);
   const src = kind === 'style' ? STYLES : FLOWS;
-  return Object.keys(src).filter((k) => src[k].rarity === rar);
+  return Object.keys(src).filter((k) => src[k].rarity === rar && !src[k].story); // STORY characters never come from spins
 }

@@ -181,6 +181,17 @@ class Player {
     if (this.accMat) this.accMat.dispose();
   }
   setState(s, dur = 0) { this.state = s; this.stateT = 0; this.stateDur = dur; }
+  /** LAWLESS: a blocky toy blaster in the right hand while you hold a gun item (barrel along the arm, past the hand) */
+  showGun(on) {
+    if (!on && !this.gunMesh) return;
+    if (!this.gunMesh && this.P) {
+      const M = Player.gunMats || (Player.gunMats = { dark: new THREE.MeshLambertMaterial({ color: lin('#2a2f45') }), light: new THREE.MeshLambertMaterial({ color: lin('#9aa1ad') }), glow: new THREE.MeshBasicMaterial({ color: lin('#ffe14d'), toneMapped: false }) });
+      const g = new THREE.Group(), box = (m, sx, sy, sz, x, y, z) => { const b = new THREE.Mesh(PlayerGeo.get().cube, m); b.scale.set(sx, sy, sz); b.position.set(x, y, z); g.add(b); };
+      box(M.dark, 0.15, 0.5, 0.17, 0, -0.8, 0.02); box(M.light, 0.16, 0.36, 0.06, 0, -0.8, 0.1); box(M.dark, 0.1, 0.12, 0.22, 0, -0.62, -0.14); box(M.glow, 0.1, 0.06, 0.1, 0, -1.07, 0.02);
+      this.P.armR.add(g); this.gunMesh = g;
+    }
+    if (this.gunMesh) this.gunMesh.visible = on;
+  }
   computeMods() {
     const m = this.mods;
     m.speed = this.speedMul; m.shot = 1; m.stamRegen = 1; m.stamDrain = 1; m.cdRate = 1; m.tackleRange = 1; m.tackleCd = 1;
@@ -506,6 +517,9 @@ class Player {
       }
     }
     if (this.flipT >= 0) { bx = -this.flipT * TAU; lL = -1.2; lR = 0.3; }
+    const gun = !!(this.item === 'blaster' || this.item === 'scatter' || this.gun); // LAWLESS: holding a blaster
+    if (gun && st === 'free' && !this.charging && this.kickT < 0) { aR = -1.45; aRz = 0.04; } // held up, ready to fire
+    this.showGun(gun && P.root.visible);
     const k = st === 'frozen' ? 0 : 1 - Math.exp(-ease * dt);
     const r = (o, prop, v) => { o.rotation[prop] += (v - o.rotation[prop]) * k; };
     r(P.body, 'x', bx); r(P.body, 'z', bz);

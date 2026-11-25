@@ -4,7 +4,7 @@
    ===================================================================== */
 const TOUCH_SHORT = { quickShot: 'QUICK', cutInside: 'CUT IN', snapPass: 'SNAP', armSwipe: 'SWIPE', pinpointPass: 'PINPOINT', lockdown: 'LOCKDOWN', undeadShuffle: 'SHUFFLE', graveGrab: 'GRAB', skyTrap: 'SKY TRAP', fakeVolley: 'FAKE', impactShot: 'IMPACT', overhead: 'OVERHEAD',
   oneTouch: 'ONE TOUCH', rainbow: 'RAINBOW', whiplash: 'WHIP', longBomb: 'BOMB', knuckle: 'KNUCKLE' };
-const ITEM_SHORT = { fist: 'FIST', boom: 'BOOM', slime: 'SLIME', jet: 'JETPACK', snow: 'SNOW', magnet: 'MAGNET', bubble: 'BUBBLE', wall: 'WALL', mine: 'MINE', bolt: 'SUPER' };
+const ITEM_SHORT = { blaster: 'BLASTER', scatter: 'SCATTER', fist: 'FIST', boom: 'BOOM', slime: 'SLIME', jet: 'JETPACK', snow: 'SNOW', magnet: 'MAGNET', bubble: 'BUBBLE', wall: 'WALL', mine: 'MINE', bolt: 'SUPER' };
 const T_LOOK_X = 0.0064, T_LOOK_Y = 0.0042;
 
 const Touch = {

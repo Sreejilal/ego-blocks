@@ -422,6 +422,8 @@ function makeBallGeometry() {
 /* ---------- UI icons (pixel maps rendered to data URLs) ---------- */
 const ICON_MAPS = {
   // the mode menus (MODE_ART in 07_data.js)
+  blaster: ['............', '............', '.kkkkkkkkkk.', 'kgggggggggYk', 'kssssssssskk', '.kkkssskkk..', '...ksAk.....', '...kssk.....', '...kssk.....', '...kkkk.....', '............', '............'],
+  scatter: ['............', '............', '.kkkkkkkkkk.', 'kggggggggYYk', 'kssssssssYYk', 'kggggggggYYk', '.kkkkssskkk.', '....ksAk....', '....kssk....', '....kkkk....', '............', '............'],
   ball: ['............', '....kkkk....', '..kkwwwwkk..', '.kwwwkkwwwk.', '.kwwkkkkwwk.', 'kwwwkkkkwwwk', 'kkwwwkkwwwkk', 'kkkwwwwwwkkk', '.kkwwwwwwkk.', '.kwwwkkwwwk.', '..kkwkkwkk..', '....kkkk....'],
   dice: ['............', '.kkkkkkkkkk.', '.kwwwwwwwwk.', '.kwAAwwwwwk.', '.kwAAwwwwwk.', '.kwwwAAwwwk.', '.kwwwAAwwwk.', '.kwwwwwAAwk.', '.kwwwwwAAwk.', '.kwwwwwwwwk.', '.kkkkkkkkkk.', '............'],
   bomb: ['.......Y....', '......YRY...', '.......k....', '......k.....', '...kkkkk....', '..ksssssk...', '.kswwssssk..', '.kswsssssk..', '.ksssssssk..', '.ksssssssk..', '..ksssssk...', '...kkkkk....'],

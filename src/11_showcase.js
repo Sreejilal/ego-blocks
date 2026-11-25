@@ -49,6 +49,12 @@ const POSES = {
   SENTINEL: (t) => ({ aR: -2.6, aRz: 0.9, aL: 0.3, aLz: 0.2, hy: Math.sin(t * 0.6) * 0.5, hx: -0.05, lLz: 0.12, lRz: -0.12, ball: [0.4, -0.35] }), // a hand over the eyes, scanning the pitch
   JESTER: (t) => ({ bx: 0.6 + Math.sin(t * 1.6) * 0.1, aR: -0.6, aRz: 0.8, aL: 0.8, aLz: 0.9, hx: 0.25, lR: 0.3, ball: [0.5, 0.35] }), // taking a bow
   TEMPEST: (t) => ({ by: 0.8 + Math.sin(t * 1.8) * 0.04, aL: -2.8, aLz: 0.5, aR: -2.8, aRz: -0.5, hx: -0.5, bz: Math.sin(t * 1.1) * 0.04, ball: [0.42, -0.36] }), // arms up, calling the storm
+  ZENITH: (t) => ({ aL: -2.2, aLz: -0.2, aR: 0.5, aRz: -0.9, lL: -0.35, bz: -0.08, hx: -0.15, hy: -0.35 + Math.sin(t * 1.2) * 0.05, ball: [0.5, 0.15] }), // one arm across the sky, looking away: alone at the top
+  BASTION: () => ({ aL: -0.9, aLz: 0.2, aR: -0.9, aRz: -0.2, lLz: 0.3, lRz: -0.3, by: 0.68, bx: 0.15, hx: 0.12, ball: [0.42, 0.45] }), // both arms forward like a shield, low and wide
+  AEGIS: (t) => ({ aL: -2.4, aLz: 0.9, aR: -2.4, aRz: -0.9, by: 0.72 + Math.sin(t * 1.6) * 0.02, hx: -0.2, lL: 0.1, lR: -0.1, ball: [0.3, -0.4] }), // gloves up wide: the whole goal is covered
+  ROGUE: (t) => ({ by: 0.62, bx: 0.32, aL: -1.7, aLz: 0.3, aR: 0.7, aRz: -0.5, lL: -0.5, lR: 0.55, hx: -0.25, hy: 0.3 + Math.sin(t * 2) * 0.05, ball: [0.45, 0.5] }), // low and ready to dart off, an arm out in front
+  IRONCLAD: () => ({ by: 0.66, aL: 0.25, aLz: 1.0, aR: 0.25, aRz: -1.0, lLz: 0.38, lRz: -0.38, hx: 0.2, ball: [0.5, -0.45] }), // fists out at the sides, the widest stance there is
+  SOLARIS: (t) => ({ aR: -3.0, aRz: 0.15, aL: -0.7, aLz: 1.1, bx: -0.22, hx: -0.5, lR: 0.35, lL: -0.15, by: 0.74 + Math.sin(t * 1.4) * 0.02, ball: [0.36, -0.2] }), // leaning back, a fist to the sky: the champion
   ACE: (t) => ({ aR: -1.5, aRz: 0.25, aL: 0.3, aLz: 0.6, bz: 0.06, hx: 0.02 + Math.sin(t * 0.9) * 0.03, hy: 0.15, lR: -0.25, ball: [0.3, -0.12] }), // a hand on the hip, pointing right at you
   LYNX: (t) => ({ by: 0.5, bx: 0.55, aL: -1.0, aLz: 0.25, aR: -0.85, aRz: -0.25, lL: -0.55, lR: 0.6, hx: -0.55, bz: Math.sin(t * 2.5) * 0.05, hy: Math.sin(t * 1.3) * 0.2, ball: [0.78, 0.2] }), // crouched to pounce
 };

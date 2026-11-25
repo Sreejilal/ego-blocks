@@ -13,7 +13,7 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
   const data = await page.evaluate(() => {
     const S = EGO.STYLES, ids = EGO.STYLE_IDS, count = {};
     for (const id of ids) count[S[id].role] = (count[S[id].role] || 0) + 1;
-    return { missing: ids.filter((id) => !EGO.ROLES[S[id].role]), count, keepers: ids.filter((id) => S[id].gk).every((id) => S[id].role === 'GK'), gen: ids.filter((id) => S[id].rarity === 'Generational'), zen: S.ZENITH && { role: S.ZENITH.role, ab: S.ZENITH.abilities }, bas: S.BASTION && S.BASTION.role, aeg: S.AEGIS && { role: S.AEGIS.role, gk: S.AEGIS.gk } };
+    return { missing: ids.filter((id) => !EGO.ROLES[S[id].role]), count, keepers: ids.filter((id) => S[id].gk).every((id) => S[id].role === 'GK'), gen: ids.filter((id) => S[id].rarity === 'Generational' && !S[id].story), zen: S.ZENITH && { role: S.ZENITH.role, ab: S.ZENITH.abilities }, bas: S.BASTION && S.BASTION.role, aeg: S.AEGIS && { role: S.AEGIS.role, gk: S.AEGIS.gk } };
   });
   check('every character has a role: strikers, wingers, midfielders, defenders and keepers', data.missing.length === 0 && data.count.ST >= 6 && data.count.WING >= 6 && data.count.MID >= 6 && data.count.DEF >= 6 && data.count.GK === 3 && data.keepers, data);
   check('a second Generational (ZENITH, a winger with FLASH STEP), BASTION a defender, AEGIS a keeper', data.gen.join(',') === 'RAILGUN,ZENITH' && data.zen.role === 'WING' && data.zen.ab[0] === 'flashStep' && data.bas === 'DEF' && data.aeg.role === 'GK' && data.aeg.gk, data);

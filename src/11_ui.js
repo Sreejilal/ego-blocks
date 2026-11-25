@@ -5,12 +5,13 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const KEYS3 = ['KeyQ', 'KeyE', 'KeyR']; // shown with KeyNames.of: Q E R, or A E R on a French keyboard
 
+const SPOT_EVERY = 3200; // ms between modes in the start screen spotlight
 const UI = {
   labels: [], toastsN: 0, bannerT: 0, spinning: false, spinKind: 'style', lockerTab: 'style', lockerSel: null, skinSlot: 'hair',
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none'; $('outro').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
@@ -18,6 +19,7 @@ const UI = {
     this.bind();
     Hud.toast = (t, c) => this.toast(t, c);
     Hud.bomb = (x, z) => bombBlast(x, z); // BOMB BALL
+    Hud.switched = () => { const m = Game.match; if (m && m.human) { this.buildHud(m); Touch.build(m); } }; // STORY: you took control of a teammate
     Hud.label = (p, t, c, dur) => this.flabel(p, t, c, dur);
     Hud.banner = (big, small, color, quick) => this.banner(big, small, color, quick ? 1.1 : 2.0);
     Hud.goal = (team, scorer, assister, own) => { this.goalBanner(team, scorer, assister, own); if (Touch.on && Game.match && Game.match.human && Game.match.human.team === team) Touch.buzz([30, 50, 30]); };
@@ -50,9 +52,9 @@ const UI = {
         <nav class="menu" aria-label="Main menu">
           <button class="btn friends" id="go-online" type="button">PLAY ONLINE <span class="sub">RANDOM OR FRIENDS</span></button>
           <button class="btn blue play" id="go-quick" type="button">PLAY <span class="sub" id="quick-sub">QUICK MATCH &middot; 4V4</span></button>
-          <button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
-          <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
-          <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub md-lob" id="modes-sub">CHAOS</span></button>
+          <div class="duo"><button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button><button class="btn story" id="go-story" type="button">STORY <span class="sub" id="story-sub">CHAPTER 1</span></button></div>
+          <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; BLASTERS</span></button>
+          <div class="spot" id="spot"><button class="btn spot-main" id="spot-play" type="button"><span class="spot-in" id="spot-in"></span><span class="spot-go">PLAY</span><span class="spot-dots" id="spot-dots"></span></button><button class="btn spot-all" id="go-modes" type="button">ALL<br>MODES</button></div>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
           <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
@@ -191,7 +193,8 @@ const UI = {
             <li><b>More modes</b> (the MORE MODES button): Chaos (every 25 seconds the rules change for everyone for a while: moon ball, turbo, mega goals, tiny goals, giants or rocket shots), Bomb Ball (the ball is a bomb with a 15 second fuse that starts again at every kickoff; when it goes off it knocks everyone near over, and if it was in your half the other team gets a point, so kick it into their half), Tiny Goals (small goals and no keepers), Omega Cores (each team has power cores on its crossbar; score and your player grabs their best core and locks it into the band on their arm; every core has its own power that you get when you take it, used once with the item button: Quake, Pull, Cannon, Freeze and Giant; the team whose cores are worth more at the end wins, takes every core and snaps, and the other team shatters; half way through a Generational core drops and the next goal takes it), Mega Goal (the goal is as wide as the whole pitch), King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3), Free Kicks and the Tutorial. One of them is FEATURED, and it changes every 3 hours.</li>
             <li><b>Rewards</b> (emeralds, XP, pass, GOALS) come from full-time matches: Quick Match, Ranked and Lawless. King of the Hill, Volleys and Duels are just for fun, unless you play them with friends: every friends match gives rewards. Leaving early gives nothing.</li>
             <li><b>Team size:</b> Quick Match is 4v4: a keeper, a defender, a midfielder and a striker. Lawless is 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
-            <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
+            <li><b>Lawless</b> drops item blocks on the pitch: blasters (three quick shots) and scatter blasters (a spread up close) that knock players over, rocket fists, boom blocks, slime, jetpacks. Use one with the item button. No rank change.</li>
+            <li><b>Story</b> (next to Ranked): take your club from the back pitch to the Voxel Cup, one event at a time. Each event has its own rules and goal, like win by 2 or score 2 yourself, and pays out emeralds, blueprints or a character you can only get there (ROGUE, IRONCLAD, SOLARIS) the first time you meet it. Pick a character for each spot of your team, and in story matches you take control of whoever you pass to.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
           </ul></section>
         </div>
@@ -392,6 +395,20 @@ const UI = {
         <button class="btn" id="md-close" type="button">CLOSE</button>
       </div>
     </section>`;
+  },
+  /** the start screen's mode spotlight (owner, Nov 25 2026: "when the featured game is displayed you should be able to choose
+      it instantly, and see a switch animation every couple of seconds"): the featured mode first, then the others in turn
+      every SPOT_EVERY ms with a flip; PLAY starts the one showing; it holds still while you point at it */
+  spotList() { const f = featuredAt().mode; return [f].concat(Object.keys(MODE_ART).filter((k) => MODE_ART[k].group && MODE_ART[k].group !== 'practice' && k !== f && MODES[k])); },
+  spotShow(step) {
+    const L = this.spotList(); this.spotI = (((this.spotI || 0) + step) % L.length + L.length) % L.length;
+    const k = L[this.spotI], A = MODE_ART[k], el = $('spot-in'), b = $('spot-play');
+    if (!el || (b.dataset.mode === k && !step)) return;
+    el.innerHTML = `<img class="px" alt="" src="${modeIcon(k)}"><span class="spot-t"><span class="spot-tag">${this.spotI === 0 ? 'FEATURED NOW' : A.group === 'new' ? 'NEW MODE' : 'TRY THIS'}</span><b>${MODES[k].name}</b></span>`;
+    if (step) this.spotPrev = { k: b.dataset.mode, t: performance.now() }; // a tap right as it flips is for the mode you were looking at
+    b.style.setProperty('--mc', A.hex); b.dataset.mode = k; b.setAttribute('aria-label', 'Play ' + MODES[k].name);
+    $('spot-dots').innerHTML = L.map((_, i) => `<i${i === this.spotI ? ' class="on"' : ''}></i>`).join('');
+    if (step) { el.classList.remove('flip'); void el.offsetWidth; el.classList.add('flip'); }
   },
   openModes() {
     const F = featuredAt(), feat = MODE_ART[F.mode] && MODES[F.mode] ? F.mode : null, online = new Set(NET_MODES.map((x) => x[0]));
@@ -683,6 +700,7 @@ const UI = {
     $('in-roles').addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (b) { Sfx.click(); Game.pickRole(b.dataset.r); } });
     click('p-resume', () => Game.resume());
     Admin.bind();
+    StoryUI.bind();
     click('tut-skip', () => Game.skipTutorial());
     $('tut-gate').addEventListener('pointerdown', (e) => { e.preventDefault(); Game.gateGo(); });
     $('p-forfeit').addEventListener('click', () => {
@@ -692,8 +710,18 @@ const UI = {
       if (b.dataset.armed) { delete b.dataset.armed; Game.forfeit(); }
       else { b.dataset.armed = '1'; b.textContent = Game.state === 'online' ? 'CONFIRM: A BOT TAKES OVER' : Game.match && Game.match.cfg.ranked ? 'CONFIRM: -15 RP' : 'CONFIRM FORFEIT'; }
     });
-    click('r-again', () => { if (Game.lastMode === 'online') { Game.toLobby(); Net.open(); } else Game.startMatch(Game.lastMode || 'quick'); });
-    click('r-lobby', () => { if (Game.lastMode === 'online') Net.send({ t: 'leave' }); Game.toLobby(); });
+    click('r-again', () => {
+      if (Game.lastMode === 'online') { Game.toLobby(); Net.open(); }
+      else if (Game.lastStory) { const e = Game.storyNext || Game.lastStory; Game.startMatch(e.mode, { story: e }); } // STORY: the next event, or this one again
+      else Game.startMatch(Game.lastMode || 'quick');
+    });
+    click('r-lobby', () => { if (Game.lastMode === 'online') Net.send({ t: 'leave' }); const st = !!Game.lastStory; Game.toLobby(); if (st) this.show('story'); });
+    click('go-story', () => this.show('story'));
+    click('spot-play', () => { const P = this.spotPrev, k = P && performance.now() - P.t < 400 ? P.k : $('spot-play').dataset.mode; if (k && MODES[k]) Game.startMatch(k); });
+    const spot = $('spot');
+    spot.addEventListener('pointerenter', () => { this.spotHold = true; }); spot.addEventListener('pointerleave', () => { this.spotHold = false; });
+    spot.addEventListener('focusin', () => { this.spotHold = true; }); spot.addEventListener('focusout', () => { this.spotHold = false; });
+    setInterval(() => { if (this.cur === 'lobby' && !this.spotHold && !document.hidden && $('scr-modes').hidden && !$('scr-lobby').hidden) this.spotShow(1); }, SPOT_EVERY);
     $('set-q').addEventListener('click', (e) => { const q = e.target.dataset.q; if (!q) return; Save.data.settings.quality = q; Game.applyQuality(); Save.save(); this.renderPause(); });
     $('set-sens').addEventListener('input', (e) => { Save.data.settings.sens = parseFloat(e.target.value) || 1; Save.save(); });
     $('set-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.invertY = v === '1'; Save.save(); this.renderPause(); });
@@ -721,7 +749,7 @@ const UI = {
     const was = this.cur;
     this.cur = name;
     if (was && was !== name && was !== 'hud' && name !== 'hud') { if (name === 'lobby') Sfx.close(); else Sfx.open(); } // menus whoosh in and out (matches have their own sounds)
-    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
+    const map = { story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const t of this.ntags) t.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
@@ -730,6 +758,8 @@ const UI = {
     if (name === 'howto') { Save.data.howto = true; Save.save(); }
     if (name === 'profile') this.renderProfile();
     if (name === 'pass') this.renderPass();
+    if (name === 'story') StoryUI.render();
+    if (name === 'lobby') { this.spotI = 0; this.spotShow(0); } // the spotlight starts on the featured mode
     if (name === 'goals') this.renderGoals();
     Friends.place(); // the FRIENDS panel on the side: start screen, room screen and pause menu only
     Music.set(name !== 'hud'); // music in the menus; a match has the crowd
@@ -750,8 +780,8 @@ const UI = {
     $('go-tut').hidden = d.tutorial || d.stats.played >= 3; // new players: a way into the tutorial
     $('pro-badge').src = badgeURL(tier);
     Pass.sync(d); $('pass-sub').textContent = 'TIER ' + Pass.tier(d) + ' / ' + PASS_TIERS;
-    const fm = featuredAt().mode, nModes = Object.keys(MODE_ART).filter((k) => MODE_ART[k].group).length; // MORE MODES: how many, and the featured one
-    $('modes-sub').innerHTML = MODE_ART[fm] && MODES[fm] ? `<img class="px" alt="" src="${modeIcon(fm)}">FEATURED: ${MODES[fm].name}` : nModes + ' MODES';
+    $('story-sub').textContent = StoryUI.sub();
+    this.spotShow(0);
     $('pro-tier').textContent = TIER_NAMES[tier];
     const inTier = tier >= 5 ? 10 : Math.floor((d.rp % 100) / 10);
     $('pro-rp').innerHTML = Array.from({ length: 10 }, (_, i) => `<i class="${i < inTier ? 'on' : ''}"></i>`).join('');
@@ -1118,6 +1148,12 @@ const UI = {
     $('r-score').innerHTML = `<span style="color:${TEAM[0].hex}">${TEAM[0].short} ${r.score[0]}</span><span>:</span><span style="color:${TEAM[1].hex}">${r.score[1]} ${TEAM[1].short}</span><span class="chip">${esc(r.modeName)}</span>`;
     const s = r.human || { goals: 0, assists: 0, shots: 0, tackles: 0 };
     $('r-stats').innerHTML = [['GOALS', s.goals], ['ASSISTS', s.assists], ['SHOTS', s.shots], ['TACKLES', s.tackles]].map(([k, v]) => `<div><span class="label">${k}</span><b>${v}</b></div>`).join('');
+    if (r.story) { // STORY: did you meet the goal, and what it gave you
+      const S = r.story, e = S.e;
+      $('r-again').textContent = S.ok && S.next ? 'NEXT EVENT' : S.ok ? 'PLAY AGAIN' : 'TRY AGAIN'; $('r-lobby').textContent = 'STORY';
+      $('r-earn').innerHTML = `<div class="st-res ${S.ok ? 'ok' : 'no'}"><b>${S.ok ? 'EVENT DONE' : 'NOT YET'}: ${esc(e.title)}</b><span>GOAL: ${Story.goalText(e.goal)}</span>`
+        + (S.first ? S.got.map((t) => `<span class="st-got">${esc(t)}</span>`).join('') : S.ok ? '<span>YOU HAD THIS EVENT\'S REWARD ALREADY</span>' : '<span>TRY AGAIN. THE REWARD IS STILL WAITING</span>') + '</div>';
+    } else
     $('r-earn').innerHTML = (r.idle ? `<div class="idle-note"><span>${r.noReward === 'rank' ? 'THEY WERE FAR BELOW YOUR RANK, SO THIS MATCH GIVES NO REWARDS' : r.noReward === 'fun' ? 'THIS MODE IS JUST FOR FUN, SO IT GIVES NO REWARDS. QUICK MATCH, RANKED AND LAWLESS DO, AND SO DOES EVERY MODE WITH FRIENDS' : 'A BOT PLAYED FOR YOU, SO THIS MATCH GIVES NO REWARDS'}</span></div>` : '') + r.earn.map(([k, v]) => `<div><span>${esc(k)}</span><span>+${v}</span></div>`).join('') + `<div class="tot"><span>EMERALDS EARNED</span><span>+${r.emeralds}</span></div>`;
     if (r.ranked) {
       const tier = tierOf(r.rpAfter), moved = tierOf(r.rpBefore) !== tier;
@@ -1161,7 +1197,7 @@ const UI = {
     $('hint').hidden = true;
     $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
   },
-  hideOverlays() { $('scr-results').hidden = true; $('scr-pause').hidden = true; },
+  hideOverlays() { $('scr-results').hidden = true; $('scr-pause').hidden = true; $('st-pick').hidden = true; $('scr-modes').hidden = true; },
   /* ---------- spins ---------- */
   openSpins() { this.show('spins'); this.renderSpins(true); },
   renderSpins(resetReel) {

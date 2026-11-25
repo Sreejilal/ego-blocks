@@ -2,7 +2,7 @@
    Match: rules, possession, kicking, tackling, abilities, goals,
    restarts, Flow, Lawless items
    ===================================================================== */
-const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {}, lightning() {}, steal() {}, bomb() {} }; // filled in by the UI
+const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {}, lightning() {}, steal() {}, bomb() {}, switched() {} }; // filled in by the UI
 const BOT_NAMES = ['BLOK', 'CUBO', 'PIXL', 'VOXX', 'CHUNK', 'BRIK', 'TILE', 'STAK', 'OBBY', 'GRAV', 'LOAM', 'SLAB', 'COBB', 'FLINT', 'QUARTZ', 'MOSS', 'DUSK', 'EMBR', 'RUNE', 'KRYS', 'BYTE', 'NOVA', 'REDS', 'TUFF'];
 const MODES = {
   // rewards: offline, only these full-time matches give rewards (online with friends, every mode does)
@@ -51,6 +51,7 @@ class Match {
     this.online = !!opts.humans; this.humans = []; // online: every remote player, each with their own controls (p.ctl)
     this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, awakens: 0, trailed: false }; // your moments, for the weekly challenges
     this.lastGoal = null; this.pendingEnd = false;
+    this.story = opts.story || null; this.myGoals = 0; // STORY: the event being played, and the goals you scored (whoever you controlled)
     // your club at home against a random other club; the away side changes kit if the colours clash
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
     const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
@@ -103,7 +104,8 @@ class Match {
         const human = opts.humans ? !!net : team === 0 && role === mine && !opts.noHuman; // you play the most attacking spot, or the one you picked
         let num = role === 'GK' ? 1 : human && !net ? 10 : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
-        const style = net ? net.style : human ? (opts.style || Save.data.style) : opts.teamStyle ? opts.teamStyle[team] : botStyle(role); // teamStyle: [home, away] for balance tests; bots mostly play a character made for their spot
+        const sq = !net && !human && team === 0 && opts.squad && opts.squad[SQUAD_OF[role]]; // STORY: the character you picked for this spot
+        const style = net ? net.style : human ? (opts.style || Save.data.style) : sq && STYLES[sq] ? sq : opts.teamStyle ? opts.teamStyle[team] : botStyle(role); // teamStyle: [home, away] for balance tests; bots mostly play a character made for their spot
         const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
         const look = net ? net.look : human ? (opts.look || Save.data.look) : botLook();
         const tone = net ? net.tone : Save.data.tone;
@@ -531,6 +533,7 @@ class Match {
       if (k.type === 'pass' && k.by.team === p.team) {
         k.by.stats.passes++; this.flowAdd(k.by, 12);
         this.lastPass = { from: k.by, to: p, t: this.time };
+        if (this.story && k.by === this.human && !p.isGK && !this.online) this.switchTo(p); // STORY: you take control of whoever you pass to
       } else if (k.by.team !== p.team && (k.type === 'pass' || k.type === 'shot')) {
         this.flowAdd(p, 10);
         if (p.isHuman) this.toast('INTERCEPTED', 'good', p);
@@ -1570,6 +1573,17 @@ class Match {
     c[1].material.color.copy(c[0].material.color);
     c[0].material.opacity = 0.7 + Math.sin(this.time * 6) * 0.15;
   }
+  /** STORY: you take over a teammate (the one you passed to); the player you left plays on as a bot */
+  switchTo(p) {
+    const h = this.human;
+    if (!h || p === h || p.team !== h.team) return;
+    h.isHuman = false; h.charging = false; h.charge = 0; h.passHold = 0; h.shotBuffer = null; h.mx = h.mz = 0; h.callT = 0;
+    if (h.ai) h.ai.wantShot = null;
+    p.isHuman = true; p.charging = false; if (p.ai) p.ai.wantShot = null;
+    this.human = p; if (this.caller === h) this.caller = p;
+    this.label(p, 'YOU', '#ffcb3d', 1.2);
+    Hud.switched(p);
+  }
   /** CHAOS: the twist on now (CHAOS_TWISTS), or null */
   twist() { return this.chaos && this.chaos.on ? CHAOS_TWISTS[this.chaos.on] : null; }
   /** CHAOS: a twist for CHAOS_LEN seconds, then CHAOS_GAP seconds of normal football, then another (never the same twice) */
@@ -1814,6 +1828,7 @@ class Match {
       scorer.charging = false;
     }
     this.lastGoal = { team, scorer, assister, own };
+    if (scorer && scorer === this.human) this.myGoals++; // STORY goals like "score 2 yourself"
     if (this.heist && this.heist.last && !this.pendingEnd) { const L = this.heist.last; this.heistPower(team, L.jack ? HEIST_JACK : L.r, scorer); } // the core's power
     if (scorer && scorer.isHuman && k && (k.type === 'shot' || k.type === 'header')) {
       const F = this.featsOf(scorer);
@@ -1982,6 +1997,7 @@ class Match {
         }
       }
     }
+    this.updateGuns(dt);
     for (let i = this.projectiles.length - 1; i >= 0; i--) if (this.updateProjectile(this.projectiles[i], dt)) { this.drop(this.projectiles[i].mesh); this.projectiles.splice(i, 1); }
     for (let i = this.hazards.length - 1; i >= 0; i--) if (this.updateHazard(this.hazards[i], dt)) { this.drop(this.hazards[i].mesh, this.hazards[i].type === 'wall'); this.hazards.splice(i, 1); }
   }
@@ -1991,11 +2007,26 @@ class Match {
     if (it.use(p, this)) { this.label(p, it.name, '#ffcb3d'); p.item = null; Sfx.zap(); return true; }
     return false;
   }
-  fireProjectile(p, type) {
+  /** LAWLESS SCATTER BLASTER: six shots in a spread in front of you */
+  fireScatter(p) {
+    for (let i = 0; i < 6; i++) this.fireProjectile(p, 'pellet', (i - 2.5) * 0.11);
+    if (this.involvesHuman(p)) Shake.add(0.25);
+    return true;
+  }
+  /** LAWLESS BLASTER: its three shots, one after another (p.gun from the item) */
+  updateGuns(dt) {
+    for (const p of this.players) {
+      if (!p.gun) continue;
+      if (p.state === 'down' || p.state === 'frozen' || this.phase !== 'play') { p.gun = null; continue; }
+      p.gun.t -= dt;
+      if (p.gun.t <= 0) { this.fireProjectile(p, 'blast'); p.gun.t = 0.14; if (--p.gun.left <= 0) p.gun = null; }
+    }
+  }
+  fireProjectile(p, type, spread = 0) {
     const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
     let dx = p.isHuman ? Math.sin(this.camYaw) : fx, dz = p.isHuman ? Math.cos(this.camYaw) : fz;
     let target = null;
-    if (type === 'fist' || type === 'snow') {
+    if (type === 'fist' || type === 'snow' || type === 'blast') {
       let bd = 1e9;
       for (const o of this.opponents(p)) {
         const ox = o.pos.x - p.pos.x, oz = o.pos.z - p.pos.z, d = Math.hypot(ox, oz);
@@ -2007,18 +2038,21 @@ class Match {
       }
       if (target) { const ox = target.pos.x - p.pos.x, oz = target.pos.z - p.pos.z, d = Math.hypot(ox, oz) || 1; dx = ox / d; dz = oz / d; }
     }
-    const mat = type === 'boom' ? new THREE.MeshLambertMaterial({ map: World.T.boom }) : type === 'snow' ? new THREE.MeshLambertMaterial({ color: lin('#f4fbff') }) : new THREE.MeshLambertMaterial({ color: lin('#e0302a'), emissive: lin('#5a0000') });
+    if (spread) { const c = Math.cos(spread), s = Math.sin(spread), x = dx * c + dz * s; dz = dz * c - dx * s; dx = x; }
+    const gunShot = type === 'blast' || type === 'pellet';
+    const mat = gunShot ? new THREE.MeshBasicMaterial({ color: lin('#ffe14d'), toneMapped: false }) : type === 'boom' ? new THREE.MeshLambertMaterial({ map: World.T.boom }) : type === 'snow' ? new THREE.MeshLambertMaterial({ color: lin('#f4fbff') }) : new THREE.MeshLambertMaterial({ color: lin('#e0302a'), emissive: lin('#5a0000') });
     const mesh = new THREE.Mesh(PlayerGeo.get().cube, mat);
-    const sz = type === 'boom' ? 0.7 : type === 'snow' ? 0.36 : 0.55; mesh.scale.set(sz, sz, sz); mesh.castShadow = true;
+    const sz = type === 'boom' ? 0.7 : type === 'snow' ? 0.36 : type === 'blast' ? 0.24 : type === 'pellet' ? 0.17 : 0.55; mesh.scale.set(sz, sz, gunShot ? sz * 2.2 : sz); mesh.castShadow = !gunShot;
     this.scene.add(mesh);
     const pr = { type, owner: p, target, t: 0, mesh, pos: V3(p.pos.x + dx * 0.8, 1.3, p.pos.z + dz * 0.8), vel: V3() };
     if (type === 'boom') {
       const aimD = p.isHuman ? clamp(dist2D(this.aim, p.pos), 6, 16) : clamp(dist2D(this.ball.pos, p.pos), 5, 14);
       const T = 0.85; pr.vel.set(dx * aimD / T, (0 - 1.3 + 0.5 * GRAV * T * T) / T, dz * aimD / T); pr.fuse = 1.25;
-    } else { const sp = type === 'snow' ? 30 : 24; pr.vel.set(dx * sp, 0, dz * sp); }
+    } else { const sp = type === 'snow' ? 30 : type === 'blast' ? 44 : type === 'pellet' ? 34 : 24; pr.vel.set(dx * sp, 0, dz * sp); }
+    pr.life = type === 'blast' ? 0.8 : type === 'pellet' ? 0.34 : 1.1; // how far it flies
     this.projectiles.push(pr);
-    p.kickT = 0; p.kickDur = 0.25;
-    Sfx.swoosh();
+    if (gunShot) { p.yaw = Math.atan2(dx, dz); if (type === 'blast' || spread < 0) Sfx.zap(); FX.sparks(pr.pos.x, pr.pos.y, pr.pos.z, '#ffe14d', 4, 3, 0.1, 0.2); } // the muzzle flash
+    else { p.kickT = 0; p.kickDur = 0.25; Sfx.swoosh(); }
     return true;
   }
   updateProjectile(pr, dt) {
@@ -2040,24 +2074,28 @@ class Match {
     }
     pr.pos.addScaledVector(pr.vel, dt);
     pr.mesh.position.copy(pr.pos); pr.mesh.rotation.y = Math.atan2(pr.vel.x, pr.vel.z);
-    FX.trail(pr.pos.x, pr.pos.y, pr.pos.z, pr.type === 'snow' ? '#bfeaff' : '#ff6a3c', 0.16, 0.25);
+    const gunShot = pr.type === 'blast' || pr.type === 'pellet';
+    FX.trail(pr.pos.x, pr.pos.y, pr.pos.z, pr.type === 'snow' ? '#bfeaff' : gunShot ? '#ffe14d' : '#ff6a3c', gunShot ? 0.1 : 0.16, gunShot ? 0.15 : 0.25);
     for (const o of this.opponents(pr.owner)) {
       if (o.state === 'down' || o.state === 'frozen') continue;
       if (Math.hypot(o.pos.x - pr.pos.x, o.pos.z - pr.pos.z) < 0.85 && pr.pos.y > o.pos.y && pr.pos.y < o.pos.y + 2.1) {
         const l = len2D(pr.vel.x, pr.vel.z) || 1, dx = pr.vel.x / l, dz = pr.vel.z / l;
         if (o.fx.bubble > 0) { FX.sparks(pr.pos.x, pr.pos.y, pr.pos.z, '#8fd8ff', 12, 4); Sfx.boing(); return true; }
-        if (pr.type === 'snow') {
+        if (gunShot) { // a blaster shot: knocked over (the ball pops loose)
+          this.knockDown(o, pr.type === 'blast' ? 1.3 : 1.0, dx, dz, pr.type === 'blast' ? 6 : 5, pr.owner); Sfx.punch(); FX.sparks(o.pos.x, 1.2, o.pos.z, '#ffe14d', 14, 6, 0.12, 0.35);
+          if (this.involvesHuman(o, pr.owner)) Shake.add(0.2);
+        } else if (pr.type === 'snow') {
           if (this.ball.owner === o) { const b = this.ball; b.release(); b.vel.set(dx * 3, 2, dz * 3); b.kick = { by: pr.owner, type: 'loose' }; o.pickBlock = 2; }
           this.stun(o, 2, 'frozen'); Sfx.freeze(); FX.sparks(o.pos.x, 1, o.pos.z, '#bfeaff', 20, 5);
         } else {
           this.knockDown(o, 1.8, dx, dz, 9, pr.owner); Sfx.punch(); FX.sparks(o.pos.x, 1.2, o.pos.z, '#ff6a3c', 16, 6);
           if (this.involvesHuman(o, pr.owner)) { Shake.add(0.35); TimeCtl.hitStop(0.06); }
         }
-        if (o.isHuman) this.toast(pr.type === 'snow' ? 'FROZEN' : 'KNOCKED OUT', 'bad', o);
+        if (o.isHuman) this.toast(pr.type === 'snow' ? 'FROZEN' : gunShot ? 'BLASTED' : 'KNOCKED OUT', 'bad', o);
         return true;
       }
     }
-    return pr.t > 1.1 || Math.abs(pr.pos.x) > F.BOARD_X || Math.abs(pr.pos.z) > F.BOARD_Z;
+    return pr.t > (pr.life || 1.1) || Math.abs(pr.pos.x) > F.BOARD_X || Math.abs(pr.pos.z) > F.BOARD_Z;
   }
   explode(x, z, r, owner) {
     FX.explosion(x, 0.3, z); Sfx.boom(); Shake.add(0.6);

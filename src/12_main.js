@@ -157,13 +157,16 @@ const Game = {
     let skill = difficultyFor(Save.data.rp), size = teamSizeFor(mode, Save.data.rp);
     const ramp = this.rampFor(mode);
     if (ramp) { size = Math.min(size, ramp[0]); skill = Math.min(skill, ramp[1]); }
+    const story = o.story || null, sd0 = Save.data; // STORY: the event's own size, bot skill, opponent and your team
+    if (story) { size = story.size; skill = story.skill; }
+    const away = story ? (story.foe !== sd0.club ? story.foe : pick(CLUB_IDS.filter((c) => c !== sd0.club))) : undefined;
     const intro = !o.noIntro && this.introOn(mode);
     // in goal if you chose goal (with any style: the owner plays keeper with other styles' moves), else the spot you picked
     // with this style, else its role (a keeper style: in goal)
     const sd = Save.data, pos = sd.pos === 'GK' ? 'GK' : sd.pos && sd.posFor === sd.style ? sd.pos : roleSpot(sd.style);
     applyBallLook(); // your ball
-    this.match = new Match(mode, skill, { size, role: pos, intro }); // a winger's team plays wide (Match.pickSetups)
-    this.lastMode = mode; this.ended = false;
+    this.match = new Match(mode, skill, { size, role: pos, intro, story, away, squad: story ? sd0.squad : null }); // a winger's team plays wide (Match.pickSetups)
+    this.lastMode = mode; this.lastStory = story; this.storyNext = null; this.ended = false;
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
     World.setSun(SUN_MATCH);
@@ -240,7 +243,8 @@ const Game = {
     }
     const res = forfeit ? 'forfeit' : m.result.res;
     const hs = forfeit ? (m.human ? Object.assign({}, m.human.stats) : { goals: 0, assists: 0, shots: 0, tackles: 0 }) : (m.result.human || { goals: 0, assists: 0, shots: 0, tackles: 0 });
-    const fun = !forfeit && !m.online && !m.cfg.rewards; // offline King of the Hill, Volleys and Duels are just for fun
+    const story = m.story && !m.online ? m.story : null; // STORY: its own rewards instead (Story.finish)
+    const fun = !forfeit && !m.online && (!m.cfg.rewards || !!story); // offline King of the Hill, Volleys and Duels are just for fun
     const idle = !forfeit && !!(m.result.idle || m.result.noReward || fun); // online: a bot played for you, or they were far below your rank: nothing
     const earned = idle ? 'forfeit' : res; // what rewards are worked out from
     const earn = [];
@@ -270,10 +274,12 @@ const Game = {
     B.run = res === 'win' ? B.run + 1 : 0; B.streak = Math.max(B.streak, B.run); B.peakRp = Math.max(B.peakRp, d.rp);
     const pass = Pass.award(d, m, earned, hs);
     const daily = Daily.award(d, m, earned, hs);
+    const st = story && !forfeit ? Story.finish(d, story, m) : null;
+    this.storyNext = st && st.next ? st.next : null;
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name + (!forfeit && m.result.battle ? ' · FREE KICK BATTLE ' + m.result.battle.join('-') : ''), xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && (fun ? 'fun' : m.result.noReward), daily, goalsDone });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name + (!forfeit && m.result.battle ? ' · FREE KICK BATTLE ' + m.result.battle.join('-') : ''), xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && (fun ? 'fun' : m.result.noReward), daily, goalsDone, story: st });
     if (res === 'win') Sfx.fanfare(2);
     if (res === 'win' && !idle) Portal.happy();
     Portal.progress(); // a GOAL step done: their portal hears how far you are now
@@ -384,7 +390,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Cine, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  StoryUI, Story, STORY, STORY_EVENTS, SQUAD_SLOTS, MODE_ART, CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {

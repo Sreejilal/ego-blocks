@@ -94,7 +94,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], topUpOff: false, tutorial: false, onboarded: false, tips: [], // topUpOff: START OVER was pressed, so the tester pack no longer refills everything by itself
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], topUpOff: false, story: { done: [] }, squad: {}, tutorial: false, onboarded: false, tips: [], // topUpOff: START OVER was pressed, so the tester pack no longer refills everything by itself
       posFor: null, fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
@@ -162,6 +162,8 @@ const Save = {
     });
     out.preset = Number.isInteger(out.preset) && out.preset >= 0 && out.preset < out.presets.length && out.presets[out.preset].s ? out.preset : -1;
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
+    out.story = { done: out.story && Array.isArray(out.story.done) ? [...new Set(out.story.done.filter((x) => typeof x === 'string'))] : [] }; // STORY: the events you finished
+    out.squad = out.squad && typeof out.squad === 'object' && !Array.isArray(out.squad) ? Object.fromEntries(Object.entries(out.squad).filter(([k, v]) => ['ST', 'MID', 'DEF'].includes(k) && typeof v === 'string')) : {}; // your team in STORY matches
     out.topUpOff = !!out.topUpOff; out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
     out.tips = Array.isArray(out.tips) ? out.tips.filter((t) => typeof t === 'string' && t.length < 16).slice(0, 20) : []; // the first-match tips you have seen
@@ -198,6 +200,7 @@ const Save = {
     const d = this.data;
     codeTopUp(d); // the tester pack keeps up with new styles, Flows and skins
     d.styles = d.styles.filter((s) => STYLES[s]);
+    for (const k of Object.keys(d.squad)) if (!d.styles.includes(d.squad[k]) || STYLES[d.squad[k]].gk) delete d.squad[k]; // only characters you own
     if (!d.styles.includes('ROOKIE')) d.styles.unshift('ROOKIE');
     d.flows = d.flows.filter((f) => FLOWS[f]);
     if (d.spunStyle && (!STYLES[d.spunStyle] || d.styles.includes(d.spunStyle))) d.spunStyle = null;

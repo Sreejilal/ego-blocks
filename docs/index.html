@@ -470,6 +470,78 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 #on-mode.md-seg button { display: flex; align-items: center; gap: 8px; text-align: left; padding: 6px 8px; box-shadow: inset 3px 0 0 var(--mc); }
 #on-mode.md-seg button img { width: 20px; height: 20px; flex: none; }
 #on-mode.md-seg button[aria-pressed="true"] { box-shadow: inset 6px 0 0 var(--mc); }
+/* the start screen: RANKED and STORY side by side, and the mode spotlight (a mode at a time, flipping every SPOT_EVERY ms;
+   the thin line of dots under it shows where it is in the list) */
+.menu .duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.menu .duo .btn { display: grid; justify-items: start; align-content: center; gap: 2px; padding: 4px 14px 7px; }
+.btn.story { background: linear-gradient(90deg, #7a1f3d, #b8325a); box-shadow: inset 0 -6px 0 #4a1024, inset 0 var(--px) 0 rgba(255,255,255,.22), 4px 4px 0 rgba(0,0,0,.45); }
+.btn.story .sub { color: #ffd6e2; }
+.spot { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.menu .btn.spot-main { --mc: #b65cff; position: relative; overflow: hidden; gap: 10px; padding: 4px 12px 9px 16px; background: var(--slate-2); box-shadow: inset 6px 0 0 var(--mc), inset 0 -6px 0 rgba(0,0,0,.35), inset 0 var(--px) 0 rgba(255,255,255,.12), 4px 4px 0 rgba(0,0,0,.45); }
+.spot-main::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, var(--mc) 0 3px, transparent 3px 16px); opacity: .16; pointer-events: none; }
+.spot-in { position: relative; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.spot-in img { flex: none; width: 28px; height: 28px; padding: 3px; background: var(--ink); box-shadow: 0 0 0 3px var(--mc); image-rendering: pixelated; }
+.spot-t { display: grid; gap: 3px; min-width: 0; }
+.spot-tag { font-family: var(--font-label); font-size: 10px; letter-spacing: .08em; color: var(--mc); }
+.spot-t b { font-weight: 400; line-height: .9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spot-go { position: relative; flex: none; font-size: .75em; background: var(--mc); color: var(--ink); padding: 3px 10px 6px; box-shadow: inset 0 -4px 0 rgba(0,0,0,.28); }
+.spot-dots { position: absolute; left: 16px; right: 12px; bottom: 5px; display: flex; gap: 3px; }
+.spot-dots i { flex: 1; height: 2px; background: rgba(255,255,255,.16); }
+.spot-dots i.on { background: var(--mc); }
+.menu .btn.spot-all { font-size: 18px; line-height: .95; text-align: center; justify-content: center; padding: 6px 12px 9px; background: linear-gradient(90deg, #5d2a9e, #8e4bd6); box-shadow: inset 0 -6px 0 #3a1d66, inset 0 var(--px) 0 rgba(255,255,255,.22), 4px 4px 0 rgba(0,0,0,.45); }
+.spot-in.flip { animation: spotFlip .45s steps(5) both; }
+@keyframes spotFlip { 0% { transform: translateY(80%); opacity: 0; } 60% { transform: translateY(-8%); opacity: 1; } 100% { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .spot-in.flip { animation: none; } }
+/* STORY: progress and the story so far, your team, the chapters of events (done, the one you are on, locked) */
+.st-intro { padding: 14px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: center; }
+.st-prog { display: grid; justify-items: center; gap: 2px; padding: 8px 14px 10px; background: linear-gradient(180deg, #b8325a, #7a1f3d); box-shadow: inset 0 -6px 0 #4a1024, 4px 4px 0 rgba(0,0,0,.45); }
+.st-prog b { font-family: var(--font-display); font-weight: 400; font-size: 44px; line-height: .85; color: #fff3f6; text-shadow: 3px 3px 0 #4a1024; }
+.st-prog span { font-family: var(--font-label); font-size: 9px; letter-spacing: .08em; color: #ffd6e2; }
+.st-lead { margin: 0; font-family: var(--font-body); font-size: 19px; line-height: 1.15; color: var(--text); max-width: 70ch; }
+.st-team, .st-ch { padding: 16px; display: grid; gap: 12px; }
+.st-team h3, .st-ch h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 32px; line-height: .9; }
+.st-squad { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.st-slot, .st-card { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 2px 10px; align-items: center; padding: 8px 10px; background: var(--slate-2); box-shadow: inset 0 0 0 2px var(--rc), inset 0 -5px 0 rgba(0,0,0,.28), 3px 3px 0 rgba(0,0,0,.45); }
+.st-slot canvas, .st-card canvas { width: 48px; height: 48px; image-rendering: pixelated; background: var(--ink); }
+.st-sl { display: grid; gap: 3px; min-width: 0; }
+.st-role, .st-hint, .st-card span { font-family: var(--font-label); font-size: 9px; letter-spacing: .08em; color: var(--muted); }
+.st-slot b, .st-card b { font-family: var(--font-display); font-weight: 400; font-size: 24px; line-height: .9; }
+.st-card canvas { grid-row: span 2; }
+.st-card[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--gold), 3px 3px 0 rgba(0,0,0,.45); }
+.st-slot:focus-visible, .st-card:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.st-slot:active, .st-card:active { transform: translate(2px, 2px); }
+@media (hover: hover) { .st-slot:hover, .st-card:hover { background: var(--slate-3); } }
+.st-chapters { display: grid; gap: 16px; }
+.st-ch.locked { opacity: .6; }
+.st-evs { display: grid; gap: 6px; }
+.st-ev { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 8px 10px; background: var(--slate-2); }
+.st-num { position: relative; width: 30px; height: 30px; display: grid; place-items: center; font-family: var(--font-display); font-size: 22px; line-height: 1; background: var(--slate-3); color: var(--muted); }
+.st-ev.done .st-num { background: var(--emerald); }
+.st-ev.done .st-num::after { content: ''; position: absolute; left: 11px; top: 5px; width: 6px; height: 13px; border: solid var(--ink); border-width: 0 3px 3px 0; transform: rotate(45deg); }
+.st-ev.now { background: var(--slate-3); box-shadow: inset 4px 0 0 #ff5f8a; padding: 12px 12px 12px 14px; }
+.st-ev.now .st-num { background: #ff5f8a; color: var(--ink); }
+.st-ev.locked { opacity: .5; }
+.st-main { display: grid; gap: 4px; min-width: 0; }
+.st-main b { font-family: var(--font-display); font-weight: 400; font-size: 24px; line-height: .9; }
+.st-goal { font-family: var(--font-label); font-size: 10px; letter-spacing: .06em; color: var(--muted); }
+.st-text { margin: 4px 0 0; font-family: var(--font-body); font-size: 18px; line-height: 1.15; color: var(--text); max-width: 62ch; }
+.st-rws { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.st-rw { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-label); font-size: 10px; letter-spacing: .06em; padding: 3px 7px; background: var(--ink); color: var(--emerald); white-space: nowrap; }
+.st-rw img { width: 14px; height: 14px; image-rendering: pixelated; }
+.st-rw.bp { color: #9fd4ff; }
+.st-rw.ch { color: var(--rc); box-shadow: inset 0 0 0 2px var(--rc); padding: 2px 8px 2px 2px; }
+.st-rw.ch canvas { width: 24px; height: 24px; image-rendering: pixelated; }
+.st-lock { font-family: var(--font-label); font-size: 10px; letter-spacing: .08em; color: var(--muted); }
+.st-pick-box { width: min(760px, 100%); max-height: 100%; grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.st-pick-box h2 { margin: 0; }
+.st-pick-grid { min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; padding: 2px 6px 6px 2px; }
+.st-res { display: grid; gap: 4px; padding: 10px 12px; background: var(--slate-2); box-shadow: inset 4px 0 0 var(--muted); }
+.st-res.ok { box-shadow: inset 4px 0 0 var(--emerald); } .st-res.no { box-shadow: inset 4px 0 0 var(--danger); }
+.st-res b { font-family: var(--font-display); font-weight: 400; font-size: 26px; line-height: .95; }
+.st-res span { font-family: var(--font-label); font-size: 11px; letter-spacing: .06em; color: var(--muted); }
+.st-res .st-got { color: var(--gold); }
+@media (max-width: 720px) { .st-squad { grid-template-columns: 1fr; } .st-ev { grid-template-columns: 30px minmax(0, 1fr) auto; } .st-rws { grid-column: 2 / -1; grid-row: 2; justify-content: flex-start; } }
+@media (max-width: 420px) { .st-intro { grid-template-columns: 1fr; } }
 .dl-card { background: var(--slate-2); padding: 12px; display: grid; gap: 8px; }
 .dl-card > div { display: grid; gap: 6px; justify-items: start; }
 .dl-big { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; color: var(--gold); }
@@ -1134,6 +1206,8 @@ body.touch .howto .touchsec { order: -1; }
   .menu .btn { font-size: 22px; padding: 4px 10px 7px; gap: 8px; }
   .menu .btn.play { grid-column: 1 / -1; font-size: 30px; padding: 4px 14px 7px; }
   .menu .btn.friends { grid-column: 1 / -1; } /* PLAY ONLINE sits above PLAY (owner), full width too */
+  .menu .duo { display: contents; } .menu .duo .btn { display: flex; padding: 4px 10px 7px; }
+  .spot { gap: 6px; } .menu .btn.spot-main { padding: 4px 8px 9px 12px; gap: 6px; } .spot-in { gap: 8px; } .spot-in img { width: 22px; height: 22px; padding: 3px; } .spot-tag, .spot-go { display: none; } .spot-t b { font-size: 20px; } .menu .btn.spot-all { font-size: 13px; padding: 4px 6px 6px; } .spot-dots { left: 12px; bottom: 3px; }
   .menu .btn .sub { font-size: 10px; }
   .menu .btn.ghost { font-size: 18px; padding: 2px 3px; }
   .menu .btn.ghost.daily { padding-right: 13px; }
@@ -1280,7 +1354,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], topUpOff: false, tutorial: false, onboarded: false, tips: [], // topUpOff: START OVER was pressed, so the tester pack no longer refills everything by itself
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], topUpOff: false, story: { done: [] }, squad: {}, tutorial: false, onboarded: false, tips: [], // topUpOff: START OVER was pressed, so the tester pack no longer refills everything by itself
       posFor: null, fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
@@ -1348,6 +1422,8 @@ const Save = {
     });
     out.preset = Number.isInteger(out.preset) && out.preset >= 0 && out.preset < out.presets.length && out.presets[out.preset].s ? out.preset : -1;
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
+    out.story = { done: out.story && Array.isArray(out.story.done) ? [...new Set(out.story.done.filter((x) => typeof x === 'string'))] : [] }; // STORY: the events you finished
+    out.squad = out.squad && typeof out.squad === 'object' && !Array.isArray(out.squad) ? Object.fromEntries(Object.entries(out.squad).filter(([k, v]) => ['ST', 'MID', 'DEF'].includes(k) && typeof v === 'string')) : {}; // your team in STORY matches
     out.topUpOff = !!out.topUpOff; out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
     out.tips = Array.isArray(out.tips) ? out.tips.filter((t) => typeof t === 'string' && t.length < 16).slice(0, 20) : []; // the first-match tips you have seen
@@ -1384,6 +1460,7 @@ const Save = {
     const d = this.data;
     codeTopUp(d); // the tester pack keeps up with new styles, Flows and skins
     d.styles = d.styles.filter((s) => STYLES[s]);
+    for (const k of Object.keys(d.squad)) if (!d.styles.includes(d.squad[k]) || STYLES[d.squad[k]].gk) delete d.squad[k]; // only characters you own
     if (!d.styles.includes('ROOKIE')) d.styles.unshift('ROOKIE');
     d.flows = d.flows.filter((f) => FLOWS[f]);
     if (d.spunStyle && (!STYLES[d.spunStyle] || d.styles.includes(d.spunStyle))) d.spunStyle = null;
@@ -2072,6 +2149,8 @@ function makeBallGeometry() {
 /* ---------- UI icons (pixel maps rendered to data URLs) ---------- */
 const ICON_MAPS = {
   // the mode menus (MODE_ART in 07_data.js)
+  blaster: ['............', '............', '.kkkkkkkkkk.', 'kgggggggggYk', 'kssssssssskk', '.kkkssskkk..', '...ksAk.....', '...kssk.....', '...kssk.....', '...kkkk.....', '............', '............'],
+  scatter: ['............', '............', '.kkkkkkkkkk.', 'kggggggggYYk', 'kssssssssYYk', 'kggggggggYYk', '.kkkkssskkk.', '....ksAk....', '....kssk....', '....kkkk....', '............', '............'],
   ball: ['............', '....kkkk....', '..kkwwwwkk..', '.kwwwkkwwwk.', '.kwwkkkkwwk.', 'kwwwkkkkwwwk', 'kkwwwkkwwwkk', 'kkkwwwwwwkkk', '.kkwwwwwwkk.', '.kwwwkkwwwk.', '..kkwkkwkk..', '....kkkk....'],
   dice: ['............', '.kkkkkkkkkk.', '.kwwwwwwwwk.', '.kwAAwwwwwk.', '.kwAAwwwwwk.', '.kwwwAAwwwk.', '.kwwwAAwwwk.', '.kwwwwwAAwk.', '.kwwwwwAAwk.', '.kwwwwwwwwk.', '.kkkkkkkkkk.', '............'],
   bomb: ['.......Y....', '......YRY...', '.......k....', '......k.....', '...kkkkk....', '..ksssssk...', '.kswwssssk..', '.kswsssssk..', '.ksssssssk..', '.ksssssssk..', '..ksssssk...', '...kkkkk....'],
@@ -3681,6 +3760,17 @@ class Player {
     if (this.accMat) this.accMat.dispose();
   }
   setState(s, dur = 0) { this.state = s; this.stateT = 0; this.stateDur = dur; }
+  /** LAWLESS: a blocky toy blaster in the right hand while you hold a gun item (barrel along the arm, past the hand) */
+  showGun(on) {
+    if (!on && !this.gunMesh) return;
+    if (!this.gunMesh && this.P) {
+      const M = Player.gunMats || (Player.gunMats = { dark: new THREE.MeshLambertMaterial({ color: lin('#2a2f45') }), light: new THREE.MeshLambertMaterial({ color: lin('#9aa1ad') }), glow: new THREE.MeshBasicMaterial({ color: lin('#ffe14d'), toneMapped: false }) });
+      const g = new THREE.Group(), box = (m, sx, sy, sz, x, y, z) => { const b = new THREE.Mesh(PlayerGeo.get().cube, m); b.scale.set(sx, sy, sz); b.position.set(x, y, z); g.add(b); };
+      box(M.dark, 0.15, 0.5, 0.17, 0, -0.8, 0.02); box(M.light, 0.16, 0.36, 0.06, 0, -0.8, 0.1); box(M.dark, 0.1, 0.12, 0.22, 0, -0.62, -0.14); box(M.glow, 0.1, 0.06, 0.1, 0, -1.07, 0.02);
+      this.P.armR.add(g); this.gunMesh = g;
+    }
+    if (this.gunMesh) this.gunMesh.visible = on;
+  }
   computeMods() {
     const m = this.mods;
     m.speed = this.speedMul; m.shot = 1; m.stamRegen = 1; m.stamDrain = 1; m.cdRate = 1; m.tackleRange = 1; m.tackleCd = 1;
@@ -4006,6 +4096,9 @@ class Player {
       }
     }
     if (this.flipT >= 0) { bx = -this.flipT * TAU; lL = -1.2; lR = 0.3; }
+    const gun = !!(this.item === 'blaster' || this.item === 'scatter' || this.gun); // LAWLESS: holding a blaster
+    if (gun && st === 'free' && !this.charging && this.kickT < 0) { aR = -1.45; aRz = 0.04; } // held up, ready to fire
+    this.showGun(gun && P.root.visible);
     const k = st === 'frozen' ? 0 : 1 - Math.exp(-ease * dt);
     const r = (o, prop, v) => { o.rotation[prop] += (v - o.rotation[prop]) * k; };
     r(P.body, 'x', bx); r(P.body, 'z', bz);
@@ -4361,12 +4454,22 @@ const STYLES = {
   AEGIS: { name: 'AEGIS', rarity: 'Legendary', gk: true, hair: '#e9e4d8', hairShape: 'long', aura: '#ffe066', blurb: 'A keeper like a golden shield. Holds every shot, leaps right across the goal and slows shots down. Its powers work in goal.', abilities: ['ironHands', 'catLeap', 'slowShot'],
     awaken: { move: { name: 'SHIELD WALL', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'GUARDIAN', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
 };
+/* STORY characters (owner, Nov 25 2026: "one time only characters"): you only get them by finishing a STORY chapter. Never in
+   spins, never on bots, never for blueprints (story: true) */
+Object.assign(STYLES, {
+  ROGUE: { name: 'ROGUE', rarity: 'Epic', story: true, hair: '#2b2b33', hairShape: 'swept', aura: '#3dffb0', blurb: 'A street winger from the back pitches. Cuts inside, nutmegs anyone and never stops running.', abilities: ['cutInside', 'nutmeg', 'burst'],
+    awaken: { move: { name: 'STREET DASH', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'BACK PITCH', desc: '+14% speed, and abilities recharge faster.', mods: { speed: 1.14, cdRate: 1.3 } } },
+  IRONCLAD: { name: 'IRONCLAD', rarity: 'Legendary', story: true, hair: '#8a8f9e', hairShape: 'flattop', aura: '#9fb4ff', blurb: 'The wall of the City League. Nothing gets past, and every clearance lands at a teammate\'s feet.', abilities: ['bodyBlock', 'clearance', 'lockdown'],
+    awaken: { move: { name: 'IRON GATE', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'UNBREAKABLE', desc: 'Nobody can tackle you, and tackles reach 40% further.', perk: 'tank', mods: { tackleRange: 1.4 } } },
+  SOLARIS: { name: 'SOLARIS', rarity: 'Generational', story: true, hair: '#ffd23d', hairShape: 'spiky', aura: '#ff9d2e', blurb: 'The champion of the Voxel Cup. Shots burn like the sun, and keepers never see them coming.', abilities: ['impactShot', 'volley', 'loaded'],
+    awaken: { move: { name: 'SOLAR FLARE', kind: 'worldstop', desc: 'Every opponent within 12 blocks freezes for 1.5s while you burst away.' }, name: 'SUPERNOVA HEART', desc: '+15% speed, +20% shot power, and abilities recharge faster.', mods: { speed: 1.15, shot: 1.2, cdRate: 1.3 } } },
+});
 /** each character's role (owner, Nov 2026: "place each character's role so one defender one winger"): shown in the Locker,
     where you start a match (until you pick another spot for that style) and where bots play it */
 const ROLES = { ST: { name: 'STRIKER', spots: ['ST', 'FW'] }, WING: { name: 'WINGER', spots: ['LW', 'RW'] }, MID: { name: 'MIDFIELD', spots: ['MID'] }, DEF: { name: 'DEFENDER', spots: ['DEF', 'DEF2'] }, GK: { name: 'KEEPER', spots: ['GK'] } };
 const ROLE_WHERE = { ST: 'STARTS UP FRONT', WING: 'STARTS ON THE WING', MID: 'STARTS IN MIDFIELD', DEF: 'STARTS AT THE BACK', GK: 'STARTS IN GOAL' };
 const STYLE_ROLE = {
-  ROOKIE: 'ST', PROWLER: 'ST', MAGNET: 'ST', THUNDER: 'ST', COMET: 'ST', RAILGUN: 'ST', NOVA: 'ST', ACE: 'ST',
+  ROOKIE: 'ST', PROWLER: 'ST', MAGNET: 'ST', THUNDER: 'ST', COMET: 'ST', RAILGUN: 'ST', NOVA: 'ST', ACE: 'ST', SOLARIS: 'ST', ROGUE: 'WING', IRONCLAD: 'DEF',
   SPRINTER: 'WING', PHANTOM: 'WING', TRICKSTER: 'WING', FEATHER: 'WING', SPARK: 'WING', VORTEX: 'WING', JESTER: 'WING', ZENITH: 'WING',
   ENFORCER: 'MID', MAESTRO: 'MID', BLITZ: 'MID', KESTREL: 'MID', CAPTAIN: 'MID', TEMPEST: 'MID',
   SHAMBLER: 'DEF', WARDEN: 'DEF', ANCHOR: 'DEF', GLACIER: 'DEF', TITAN: 'DEF', SENTINEL: 'DEF', BASTION: 'DEF',
@@ -4385,7 +4488,7 @@ function botStyle(spot) {
   for (const rar of RARITIES) {
     r -= BOT_STYLE_ODDS[rar];
     if (r < 0) {
-      const pool = STYLE_IDS.filter((k) => STYLES[k].rarity === rar && !STYLES[k].gk), mine = fit ? pool.filter((k) => roleFits(k, spot)) : pool; // bots never play a keeper style
+      const pool = STYLE_IDS.filter((k) => STYLES[k].rarity === rar && !STYLES[k].gk && !STYLES[k].story), mine = fit ? pool.filter((k) => roleFits(k, spot)) : pool; // bots never play a keeper style
       if (mine.length) return pick(mine);
       if (pool.length) return pick(pool);
     }
@@ -4889,6 +4992,9 @@ const AWAKEN_STORY = {
   TEMPEST: ['rain', 'I WAS SCARED OF STORMS', 'NOW I AM THE STORM!'],
   ACE: ['race', 'I WASTED THE LAST CHANCE OF THE FINAL', 'EVERY CHANCE COUNTS NOW!'],
   ZENITH: ['night', 'I TRAINED ALONE UNDER THE LIGHTS EVERY NIGHT', 'NOW I STAND AT THE TOP. ALONE.'],
+  ROGUE: ['park', 'NOBODY PICKED ME FOR THEIR TEAM ON THE BACK PITCH', 'NOW EVERYONE WANTS ME.'],
+  IRONCLAD: ['rain', 'WE LOST THE CITY DERBY 5 TO 0 IN THE POURING RAIN', 'NOBODY GETS PAST ME AGAIN.'],
+  SOLARIS: ['crowd', 'I WATCHED THE VOXEL CUP FINAL FROM THE TOP SEAT', 'TODAY I PLAY IN IT.'],
   BASTION: ['rain', 'THEY RAN PAST ME LIKE I WAS NOT THERE', 'NOT ONE STEP FURTHER!'],
   AEGIS: ['goal', 'I PROMISED MY TEAM I WOULD KEEP THEM SAFE', 'NOTHING GETS THROUGH MY SHIELD!'],
 };
@@ -4912,6 +5018,9 @@ const ITEMS = {
   bubble: { name: 'BUBBLE', icon: 'bubble', desc: '4s forcefield. Tackles, shoves and items bounce off you.', use(p) { p.fx.bubble = 4; return true; }, ai(p, m, c) { return c.hasBall && c.nearOpp < 3.5; } },
   wall: { name: 'BLOCK WALL', icon: 'wall', desc: 'Drops a 4-block stone wall in front of you for 6s.', use(p, m) { return m.dropHazard(p, 'wall'); }, ai(p, m, c) { return c.defending && c.carrierDist < 10 && c.carrierDist > 4 && c.dOwnGoal < 22; } },
   mine: { name: 'LANDMINE', icon: 'mine', desc: 'Plants a mine. The first opponent to step on it gets launched.', use(p, m) { return m.dropHazard(p, 'mine'); }, ai(p, m, c) { return c.chasedBy; } },
+  // guns (owner, Nov 25 2026: "add guns to lawless"): toy blasters that fire energy shots; a hit knocks you over, like the other items
+  blaster: { name: 'BLASTER', icon: 'blaster', desc: 'Three quick shots. Each one knocks over the first opponent it hits.', use(p) { p.gun = { left: 3, t: 0 }; return true; }, ai(p, m, c) { return (c.carrierOpp && c.carrierDist < 20 && c.carrierInFront) || (c.hasBall && c.nearOpp < 5); } },
+  scatter: { name: 'SCATTER BLASTER', icon: 'scatter', desc: 'Six shots in a spread up close. Knocks over everyone in front of you.', use(p, m) { return m.fireScatter(p); }, ai(p, m, c) { return c.nearOpp < 6 && (c.carrierOpp || c.hasBall); } },
   bolt: { name: 'SUPERCHARGE', icon: 'bolt', desc: '4s of +50% speed with free sprinting.', use(p) { p.fx.supercharge = 4; return true; }, ai(p, m, c) { return (c.hasBall && c.spaceAhead) || (c.chasing && c.chaseDist > 8); } },
 };
 const ITEM_IDS = Object.keys(ITEMS);
@@ -5226,7 +5335,7 @@ const FEATURED = ['heist', 'koth', 'mega', 'volleys', 'duel', 'lawless'], FEATUR
     (ICON_MAPS, drawn in its colour), its colour, one plain line, and its group in MORE MODES (none: not listed there) */
 const MODE_ART = {
   quick: { icon: 'ball', hex: '#3d7dff', line: 'A normal match.' },
-  lawless: { icon: 'boom', hex: '#ff8a2a', line: 'Item blocks drop on the pitch. Rocket fists, slime, jetpacks.' },
+  lawless: { icon: 'blaster', hex: '#ff8a2a', group: 'party', line: 'Item blocks drop on the pitch: blasters, rocket fists, slime and jetpacks. Gives rewards.' },
   chaos: { icon: 'dice', hex: '#ff5fb0', group: 'new', line: 'The rules change every 25 seconds: moon ball, turbo, giants and more.' },
   bomb: { icon: 'bomb', hex: '#ff8a2a', group: 'new', line: 'The ball is a bomb. If it goes off in your half, they score.' },
   tiny: { icon: 'goal', hex: '#7ff5bd', group: 'new', line: 'Tiny goals and no keepers. Aim carefully.' },
@@ -5245,6 +5354,66 @@ const MODE_ART = {
 };
 const MODE_GROUPS = [['new', 'NEW'], ['party', 'PARTY MODES'], ['practice', 'PRACTICE']];
 const modeIcon = (k) => iconURL(MODE_ART[k].icon, MODE_ART[k].hex);
+
+/* ---------- STORY mode (owner, Nov 25 2026: "a story mode where you progress through a story of events that give you
+   emeralds, blueprints and one time only characters", "pass to one guy who now you can control", "customise your team").
+   Chapters of events played in order. Each event is a match with its own mode, size, opponent, bot skill and goal; meet the
+   goal the first time and you get its reward. In story matches you take control of whoever you pass to (Match.switchTo),
+   and your team plays the characters you picked (Save.data.squad, SQUAD_SLOTS) ---------- */
+const STORY = [
+  { name: 'THE BACK PITCH', events: [
+    { id: 'bp1', title: 'FIRST TOUCH', mode: 'quick', size: 2, skill: 0.08, foe: 'MOSSWOOD', goal: { win: true }, reward: { em: 150 }, text: 'Your club is bottom of the league and nobody knows your name. Coach Brick gives you one chance: win a two on two on the back pitch.' },
+    { id: 'bp2', title: 'MAKE A NAME', mode: 'quick', size: 3, skill: 0.15, foe: 'HARBOUR', goal: { win: true, mine: 2 }, reward: { bp: 2 }, text: 'The coach wants goals, not excuses. Win, and score at least two of them yourself.' },
+    { id: 'bp3', title: 'THE BOMB ON THE BLOCK', mode: 'bomb', size: 3, skill: 0.2, foe: 'EMBER', goal: { win: true }, reward: { em: 250 }, text: 'Ember City play a wild game on their street: the ball is a bomb. Keep it out of your half and beat them.' },
+    { id: 'bp4', title: 'CUP DEBUT', mode: 'quick', size: 4, skill: 0.3, foe: 'NIGHTFALL', goal: { win: true, by: 2 }, reward: { style: 'ROGUE', em: 300 }, text: 'Your first real cup match. A street winger called ROGUE is watching from the fence. Win by two and ROGUE joins your team.' },
+  ] },
+  { name: 'THE CITY LEAGUE', events: [
+    { id: 'cl1', title: 'CHAOS DERBY', mode: 'chaos', size: 4, skill: 0.35, foe: 'EMBER', goal: { win: true }, reward: { bp: 3 }, text: 'The city derby, and the league has gone mad: the rules change every 25 seconds. Keep your head and win.' },
+    { id: 'cl2', title: 'NOBODY GETS THROUGH', mode: 'quick', size: 4, skill: 0.4, foe: 'MOSSWOOD', goal: { win: true, clean: true }, reward: { em: 400 }, text: 'Mosswood only score on the break. Win without letting a single goal in.' },
+    { id: 'cl3', title: 'TINY GOAL TRIALS', mode: 'tiny', size: 3, skill: 0.45, foe: 'HARBOUR', goal: { win: true, by: 3 }, reward: { bp: 4 }, text: 'Training day. Tiny goals and no keepers. Win by three to prove your aim is real.' },
+    { id: 'cl4', title: 'THE IRON WALL', mode: 'quick', size: 4, skill: 0.55, foe: 'SUNSPIRE', goal: { win: true }, reward: { style: 'IRONCLAD', em: 500 }, text: 'Sunspire have the best defender in the city, IRONCLAD. Beat them and IRONCLAD wants to play for you.' },
+  ] },
+  { name: 'THE VOXEL CUP', events: [
+    { id: 'vc1', title: 'QUARTER FINAL', mode: 'heist', size: 4, skill: 0.6, foe: 'NIGHTFALL', goal: { win: true }, reward: { bp: 5 }, text: 'The cup quarter final is played for power cores. Take theirs, keep yours, and snap them away.' },
+    { id: 'vc2', title: 'SEMI FINAL', mode: 'quick', size: 5, skill: 0.65, foe: 'EMBER', goal: { win: true, mine: 2 }, reward: { em: 600 }, text: 'Five a side in front of a full stadium. The fans want a hero: win, and score two yourself.' },
+    { id: 'vc3', title: 'THE STORM', mode: 'turbo', size: 4, skill: 0.7, foe: 'HARBOUR', goal: { win: true, by: 2 }, reward: { bp: 6 }, text: 'A storm hits the cup and everything moves faster. Win by two and you are in the final.' },
+    { id: 'vc4', title: 'THE FINAL', mode: 'quick', size: 5, skill: 0.85, foe: 'SUNSPIRE', goal: { win: true }, reward: { style: 'SOLARIS', em: 1000, bp: 10 }, text: 'The Voxel Cup final. The champion SOLARIS has never lost. Win the cup, and SOLARIS joins the best team in the land: yours.' },
+  ] },
+];
+const STORY_EVENTS = [];
+STORY.forEach((c, ci) => c.events.forEach((e) => { e.ch = ci; e.n = STORY_EVENTS.length + 1; STORY_EVENTS.push(e); }));
+/** your team in story matches: one character per kind of spot (the spot you play yourself uses your own style) */
+const SQUAD_SLOTS = [['ST', 'STRIKER'], ['MID', 'MIDFIELD'], ['DEF', 'DEFENDER']];
+const SQUAD_OF = { ST: 'ST', FW: 'ST', MID: 'MID', LW: 'MID', RW: 'MID', DEF: 'DEF', DEF2: 'DEF' }; // a line-up spot -> its squad slot
+const Story = {
+  goalText(g) { return 'WIN' + (g.by ? ' BY ' + g.by : '') + (g.mine ? ' AND SCORE ' + g.mine + ' YOURSELF' : '') + (g.clean ? ' WITHOUT LETTING ONE IN' : ''); },
+  rewardList(r) { return [r.em ? '+' + r.em + ' EMERALDS' : null, r.bp ? '+' + r.bp + ' BLUEPRINTS' : null, r.style ? 'NEW CHARACTER: ' + STYLES[r.style].name : null].filter(Boolean); },
+  done(d, e) { return d.story.done.includes(e.id); },
+  /** the event you are on: the first one not done (null when the story is finished) */
+  next(d) { return STORY_EVENTS.find((e) => !d.story.done.includes(e.id)) || null; },
+  open(d, e) { return this.done(d, e) || this.next(d) === e; },
+  /** did this match meet the event's goal? (m.myGoals: goals by whoever you were controlling) */
+  met(m, e) {
+    const r = m.result; if (!r || r.res !== 'win') return false;
+    const me = m.human ? m.human.team : 0, gf = m.score[me], ga = m.score[1 - me], g = e.goal;
+    return !(g.by && gf - ga < g.by) && !((m.myGoals || 0) < (g.mine || 0)) && !(g.clean && ga > 0);
+  },
+  /** after a story match: the reward the first time the goal is met. Returns { ok, first, got, next } */
+  finish(d, e, m) {
+    const ok = this.met(m, e), first = ok && !this.done(d, e), got = [];
+    if (first) {
+      d.story.done.push(e.id);
+      const r = e.reward, had = !!r.style && d.styles.includes(r.style); // a character you already have: 300 emeralds instead
+      if (r.em) d.emeralds += r.em;
+      if (r.bp) d.bp += r.bp;
+      if (r.style) { if (had) d.emeralds += 300; else d.styles.push(r.style); }
+      got.push(...this.rewardList(r).map((t) => (had && /^NEW CHARACTER/.test(t) ? 'YOU HAD ' + STYLES[r.style].name + ': +300 EMERALDS' : t)));
+    }
+    return { ok, first, got, e, next: ok ? this.next(d) : null };
+  },
+  /** where a story character comes from, for the Locker */
+  chapterOf(id) { const e = STORY_EVENTS.find((x) => x.reward.style === id); return e ? 'CHAPTER ' + (e.ch + 1) + ': ' + STORY[e.ch].name : 'STORY MODE'; },
+};
 /* OMEGA CORES (Nov 2026, from the "steal" games that top the charts; owner: "the team with all of them wins and the
    other team is no more"): each team's power cores sit on its own crossbar, a goal takes the other team's best one (the
    scorer catches it and locks it into the band on their arm), the team whose cores are worth more at the end wins, and the
@@ -5400,7 +5569,7 @@ const Goals = {
   /** keep a style for good */
   unlock(d, id) {
     const st = STYLES[id];
-    if (!st || d.styles.includes(id) || d.bp < BP_COST[st.rarity]) return false;
+    if (!st || st.story || d.styles.includes(id) || d.bp < BP_COST[st.rarity]) return false; // STORY characters: only from STORY mode
     d.bp -= BP_COST[st.rarity]; d.styles.push(id);
     if (d.spunStyle === id) d.spunStyle = null;
     return true;
@@ -5539,7 +5708,7 @@ function poolFor(kind, rarityIdx) {
   const rar = RARITIES[rarityIdx];
   if (kind === 'skin') return SKIN_IDS.filter((k) => SKINS[k].rarity === rar);
   const src = kind === 'style' ? STYLES : FLOWS;
-  return Object.keys(src).filter((k) => src[k].rarity === rar);
+  return Object.keys(src).filter((k) => src[k].rarity === rar && !src[k].story); // STORY characters never come from spins
 }
 
 /* ---- 08_match.js ---- */
@@ -5547,7 +5716,7 @@ function poolFor(kind, rarityIdx) {
    Match: rules, possession, kicking, tackling, abilities, goals,
    restarts, Flow, Lawless items
    ===================================================================== */
-const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {}, lightning() {}, steal() {}, bomb() {} }; // filled in by the UI
+const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {}, lightning() {}, steal() {}, bomb() {}, switched() {} }; // filled in by the UI
 const BOT_NAMES = ['BLOK', 'CUBO', 'PIXL', 'VOXX', 'CHUNK', 'BRIK', 'TILE', 'STAK', 'OBBY', 'GRAV', 'LOAM', 'SLAB', 'COBB', 'FLINT', 'QUARTZ', 'MOSS', 'DUSK', 'EMBR', 'RUNE', 'KRYS', 'BYTE', 'NOVA', 'REDS', 'TUFF'];
 const MODES = {
   // rewards: offline, only these full-time matches give rewards (online with friends, every mode does)
@@ -5596,6 +5765,7 @@ class Match {
     this.online = !!opts.humans; this.humans = []; // online: every remote player, each with their own controls (p.ctl)
     this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, awakens: 0, trailed: false }; // your moments, for the weekly challenges
     this.lastGoal = null; this.pendingEnd = false;
+    this.story = opts.story || null; this.myGoals = 0; // STORY: the event being played, and the goals you scored (whoever you controlled)
     // your club at home against a random other club; the away side changes kit if the colours clash
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
     const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
@@ -5648,7 +5818,8 @@ class Match {
         const human = opts.humans ? !!net : team === 0 && role === mine && !opts.noHuman; // you play the most attacking spot, or the one you picked
         let num = role === 'GK' ? 1 : human && !net ? 10 : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
-        const style = net ? net.style : human ? (opts.style || Save.data.style) : opts.teamStyle ? opts.teamStyle[team] : botStyle(role); // teamStyle: [home, away] for balance tests; bots mostly play a character made for their spot
+        const sq = !net && !human && team === 0 && opts.squad && opts.squad[SQUAD_OF[role]]; // STORY: the character you picked for this spot
+        const style = net ? net.style : human ? (opts.style || Save.data.style) : sq && STYLES[sq] ? sq : opts.teamStyle ? opts.teamStyle[team] : botStyle(role); // teamStyle: [home, away] for balance tests; bots mostly play a character made for their spot
         const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
         const look = net ? net.look : human ? (opts.look || Save.data.look) : botLook();
         const tone = net ? net.tone : Save.data.tone;
@@ -6076,6 +6247,7 @@ class Match {
       if (k.type === 'pass' && k.by.team === p.team) {
         k.by.stats.passes++; this.flowAdd(k.by, 12);
         this.lastPass = { from: k.by, to: p, t: this.time };
+        if (this.story && k.by === this.human && !p.isGK && !this.online) this.switchTo(p); // STORY: you take control of whoever you pass to
       } else if (k.by.team !== p.team && (k.type === 'pass' || k.type === 'shot')) {
         this.flowAdd(p, 10);
         if (p.isHuman) this.toast('INTERCEPTED', 'good', p);
@@ -7115,6 +7287,17 @@ class Match {
     c[1].material.color.copy(c[0].material.color);
     c[0].material.opacity = 0.7 + Math.sin(this.time * 6) * 0.15;
   }
+  /** STORY: you take over a teammate (the one you passed to); the player you left plays on as a bot */
+  switchTo(p) {
+    const h = this.human;
+    if (!h || p === h || p.team !== h.team) return;
+    h.isHuman = false; h.charging = false; h.charge = 0; h.passHold = 0; h.shotBuffer = null; h.mx = h.mz = 0; h.callT = 0;
+    if (h.ai) h.ai.wantShot = null;
+    p.isHuman = true; p.charging = false; if (p.ai) p.ai.wantShot = null;
+    this.human = p; if (this.caller === h) this.caller = p;
+    this.label(p, 'YOU', '#ffcb3d', 1.2);
+    Hud.switched(p);
+  }
   /** CHAOS: the twist on now (CHAOS_TWISTS), or null */
   twist() { return this.chaos && this.chaos.on ? CHAOS_TWISTS[this.chaos.on] : null; }
   /** CHAOS: a twist for CHAOS_LEN seconds, then CHAOS_GAP seconds of normal football, then another (never the same twice) */
@@ -7359,6 +7542,7 @@ class Match {
       scorer.charging = false;
     }
     this.lastGoal = { team, scorer, assister, own };
+    if (scorer && scorer === this.human) this.myGoals++; // STORY goals like "score 2 yourself"
     if (this.heist && this.heist.last && !this.pendingEnd) { const L = this.heist.last; this.heistPower(team, L.jack ? HEIST_JACK : L.r, scorer); } // the core's power
     if (scorer && scorer.isHuman && k && (k.type === 'shot' || k.type === 'header')) {
       const F = this.featsOf(scorer);
@@ -7527,6 +7711,7 @@ class Match {
         }
       }
     }
+    this.updateGuns(dt);
     for (let i = this.projectiles.length - 1; i >= 0; i--) if (this.updateProjectile(this.projectiles[i], dt)) { this.drop(this.projectiles[i].mesh); this.projectiles.splice(i, 1); }
     for (let i = this.hazards.length - 1; i >= 0; i--) if (this.updateHazard(this.hazards[i], dt)) { this.drop(this.hazards[i].mesh, this.hazards[i].type === 'wall'); this.hazards.splice(i, 1); }
   }
@@ -7536,11 +7721,26 @@ class Match {
     if (it.use(p, this)) { this.label(p, it.name, '#ffcb3d'); p.item = null; Sfx.zap(); return true; }
     return false;
   }
-  fireProjectile(p, type) {
+  /** LAWLESS SCATTER BLASTER: six shots in a spread in front of you */
+  fireScatter(p) {
+    for (let i = 0; i < 6; i++) this.fireProjectile(p, 'pellet', (i - 2.5) * 0.11);
+    if (this.involvesHuman(p)) Shake.add(0.25);
+    return true;
+  }
+  /** LAWLESS BLASTER: its three shots, one after another (p.gun from the item) */
+  updateGuns(dt) {
+    for (const p of this.players) {
+      if (!p.gun) continue;
+      if (p.state === 'down' || p.state === 'frozen' || this.phase !== 'play') { p.gun = null; continue; }
+      p.gun.t -= dt;
+      if (p.gun.t <= 0) { this.fireProjectile(p, 'blast'); p.gun.t = 0.14; if (--p.gun.left <= 0) p.gun = null; }
+    }
+  }
+  fireProjectile(p, type, spread = 0) {
     const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
     let dx = p.isHuman ? Math.sin(this.camYaw) : fx, dz = p.isHuman ? Math.cos(this.camYaw) : fz;
     let target = null;
-    if (type === 'fist' || type === 'snow') {
+    if (type === 'fist' || type === 'snow' || type === 'blast') {
       let bd = 1e9;
       for (const o of this.opponents(p)) {
         const ox = o.pos.x - p.pos.x, oz = o.pos.z - p.pos.z, d = Math.hypot(ox, oz);
@@ -7552,18 +7752,21 @@ class Match {
       }
       if (target) { const ox = target.pos.x - p.pos.x, oz = target.pos.z - p.pos.z, d = Math.hypot(ox, oz) || 1; dx = ox / d; dz = oz / d; }
     }
-    const mat = type === 'boom' ? new THREE.MeshLambertMaterial({ map: World.T.boom }) : type === 'snow' ? new THREE.MeshLambertMaterial({ color: lin('#f4fbff') }) : new THREE.MeshLambertMaterial({ color: lin('#e0302a'), emissive: lin('#5a0000') });
+    if (spread) { const c = Math.cos(spread), s = Math.sin(spread), x = dx * c + dz * s; dz = dz * c - dx * s; dx = x; }
+    const gunShot = type === 'blast' || type === 'pellet';
+    const mat = gunShot ? new THREE.MeshBasicMaterial({ color: lin('#ffe14d'), toneMapped: false }) : type === 'boom' ? new THREE.MeshLambertMaterial({ map: World.T.boom }) : type === 'snow' ? new THREE.MeshLambertMaterial({ color: lin('#f4fbff') }) : new THREE.MeshLambertMaterial({ color: lin('#e0302a'), emissive: lin('#5a0000') });
     const mesh = new THREE.Mesh(PlayerGeo.get().cube, mat);
-    const sz = type === 'boom' ? 0.7 : type === 'snow' ? 0.36 : 0.55; mesh.scale.set(sz, sz, sz); mesh.castShadow = true;
+    const sz = type === 'boom' ? 0.7 : type === 'snow' ? 0.36 : type === 'blast' ? 0.24 : type === 'pellet' ? 0.17 : 0.55; mesh.scale.set(sz, sz, gunShot ? sz * 2.2 : sz); mesh.castShadow = !gunShot;
     this.scene.add(mesh);
     const pr = { type, owner: p, target, t: 0, mesh, pos: V3(p.pos.x + dx * 0.8, 1.3, p.pos.z + dz * 0.8), vel: V3() };
     if (type === 'boom') {
       const aimD = p.isHuman ? clamp(dist2D(this.aim, p.pos), 6, 16) : clamp(dist2D(this.ball.pos, p.pos), 5, 14);
       const T = 0.85; pr.vel.set(dx * aimD / T, (0 - 1.3 + 0.5 * GRAV * T * T) / T, dz * aimD / T); pr.fuse = 1.25;
-    } else { const sp = type === 'snow' ? 30 : 24; pr.vel.set(dx * sp, 0, dz * sp); }
+    } else { const sp = type === 'snow' ? 30 : type === 'blast' ? 44 : type === 'pellet' ? 34 : 24; pr.vel.set(dx * sp, 0, dz * sp); }
+    pr.life = type === 'blast' ? 0.8 : type === 'pellet' ? 0.34 : 1.1; // how far it flies
     this.projectiles.push(pr);
-    p.kickT = 0; p.kickDur = 0.25;
-    Sfx.swoosh();
+    if (gunShot) { p.yaw = Math.atan2(dx, dz); if (type === 'blast' || spread < 0) Sfx.zap(); FX.sparks(pr.pos.x, pr.pos.y, pr.pos.z, '#ffe14d', 4, 3, 0.1, 0.2); } // the muzzle flash
+    else { p.kickT = 0; p.kickDur = 0.25; Sfx.swoosh(); }
     return true;
   }
   updateProjectile(pr, dt) {
@@ -7585,24 +7788,28 @@ class Match {
     }
     pr.pos.addScaledVector(pr.vel, dt);
     pr.mesh.position.copy(pr.pos); pr.mesh.rotation.y = Math.atan2(pr.vel.x, pr.vel.z);
-    FX.trail(pr.pos.x, pr.pos.y, pr.pos.z, pr.type === 'snow' ? '#bfeaff' : '#ff6a3c', 0.16, 0.25);
+    const gunShot = pr.type === 'blast' || pr.type === 'pellet';
+    FX.trail(pr.pos.x, pr.pos.y, pr.pos.z, pr.type === 'snow' ? '#bfeaff' : gunShot ? '#ffe14d' : '#ff6a3c', gunShot ? 0.1 : 0.16, gunShot ? 0.15 : 0.25);
     for (const o of this.opponents(pr.owner)) {
       if (o.state === 'down' || o.state === 'frozen') continue;
       if (Math.hypot(o.pos.x - pr.pos.x, o.pos.z - pr.pos.z) < 0.85 && pr.pos.y > o.pos.y && pr.pos.y < o.pos.y + 2.1) {
         const l = len2D(pr.vel.x, pr.vel.z) || 1, dx = pr.vel.x / l, dz = pr.vel.z / l;
         if (o.fx.bubble > 0) { FX.sparks(pr.pos.x, pr.pos.y, pr.pos.z, '#8fd8ff', 12, 4); Sfx.boing(); return true; }
-        if (pr.type === 'snow') {
+        if (gunShot) { // a blaster shot: knocked over (the ball pops loose)
+          this.knockDown(o, pr.type === 'blast' ? 1.3 : 1.0, dx, dz, pr.type === 'blast' ? 6 : 5, pr.owner); Sfx.punch(); FX.sparks(o.pos.x, 1.2, o.pos.z, '#ffe14d', 14, 6, 0.12, 0.35);
+          if (this.involvesHuman(o, pr.owner)) Shake.add(0.2);
+        } else if (pr.type === 'snow') {
           if (this.ball.owner === o) { const b = this.ball; b.release(); b.vel.set(dx * 3, 2, dz * 3); b.kick = { by: pr.owner, type: 'loose' }; o.pickBlock = 2; }
           this.stun(o, 2, 'frozen'); Sfx.freeze(); FX.sparks(o.pos.x, 1, o.pos.z, '#bfeaff', 20, 5);
         } else {
           this.knockDown(o, 1.8, dx, dz, 9, pr.owner); Sfx.punch(); FX.sparks(o.pos.x, 1.2, o.pos.z, '#ff6a3c', 16, 6);
           if (this.involvesHuman(o, pr.owner)) { Shake.add(0.35); TimeCtl.hitStop(0.06); }
         }
-        if (o.isHuman) this.toast(pr.type === 'snow' ? 'FROZEN' : 'KNOCKED OUT', 'bad', o);
+        if (o.isHuman) this.toast(pr.type === 'snow' ? 'FROZEN' : gunShot ? 'BLASTED' : 'KNOCKED OUT', 'bad', o);
         return true;
       }
     }
-    return pr.t > 1.1 || Math.abs(pr.pos.x) > F.BOARD_X || Math.abs(pr.pos.z) > F.BOARD_Z;
+    return pr.t > (pr.life || 1.1) || Math.abs(pr.pos.x) > F.BOARD_X || Math.abs(pr.pos.z) > F.BOARD_Z;
   }
   explode(x, z, r, owner) {
     FX.explosion(x, 0.3, z); Sfx.boom(); Shake.add(0.6);
@@ -8944,7 +9151,7 @@ const Cam = {
    ===================================================================== */
 const TOUCH_SHORT = { quickShot: 'QUICK', cutInside: 'CUT IN', snapPass: 'SNAP', armSwipe: 'SWIPE', pinpointPass: 'PINPOINT', lockdown: 'LOCKDOWN', undeadShuffle: 'SHUFFLE', graveGrab: 'GRAB', skyTrap: 'SKY TRAP', fakeVolley: 'FAKE', impactShot: 'IMPACT', overhead: 'OVERHEAD',
   oneTouch: 'ONE TOUCH', rainbow: 'RAINBOW', whiplash: 'WHIP', longBomb: 'BOMB', knuckle: 'KNUCKLE' };
-const ITEM_SHORT = { fist: 'FIST', boom: 'BOOM', slime: 'SLIME', jet: 'JETPACK', snow: 'SNOW', magnet: 'MAGNET', bubble: 'BUBBLE', wall: 'WALL', mine: 'MINE', bolt: 'SUPER' };
+const ITEM_SHORT = { blaster: 'BLASTER', scatter: 'SCATTER', fist: 'FIST', boom: 'BOOM', slime: 'SLIME', jet: 'JETPACK', snow: 'SNOW', magnet: 'MAGNET', bubble: 'BUBBLE', wall: 'WALL', mine: 'MINE', bolt: 'SUPER' };
 const T_LOOK_X = 0.0064, T_LOOK_Y = 0.0042;
 
 const Touch = {
@@ -11710,6 +11917,12 @@ const POSES = {
   SENTINEL: (t) => ({ aR: -2.6, aRz: 0.9, aL: 0.3, aLz: 0.2, hy: Math.sin(t * 0.6) * 0.5, hx: -0.05, lLz: 0.12, lRz: -0.12, ball: [0.4, -0.35] }), // a hand over the eyes, scanning the pitch
   JESTER: (t) => ({ bx: 0.6 + Math.sin(t * 1.6) * 0.1, aR: -0.6, aRz: 0.8, aL: 0.8, aLz: 0.9, hx: 0.25, lR: 0.3, ball: [0.5, 0.35] }), // taking a bow
   TEMPEST: (t) => ({ by: 0.8 + Math.sin(t * 1.8) * 0.04, aL: -2.8, aLz: 0.5, aR: -2.8, aRz: -0.5, hx: -0.5, bz: Math.sin(t * 1.1) * 0.04, ball: [0.42, -0.36] }), // arms up, calling the storm
+  ZENITH: (t) => ({ aL: -2.2, aLz: -0.2, aR: 0.5, aRz: -0.9, lL: -0.35, bz: -0.08, hx: -0.15, hy: -0.35 + Math.sin(t * 1.2) * 0.05, ball: [0.5, 0.15] }), // one arm across the sky, looking away: alone at the top
+  BASTION: () => ({ aL: -0.9, aLz: 0.2, aR: -0.9, aRz: -0.2, lLz: 0.3, lRz: -0.3, by: 0.68, bx: 0.15, hx: 0.12, ball: [0.42, 0.45] }), // both arms forward like a shield, low and wide
+  AEGIS: (t) => ({ aL: -2.4, aLz: 0.9, aR: -2.4, aRz: -0.9, by: 0.72 + Math.sin(t * 1.6) * 0.02, hx: -0.2, lL: 0.1, lR: -0.1, ball: [0.3, -0.4] }), // gloves up wide: the whole goal is covered
+  ROGUE: (t) => ({ by: 0.62, bx: 0.32, aL: -1.7, aLz: 0.3, aR: 0.7, aRz: -0.5, lL: -0.5, lR: 0.55, hx: -0.25, hy: 0.3 + Math.sin(t * 2) * 0.05, ball: [0.45, 0.5] }), // low and ready to dart off, an arm out in front
+  IRONCLAD: () => ({ by: 0.66, aL: 0.25, aLz: 1.0, aR: 0.25, aRz: -1.0, lLz: 0.38, lRz: -0.38, hx: 0.2, ball: [0.5, -0.45] }), // fists out at the sides, the widest stance there is
+  SOLARIS: (t) => ({ aR: -3.0, aRz: 0.15, aL: -0.7, aLz: 1.1, bx: -0.22, hx: -0.5, lR: 0.35, lL: -0.15, by: 0.74 + Math.sin(t * 1.4) * 0.02, ball: [0.36, -0.2] }), // leaning back, a fist to the sky: the champion
   ACE: (t) => ({ aR: -1.5, aRz: 0.25, aL: 0.3, aLz: 0.6, bz: 0.06, hx: 0.02 + Math.sin(t * 0.9) * 0.03, hy: 0.15, lR: -0.25, ball: [0.3, -0.12] }), // a hand on the hip, pointing right at you
   LYNX: (t) => ({ by: 0.5, bx: 0.55, aL: -1.0, aLz: 0.25, aR: -0.85, aRz: -0.25, lL: -0.55, lR: 0.6, hx: -0.55, bz: Math.sin(t * 2.5) * 0.05, hy: Math.sin(t * 1.3) * 0.2, ball: [0.78, 0.2] }), // crouched to pounce
 };
@@ -11929,6 +12142,95 @@ const Showcase = {
   },
 };
 
+/* ---- 11_story.js ---- */
+/* =====================================================================
+   StoryUI: the STORY screen (owner, Nov 25 2026: "a story mode where you progress through a story of events"). Your team
+   on top (a character for each kind of spot, Save.data.squad), then the chapters (STORY in 07_data.js): finished events
+   with a tick and REPLAY, the one you are on open with its story and PLAY, the rest locked. Story matches start with
+   Game.startMatch(event.mode, { story: event }); Game.finishMatch hands out the reward (Story.finish)
+   ===================================================================== */
+const StoryUI = {
+  slot: null,
+  tpl() {
+    return `<section id="scr-story" class="screen sub-screen" hidden>
+      <div class="sub-wrap">
+        <div class="sub-head"><h2>STORY</h2><button class="btn small" id="story-back" type="button">BACK</button></div>
+        <section class="panel st-intro" id="st-intro"></section>
+        <section class="panel st-team"><div class="gp-th"><h3>YOUR TEAM</h3><span class="gp-th-l">Pick who plays with you. In story matches, pass to a teammate and you take control of them.</span></div><div class="st-squad" id="st-squad"></div></section>
+        <div class="st-chapters" id="st-chapters"></div>
+      </div>
+    </section>
+    <section id="st-pick" class="overlay" hidden>
+      <div class="dialog panel st-pick-box"><h2 id="st-pick-t">STRIKER</h2><p class="md-sub">Characters you own. AUTO lets the game pick.</p><div class="st-pick-grid" id="st-pick-grid"></div><button class="btn" id="st-pick-close" type="button">CLOSE</button></div>
+    </section>`;
+  },
+  bind() {
+    const click = (id, fn) => $(id).addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); });
+    click('story-back', () => UI.show('lobby'));
+    click('st-pick-close', () => { $('st-pick').hidden = true; });
+    $('st-squad').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) { Sfx.click(); this.openPick(b.dataset.slot); } });
+    $('st-pick-grid').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-style]'); if (!b) return;
+      Sfx.equip ? Sfx.equip() : Sfx.click();
+      const d = Save.data;
+      if (b.dataset.style === 'AUTO') delete d.squad[this.slot]; else d.squad[this.slot] = b.dataset.style;
+      Save.save(); $('st-pick').hidden = true; this.render();
+    });
+    $('st-chapters').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-ev]'); if (!b) return;
+      const ev = STORY_EVENTS.find((x) => x.id === b.dataset.ev);
+      if (ev && Story.open(Save.data, ev)) { Sfx.init(); Sfx.click(); Game.startMatch(ev.mode, { story: ev }); }
+    });
+  },
+  /** the lobby button's line: how far you are */
+  sub() { const d = Save.data, n = d.story.done.length, nx = Story.next(d); return nx ? 'CHAPTER ' + (nx.ch + 1) + ' · ' + n + '/' + STORY_EVENTS.length : 'FINISHED'; },
+  rewards(r) {
+    return (r.em ? `<span class="st-rw"><img class="px" alt="" src="${iconURL('emerald')}">${r.em}</span>` : '')
+      + (r.bp ? `<span class="st-rw bp">${r.bp} BLUEPRINTS</span>` : '')
+      + (r.style ? `<span class="st-rw ch" data-port="${r.style}" style="--rc:${RARITY_HEX[STYLES[r.style].rarity]}"><i class="st-pt"></i>${STYLES[r.style].name}</span>` : '');
+  },
+  render() {
+    const d = Save.data, cur = Story.next(d), n = d.story.done.length;
+    $('st-intro').innerHTML = `<div class="st-prog"><b>${n} / ${STORY_EVENTS.length}</b><span>EVENTS DONE</span></div>
+      <p class="st-lead">${cur ? 'Take your club from the back pitch to the Voxel Cup. Every event pays out once, and three characters only come from here: ROGUE, IRONCLAD and SOLARIS.' : 'You won the Voxel Cup. Replay any event you like, the rewards are already yours.'}</p>`;
+    $('st-squad').innerHTML = SQUAD_SLOTS.map(([k, name]) => {
+      const id = d.squad[k];
+      return `<button class="st-slot" type="button" data-slot="${k}" style="--rc:${id ? RARITY_HEX[STYLES[id].rarity] : '#5a5f78'}"><i class="st-pt" data-port="${id || ''}"></i><span class="st-sl"><span class="st-role">${name}</span><b>${id ? STYLES[id].name : 'AUTO'}</b><span class="st-hint">${id ? STYLES[id].rarity.toUpperCase() + ' · ' + ROLES[STYLES[id].role].name : 'TAP TO PICK'}</span></span></button>`;
+    }).join('');
+    $('st-chapters').innerHTML = STORY.map((c, ci) => {
+      const got = c.events.filter((e) => Story.done(d, e)).length, locked = !c.events.some((e) => Story.open(d, e));
+      return `<section class="panel st-ch${locked ? ' locked' : ''}"><div class="gp-th"><h3>CHAPTER ${ci + 1}: ${c.name}</h3><span class="gp-th-l">${locked ? 'Finish the chapter before to open it.' : got + ' of ' + c.events.length + ' done'}</span></div>
+        <div class="st-evs">${c.events.map((e) => {
+          const done = Story.done(d, e), now = cur === e, st = done ? 'done' : now ? 'now' : 'locked';
+          return `<div class="st-ev ${st}"><span class="st-num">${done ? '' : e.n}</span>
+            <div class="st-main"><b>${e.title}</b><span class="st-goal">${MODES[e.mode].name} · ${e.size}V${e.size} · GOAL: ${Story.goalText(e.goal)}</span>${now ? `<p class="st-text">${e.text}</p>` : ''}</div>
+            <div class="st-rws">${this.rewards(e.reward)}</div>
+            ${done || now ? `<button class="btn small ${now ? 'blue' : ''} st-go" type="button" data-ev="${e.id}">${now ? 'PLAY' : 'REPLAY'}</button>` : '<span class="st-lock">LOCKED</span>'}</div>`;
+        }).join('')}</div></section>`;
+    }).join('');
+    for (const el of document.querySelectorAll('#scr-story [data-port]')) { // portraits of the characters
+      const id = el.dataset.port, t = el.classList.contains('st-pt') ? el : el.querySelector('.st-pt');
+      if (!t) continue;
+      const cv = id && STYLES[id] ? portraitCanvas(id, 48, { sig: true }) : iconCanvas('smile', '#a4a9cf'); cv.className = 'px';
+      t.replaceWith(cv);
+    }
+    const now = document.querySelector('#st-chapters .st-ev.now');
+    if (now) requestAnimationFrame(() => now.scrollIntoView({ block: 'nearest' }));
+  },
+  /** the characters you own for one spot of your team (no keeper styles) */
+  openPick(slot) {
+    this.slot = slot;
+    const d = Save.data, name = (SQUAD_SLOTS.find((x) => x[0] === slot) || [0, 'TEAM'])[1], cur = d.squad[slot];
+    const fits = { ST: 'ST', MID: 'MID', DEF: 'DEF' }[slot];
+    const ids = d.styles.filter((id) => STYLES[id] && !STYLES[id].gk).sort((a, b) => (STYLES[b].role === fits) - (STYLES[a].role === fits) || RARITIES.indexOf(STYLES[b].rarity) - RARITIES.indexOf(STYLES[a].rarity));
+    $('st-pick-t').textContent = name;
+    $('st-pick-grid').innerHTML = `<button class="st-card" type="button" data-style="AUTO" aria-pressed="${!cur}" style="--rc:#5a5f78"><i class="st-pt"></i><b>AUTO</b><span>THE GAME PICKS</span></button>`
+      + ids.map((id) => `<button class="st-card" type="button" data-style="${id}" aria-pressed="${cur === id}" style="--rc:${RARITY_HEX[STYLES[id].rarity]}"><i class="st-pt" data-port="${id}"></i><b>${STYLES[id].name}</b><span>${ROLES[STYLES[id].role].name}${STYLES[id].role === fits ? ' · FITS' : ''}</span></button>`).join('');
+    for (const el of document.querySelectorAll('#st-pick-grid .st-pt')) { const id = el.dataset.port, cv = id ? portraitCanvas(id, 48, { sig: true }) : iconCanvas('smile', '#a4a9cf'); cv.className = 'px'; el.replaceWith(cv); }
+    $('st-pick').hidden = false;
+  },
+};
+
 /* ---- 11_ui.js ---- */
 /* =====================================================================
    UI: lobby, HUD, scoreboard, pause, results, spins, locker, how to play
@@ -11937,12 +12239,13 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const KEYS3 = ['KeyQ', 'KeyE', 'KeyR']; // shown with KeyNames.of: Q E R, or A E R on a French keyboard
 
+const SPOT_EVERY = 3200; // ms between modes in the start screen spotlight
 const UI = {
   labels: [], toastsN: 0, bannerT: 0, spinning: false, spinKind: 'style', lockerTab: 'style', lockerSel: null, skinSlot: 'hair',
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none'; $('outro').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
@@ -11950,6 +12253,7 @@ const UI = {
     this.bind();
     Hud.toast = (t, c) => this.toast(t, c);
     Hud.bomb = (x, z) => bombBlast(x, z); // BOMB BALL
+    Hud.switched = () => { const m = Game.match; if (m && m.human) { this.buildHud(m); Touch.build(m); } }; // STORY: you took control of a teammate
     Hud.label = (p, t, c, dur) => this.flabel(p, t, c, dur);
     Hud.banner = (big, small, color, quick) => this.banner(big, small, color, quick ? 1.1 : 2.0);
     Hud.goal = (team, scorer, assister, own) => { this.goalBanner(team, scorer, assister, own); if (Touch.on && Game.match && Game.match.human && Game.match.human.team === team) Touch.buzz([30, 50, 30]); };
@@ -11982,9 +12286,9 @@ const UI = {
         <nav class="menu" aria-label="Main menu">
           <button class="btn friends" id="go-online" type="button">PLAY ONLINE <span class="sub">RANDOM OR FRIENDS</span></button>
           <button class="btn blue play" id="go-quick" type="button">PLAY <span class="sub" id="quick-sub">QUICK MATCH &middot; 4V4</span></button>
-          <button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
-          <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
-          <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub md-lob" id="modes-sub">CHAOS</span></button>
+          <div class="duo"><button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button><button class="btn story" id="go-story" type="button">STORY <span class="sub" id="story-sub">CHAPTER 1</span></button></div>
+          <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; BLASTERS</span></button>
+          <div class="spot" id="spot"><button class="btn spot-main" id="spot-play" type="button"><span class="spot-in" id="spot-in"></span><span class="spot-go">PLAY</span><span class="spot-dots" id="spot-dots"></span></button><button class="btn spot-all" id="go-modes" type="button">ALL<br>MODES</button></div>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
           <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
@@ -12123,7 +12427,8 @@ const UI = {
             <li><b>More modes</b> (the MORE MODES button): Chaos (every 25 seconds the rules change for everyone for a while: moon ball, turbo, mega goals, tiny goals, giants or rocket shots), Bomb Ball (the ball is a bomb with a 15 second fuse that starts again at every kickoff; when it goes off it knocks everyone near over, and if it was in your half the other team gets a point, so kick it into their half), Tiny Goals (small goals and no keepers), Omega Cores (each team has power cores on its crossbar; score and your player grabs their best core and locks it into the band on their arm; every core has its own power that you get when you take it, used once with the item button: Quake, Pull, Cannon, Freeze and Giant; the team whose cores are worth more at the end wins, takes every core and snaps, and the other team shatters; half way through a Generational core drops and the next goal takes it), Mega Goal (the goal is as wide as the whole pitch), King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3), Free Kicks and the Tutorial. One of them is FEATURED, and it changes every 3 hours.</li>
             <li><b>Rewards</b> (emeralds, XP, pass, GOALS) come from full-time matches: Quick Match, Ranked and Lawless. King of the Hill, Volleys and Duels are just for fun, unless you play them with friends: every friends match gives rewards. Leaving early gives nothing.</li>
             <li><b>Team size:</b> Quick Match is 4v4: a keeper, a defender, a midfielder and a striker. Lawless is 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
-            <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
+            <li><b>Lawless</b> drops item blocks on the pitch: blasters (three quick shots) and scatter blasters (a spread up close) that knock players over, rocket fists, boom blocks, slime, jetpacks. Use one with the item button. No rank change.</li>
+            <li><b>Story</b> (next to Ranked): take your club from the back pitch to the Voxel Cup, one event at a time. Each event has its own rules and goal, like win by 2 or score 2 yourself, and pays out emeralds, blueprints or a character you can only get there (ROGUE, IRONCLAD, SOLARIS) the first time you meet it. Pick a character for each spot of your team, and in story matches you take control of whoever you pass to.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
           </ul></section>
         </div>
@@ -12324,6 +12629,20 @@ const UI = {
         <button class="btn" id="md-close" type="button">CLOSE</button>
       </div>
     </section>`;
+  },
+  /** the start screen's mode spotlight (owner, Nov 25 2026: "when the featured game is displayed you should be able to choose
+      it instantly, and see a switch animation every couple of seconds"): the featured mode first, then the others in turn
+      every SPOT_EVERY ms with a flip; PLAY starts the one showing; it holds still while you point at it */
+  spotList() { const f = featuredAt().mode; return [f].concat(Object.keys(MODE_ART).filter((k) => MODE_ART[k].group && MODE_ART[k].group !== 'practice' && k !== f && MODES[k])); },
+  spotShow(step) {
+    const L = this.spotList(); this.spotI = (((this.spotI || 0) + step) % L.length + L.length) % L.length;
+    const k = L[this.spotI], A = MODE_ART[k], el = $('spot-in'), b = $('spot-play');
+    if (!el || (b.dataset.mode === k && !step)) return;
+    el.innerHTML = `<img class="px" alt="" src="${modeIcon(k)}"><span class="spot-t"><span class="spot-tag">${this.spotI === 0 ? 'FEATURED NOW' : A.group === 'new' ? 'NEW MODE' : 'TRY THIS'}</span><b>${MODES[k].name}</b></span>`;
+    if (step) this.spotPrev = { k: b.dataset.mode, t: performance.now() }; // a tap right as it flips is for the mode you were looking at
+    b.style.setProperty('--mc', A.hex); b.dataset.mode = k; b.setAttribute('aria-label', 'Play ' + MODES[k].name);
+    $('spot-dots').innerHTML = L.map((_, i) => `<i${i === this.spotI ? ' class="on"' : ''}></i>`).join('');
+    if (step) { el.classList.remove('flip'); void el.offsetWidth; el.classList.add('flip'); }
   },
   openModes() {
     const F = featuredAt(), feat = MODE_ART[F.mode] && MODES[F.mode] ? F.mode : null, online = new Set(NET_MODES.map((x) => x[0]));
@@ -12615,6 +12934,7 @@ const UI = {
     $('in-roles').addEventListener('click', (e) => { const b = e.target.closest('[data-r]'); if (b) { Sfx.click(); Game.pickRole(b.dataset.r); } });
     click('p-resume', () => Game.resume());
     Admin.bind();
+    StoryUI.bind();
     click('tut-skip', () => Game.skipTutorial());
     $('tut-gate').addEventListener('pointerdown', (e) => { e.preventDefault(); Game.gateGo(); });
     $('p-forfeit').addEventListener('click', () => {
@@ -12624,8 +12944,18 @@ const UI = {
       if (b.dataset.armed) { delete b.dataset.armed; Game.forfeit(); }
       else { b.dataset.armed = '1'; b.textContent = Game.state === 'online' ? 'CONFIRM: A BOT TAKES OVER' : Game.match && Game.match.cfg.ranked ? 'CONFIRM: -15 RP' : 'CONFIRM FORFEIT'; }
     });
-    click('r-again', () => { if (Game.lastMode === 'online') { Game.toLobby(); Net.open(); } else Game.startMatch(Game.lastMode || 'quick'); });
-    click('r-lobby', () => { if (Game.lastMode === 'online') Net.send({ t: 'leave' }); Game.toLobby(); });
+    click('r-again', () => {
+      if (Game.lastMode === 'online') { Game.toLobby(); Net.open(); }
+      else if (Game.lastStory) { const e = Game.storyNext || Game.lastStory; Game.startMatch(e.mode, { story: e }); } // STORY: the next event, or this one again
+      else Game.startMatch(Game.lastMode || 'quick');
+    });
+    click('r-lobby', () => { if (Game.lastMode === 'online') Net.send({ t: 'leave' }); const st = !!Game.lastStory; Game.toLobby(); if (st) this.show('story'); });
+    click('go-story', () => this.show('story'));
+    click('spot-play', () => { const P = this.spotPrev, k = P && performance.now() - P.t < 400 ? P.k : $('spot-play').dataset.mode; if (k && MODES[k]) Game.startMatch(k); });
+    const spot = $('spot');
+    spot.addEventListener('pointerenter', () => { this.spotHold = true; }); spot.addEventListener('pointerleave', () => { this.spotHold = false; });
+    spot.addEventListener('focusin', () => { this.spotHold = true; }); spot.addEventListener('focusout', () => { this.spotHold = false; });
+    setInterval(() => { if (this.cur === 'lobby' && !this.spotHold && !document.hidden && $('scr-modes').hidden && !$('scr-lobby').hidden) this.spotShow(1); }, SPOT_EVERY);
     $('set-q').addEventListener('click', (e) => { const q = e.target.dataset.q; if (!q) return; Save.data.settings.quality = q; Game.applyQuality(); Save.save(); this.renderPause(); });
     $('set-sens').addEventListener('input', (e) => { Save.data.settings.sens = parseFloat(e.target.value) || 1; Save.save(); });
     $('set-inv').addEventListener('click', (e) => { const v = e.target.dataset.v; if (v == null) return; Save.data.settings.invertY = v === '1'; Save.save(); this.renderPause(); });
@@ -12653,7 +12983,7 @@ const UI = {
     const was = this.cur;
     this.cur = name;
     if (was && was !== name && was !== 'hud' && name !== 'hud') { if (name === 'lobby') Sfx.close(); else Sfx.open(); } // menus whoosh in and out (matches have their own sounds)
-    const map = { lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
+    const map = { story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const t of this.ntags) t.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
@@ -12662,6 +12992,8 @@ const UI = {
     if (name === 'howto') { Save.data.howto = true; Save.save(); }
     if (name === 'profile') this.renderProfile();
     if (name === 'pass') this.renderPass();
+    if (name === 'story') StoryUI.render();
+    if (name === 'lobby') { this.spotI = 0; this.spotShow(0); } // the spotlight starts on the featured mode
     if (name === 'goals') this.renderGoals();
     Friends.place(); // the FRIENDS panel on the side: start screen, room screen and pause menu only
     Music.set(name !== 'hud'); // music in the menus; a match has the crowd
@@ -12682,8 +13014,8 @@ const UI = {
     $('go-tut').hidden = d.tutorial || d.stats.played >= 3; // new players: a way into the tutorial
     $('pro-badge').src = badgeURL(tier);
     Pass.sync(d); $('pass-sub').textContent = 'TIER ' + Pass.tier(d) + ' / ' + PASS_TIERS;
-    const fm = featuredAt().mode, nModes = Object.keys(MODE_ART).filter((k) => MODE_ART[k].group).length; // MORE MODES: how many, and the featured one
-    $('modes-sub').innerHTML = MODE_ART[fm] && MODES[fm] ? `<img class="px" alt="" src="${modeIcon(fm)}">FEATURED: ${MODES[fm].name}` : nModes + ' MODES';
+    $('story-sub').textContent = StoryUI.sub();
+    this.spotShow(0);
     $('pro-tier').textContent = TIER_NAMES[tier];
     const inTier = tier >= 5 ? 10 : Math.floor((d.rp % 100) / 10);
     $('pro-rp').innerHTML = Array.from({ length: 10 }, (_, i) => `<i class="${i < inTier ? 'on' : ''}"></i>`).join('');
@@ -13050,6 +13382,12 @@ const UI = {
     $('r-score').innerHTML = `<span style="color:${TEAM[0].hex}">${TEAM[0].short} ${r.score[0]}</span><span>:</span><span style="color:${TEAM[1].hex}">${r.score[1]} ${TEAM[1].short}</span><span class="chip">${esc(r.modeName)}</span>`;
     const s = r.human || { goals: 0, assists: 0, shots: 0, tackles: 0 };
     $('r-stats').innerHTML = [['GOALS', s.goals], ['ASSISTS', s.assists], ['SHOTS', s.shots], ['TACKLES', s.tackles]].map(([k, v]) => `<div><span class="label">${k}</span><b>${v}</b></div>`).join('');
+    if (r.story) { // STORY: did you meet the goal, and what it gave you
+      const S = r.story, e = S.e;
+      $('r-again').textContent = S.ok && S.next ? 'NEXT EVENT' : S.ok ? 'PLAY AGAIN' : 'TRY AGAIN'; $('r-lobby').textContent = 'STORY';
+      $('r-earn').innerHTML = `<div class="st-res ${S.ok ? 'ok' : 'no'}"><b>${S.ok ? 'EVENT DONE' : 'NOT YET'}: ${esc(e.title)}</b><span>GOAL: ${Story.goalText(e.goal)}</span>`
+        + (S.first ? S.got.map((t) => `<span class="st-got">${esc(t)}</span>`).join('') : S.ok ? '<span>YOU HAD THIS EVENT\'S REWARD ALREADY</span>' : '<span>TRY AGAIN. THE REWARD IS STILL WAITING</span>') + '</div>';
+    } else
     $('r-earn').innerHTML = (r.idle ? `<div class="idle-note"><span>${r.noReward === 'rank' ? 'THEY WERE FAR BELOW YOUR RANK, SO THIS MATCH GIVES NO REWARDS' : r.noReward === 'fun' ? 'THIS MODE IS JUST FOR FUN, SO IT GIVES NO REWARDS. QUICK MATCH, RANKED AND LAWLESS DO, AND SO DOES EVERY MODE WITH FRIENDS' : 'A BOT PLAYED FOR YOU, SO THIS MATCH GIVES NO REWARDS'}</span></div>` : '') + r.earn.map(([k, v]) => `<div><span>${esc(k)}</span><span>+${v}</span></div>`).join('') + `<div class="tot"><span>EMERALDS EARNED</span><span>+${r.emeralds}</span></div>`;
     if (r.ranked) {
       const tier = tierOf(r.rpAfter), moved = tierOf(r.rpBefore) !== tier;
@@ -13093,7 +13431,7 @@ const UI = {
     $('hint').hidden = true;
     $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
   },
-  hideOverlays() { $('scr-results').hidden = true; $('scr-pause').hidden = true; },
+  hideOverlays() { $('scr-results').hidden = true; $('scr-pause').hidden = true; $('st-pick').hidden = true; $('scr-modes').hidden = true; },
   /* ---------- spins ---------- */
   openSpins() { this.show('spins'); this.renderSpins(true); },
   renderSpins(resetReel) {
@@ -13514,13 +13852,16 @@ const Game = {
     let skill = difficultyFor(Save.data.rp), size = teamSizeFor(mode, Save.data.rp);
     const ramp = this.rampFor(mode);
     if (ramp) { size = Math.min(size, ramp[0]); skill = Math.min(skill, ramp[1]); }
+    const story = o.story || null, sd0 = Save.data; // STORY: the event's own size, bot skill, opponent and your team
+    if (story) { size = story.size; skill = story.skill; }
+    const away = story ? (story.foe !== sd0.club ? story.foe : pick(CLUB_IDS.filter((c) => c !== sd0.club))) : undefined;
     const intro = !o.noIntro && this.introOn(mode);
     // in goal if you chose goal (with any style: the owner plays keeper with other styles' moves), else the spot you picked
     // with this style, else its role (a keeper style: in goal)
     const sd = Save.data, pos = sd.pos === 'GK' ? 'GK' : sd.pos && sd.posFor === sd.style ? sd.pos : roleSpot(sd.style);
     applyBallLook(); // your ball
-    this.match = new Match(mode, skill, { size, role: pos, intro }); // a winger's team plays wide (Match.pickSetups)
-    this.lastMode = mode; this.ended = false;
+    this.match = new Match(mode, skill, { size, role: pos, intro, story, away, squad: story ? sd0.squad : null }); // a winger's team plays wide (Match.pickSetups)
+    this.lastMode = mode; this.lastStory = story; this.storyNext = null; this.ended = false;
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
     World.setSun(SUN_MATCH);
@@ -13597,7 +13938,8 @@ const Game = {
     }
     const res = forfeit ? 'forfeit' : m.result.res;
     const hs = forfeit ? (m.human ? Object.assign({}, m.human.stats) : { goals: 0, assists: 0, shots: 0, tackles: 0 }) : (m.result.human || { goals: 0, assists: 0, shots: 0, tackles: 0 });
-    const fun = !forfeit && !m.online && !m.cfg.rewards; // offline King of the Hill, Volleys and Duels are just for fun
+    const story = m.story && !m.online ? m.story : null; // STORY: its own rewards instead (Story.finish)
+    const fun = !forfeit && !m.online && (!m.cfg.rewards || !!story); // offline King of the Hill, Volleys and Duels are just for fun
     const idle = !forfeit && !!(m.result.idle || m.result.noReward || fun); // online: a bot played for you, or they were far below your rank: nothing
     const earned = idle ? 'forfeit' : res; // what rewards are worked out from
     const earn = [];
@@ -13627,10 +13969,12 @@ const Game = {
     B.run = res === 'win' ? B.run + 1 : 0; B.streak = Math.max(B.streak, B.run); B.peakRp = Math.max(B.peakRp, d.rp);
     const pass = Pass.award(d, m, earned, hs);
     const daily = Daily.award(d, m, earned, hs);
+    const st = story && !forfeit ? Story.finish(d, story, m) : null;
+    this.storyNext = st && st.next ? st.next : null;
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name + (!forfeit && m.result.battle ? ' · FREE KICK BATTLE ' + m.result.battle.join('-') : ''), xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && (fun ? 'fun' : m.result.noReward), daily, goalsDone });
+    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name + (!forfeit && m.result.battle ? ' · FREE KICK BATTLE ' + m.result.battle.join('-') : ''), xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && (fun ? 'fun' : m.result.noReward), daily, goalsDone, story: st });
     if (res === 'win') Sfx.fanfare(2);
     if (res === 'win' && !idle) Portal.happy();
     Portal.progress(); // a GOAL step done: their portal hears how far you are now
@@ -13741,7 +14085,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Cine, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  StoryUI, Story, STORY, STORY_EVENTS, SQUAD_SLOTS, MODE_ART, CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {
