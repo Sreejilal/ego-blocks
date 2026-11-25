@@ -230,6 +230,8 @@ class Player {
     if (fx.scent > 0 && !this.m.ball.owner) m.speed *= 1.2;
     if (fx.loaded > 0) m.shot *= 1.2;
     if (fx.giant > 0) { m.speed *= 1.2; m.shot *= 1.3; } // the GIANT core
+    if (this.isHuman && this.m.adm && this.m.adm.shot) m.shot *= 1.8; // the owner's admin panel: MEGA SHOT
+    const tw = this.m.twist ? this.m.twist() : null; if (tw && tw.shot) m.shot *= tw.shot; // CHAOS: ROCKET SHOTS
   }
   tickTimers(dt) {
     this.stateT += dt;
@@ -514,7 +516,7 @@ class Player {
     r(P.headP, 'x', hx);
     P.root.position.copy(this.pos);
     P.root.rotation.y = this.yaw + spinY; // SPIN celebration turns you round
-    const gs = this.fx.giant > 0 ? GIANT_SIZE : 1, s0 = P.root.scale.x; // the GIANT core: grow, and shrink back after
+    const gs = this.fx.giant > 0 || this.fx.big > 0 ? GIANT_SIZE : 1, s0 = P.root.scale.x; // the GIANT core (and CHAOS GIANTS): grow, and shrink back after
     if (s0 !== gs) P.root.scale.setScalar(Math.abs(gs - s0) < 0.01 ? gs : s0 + (gs - s0) * Math.min(1, dt * 7));
     const bs = clamp(1 - this.pos.y / 5, 0.3, 1) * (st === 'down' ? 1.6 : st === 'dive' ? 1.5 : 1) * P.root.scale.x;
     this.blob.position.set(this.pos.x, 0.025, this.pos.z); this.blob.scale.set(bs, 1, bs);
@@ -547,7 +549,7 @@ class Player {
       if (!this.bubble) { this.bubble = new THREE.Mesh(PlayerGeo.get().cube, new THREE.MeshBasicMaterial({ color: lin('#8fd8ff'), transparent: true, opacity: 0.22, depthWrite: false, toneMapped: false })); this.m.scene.add(this.bubble); }
       this.bubble.visible = true; this.bubble.position.set(this.pos.x, this.pos.y + 1.0, this.pos.z); this.bubble.scale.set(1.5, 2.3, 1.5); this.bubble.rotation.y = this.yaw;
     } else if (this.bubble) this.bubble.visible = false;
-    if (this.fx.giant > 0 && P.root.visible) { // a GIANT leaves a white shimmer
+    if (this.fx.giant > 0 && !(this.fx.big > 0) && P.root.visible) { // a GIANT leaves a white shimmer (not CHAOS GIANTS: everyone at once)
       this.giantT = (this.giantT || 0) - dt;
       if (this.giantT <= 0) { this.giantT = 0.07; FX.trail(this.pos.x + rand(-0.4, 0.4), this.pos.y + rand(0.6, 2.6), this.pos.z + rand(-0.4, 0.4), '#ffffff', 0.5, 0.35); }
     }

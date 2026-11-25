@@ -489,6 +489,8 @@ body.touch #invite-pop .key, body.touch #ip-pad { display: none; }
 .scorebar .orange { background: var(--orange); box-shadow: inset 0 -5px 0 var(--orange-deep); color: var(--ink); }
 .scorebar .clock { display: grid; place-items: center; min-width: 96px; padding: 2px 12px 5px; background: var(--ink); font-family: var(--font-display); font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
 .scorebar .clock small { display: block; font-family: var(--font-label); font-size: 10px; letter-spacing: .1em; color: var(--gold); }
+.scorebar .clock small.hot { color: #ff4d5e; animation: bombHot .5s steps(2) infinite; } /* BOMB BALL: the last 5 seconds of the fuse */
+@keyframes bombHot { 50% { color: #fff; } }
 .hud-em { top: calc(12px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); right: max(16px, var(--safe-area-inset-right, env(safe-area-inset-right, 0px))); }
 /* OMEGA CORES: each team's cores under the score, and the cut-in when a core is locked in */
 .vaultbar { top: 72px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 4px 8px; background: rgba(10, 10, 16, .72); box-shadow: 0 0 0 2px var(--ink); }
@@ -3646,6 +3648,8 @@ class Player {
     if (fx.scent > 0 && !this.m.ball.owner) m.speed *= 1.2;
     if (fx.loaded > 0) m.shot *= 1.2;
     if (fx.giant > 0) { m.speed *= 1.2; m.shot *= 1.3; } // the GIANT core
+    if (this.isHuman && this.m.adm && this.m.adm.shot) m.shot *= 1.8; // the owner's admin panel: MEGA SHOT
+    const tw = this.m.twist ? this.m.twist() : null; if (tw && tw.shot) m.shot *= tw.shot; // CHAOS: ROCKET SHOTS
   }
   tickTimers(dt) {
     this.stateT += dt;
@@ -3930,7 +3934,7 @@ class Player {
     r(P.headP, 'x', hx);
     P.root.position.copy(this.pos);
     P.root.rotation.y = this.yaw + spinY; // SPIN celebration turns you round
-    const gs = this.fx.giant > 0 ? GIANT_SIZE : 1, s0 = P.root.scale.x; // the GIANT core: grow, and shrink back after
+    const gs = this.fx.giant > 0 || this.fx.big > 0 ? GIANT_SIZE : 1, s0 = P.root.scale.x; // the GIANT core (and CHAOS GIANTS): grow, and shrink back after
     if (s0 !== gs) P.root.scale.setScalar(Math.abs(gs - s0) < 0.01 ? gs : s0 + (gs - s0) * Math.min(1, dt * 7));
     const bs = clamp(1 - this.pos.y / 5, 0.3, 1) * (st === 'down' ? 1.6 : st === 'dive' ? 1.5 : 1) * P.root.scale.x;
     this.blob.position.set(this.pos.x, 0.025, this.pos.z); this.blob.scale.set(bs, 1, bs);
@@ -3963,7 +3967,7 @@ class Player {
       if (!this.bubble) { this.bubble = new THREE.Mesh(PlayerGeo.get().cube, new THREE.MeshBasicMaterial({ color: lin('#8fd8ff'), transparent: true, opacity: 0.22, depthWrite: false, toneMapped: false })); this.m.scene.add(this.bubble); }
       this.bubble.visible = true; this.bubble.position.set(this.pos.x, this.pos.y + 1.0, this.pos.z); this.bubble.scale.set(1.5, 2.3, 1.5); this.bubble.rotation.y = this.yaw;
     } else if (this.bubble) this.bubble.visible = false;
-    if (this.fx.giant > 0 && P.root.visible) { // a GIANT leaves a white shimmer
+    if (this.fx.giant > 0 && !(this.fx.big > 0) && P.root.visible) { // a GIANT leaves a white shimmer (not CHAOS GIANTS: everyone at once)
       this.giantT = (this.giantT || 0) - dt;
       if (this.giantT <= 0) { this.giantT = 0.07; FX.trail(this.pos.x + rand(-0.4, 0.4), this.pos.y + rand(0.6, 2.6), this.pos.z + rand(-0.4, 0.4), '#ffffff', 0.5, 0.35); }
     }
@@ -5158,6 +5162,21 @@ const CORE_POWERS = [
   { name: 'GIANT', kind: 'giant', icon: 'buff', desc: 'Grow giant for 8s: faster, harder shots, and nobody can tackle you.', ai: (p, m, c) => c.hasBall || (c.defending && c.carrierDist < 12) },
 ];
 const GIANT_TIME = 8, GIANT_SIZE = 1.6;
+/* CHAOS (owner, Nov 25 2026: "more game modes"): every so often a twist changes the rules for everyone for CHAOS_LEN
+   seconds, then CHAOS_GAP seconds of normal football. Match.twist() is the one on now; Match.update reads ballG, goalW,
+   goalH and speed, Player.computeMods reads shot, Match.updateChaos makes everyone big (fx.big, looks only) */
+const CHAOS_FIRST = 12, CHAOS_LEN = 20, CHAOS_GAP = 6;
+const CHAOS_TWISTS = {
+  moon: { name: 'MOON BALL', sub: 'THE BALL FLOATS', hex: '#c9d2ff', ballG: 6.5 },
+  turbo: { name: 'TURBO', sub: 'EVERYTHING IS FASTER', hex: '#ff8a2a', speed: 1.3 },
+  mega: { name: 'MEGA GOALS', sub: 'THE GOALS ARE AS WIDE AS THE PITCH', hex: '#2ee38f', goalW: F.W - F.POST },
+  tiny: { name: 'TINY GOALS', sub: 'AIM CAREFULLY', hex: '#ff5fb0', goalW: 2, goalH: 2 },
+  giants: { name: 'GIANTS', sub: 'EVERYONE IS GIANT', hex: '#ffffff', big: true },
+  rockets: { name: 'ROCKET SHOTS', sub: 'EVERY SHOT FLIES', hex: '#ff4d5e', shot: 1.6 },
+};
+/* BOMB BALL: the ball is a bomb on a BOMB_FUSE second fuse that burns in open play and starts again at every kickoff.
+   When it goes off, everyone within BOMB_R is knocked over and the team in whose half it went off gives away a point */
+const BOMB_FUSE = 15, BOMB_R = 6.5;
 const heistValue = (v) => v.reduce((a, r) => a + HEIST_VAL[r], 0);
 function featuredAt(now = Date.now()) { const k = Math.floor(now / FEATURED_MS); return { mode: FEATURED[((k % FEATURED.length) + FEATURED.length) % FEATURED.length], left: (k + 1) * FEATURED_MS - now }; }
 
@@ -5423,7 +5442,7 @@ function poolFor(kind, rarityIdx) {
    Match: rules, possession, kicking, tackling, abilities, goals,
    restarts, Flow, Lawless items
    ===================================================================== */
-const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {}, lightning() {}, steal() {} }; // filled in by the UI
+const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {}, lightning() {}, steal() {}, bomb() {} }; // filled in by the UI
 const BOT_NAMES = ['BLOK', 'CUBO', 'PIXL', 'VOXX', 'CHUNK', 'BRIK', 'TILE', 'STAK', 'OBBY', 'GRAV', 'LOAM', 'SLAB', 'COBB', 'FLINT', 'QUARTZ', 'MOSS', 'DUSK', 'EMBR', 'RUNE', 'KRYS', 'BYTE', 'NOVA', 'REDS', 'TUFF'];
 const MODES = {
   // rewards: offline, only these full-time matches give rewards (online with friends, every mode does)
@@ -5439,6 +5458,9 @@ const MODES = {
   moon: { name: 'MOON BALL', ranked: false, items: false, ballG: 6.5, tip: 'THE BALL FLOATS · JUMP FOR IT' },
   // Nov 2026 (owner: "a gamemode where the goalpost is the entire field"; and one from the new trends: the steal games)
   mega: { name: 'MEGA GOAL', ranked: false, items: false, goalW: F.W - F.POST, tip: 'THE GOAL IS AS WIDE AS THE PITCH' },
+  chaos: { name: 'CHAOS', ranked: false, items: false, chaos: true, tip: 'THE RULES CHANGE EVERY 25 SECONDS' },
+  bomb: { name: 'BOMB BALL', ranked: false, items: false, bomb: true, tip: 'THE BALL IS A BOMB · IF IT GOES OFF IN YOUR HALF, THEY SCORE' },
+  tiny: { name: 'TINY GOALS', ranked: false, items: false, goalW: 1.5, goalH: 1.75, noKeeper: true, tip: 'TINY GOALS AND NO KEEPERS · AIM CAREFULLY' },
   heist: { name: 'OMEGA CORES', ranked: false, items: false, heist: true, tip: 'SCORE TO TAKE THEIR BEST CORE AND ITS POWER · WIN AND YOU SNAP THEM AWAY' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
   freekick: { name: 'FREE KICKS', ranked: false, items: false, practice: true },
@@ -5475,6 +5497,8 @@ class Match {
     [TEAM[0], TEAM[1]] = matchSides(home, away);
     if (this.cfg.hill) this.buildHill();
     if (this.cfg.heist) this.buildHeist();
+    if (this.cfg.chaos) this.chaos = { on: null, t: CHAOS_FIRST, last: null };
+    if (this.cfg.bomb) this.bomb = { t: BOMB_FUSE };
     this.buildTeams(opts);
     // whose PASS calls make teammates look up (the human; in a test match, a bot striker that calls like a human)
     this.caller = opts.caller ? this.teams[0].find((p) => p.role === leadRole(this.rolesFor(0))) : this.autopilot ? null : this.human;
@@ -5654,6 +5678,7 @@ class Match {
   setupKickoff(team, first = false, quiet = false) {
     this.kickTeam = team; this.phase = 'kickoff'; this.phaseT = 0; this.kickDelay = first ? 2.6 : 1.7;
     this.ball.reset(0, 0); this.lastPass = null; this.pendingEnd = false;
+    if (this.bomb) this.bomb.t = BOMB_FUSE; // BOMB BALL: a new fuse at every kickoff
     for (const p of this.players) {
       const f = FORM[p.role]; let u = f[0] * PITCH_KX, v = f[1] * PITCH_KZ;
       if (p.isGK) v = -(F.L - 1.5);
@@ -5686,9 +5711,11 @@ class Match {
   /* ---------- main update ---------- */
   update(dt) {
     if (this.paused) return;
-    BALL_G = this.cfg.ballG || BALL_G0; // Moon Ball: a floaty ball (set every step: the server runs many rooms at once)
-    World.setGoal(this.cfg.goalW, this.cfg.goalH); // the same for MEGA GOAL's goals
-    if (this.cfg.speed) dt *= this.cfg.speed; // Turbo: the whole match runs faster, the clock too
+    const tw = this.twist(); // CHAOS: the twist on now changes these too
+    BALL_G = (tw && tw.ballG) || this.cfg.ballG || BALL_G0; // Moon Ball: a floaty ball (set every step: the server runs many rooms at once)
+    World.setGoal((tw && tw.goalW) || this.cfg.goalW, (tw && tw.goalH) || this.cfg.goalH); // the same for MEGA GOAL's goals
+    const speed = (this.cfg.speed || 1) * ((tw && tw.speed) || 1);
+    if (speed !== 1) dt *= speed; // Turbo: the whole match runs faster, the clock too
     this.time += dt; this.phaseT += dt;
     const ph = this.phase;
     if (ph === 'kickoff' && this.phaseT >= this.kickDelay) this.startPlay();
@@ -5698,6 +5725,8 @@ class Match {
     if ((ph === 'play' || ph === 'out') && !this.fk && !this.tut) this.tickClock(dt);
     if (this.hill && ph === 'play' && !this.fk) this.updateHill(dt);
     if (this.heist) this.updateHeist(dt);
+    if (this.chaos) this.updateChaos(dt);
+    if (this.bomb) this.updateBomb(dt);
 
     for (const p of this.players) { p.tickTimers(dt); p.computeMods(); }
     if (ph === 'play' || ph === 'out' || ph === 'goal') AI.update(this, dt);
@@ -6138,7 +6167,7 @@ class Match {
   }
   jump(p) {
     if (!p.onGround || p.state !== 'free') return false;
-    p.vel.y = 9.4; p.onGround = false; p.jumpAt = this.time; // about 2 blocks high: up to headers and volleys
+    p.vel.y = 9.4 * (p.isHuman && this.adm && this.adm.moon ? 2.1 : 1); p.onGround = false; p.jumpAt = this.time; // about 2 blocks high: up to headers and volleys (admin MOON JUMP: far higher)
     const b = this.ball;
     if (b.owner === p) {
       b.release();
@@ -6981,6 +7010,41 @@ class Match {
     c[1].material.color.copy(c[0].material.color);
     c[0].material.opacity = 0.7 + Math.sin(this.time * 6) * 0.15;
   }
+  /** CHAOS: the twist on now (CHAOS_TWISTS), or null */
+  twist() { return this.chaos && this.chaos.on ? CHAOS_TWISTS[this.chaos.on] : null; }
+  /** CHAOS: a twist for CHAOS_LEN seconds, then CHAOS_GAP seconds of normal football, then another (never the same twice) */
+  updateChaos(dt) {
+    const C = this.chaos, T = this.twist();
+    if (T && T.big) for (const p of this.players) p.fx.big = Math.max(p.fx.big || 0, 0.3); // GIANTS: everyone looks giant (no other change)
+    if (this.phase !== 'play' && this.phase !== 'out') return;
+    C.t -= dt;
+    if (C.t > 0) return;
+    if (C.on) { Hud.banner('NORMAL AGAIN', T.name + ' IS OVER', '#ffffff', true); C.on = null; C.t = CHAOS_GAP; return; }
+    C.on = C.last = pick(Object.keys(CHAOS_TWISTS).filter((k) => k !== C.last)); C.t = CHAOS_LEN;
+    const N = CHAOS_TWISTS[C.on];
+    Hud.banner('CHAOS: ' + N.name, N.sub, N.hex, true); Sfx.whistle(2); Sfx.roar(0.5);
+  }
+  /** BOMB BALL: the fuse burns in open play; at zero the ball goes off */
+  updateBomb(dt) {
+    if (this.phase === 'play') { this.bomb.t -= dt; if (this.bomb.t <= 0) { this.bombGoesOff(); return; } }
+    bombFx(this, dt);
+  }
+  /** the ball goes off: everyone near is knocked over and the team in whose half it was gives away a point (team 0 defends -Z) */
+  bombGoesOff() {
+    const b = this.ball, x = b.pos.x, z = b.pos.z, bombed = z < 0 ? 0 : 1, team = 1 - bombed;
+    if (b.owner) b.release();
+    for (const p of this.players) {
+      const dx = p.pos.x - x, dz = p.pos.z - z, d = len2D(dx, dz);
+      if (d < BOMB_R) this.knockDown(p, 1.6, dx / (d || 1), dz / (d || 1), 7);
+    }
+    b.vel.set(0, 7, 0); b.kick = null;
+    Hud.bomb(x, z);
+    this.score[team]++;
+    Hud.banner('BOOM!', 'IT WENT OFF IN ' + TEAM[bombed].name + ' HALF · +1 ' + TEAM[team].name, TEAM[team].hex);
+    this.lastGoal = { team, scorer: null, assister: null, own: false, bomb: true };
+    this.phase = 'goal'; this.phaseT = 0; this.bomb.t = BOMB_FUSE;
+    World.excite[team] = 1;
+  }
   /** OMEGA CORES: both teams start with the same cores; the score is what each team's cores are worth */
   buildHeist() {
     this.heist = { v: [HEIST_START.slice(), HEIST_START.slice()], jack: 0, last: null, cleaned: null };
@@ -7115,6 +7179,7 @@ class Match {
   keeperContact(gk) {
     const b = this.ball;
     if (!this.inOwnBox(gk) || gk.state === 'down' || gk.state === 'stun' || gk.state === 'frozen' || gk.pickBlock > 0) return;
+    if (b.kick && b.kick.homing) return; // the owner's admin panel: HOMING SHOTS go past keepers
     let ax, ay, az, bx, by, bz;
     if (gk.state === 'dive' && gk.dive) {
       const d = gk.dive;
@@ -7585,6 +7650,21 @@ class Match {
   }
 }
 
+/** BOMB BALL on screen: sparks from the lit fuse, faster and redder as it burns down, and a tick for the last 6 seconds
+    (offline from Match.updateBomb, online from Net.frame with the fuse from the snapshots) */
+function bombFx(m, dt) {
+  const B = m.bomb, b = m.ball;
+  if (!B || m.phase !== 'play') return;
+  B.fx = (B.fx || 0) - dt; B.tk = (B.tk || 0) - dt;
+  if (B.fx <= 0) { B.fx = B.t < 3 ? 0.04 : B.t < 7 ? 0.08 : 0.16; FX.sparks(b.pos.x, b.pos.y + 0.4, b.pos.z, B.t < 3 ? '#ff3d3d' : '#ffb02e', 3, 2.5, 0.08, 0.3); }
+  if (B.tk <= 0 && B.t < 6) { B.tk = B.t < 3 ? 0.25 : 0.5; Sfx.tick(); }
+}
+/** BOMB BALL: the blast where the ball went off (offline Hud.bomb, online the 'bomb' event) */
+function bombBlast(x, z) {
+  FX.sparks(x, 0.8, z, '#ffb02e', 60, 12, 0.3, 0.9); FX.sparks(x, 0.8, z, '#ff3d3d', 40, 9, 0.25, 0.7);
+  for (let i = 0; i < 3; i++) FX.after(i * 0.08, () => FX.ring(x, 0.25, z, i % 2 ? '#ffffff' : '#ffb02e', 2 + i * 2.5, 30 + i * 8));
+  FX.dirt(x, z, 0, 0, 20, 1.4); Shake.add(0.7); Sfx.boom();
+}
 /** which team won the match that just ended (-1: a draw); a free kick battle's winner comes from the result */
 function winnerOf(m) {
   const r = m.result && m.result.res, ht = m.human ? m.human.team : 0;
@@ -7978,6 +8058,7 @@ const AI = {
     if (p.item && ITEMS[p.item].ai(p, m, c) && chance(0.55)) m.useItem(p);
     if (p.corePow != null && m.phase === 'play' && CORE_POWERS[p.corePow].ai(p, m, c) && chance(0.5)) m.useCore(p); // OMEGA CORES: the power of a core it took
     if (p.state !== 'free') return;
+    if (m.bomb && m.ball.owner === p && !p.isGK && m.bomb.t < 4 && m.prog(p.team, p.pos) < 0 && m.tryShoot(p, 1, V3(clamp(p.pos.x, -10, 10), 0, m.oppGoalZ(p.team)))) return; // BOMB BALL: boot it out of our half
     if (m.ball.owner === p) this.decideCarrier(m, p, c, sk);
     else this.decideOff(m, p, c, sk);
   },
@@ -8109,7 +8190,7 @@ const AI = {
     if (sk == null) sk = m.skill(p);
     const gz = m.oppGoalZ(p.team), gk = m.keeperOf(1 - p.team);
     const side = gk && gk.pos.x > 0.5 ? -1 : gk && gk.pos.x < -0.5 ? 1 : (chance(0.5) ? 1 : -1);
-    let x = side * (corner ? rand(F.GW - 1.2, F.GW - 0.45) : rand(2.0, F.GW - 0.55)), y = corner ? rand(0.4, F.GH - 0.4) : rand(0.45, F.GH - 0.7);
+    let x = side * (corner ? rand(F.GW - 1.2, F.GW - 0.45) : rand(Math.min(2.0, F.GW * 0.35), F.GW - 0.55)), y = corner ? rand(0.4, F.GH - 0.4) : rand(0.45, F.GH - 0.7); // TINY GOALS: still inside the posts
     if (F.GW > 10) { const away = gk ? (gk.pos.x > p.pos.x ? -1 : 1) : side; x = clamp(p.pos.x + away * rand(5, 13), -F.GW + 1, F.GW - 1); } // MEGA GOAL: away from the keeper, not at a far post 30 blocks off
     const err = (1 - sk) * 2.1 + 0.4;
     x += rand(-err, err); y += rand(-err * 0.45, err * 0.45);
@@ -9299,10 +9380,14 @@ const Account = {
 };
 
 /* ---- 11_admin.js ---- */
-/* ---------- the owner's admin panel (owner, Nov 2026: "an admin mode only for me, where I can get everything and control the match") ----------
+/* ---------- the owner's admin panel (owner, Nov 2026: "an admin mode only for me, where I can get everything and control the match";
+   Nov 24: "my admin panel needs to be more OP") ----------
    Only a save that used the owner's secret code (the current 'give all' one in CODES, not the retired one) ever sees the ADMIN buttons.
    On the start screen it gives things; in the pause menu of a match against bots it controls the match.
-   Online it does nothing: the server runs those matches, and friends must get a fair game. */
+   Online it does nothing: the server runs those matches, and friends must get a fair game.
+   Switches (gold when on) stay on in `match.adm` and work every frame in `tick`; a few also live in the match code, which
+   only reads them (`adm.shot` in Player.computeMods, `adm.moon` in Match.jump, homing shots in Match.keeperContact). */
+const ADMIN_EM = [10000, 100000, 1000000];
 const Admin = {
   is() { return Save.data.codes.some((h) => CODES[h] && CODES[h].give === 'all' && !CODES[h].retired); },
   /** a match you can control: against bots, not the tutorial, not over yet */
@@ -9320,61 +9405,142 @@ const Admin = {
     let h;
     if (this.inMatch()) {
       const m = Game.match, A = m.adm || {}, me = m.human.team;
-      h = g('SCORE ' + m.score[me] + ' : ' + m.score[1 - me] + ' (YOU : THEM)', [['us+', 'MY TEAM +1'], ['us-', 'MY TEAM -1'], ['them+', 'THEM +1'], ['them-', 'THEM -1']])
-        + g('TIME LEFT ' + Math.ceil(m.clock) + ' SEC', [['t+', '+30 SEC'], ['t-', '-30 SEC']])
-        + g('POWERS', [['ball', 'BALL TO ME'], ['awaken', 'AWAKEN NOW'], ['freeze', 'FREEZE THEM', !!A.freeze], ['fast', 'SUPER SPEED', !!A.fast], ['stam', 'NEVER TIRED', !!A.stam]])
+      h = g('SCORE ' + m.score[me] + ' : ' + m.score[1 - me] + ' (YOU : THEM)', [['us+', 'MY TEAM +1'], ['us5', 'MY TEAM +5'], ['us-', 'MY TEAM -1'], ['them+', 'THEM +1'], ['them-', 'THEM -1']])
+        + g('TIME LEFT ' + Math.ceil(m.clock) + ' SEC', [['t+', '+30 SEC'], ['t-', '-30 SEC'], ['clock', 'STOP THE CLOCK', !!A.clock]])
+        + g('THE BALL', [['ball', 'BALL TO ME'], ['tele', 'TELEPORT TO THEIR GOAL'], ['goal', 'SCORE A GOAL NOW']])
+        + g('YOU (GOLD = ON)', [['god', 'GOD MODE', !!A.god], ['giant', 'GIANT', !!A.giant], ['fast', 'SUPER SPEED', !!A.fast], ['shot', 'MEGA SHOT', !!A.shot], ['homing', 'HOMING SHOTS', !!A.homing], ['magnet', 'BALL MAGNET', !!A.magnet], ['moon', 'MOON JUMP', !!A.moon], ['nocd', 'NO COOLDOWNS', !!A.nocd], ['stam', 'NEVER TIRED', !!A.stam], ['awake', 'ALWAYS AWAKE', !!A.awake]])
+        + g('SUPER MOVES (WHEN YOU GO BACK)', CORE_POWERS.slice(0, 4).map((c, i) => ['mv' + i, c.name]).concat([['awaken', 'AWAKEN NOW']]))
+        + g('THEM', [['freeze', 'FREEZE THEM', !!A.freeze], ['slow', 'SLOW THEM', !!A.slow], ['sleep', 'KEEPER ASLEEP', !!A.sleep], ['flat', 'KNOCK THEM ALL DOWN']])
+        + (m.heist ? g('OMEGA CORES', [['steal', 'TAKE THEIR BEST CORE'], ['snap', 'SNAP NOW']]) : '')
         + g('FINISH', [['win', 'WIN NOW'], ['end', 'END MATCH']]);
     } else {
       const d = Save.data;
-      h = g('EMERALDS ' + d.emeralds, [['em', '+10,000']]) + g('BLUEPRINTS ' + d.bp, [['bp', '+100']])
-        + g('LEVEL ' + levelOf(d.xp).level, [['xp', '+1 LEVEL']]) + g('RANK ' + d.rp + ' RP', [['rp+', '+100 RP'], ['rp-', '-100 RP']])
+      h = g('EMERALDS ' + d.emeralds.toLocaleString('en-US'), ADMIN_EM.map((n, i) => ['em' + (i || ''), '+' + n.toLocaleString('en-US')]))
+        + g('BLUEPRINTS ' + d.bp, [['bp', '+100'], ['bp2', '+1,000']])
+        + g('LEVEL ' + levelOf(d.xp).level, [['xp', '+1 LEVEL'], ['xp10', '+10 LEVELS']])
+        + g('RANK ' + TIER_NAMES[tierOf(d.rp)] + ' · ' + d.rp + ' RP', [['rp+', '+100 RP'], ['rp-', '-100 RP'], ['rpmax', 'MAX RANK']])
+        + g('GAME PASS TIER ' + Pass.tier(d) + ' / ' + PASS_TIERS, [['pass', '+1 TIER'], ['passmax', 'COMPLETE THE PASS']])
         + g('ITEMS', [['all', 'UNLOCK EVERYTHING']]);
     }
     $('adm-body').innerHTML = h;
   },
   say(t) { $('adm-msg').textContent = t; },
+  /** close the panel and go straight back to the match, so you see it happen */
+  back() { this.open(false); if (Game.state === 'paused') Game.resume(); },
   act(a) {
     if (!this.is()) return;
     const d = Save.data;
     if (this.inMatch()) {
-      const m = Game.match, h = m.human, me = h.team, A = m.adm || (m.adm = {});
+      const m = Game.match, h = m.human, me = h.team, A = m.adm || (m.adm = {}), side = me === 0 ? 1 : -1;
       const sc = (t, by) => { m.score[t] = Math.max(0, m.score[t] + by); };
-      if (a === 'us+') sc(me, 1); else if (a === 'us-') sc(me, -1); else if (a === 'them+') sc(1 - me, 1); else if (a === 'them-') sc(1 - me, -1);
-      else if (a === 't+') m.clock += 30;
-      else if (a === 't-') m.clock = Math.max(1, m.clock - 30);
-      else if (a === 'ball') { if (m.phase !== 'play') { this.say('WAIT FOR THE BALL TO BE IN PLAY'); return; } m.ball.reset(h.pos.x, h.pos.z); m.possess(h, true); this.say('YOU HAVE THE BALL'); }
-      else if (a === 'awaken') { if (!h.style.awaken) { this.say('YOUR STYLE HAS NO AWAKENING'); return; } A.awaken = true; this.say('YOU AWAKEN WHEN YOU RESUME'); }
-      else if (a === 'freeze' || a === 'fast' || a === 'stam') { A[a] = !A[a]; if (a === 'fast') h.speedMul = A.fast ? 1.6 : 1; }
-      else if (a === 'win' || a === 'end') {
+      const inPlay = () => { if (m.phase === 'play') return true; this.say('WAIT FOR THE BALL TO BE IN PLAY'); return false; };
+      if (a === 'us+') sc(me, 1); else if (a === 'us5') sc(me, 5); else if (a === 'us-') sc(me, -1); else if (a === 'them+') sc(1 - me, 1); else if (a === 'them-') sc(1 - me, -1);
+      else if (a === 't+') { m.clock += 30; A.clockAt = m.clock; }
+      else if (a === 't-') { m.clock = Math.max(1, m.clock - 30); A.clockAt = m.clock; }
+      else if (a === 'clock') { A.clock = !A.clock; A.clockAt = m.clock; }
+      else if (a === 'ball') { if (!inPlay()) return; m.ball.reset(h.pos.x, h.pos.z); m.possess(h, true); this.say('YOU HAVE THE BALL'); }
+      else if (a === 'tele') { // just outside their box, the ball at your feet, facing their goal
+        if (!inPlay()) return;
+        h.pos.set(0, 0, side * (F.L - 14)); h.vel.set(0, 0, 0); h.yaw = side > 0 ? 0 : Math.PI; h.setState('free');
+        m.ball.reset(h.pos.x, h.pos.z); m.possess(h, true); FX.ring(h.pos.x, 0.2, h.pos.z, '#ffcb3d', 2, 30);
+        this.back(); return;
+      } else if (a === 'goal') { // a real goal: yours, with the celebration (and the core grab in OMEGA CORES)
+        if (!inPlay()) return;
+        const b = m.ball; if (b.owner) b.release();
+        b.pos.set(0, 1, side * (F.L + 1)); b.vel.set(0, 0, 0); b.lastKicker = h; b.lastTouch = h; b.kick = { by: h, type: 'loose', t: m.time, aerial: true }; // aerial: counts in VOLLEYS ONLY too
+        this.back(); m.onGoal(side); return;
+      } else if (['god', 'giant', 'shot', 'homing', 'magnet', 'moon', 'nocd', 'stam', 'slow', 'freeze', 'sleep'].includes(a)) A[a] = !A[a];
+      else if (a === 'fast') { A.fast = !A.fast; h.speedMul = A.fast ? 1.6 : 1; }
+      else if (a === 'awake') { A.awake = !A.awake; if (A.awake && !(h.awakeT > 0) && h.style.awaken) A.awaken = true; }
+      else if (a === 'awaken') { if (!h.style.awaken) { this.say('YOUR STYLE HAS NO AWAKENING'); return; } A.awaken = true; this.back(); return; }
+      else if (a.startsWith('mv')) { A.move = +a.slice(2); this.back(); return; } // fired in tick as soon as you can move
+      else if (a === 'flat') {
+        if (!inPlay()) return;
+        for (const o of m.opponents(h)) { const dx = o.pos.x - h.pos.x, dz = o.pos.z - h.pos.z, l = len2D(dx, dz) || 1; if (o.state === 'frozen') o.setState('free'); m.knockDown(o, 2.2, dx / l, dz / l, 5, h); }
+        FX.ring(h.pos.x, 0.3, h.pos.z, '#ffffff', 8, 60); FX.ring(h.pos.x, 0.3, h.pos.z, '#ffcb3d', 14, 80); Shake.add(0.6); Sfx.boom();
+        this.back(); return;
+      } else if (a === 'steal' && m.heist) { // their best core flies to your band, with its power
+        if (!inPlay()) return;
+        m.lastGoal = { team: me, scorer: h, assister: null, own: false };
+        m.heistSteal(me); const L = m.heist.last; if (L) m.heistPower(me, L.jack ? HEIST_JACK : L.r, h);
+        this.back(); return;
+      } else if (a === 'snap' && m.heist) { // every core is yours: the match ends with your OMEGA SNAP
+        const H = m.heist; H.v[me].push(...H.v[1 - me]); H.v[1 - me] = []; H.cleaned = 1 - me;
+        m.score[0] = heistValue(H.v[0]); m.score[1] = heistValue(H.v[1]);
+        this.back(); m.endMatch(); return;
+      } else if (a === 'win' || a === 'end') {
         if (a === 'win' && m.score[me] <= m.score[1 - me]) m.score[me] = m.score[1 - me] + 1;
-        this.open(false); Game.resume(); m.endMatch(); return;
+        this.back(); m.endMatch(); return;
       } else return;
       this.render(); return;
     }
-    if (a === 'em') d.emeralds += 10000;
+    const lvl = () => { const L = levelOf(d.xp).level; let n = 0; while (levelOf(d.xp).level === L && n++ < 4000) d.xp += 25; };
+    if (a === 'em' || a === 'em1' || a === 'em2') d.emeralds += ADMIN_EM[+a.slice(2) || 0];
     else if (a === 'bp') d.bp += 100;
-    else if (a === 'xp') { const L = levelOf(d.xp).level; let n = 0; while (levelOf(d.xp).level === L && n++ < 2000) d.xp += 25; }
+    else if (a === 'bp2') d.bp += 1000;
+    else if (a === 'xp') lvl();
+    else if (a === 'xp10') for (let i = 0; i < 10; i++) lvl();
     else if (a === 'rp+') d.rp += 100;
     else if (a === 'rp-') d.rp = Math.max(0, d.rp - 100);
-    else if (a === 'all') { const n = unlockAll(d); this.say(n ? n + ' NEW ITEMS UNLOCKED' : 'YOU ALREADY HAVE EVERYTHING'); }
+    else if (a === 'rpmax') { d.rp = Math.max(d.rp, 500); d.best.peakRp = Math.max(d.best.peakRp || 0, d.rp); this.say('OBSIDIAN, THE TOP RANK'); }
+    else if (a === 'pass' || a === 'passmax') { // pass XP, and the rewards of every tier reached, like after a match
+      Pass.sync(d);
+      d.pass.xp = a === 'passmax' ? PASS_TIERS * PASS_TIER_XP : Math.min(PASS_TIERS * PASS_TIER_XP, (Pass.tier(d) + 1) * PASS_TIER_XP);
+      const got = []; while (d.pass.got < Pass.tier(d)) { d.pass.got++; got.push(Pass.grant(d, d.pass.got)); }
+      this.say(got.length ? got.length + (got.length > 1 ? ' TIERS' : ' TIER') + ' OF REWARDS ADDED' : 'THE PASS IS COMPLETE');
+    } else if (a === 'all') { const n = unlockAll(d); this.say(n ? n + ' NEW ITEMS UNLOCKED' : 'YOU ALREADY HAVE EVERYTHING'); }
     else return;
     Save.save(); UI.renderLobby(); this.render();
   },
-  /** every frame of a live match: the switches that stay on */
-  tick() {
+  /** every frame of a live match: the switches that stay on, and the moves waiting for you to go back */
+  tick(rdt = 1 / 60) {
     const m = Game.match, A = m && m.adm;
     if (!A || Game.state !== 'match' || m.online || !m.human) return;
-    const h = m.human;
+    const h = m.human, play = m.phase === 'play';
     if (A.stam) { h.stamina = 100; h.exhausted = false; }
-    if (A.awaken && m.canAct(h)) { A.awaken = false; m.activateAwaken(h); }
-    if (A.freeze || A.frozen) {
-      const on = !!A.freeze && m.phase === 'play'; // only in open play: a frozen team could never take its own kickoff
-      for (const o of m.teams[1 - h.team]) {
-        if (on && o.state !== 'frozen') { if (m.ball.owner === o) m.ball.release(); o.setState('frozen', 9999); }
-        else if (!on && o.state === 'frozen' && o.stateDur > 999) o.setState('free', 0);
-      }
-      A.frozen = on;
+    if (A.clock && A.clockAt != null && play) m.clock = A.clockAt; // the clock stands still
+    if (A.god) { h.tackleProof = Math.max(h.tackleProof, 0.25); h.fx.bubble = Math.max(h.fx.bubble || 0, 0.25); } // tackles, knocks and items bounce off
+    if (A.giant) h.fx.giant = Math.max(h.fx.giant || 0, 0.3);
+    if (A.magnet) h.fx.magnet = Math.max(h.fx.magnet || 0, 0.3);
+    if (A.nocd) {
+      for (const ab of h.abil) ab.cd = 0;
+      h.dodgeCharges = 1; h.slowRe = 0; h.tackleCd = 0;
+      if (!(h.flowT > 0)) h.flow = 100;
+      if (h.awakeT > 0) h.awakeMoveUsed = false;
     }
+    if (A.awake && h.awakeT > 0) h.awakeT = Math.max(h.awakeT, 5);
+    if (A.awaken && m.canAct(h)) { A.awaken = false; m.activateAwaken(h); }
+    if (A.move != null && play && m.canAct(h)) { // a super move from the panel: the power of a core, without the core
+      const r = A.move, keep = h.corePow; A.move = null;
+      if (CORE_POWERS[r].kind === 'bolt' && m.ball.owner !== h) { m.ball.reset(h.pos.x, h.pos.z); m.possess(h, true); } // CANNON: the ball comes to you first
+      h.corePow = r; const res = m.useCore(h); h.corePow = keep;
+      if (typeof res === 'string') m.toast(res, 'bad', h);
+    }
+    if (A.slow) for (const o of m.opponents(h)) o.fx.slowed = Math.max(o.fx.slowed || 0, 0.25);
+    if (A.homing && play) this.home(m, h, rdt);
+    if (A.freeze || A.sleep || A.frozen) { // only in open play: a frozen team could never take its own kickoff
+      const want = (o) => play && (A.freeze || (A.sleep && o.isGK));
+      for (const o of m.teams[1 - h.team]) {
+        if (want(o) && o.state !== 'frozen') { if (m.ball.owner === o) m.ball.release(); o.setState('frozen', 9999); }
+        else if (!want(o) && o.state === 'frozen' && o.stateDur > 999) o.setState('free', 0);
+      }
+      A.frozen = play && (A.freeze || A.sleep);
+    }
+  },
+  /** HOMING SHOTS: your shot steers itself into the corner away from their keeper, high under the bar, and keepers
+      cannot touch it (`kick.homing`, Match.keeperContact) */
+  home(m, h, rdt) {
+    const b = m.ball, k = b.kick;
+    if (b.owner || !k || k.by !== h || (k.type !== 'shot' && k.type !== 'header')) return;
+    const gz = m.oppGoalZ(h.team), gk = m.keeperOf(1 - h.team);
+    if (k.homeX == null) k.homeX = (gk && gk.pos.x > 0 ? -1 : 1) * (F.GW - 0.9);
+    const tx = k.homeX, ty = Math.min(F.GH - 0.7, 2.6), tz = gz + Math.sign(gz) * 1.5;
+    const dx = tx - b.pos.x, dy = ty - b.pos.y, dz = tz - b.pos.z, d = Math.hypot(dx, dy, dz) || 1;
+    const sp = Math.max(30, b.vel.length()), q = Math.min(1, rdt * 8);
+    b.vel.x += (dx / d * sp - b.vel.x) * q; b.vel.y += (dy / d * sp - b.vel.y) * q; b.vel.z += (dz / d * sp - b.vel.z) * q;
+    if (b.curve) b.curve.set(0, 0, 0);
+    k.homing = true;
+    FX.trail(b.pos.x, b.pos.y, b.pos.z, '#ffcb3d', 0.3, 0.3);
   },
 };
 
@@ -10291,7 +10457,7 @@ document.addEventListener('visibilitychange', () => Music.apply()); // quiet whi
    ===================================================================== */
 const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken', 'emote'];
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
-const NET_MODES = [['quick', 'QUICK'], ['heist', 'OMEGA CORES'], ['mega', 'MEGA GOAL'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL'], ['golden', 'GOLDEN GOAL'], ['nokeep', 'NO KEEPERS'], ['turbo', 'TURBO'], ['moon', 'MOON BALL']];
+const NET_MODES = [['quick', 'QUICK'], ['chaos', 'CHAOS'], ['bomb', 'BOMB BALL'], ['tiny', 'TINY GOALS'], ['heist', 'OMEGA CORES'], ['mega', 'MEGA GOAL'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL'], ['golden', 'GOLDEN GOAL'], ['nokeep', 'NO KEEPERS'], ['turbo', 'TURBO'], ['moon', 'MOON BALL']];
 const NET_FLY = 2.4; // online: the camera flight at the start of a match (inside the server's first kickoff wait, so nobody loses play time)
 const NET_DELAY = 0.12; // the least the picture runs behind the server (more on a jittery connection: Net.delay)
 const NET_COAST = 0.1; // a late snapshot: everything keeps moving the way it was going for up to this long instead of freezing
@@ -10316,7 +10482,10 @@ class NetMatch {
     if (this.cfg.hill) this.buildHill();
     World.setGoal(this.cfg.goalW, this.cfg.goalH); // MEGA GOAL
     if (this.cfg.heist) { this.heist = { v: [HEIST_START.slice(), HEIST_START.slice()], jack: 0 }; this.vaultView = new VaultView(this); } // OMEGA CORES: the cores come with the snapshots
+    if (this.cfg.chaos) this.chaos = { on: null }; // CHAOS: the twist comes with the snapshots (tw)
+    if (this.cfg.bomb) this.bomb = { t: BOMB_FUSE }; // BOMB BALL: the fuse too (bm)
   }
+  twist() { return this.chaos && this.chaos.on ? CHAOS_TWISTS[this.chaos.on] : null; }
   /** a friend joined mid-match and took over player i (a bot): build that player again in their style and look */
   swap(i, r, myId) {
     const old = this.players[i]; if (!old || !r) return;
@@ -10838,6 +11007,7 @@ const Net = {
     else if (e.e === 'label') { const p = P(e.i); if (p) UI.flabel(p, e.text, e.color, e.dur); }
     else if (e.e === 'goal') { nm.lastGoal = { team: e.team, scorer: P(e.s) }; UI.goalBanner(e.team, P(e.s), P(e.a), e.own); Sfx.roar(1); Sfx.whistle(1); World.excite[e.team] = 1; if (P(e.s) === nm.human) Shake.add(0.5); }
     else if (e.e === 'toast') UI.toast(e.text, e.cls);
+    else if (e.e === 'bomb') bombBlast(e.x, e.z); // BOMB BALL: it went off
     else if (e.e === 'idle') this.idleWarn('ARE YOU THERE?', 'MOVE OR PRESS ANY BUTTON. A BOT TAKES OVER IN ' + e.s, true);
     else if (e.e === 'idleok') this.idleWarn(null);
     else if (e.e === 'bot') this.idleWarn('A BOT IS PLAYING FOR YOU', 'PRESS ANY BUTTON TO PLAY AGAIN. NO REWARDS THIS MATCH.', true);
@@ -10906,6 +11076,8 @@ const Net = {
     if (nm.hill && b.hill) { const H = nm.hill; H.x = b.hill[0]; H.z = b.hill[1]; H.holder = b.hill[2]; H.mesh.position.set(H.x, 0.04, H.z); const c = H.mesh.children; c[0].material.color.copy(col(H.holder >= 0 ? TEAM[H.holder].hex : '#f5efe0')); c[1].material.color.copy(c[0].material.color); }
     if (nm.heist && b.vt) { nm.heist.v = [b.vt[0], b.vt[1]]; nm.heist.jack = b.vt[2]; nm.heist.cleaned = nm.phase === 'end' ? (!b.vt[0].length ? 0 : !b.vt[1].length ? 1 : null) : null; } // no cores left at the whistle (the winners take the rest): the OMEGA SNAP
     if (nm.vaultView) { nm.vaultView.set(nm.heist.v, nm.heist.jack); nm.vaultView.update(rdt); }
+    if (nm.chaos) { nm.chaos.on = b.tw || null; const tw = nm.twist(); World.setGoal((tw && tw.goalW) || nm.cfg.goalW, (tw && tw.goalH) || nm.cfg.goalH); } // CHAOS: MEGA or TINY GOALS
+    if (nm.bomb && b.bm != null) nm.bomb.t = b.bm;
   },
   /** remember button presses until the next send, so a quick tap is never lost */
   collect(c) {
@@ -10938,6 +11110,7 @@ const Net = {
     Input.consumeEdges();
     this.applySnapshots(rdt);
     for (const p of nm.players) { if (p.flowT > 0) FX.flow(p, p.flowId, rdt); if (p.awakeT > 0) FX.awaken(p, rdt); }
+    if (nm.bomb) bombFx(nm, rdt); // BOMB BALL: the fuse
     FX.update(rdt); Shake.update(rdt);
     const I = this.intro;
     if (I) { I.t += rdt; if (I.t >= I.fly + 0.1 || nm.phase === 'play') this.endIntro(); else Cam.intro(rdt, nm, I.t, I.yaw, I.fly); }
@@ -11671,6 +11844,7 @@ const UI = {
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
     this.bind();
     Hud.toast = (t, c) => this.toast(t, c);
+    Hud.bomb = (x, z) => bombBlast(x, z); // BOMB BALL
     Hud.label = (p, t, c, dur) => this.flabel(p, t, c, dur);
     Hud.banner = (big, small, color, quick) => this.banner(big, small, color, quick ? 1.1 : 2.0);
     Hud.goal = (team, scorer, assister, own) => { this.goalBanner(team, scorer, assister, own); if (Touch.on && Game.match && Game.match.human && Game.match.human.team === team) Touch.buzz([30, 50, 30]); };
@@ -11705,7 +11879,7 @@ const UI = {
           <button class="btn blue play" id="go-quick" type="button">PLAY <span class="sub" id="quick-sub">QUICK MATCH &middot; 4V4</span></button>
           <button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
-          <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub">OMEGA CORES &middot; MEGA GOAL</span></button>
+          <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub">CHAOS &middot; BOMB BALL &middot; OMEGA CORES</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
           <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
@@ -11841,7 +12015,7 @@ const UI = {
             <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
             <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
-            <li><b>More modes</b> (the MORE MODES button): Omega Cores (each team has power cores on its crossbar; score and your player grabs their best core and locks it into the band on their arm; every core has its own power that you get when you take it, used once with the item button: Quake, Pull, Cannon, Freeze and Giant; the team whose cores are worth more at the end wins, takes every core and snaps, and the other team shatters; half way through a Generational core drops and the next goal takes it), Mega Goal (the goal is as wide as the whole pitch), King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3), Free Kicks and the Tutorial. One of them is FEATURED, and it changes every 3 hours.</li>
+            <li><b>More modes</b> (the MORE MODES button): Chaos (every 25 seconds the rules change for everyone for a while: moon ball, turbo, mega goals, tiny goals, giants or rocket shots), Bomb Ball (the ball is a bomb with a 15 second fuse that starts again at every kickoff; when it goes off it knocks everyone near over, and if it was in your half the other team gets a point, so kick it into their half), Tiny Goals (small goals and no keepers), Omega Cores (each team has power cores on its crossbar; score and your player grabs their best core and locks it into the band on their arm; every core has its own power that you get when you take it, used once with the item button: Quake, Pull, Cannon, Freeze and Giant; the team whose cores are worth more at the end wins, takes every core and snaps, and the other team shatters; half way through a Generational core drops and the next goal takes it), Mega Goal (the goal is as wide as the whole pitch), King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3), Free Kicks and the Tutorial. One of them is FEATURED, and it changes every 3 hours.</li>
             <li><b>Rewards</b> (emeralds, XP, pass, GOALS) come from full-time matches: Quick Match, Ranked and Lawless. King of the Hill, Volleys and Duels are just for fun, unless you play them with friends: every friends match gives rewards. Leaving early gives nothing.</li>
             <li><b>Team size:</b> Quick Match is 4v4: a keeper, a defender, a midfielder and a striker. Lawless is 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
@@ -12035,7 +12209,7 @@ const UI = {
     </section>`;
   },
   openModes() {
-    const desc = { heist: 'TAKE THEIR CORES AND THEIR POWERS. WIN AND SNAP THEM AWAY', mega: 'THE GOAL IS AS WIDE AS THE WHOLE PITCH', fkkeeper: 'YOU IN GOAL. SAVE THEIR 10 FREE KICKS', koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', golden: 'THE NEXT GOAL WINS THE MATCH', nokeep: 'NO KEEPERS. SHOOT FROM ANYWHERE', turbo: 'EVERYTHING IS FASTER, THE CLOCK TOO', moon: 'THE BALL FLOATS LIKE ON THE MOON', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
+    const desc = { chaos: 'THE RULES CHANGE EVERY 25 SECONDS. MOON BALL, TURBO, GIANTS AND MORE', bomb: 'THE BALL IS A BOMB. IF IT GOES OFF IN YOUR HALF, THEY SCORE', tiny: 'TINY GOALS AND NO KEEPERS. AIM CAREFULLY', heist: 'TAKE THEIR CORES AND THEIR POWERS. WIN AND SNAP THEM AWAY', mega: 'THE GOAL IS AS WIDE AS THE WHOLE PITCH', fkkeeper: 'YOU IN GOAL. SAVE THEIR 10 FREE KICKS', koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', golden: 'THE NEXT GOAL WINS THE MATCH', nokeep: 'NO KEEPERS. SHOOT FROM ANYWHERE', turbo: 'EVERYTHING IS FASTER, THE CLOCK TOO', moon: 'THE BALL FLOATS LIKE ON THE MOON', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
     const feat = featuredAt().mode;
     $('md-grid').innerHTML = Object.keys(desc).map((k) => `<button class="btn md-card" type="button" data-mode="${k}">${MODES[k].name}${k === feat ? '<span class="tag">FEATURED</span>' : ''}<span class="sub">${desc[k]}</span></button>`).join('');
     $('scr-modes').hidden = false;
@@ -12457,7 +12631,12 @@ const UI = {
     else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL');
       const sec = Math.ceil(m.goldenClock), hot = sec <= 15 && sec > 0; $('clock').classList.toggle('stress', hot); // owner: "gives you that stress"
       if (hot && sec !== this.goldTick) { this.goldTick = sec; Sfx.tick(); } }
-    else { this.setText('clock', fmtTime(m.clock)); this.setText('clock-sub', m.heist && m.heist.jack === 1 ? 'JACKPOT OUT' : ''); }
+    else {
+      const tw = m.twist ? m.twist() : null; // CHAOS: the twist on now; BOMB BALL: the fuse
+      this.setText('clock', fmtTime(m.clock));
+      this.setText('clock-sub', m.heist && m.heist.jack === 1 ? 'JACKPOT OUT' : m.bomb ? 'BOMB ' + Math.max(0, Math.ceil(m.bomb.t)) : tw ? tw.name : '');
+      $('clock-sub').classList.toggle('hot', !!(m.bomb && m.bomb.t < 5 && m.phase === 'play'));
+    }
     if (m.heist) { // OMEGA CORES: each team's cores in their rarity colours, best first
       const H = m.heist, key = H.v[0].join() + '|' + H.v[1].join();
       if (this.hudCache.vault !== key) { this.hudCache.vault = key; const sq = (a) => a.slice().sort((x, y) => y - x).map((r) => `<i style="background:${RARITY_HEX[RARITIES[r]]}"></i>`).join(''); $('vault0').innerHTML = sq(H.v[0]); $('vault1').innerHTML = sq(H.v[1]); }
@@ -13359,7 +13538,7 @@ const Game = {
     Input.pollPad();
     Net.inviteKeys();
     PadNav.tick(rdt);
-    Admin.tick();
+    Admin.tick(rdt);
     Touch.sync();
     const m = this.match;
     if (m && (this.state === 'match' || this.state === 'paused' || this.state === 'results' || this.state === 'replay')) {

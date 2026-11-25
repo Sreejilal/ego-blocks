@@ -30,7 +30,7 @@ const PORT = 18795, URL = 'http://localhost:' + PORT + '/';
     await B.goto(link);
     for (let i = 0; i < 40; i++) { if (await B.evaluate(() => !!(window.EGO && EGO.Net.room)).catch(() => false)) break; await sleep(250); }
     const modes = await A.evaluate(() => [...document.querySelectorAll('#on-mode [data-m]')].map((b) => b.dataset.m));
-    check('the room offers 10 modes', modes.length === 10 && ['heist', 'mega', 'golden', 'nokeep', 'turbo', 'moon'].every((m) => modes.includes(m)), modes);
+    check('the room offers 13 modes', modes.length === 13 && ['chaos', 'bomb', 'tiny', 'heist', 'mega', 'golden', 'nokeep', 'turbo', 'moon'].every((m) => modes.includes(m)), modes);
     const fit = await A.evaluate(() => { const s = document.getElementById('scr-online'); return { sw: s.scrollWidth, cw: s.clientWidth, cut: [...document.querySelectorAll('#on-mode [data-m]')].filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.dataset.m) }; });
     check('the mode buttons fit on a laptop', fit.sw <= fit.cw + 1 && fit.cut.length === 0, fit);
     for (const m of ['golden', 'turbo', 'moon', 'nokeep']) {

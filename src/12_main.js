@@ -313,7 +313,7 @@ const Game = {
     Input.pollPad();
     Net.inviteKeys();
     PadNav.tick(rdt);
-    Admin.tick();
+    Admin.tick(rdt);
     Touch.sync();
     const m = this.match;
     if (m && (this.state === 'match' || this.state === 'paused' || this.state === 'results' || this.state === 'replay')) {

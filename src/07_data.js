@@ -950,6 +950,21 @@ const CORE_POWERS = [
   { name: 'GIANT', kind: 'giant', icon: 'buff', desc: 'Grow giant for 8s: faster, harder shots, and nobody can tackle you.', ai: (p, m, c) => c.hasBall || (c.defending && c.carrierDist < 12) },
 ];
 const GIANT_TIME = 8, GIANT_SIZE = 1.6;
+/* CHAOS (owner, Nov 25 2026: "more game modes"): every so often a twist changes the rules for everyone for CHAOS_LEN
+   seconds, then CHAOS_GAP seconds of normal football. Match.twist() is the one on now; Match.update reads ballG, goalW,
+   goalH and speed, Player.computeMods reads shot, Match.updateChaos makes everyone big (fx.big, looks only) */
+const CHAOS_FIRST = 12, CHAOS_LEN = 20, CHAOS_GAP = 6;
+const CHAOS_TWISTS = {
+  moon: { name: 'MOON BALL', sub: 'THE BALL FLOATS', hex: '#c9d2ff', ballG: 6.5 },
+  turbo: { name: 'TURBO', sub: 'EVERYTHING IS FASTER', hex: '#ff8a2a', speed: 1.3 },
+  mega: { name: 'MEGA GOALS', sub: 'THE GOALS ARE AS WIDE AS THE PITCH', hex: '#2ee38f', goalW: F.W - F.POST },
+  tiny: { name: 'TINY GOALS', sub: 'AIM CAREFULLY', hex: '#ff5fb0', goalW: 2, goalH: 2 },
+  giants: { name: 'GIANTS', sub: 'EVERYONE IS GIANT', hex: '#ffffff', big: true },
+  rockets: { name: 'ROCKET SHOTS', sub: 'EVERY SHOT FLIES', hex: '#ff4d5e', shot: 1.6 },
+};
+/* BOMB BALL: the ball is a bomb on a BOMB_FUSE second fuse that burns in open play and starts again at every kickoff.
+   When it goes off, everyone within BOMB_R is knocked over and the team in whose half it went off gives away a point */
+const BOMB_FUSE = 15, BOMB_R = 6.5;
 const heistValue = (v) => v.reduce((a, r) => a + HEIST_VAL[r], 0);
 function featuredAt(now = Date.now()) { const k = Math.floor(now / FEATURED_MS); return { mode: FEATURED[((k % FEATURED.length) + FEATURED.length) % FEATURED.length], left: (k + 1) * FEATURED_MS - now }; }
 

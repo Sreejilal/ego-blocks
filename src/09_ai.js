@@ -198,6 +198,7 @@ const AI = {
     if (p.item && ITEMS[p.item].ai(p, m, c) && chance(0.55)) m.useItem(p);
     if (p.corePow != null && m.phase === 'play' && CORE_POWERS[p.corePow].ai(p, m, c) && chance(0.5)) m.useCore(p); // OMEGA CORES: the power of a core it took
     if (p.state !== 'free') return;
+    if (m.bomb && m.ball.owner === p && !p.isGK && m.bomb.t < 4 && m.prog(p.team, p.pos) < 0 && m.tryShoot(p, 1, V3(clamp(p.pos.x, -10, 10), 0, m.oppGoalZ(p.team)))) return; // BOMB BALL: boot it out of our half
     if (m.ball.owner === p) this.decideCarrier(m, p, c, sk);
     else this.decideOff(m, p, c, sk);
   },
@@ -329,7 +330,7 @@ const AI = {
     if (sk == null) sk = m.skill(p);
     const gz = m.oppGoalZ(p.team), gk = m.keeperOf(1 - p.team);
     const side = gk && gk.pos.x > 0.5 ? -1 : gk && gk.pos.x < -0.5 ? 1 : (chance(0.5) ? 1 : -1);
-    let x = side * (corner ? rand(F.GW - 1.2, F.GW - 0.45) : rand(2.0, F.GW - 0.55)), y = corner ? rand(0.4, F.GH - 0.4) : rand(0.45, F.GH - 0.7);
+    let x = side * (corner ? rand(F.GW - 1.2, F.GW - 0.45) : rand(Math.min(2.0, F.GW * 0.35), F.GW - 0.55)), y = corner ? rand(0.4, F.GH - 0.4) : rand(0.45, F.GH - 0.7); // TINY GOALS: still inside the posts
     if (F.GW > 10) { const away = gk ? (gk.pos.x > p.pos.x ? -1 : 1) : side; x = clamp(p.pos.x + away * rand(5, 13), -F.GW + 1, F.GW - 1); } // MEGA GOAL: away from the keeper, not at a far post 30 blocks off
     const err = (1 - sk) * 2.1 + 0.4;
     x += rand(-err, err); y += rand(-err * 0.45, err * 0.45);

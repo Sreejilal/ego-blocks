@@ -7,7 +7,7 @@
    ===================================================================== */
 const NET_STATES = ['free', 'dash', 'slide', 'dive', 'down', 'stun', 'frozen', 'celebrate', 'kickoff', 'hold', 'windup', 'awaken', 'emote'];
 const NET_KICKS = [null, 'backheel', 'rabona', 'outside', 'nolook', 'throw', 'strike'];
-const NET_MODES = [['quick', 'QUICK'], ['heist', 'OMEGA CORES'], ['mega', 'MEGA GOAL'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL'], ['golden', 'GOLDEN GOAL'], ['nokeep', 'NO KEEPERS'], ['turbo', 'TURBO'], ['moon', 'MOON BALL']];
+const NET_MODES = [['quick', 'QUICK'], ['chaos', 'CHAOS'], ['bomb', 'BOMB BALL'], ['tiny', 'TINY GOALS'], ['heist', 'OMEGA CORES'], ['mega', 'MEGA GOAL'], ['koth', 'KING OF THE HILL'], ['volleys', 'VOLLEYS ONLY'], ['duel', '1V1 DUEL'], ['golden', 'GOLDEN GOAL'], ['nokeep', 'NO KEEPERS'], ['turbo', 'TURBO'], ['moon', 'MOON BALL']];
 const NET_FLY = 2.4; // online: the camera flight at the start of a match (inside the server's first kickoff wait, so nobody loses play time)
 const NET_DELAY = 0.12; // the least the picture runs behind the server (more on a jittery connection: Net.delay)
 const NET_COAST = 0.1; // a late snapshot: everything keeps moving the way it was going for up to this long instead of freezing
@@ -32,7 +32,10 @@ class NetMatch {
     if (this.cfg.hill) this.buildHill();
     World.setGoal(this.cfg.goalW, this.cfg.goalH); // MEGA GOAL
     if (this.cfg.heist) { this.heist = { v: [HEIST_START.slice(), HEIST_START.slice()], jack: 0 }; this.vaultView = new VaultView(this); } // OMEGA CORES: the cores come with the snapshots
+    if (this.cfg.chaos) this.chaos = { on: null }; // CHAOS: the twist comes with the snapshots (tw)
+    if (this.cfg.bomb) this.bomb = { t: BOMB_FUSE }; // BOMB BALL: the fuse too (bm)
   }
+  twist() { return this.chaos && this.chaos.on ? CHAOS_TWISTS[this.chaos.on] : null; }
   /** a friend joined mid-match and took over player i (a bot): build that player again in their style and look */
   swap(i, r, myId) {
     const old = this.players[i]; if (!old || !r) return;
@@ -554,6 +557,7 @@ const Net = {
     else if (e.e === 'label') { const p = P(e.i); if (p) UI.flabel(p, e.text, e.color, e.dur); }
     else if (e.e === 'goal') { nm.lastGoal = { team: e.team, scorer: P(e.s) }; UI.goalBanner(e.team, P(e.s), P(e.a), e.own); Sfx.roar(1); Sfx.whistle(1); World.excite[e.team] = 1; if (P(e.s) === nm.human) Shake.add(0.5); }
     else if (e.e === 'toast') UI.toast(e.text, e.cls);
+    else if (e.e === 'bomb') bombBlast(e.x, e.z); // BOMB BALL: it went off
     else if (e.e === 'idle') this.idleWarn('ARE YOU THERE?', 'MOVE OR PRESS ANY BUTTON. A BOT TAKES OVER IN ' + e.s, true);
     else if (e.e === 'idleok') this.idleWarn(null);
     else if (e.e === 'bot') this.idleWarn('A BOT IS PLAYING FOR YOU', 'PRESS ANY BUTTON TO PLAY AGAIN. NO REWARDS THIS MATCH.', true);
@@ -622,6 +626,8 @@ const Net = {
     if (nm.hill && b.hill) { const H = nm.hill; H.x = b.hill[0]; H.z = b.hill[1]; H.holder = b.hill[2]; H.mesh.position.set(H.x, 0.04, H.z); const c = H.mesh.children; c[0].material.color.copy(col(H.holder >= 0 ? TEAM[H.holder].hex : '#f5efe0')); c[1].material.color.copy(c[0].material.color); }
     if (nm.heist && b.vt) { nm.heist.v = [b.vt[0], b.vt[1]]; nm.heist.jack = b.vt[2]; nm.heist.cleaned = nm.phase === 'end' ? (!b.vt[0].length ? 0 : !b.vt[1].length ? 1 : null) : null; } // no cores left at the whistle (the winners take the rest): the OMEGA SNAP
     if (nm.vaultView) { nm.vaultView.set(nm.heist.v, nm.heist.jack); nm.vaultView.update(rdt); }
+    if (nm.chaos) { nm.chaos.on = b.tw || null; const tw = nm.twist(); World.setGoal((tw && tw.goalW) || nm.cfg.goalW, (tw && tw.goalH) || nm.cfg.goalH); } // CHAOS: MEGA or TINY GOALS
+    if (nm.bomb && b.bm != null) nm.bomb.t = b.bm;
   },
   /** remember button presses until the next send, so a quick tap is never lost */
   collect(c) {
@@ -654,6 +660,7 @@ const Net = {
     Input.consumeEdges();
     this.applySnapshots(rdt);
     for (const p of nm.players) { if (p.flowT > 0) FX.flow(p, p.flowId, rdt); if (p.awakeT > 0) FX.awaken(p, rdt); }
+    if (nm.bomb) bombFx(nm, rdt); // BOMB BALL: the fuse
     FX.update(rdt); Shake.update(rdt);
     const I = this.intro;
     if (I) { I.t += rdt; if (I.t >= I.fly + 0.1 || nm.phase === 'play') this.endIntro(); else Cam.intro(rdt, nm, I.t, I.yaw, I.fly); }

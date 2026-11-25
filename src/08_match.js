@@ -2,7 +2,7 @@
    Match: rules, possession, kicking, tackling, abilities, goals,
    restarts, Flow, Lawless items
    ===================================================================== */
-const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {}, lightning() {}, steal() {} }; // filled in by the UI
+const Hud = { toast() {}, label() {}, banner() {}, goal() {}, flowReady() {}, cutin() {}, freeKick() {}, awaken() {}, lightning() {}, steal() {}, bomb() {} }; // filled in by the UI
 const BOT_NAMES = ['BLOK', 'CUBO', 'PIXL', 'VOXX', 'CHUNK', 'BRIK', 'TILE', 'STAK', 'OBBY', 'GRAV', 'LOAM', 'SLAB', 'COBB', 'FLINT', 'QUARTZ', 'MOSS', 'DUSK', 'EMBR', 'RUNE', 'KRYS', 'BYTE', 'NOVA', 'REDS', 'TUFF'];
 const MODES = {
   // rewards: offline, only these full-time matches give rewards (online with friends, every mode does)
@@ -18,6 +18,9 @@ const MODES = {
   moon: { name: 'MOON BALL', ranked: false, items: false, ballG: 6.5, tip: 'THE BALL FLOATS · JUMP FOR IT' },
   // Nov 2026 (owner: "a gamemode where the goalpost is the entire field"; and one from the new trends: the steal games)
   mega: { name: 'MEGA GOAL', ranked: false, items: false, goalW: F.W - F.POST, tip: 'THE GOAL IS AS WIDE AS THE PITCH' },
+  chaos: { name: 'CHAOS', ranked: false, items: false, chaos: true, tip: 'THE RULES CHANGE EVERY 25 SECONDS' },
+  bomb: { name: 'BOMB BALL', ranked: false, items: false, bomb: true, tip: 'THE BALL IS A BOMB · IF IT GOES OFF IN YOUR HALF, THEY SCORE' },
+  tiny: { name: 'TINY GOALS', ranked: false, items: false, goalW: 1.5, goalH: 1.75, noKeeper: true, tip: 'TINY GOALS AND NO KEEPERS · AIM CAREFULLY' },
   heist: { name: 'OMEGA CORES', ranked: false, items: false, heist: true, tip: 'SCORE TO TAKE THEIR BEST CORE AND ITS POWER · WIN AND YOU SNAP THEM AWAY' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
   freekick: { name: 'FREE KICKS', ranked: false, items: false, practice: true },
@@ -54,6 +57,8 @@ class Match {
     [TEAM[0], TEAM[1]] = matchSides(home, away);
     if (this.cfg.hill) this.buildHill();
     if (this.cfg.heist) this.buildHeist();
+    if (this.cfg.chaos) this.chaos = { on: null, t: CHAOS_FIRST, last: null };
+    if (this.cfg.bomb) this.bomb = { t: BOMB_FUSE };
     this.buildTeams(opts);
     // whose PASS calls make teammates look up (the human; in a test match, a bot striker that calls like a human)
     this.caller = opts.caller ? this.teams[0].find((p) => p.role === leadRole(this.rolesFor(0))) : this.autopilot ? null : this.human;
@@ -233,6 +238,7 @@ class Match {
   setupKickoff(team, first = false, quiet = false) {
     this.kickTeam = team; this.phase = 'kickoff'; this.phaseT = 0; this.kickDelay = first ? 2.6 : 1.7;
     this.ball.reset(0, 0); this.lastPass = null; this.pendingEnd = false;
+    if (this.bomb) this.bomb.t = BOMB_FUSE; // BOMB BALL: a new fuse at every kickoff
     for (const p of this.players) {
       const f = FORM[p.role]; let u = f[0] * PITCH_KX, v = f[1] * PITCH_KZ;
       if (p.isGK) v = -(F.L - 1.5);
@@ -265,9 +271,11 @@ class Match {
   /* ---------- main update ---------- */
   update(dt) {
     if (this.paused) return;
-    BALL_G = this.cfg.ballG || BALL_G0; // Moon Ball: a floaty ball (set every step: the server runs many rooms at once)
-    World.setGoal(this.cfg.goalW, this.cfg.goalH); // the same for MEGA GOAL's goals
-    if (this.cfg.speed) dt *= this.cfg.speed; // Turbo: the whole match runs faster, the clock too
+    const tw = this.twist(); // CHAOS: the twist on now changes these too
+    BALL_G = (tw && tw.ballG) || this.cfg.ballG || BALL_G0; // Moon Ball: a floaty ball (set every step: the server runs many rooms at once)
+    World.setGoal((tw && tw.goalW) || this.cfg.goalW, (tw && tw.goalH) || this.cfg.goalH); // the same for MEGA GOAL's goals
+    const speed = (this.cfg.speed || 1) * ((tw && tw.speed) || 1);
+    if (speed !== 1) dt *= speed; // Turbo: the whole match runs faster, the clock too
     this.time += dt; this.phaseT += dt;
     const ph = this.phase;
     if (ph === 'kickoff' && this.phaseT >= this.kickDelay) this.startPlay();
@@ -277,6 +285,8 @@ class Match {
     if ((ph === 'play' || ph === 'out') && !this.fk && !this.tut) this.tickClock(dt);
     if (this.hill && ph === 'play' && !this.fk) this.updateHill(dt);
     if (this.heist) this.updateHeist(dt);
+    if (this.chaos) this.updateChaos(dt);
+    if (this.bomb) this.updateBomb(dt);
 
     for (const p of this.players) { p.tickTimers(dt); p.computeMods(); }
     if (ph === 'play' || ph === 'out' || ph === 'goal') AI.update(this, dt);
@@ -717,7 +727,7 @@ class Match {
   }
   jump(p) {
     if (!p.onGround || p.state !== 'free') return false;
-    p.vel.y = 9.4; p.onGround = false; p.jumpAt = this.time; // about 2 blocks high: up to headers and volleys
+    p.vel.y = 9.4 * (p.isHuman && this.adm && this.adm.moon ? 2.1 : 1); p.onGround = false; p.jumpAt = this.time; // about 2 blocks high: up to headers and volleys (admin MOON JUMP: far higher)
     const b = this.ball;
     if (b.owner === p) {
       b.release();
@@ -1560,6 +1570,41 @@ class Match {
     c[1].material.color.copy(c[0].material.color);
     c[0].material.opacity = 0.7 + Math.sin(this.time * 6) * 0.15;
   }
+  /** CHAOS: the twist on now (CHAOS_TWISTS), or null */
+  twist() { return this.chaos && this.chaos.on ? CHAOS_TWISTS[this.chaos.on] : null; }
+  /** CHAOS: a twist for CHAOS_LEN seconds, then CHAOS_GAP seconds of normal football, then another (never the same twice) */
+  updateChaos(dt) {
+    const C = this.chaos, T = this.twist();
+    if (T && T.big) for (const p of this.players) p.fx.big = Math.max(p.fx.big || 0, 0.3); // GIANTS: everyone looks giant (no other change)
+    if (this.phase !== 'play' && this.phase !== 'out') return;
+    C.t -= dt;
+    if (C.t > 0) return;
+    if (C.on) { Hud.banner('NORMAL AGAIN', T.name + ' IS OVER', '#ffffff', true); C.on = null; C.t = CHAOS_GAP; return; }
+    C.on = C.last = pick(Object.keys(CHAOS_TWISTS).filter((k) => k !== C.last)); C.t = CHAOS_LEN;
+    const N = CHAOS_TWISTS[C.on];
+    Hud.banner('CHAOS: ' + N.name, N.sub, N.hex, true); Sfx.whistle(2); Sfx.roar(0.5);
+  }
+  /** BOMB BALL: the fuse burns in open play; at zero the ball goes off */
+  updateBomb(dt) {
+    if (this.phase === 'play') { this.bomb.t -= dt; if (this.bomb.t <= 0) { this.bombGoesOff(); return; } }
+    bombFx(this, dt);
+  }
+  /** the ball goes off: everyone near is knocked over and the team in whose half it was gives away a point (team 0 defends -Z) */
+  bombGoesOff() {
+    const b = this.ball, x = b.pos.x, z = b.pos.z, bombed = z < 0 ? 0 : 1, team = 1 - bombed;
+    if (b.owner) b.release();
+    for (const p of this.players) {
+      const dx = p.pos.x - x, dz = p.pos.z - z, d = len2D(dx, dz);
+      if (d < BOMB_R) this.knockDown(p, 1.6, dx / (d || 1), dz / (d || 1), 7);
+    }
+    b.vel.set(0, 7, 0); b.kick = null;
+    Hud.bomb(x, z);
+    this.score[team]++;
+    Hud.banner('BOOM!', 'IT WENT OFF IN ' + TEAM[bombed].name + ' HALF · +1 ' + TEAM[team].name, TEAM[team].hex);
+    this.lastGoal = { team, scorer: null, assister: null, own: false, bomb: true };
+    this.phase = 'goal'; this.phaseT = 0; this.bomb.t = BOMB_FUSE;
+    World.excite[team] = 1;
+  }
   /** OMEGA CORES: both teams start with the same cores; the score is what each team's cores are worth */
   buildHeist() {
     this.heist = { v: [HEIST_START.slice(), HEIST_START.slice()], jack: 0, last: null, cleaned: null };
@@ -1694,6 +1739,7 @@ class Match {
   keeperContact(gk) {
     const b = this.ball;
     if (!this.inOwnBox(gk) || gk.state === 'down' || gk.state === 'stun' || gk.state === 'frozen' || gk.pickBlock > 0) return;
+    if (b.kick && b.kick.homing) return; // the owner's admin panel: HOMING SHOTS go past keepers
     let ax, ay, az, bx, by, bz;
     if (gk.state === 'dive' && gk.dive) {
       const d = gk.dive;
@@ -2164,6 +2210,21 @@ class Match {
   }
 }
 
+/** BOMB BALL on screen: sparks from the lit fuse, faster and redder as it burns down, and a tick for the last 6 seconds
+    (offline from Match.updateBomb, online from Net.frame with the fuse from the snapshots) */
+function bombFx(m, dt) {
+  const B = m.bomb, b = m.ball;
+  if (!B || m.phase !== 'play') return;
+  B.fx = (B.fx || 0) - dt; B.tk = (B.tk || 0) - dt;
+  if (B.fx <= 0) { B.fx = B.t < 3 ? 0.04 : B.t < 7 ? 0.08 : 0.16; FX.sparks(b.pos.x, b.pos.y + 0.4, b.pos.z, B.t < 3 ? '#ff3d3d' : '#ffb02e', 3, 2.5, 0.08, 0.3); }
+  if (B.tk <= 0 && B.t < 6) { B.tk = B.t < 3 ? 0.25 : 0.5; Sfx.tick(); }
+}
+/** BOMB BALL: the blast where the ball went off (offline Hud.bomb, online the 'bomb' event) */
+function bombBlast(x, z) {
+  FX.sparks(x, 0.8, z, '#ffb02e', 60, 12, 0.3, 0.9); FX.sparks(x, 0.8, z, '#ff3d3d', 40, 9, 0.25, 0.7);
+  for (let i = 0; i < 3; i++) FX.after(i * 0.08, () => FX.ring(x, 0.25, z, i % 2 ? '#ffffff' : '#ffb02e', 2 + i * 2.5, 30 + i * 8));
+  FX.dirt(x, z, 0, 0, 20, 1.4); Shake.add(0.7); Sfx.boom();
+}
 /** which team won the match that just ended (-1: a draw); a free kick battle's winner comes from the result */
 function winnerOf(m) {
   const r = m.result && m.result.res, ht = m.human ? m.human.team : 0;

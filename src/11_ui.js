@@ -17,6 +17,7 @@ const UI = {
     this.youLabel = document.createElement('div'); this.youLabel.className = 'flabel me'; this.youLabel.textContent = 'YOU'; this.youLabel.hidden = true; $('labels').appendChild(this.youLabel);
     this.bind();
     Hud.toast = (t, c) => this.toast(t, c);
+    Hud.bomb = (x, z) => bombBlast(x, z); // BOMB BALL
     Hud.label = (p, t, c, dur) => this.flabel(p, t, c, dur);
     Hud.banner = (big, small, color, quick) => this.banner(big, small, color, quick ? 1.1 : 2.0);
     Hud.goal = (team, scorer, assister, own) => { this.goalBanner(team, scorer, assister, own); if (Touch.on && Game.match && Game.match.human && Game.match.human.team === team) Touch.buzz([30, 50, 30]); };
@@ -51,7 +52,7 @@ const UI = {
           <button class="btn blue play" id="go-quick" type="button">PLAY <span class="sub" id="quick-sub">QUICK MATCH &middot; 4V4</span></button>
           <button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
-          <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub">OMEGA CORES &middot; MEGA GOAL</span></button>
+          <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub">CHAOS &middot; BOMB BALL &middot; OMEGA CORES</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
           <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
@@ -187,7 +188,7 @@ const UI = {
             <li><b>Tutorial:</b> new to the game? The button at the top of this page walks you through every control, one at a time.</li>
             <li><b>Free kick battle:</b> still level after golden goal? 3 free kicks each, then sudden death. When they take one, you stand in the wall: jump at the right moment to block it. Winning the battle counts as a win.</li>
             <li><b>Free kicks</b> (on the start screen): 10 free kicks against a keeper and a wall. Turn the camera to aim, hold shoot for power, and try your shooting abilities. It keeps your best score. No rewards, just practice.</li>
-            <li><b>More modes</b> (the MORE MODES button): Omega Cores (each team has power cores on its crossbar; score and your player grabs their best core and locks it into the band on their arm; every core has its own power that you get when you take it, used once with the item button: Quake, Pull, Cannon, Freeze and Giant; the team whose cores are worth more at the end wins, takes every core and snaps, and the other team shatters; half way through a Generational core drops and the next goal takes it), Mega Goal (the goal is as wide as the whole pitch), King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3), Free Kicks and the Tutorial. One of them is FEATURED, and it changes every 3 hours.</li>
+            <li><b>More modes</b> (the MORE MODES button): Chaos (every 25 seconds the rules change for everyone for a while: moon ball, turbo, mega goals, tiny goals, giants or rocket shots), Bomb Ball (the ball is a bomb with a 15 second fuse that starts again at every kickoff; when it goes off it knocks everyone near over, and if it was in your half the other team gets a point, so kick it into their half), Tiny Goals (small goals and no keepers), Omega Cores (each team has power cores on its crossbar; score and your player grabs their best core and locks it into the band on their arm; every core has its own power that you get when you take it, used once with the item button: Quake, Pull, Cannon, Freeze and Giant; the team whose cores are worth more at the end wins, takes every core and snaps, and the other team shatters; half way through a Generational core drops and the next goal takes it), Mega Goal (the goal is as wide as the whole pitch), King of the Hill (hold the ball in the moving ring, a point a second, goals are worth 3), Volleys Only (only volleys and headers count: press JUMP with the ball to flick it up, then shoot it before it lands), 1v1 Duels (first to 3), Free Kicks and the Tutorial. One of them is FEATURED, and it changes every 3 hours.</li>
             <li><b>Rewards</b> (emeralds, XP, pass, GOALS) come from full-time matches: Quick Match, Ranked and Lawless. King of the Hill, Volleys and Duels are just for fun, unless you play them with friends: every friends match gives rewards. Leaving early gives nothing.</li>
             <li><b>Team size:</b> Quick Match is 4v4: a keeper, a defender, a midfielder and a striker. Lawless is 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch. Rocket fists, boom blocks, slime, jetpacks. No rank change.</li>
@@ -381,7 +382,7 @@ const UI = {
     </section>`;
   },
   openModes() {
-    const desc = { heist: 'TAKE THEIR CORES AND THEIR POWERS. WIN AND SNAP THEM AWAY', mega: 'THE GOAL IS AS WIDE AS THE WHOLE PITCH', fkkeeper: 'YOU IN GOAL. SAVE THEIR 10 FREE KICKS', koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', golden: 'THE NEXT GOAL WINS THE MATCH', nokeep: 'NO KEEPERS. SHOOT FROM ANYWHERE', turbo: 'EVERYTHING IS FASTER, THE CLOCK TOO', moon: 'THE BALL FLOATS LIKE ON THE MOON', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
+    const desc = { chaos: 'THE RULES CHANGE EVERY 25 SECONDS. MOON BALL, TURBO, GIANTS AND MORE', bomb: 'THE BALL IS A BOMB. IF IT GOES OFF IN YOUR HALF, THEY SCORE', tiny: 'TINY GOALS AND NO KEEPERS. AIM CAREFULLY', heist: 'TAKE THEIR CORES AND THEIR POWERS. WIN AND SNAP THEM AWAY', mega: 'THE GOAL IS AS WIDE AS THE WHOLE PITCH', fkkeeper: 'YOU IN GOAL. SAVE THEIR 10 FREE KICKS', koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', golden: 'THE NEXT GOAL WINS THE MATCH', nokeep: 'NO KEEPERS. SHOOT FROM ANYWHERE', turbo: 'EVERYTHING IS FASTER, THE CLOCK TOO', moon: 'THE BALL FLOATS LIKE ON THE MOON', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
     const feat = featuredAt().mode;
     $('md-grid').innerHTML = Object.keys(desc).map((k) => `<button class="btn md-card" type="button" data-mode="${k}">${MODES[k].name}${k === feat ? '<span class="tag">FEATURED</span>' : ''}<span class="sub">${desc[k]}</span></button>`).join('');
     $('scr-modes').hidden = false;
@@ -803,7 +804,12 @@ const UI = {
     else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL');
       const sec = Math.ceil(m.goldenClock), hot = sec <= 15 && sec > 0; $('clock').classList.toggle('stress', hot); // owner: "gives you that stress"
       if (hot && sec !== this.goldTick) { this.goldTick = sec; Sfx.tick(); } }
-    else { this.setText('clock', fmtTime(m.clock)); this.setText('clock-sub', m.heist && m.heist.jack === 1 ? 'JACKPOT OUT' : ''); }
+    else {
+      const tw = m.twist ? m.twist() : null; // CHAOS: the twist on now; BOMB BALL: the fuse
+      this.setText('clock', fmtTime(m.clock));
+      this.setText('clock-sub', m.heist && m.heist.jack === 1 ? 'JACKPOT OUT' : m.bomb ? 'BOMB ' + Math.max(0, Math.ceil(m.bomb.t)) : tw ? tw.name : '');
+      $('clock-sub').classList.toggle('hot', !!(m.bomb && m.bomb.t < 5 && m.phase === 'play'));
+    }
     if (m.heist) { // OMEGA CORES: each team's cores in their rarity colours, best first
       const H = m.heist, key = H.v[0].join() + '|' + H.v[1].join();
       if (this.hudCache.vault !== key) { this.hudCache.vault = key; const sq = (a) => a.slice().sort((x, y) => y - x).map((r) => `<i style="background:${RARITY_HEX[RARITIES[r]]}"></i>`).join(''); $('vault0').innerHTML = sq(H.v[0]); $('vault1').innerHTML = sq(H.v[1]); }
