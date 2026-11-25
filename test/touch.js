@@ -190,6 +190,7 @@ const check = (name, ok, info) => { results.push((ok ? 'PASS ' : 'FAIL ') + name
   await page.screenshot({ path: __dirname + `/shots/t${tag}7_pause.png` });
   const pov = await page.evaluate(() => { const d = document.querySelector('#scr-pause .dialog').getBoundingClientRect(); return { top: d.top, bottom: d.bottom, h: innerHeight, sh: document.getElementById('scr-pause').scrollHeight, ch: document.getElementById('scr-pause').clientHeight }; });
   check('pause dialog reachable', pov.sh <= pov.ch + 2 || true, pov);
+  await page.evaluate(() => document.querySelector('#set-btn').scrollIntoView({ block: 'center' })); await sleep(100); // the settings scroll inside the pause menu
   const lg = await center('#set-btn button[data-v="1.15"]');
   await page.touchscreen.tap(lg.x, lg.y); await sleep(100);
   check('button size setting saved', await page.evaluate(() => EGO.Save.data.settings.btn === 1.15));
