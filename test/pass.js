@@ -62,9 +62,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await page.evaluate(() => { EGO.Save.data.pass.season = 0; EGO.Pass.sync(EGO.Save.data); EGO.Save.data.pass.xp = 4300; EGO.Save.data.pass.got = 4; EGO.Game.toLobby(); });
   const sub = await page.evaluate(() => document.getElementById('pass-sub').textContent);
   await page.click('#go-pass', { force: true }); await sleep(200);
-  const scr = await page.evaluate(() => ({ cur: EGO.UI.cur, tiles: document.querySelectorAll('.gp-t').length, got: document.querySelectorAll('.gp-t.got').length, next: document.querySelector('.gp-t.next') && document.querySelector('.gp-t.next').textContent, ch: document.querySelectorAll('.gp-c').length, tier: document.querySelector('.gp-tier b').textContent }));
+  const scr = await page.evaluate(() => ({ cur: EGO.UI.cur, tiles: document.querySelectorAll('.gp-t').length, got: document.querySelectorAll('.gp-t.got').length, next: document.querySelector('.gp-t.next .gp-node') && document.querySelector('.gp-t.next .gp-node').textContent, nextCard: document.querySelector('.gp-next') && document.querySelector('.gp-next').textContent, ch: document.querySelectorAll('.gp-c').length, tier: document.querySelector('.gp-badge b').textContent, rail: document.querySelectorAll('.gp-t.got .gp-rail i[style*="100%"]').length }));
   check('lobby button shows your tier', sub === 'TIER 4 / 30', sub);
-  check('pass screen: 30 reward tiles, 4 challenges, your progress', scr.cur === 'pass' && scr.tiles === 30 && scr.got === 4 && /TIER 5/.test(scr.next) && scr.ch === 4 && /TIER 4/.test(scr.tier), scr);
+  check('pass screen: 30 reward tiles, 4 challenges, your progress', scr.cur === 'pass' && scr.tiles === 30 && scr.got === 4 && scr.next === '5' && /NEXT REWARD.*TIER 5/.test(scr.nextCard) && scr.rail === 4 && scr.ch === 4 && scr.tier === '4', scr);
   await page.screenshot({ path: __dirname + '/shots/gp2_pass.png' });
 
   // the Locker shows pass skins as locked until earned, and spins never give them

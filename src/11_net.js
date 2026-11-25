@@ -83,7 +83,7 @@ const Net = {
           <div class="on-teams"><div class="on-team" id="on-t0"></div><div class="on-team" id="on-t1"></div></div>
           <button class="btn small" id="on-switch" type="button">SWITCH TEAM</button>
           <div class="on-host" id="on-host">
-            <span class="label">MODE</span><div class="seg" id="on-mode">${NET_MODES.map(([k, n]) => `<button type="button" data-m="${k}">${n}</button>`).join('')}</div>
+            <span class="label">MODE</span><div class="seg md-seg" id="on-mode">${NET_MODES.map(([k, n]) => `<button type="button" data-m="${k}" style="--mc:${MODE_ART[k].hex}"><img class="px" alt="" src="${modeIcon(k)}">${n}</button>`).join('')}</div>
             <span class="label">TEAM SIZE</span><div class="seg" id="on-size">${[3, 4, 5].map((n) => `<button type="button" data-s="${n}">${n}V${n}</button>`).join('')}</div>
             <span class="label">BOTS</span><div class="seg" id="on-bots"><button type="button" data-b="fill">FILL</button><button type="button" data-b="keepers">KEEPERS ONLY</button><button type="button" data-b="none">NONE</button></div>
             <button class="btn blue" id="on-go" type="button">START MATCH <span class="sub" id="on-go-sub">BOTS FILL EMPTY SPOTS</span></button>

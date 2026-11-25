@@ -928,6 +928,29 @@ const leadRole = (roles) => roles.filter((r) => r !== 'GK').sort((a, b) => ROLE_
 const teamSizeFor = (mode, rp) => { if (mode === 'duel') return 2; if (mode === 'quick') return 4; if (mode !== 'ranked') return 3; const t = tierOf(rp); return t >= 4 ? 5 : t >= 2 ? 4 : 3; };
 /* the featured mode changes every 3 hours on a fixed schedule from the clock (UTC), so everyone sees the same one */
 const FEATURED = ['heist', 'koth', 'mega', 'volleys', 'duel', 'lawless'], FEATURED_MS = 3 * 3600 * 1000;
+/** how each mode looks in the menus (owner, Nov 25 2026: "make the ui better especially the mode choosers"): its pixel icon
+    (ICON_MAPS, drawn in its colour), its colour, one plain line, and its group in MORE MODES (none: not listed there) */
+const MODE_ART = {
+  quick: { icon: 'ball', hex: '#3d7dff', line: 'A normal match.' },
+  lawless: { icon: 'boom', hex: '#ff8a2a', line: 'Item blocks drop on the pitch. Rocket fists, slime, jetpacks.' },
+  chaos: { icon: 'dice', hex: '#ff5fb0', group: 'new', line: 'The rules change every 25 seconds: moon ball, turbo, giants and more.' },
+  bomb: { icon: 'bomb', hex: '#ff8a2a', group: 'new', line: 'The ball is a bomb. If it goes off in your half, they score.' },
+  tiny: { icon: 'goal', hex: '#7ff5bd', group: 'new', line: 'Tiny goals and no keepers. Aim carefully.' },
+  heist: { icon: 'core', hex: '#b65cff', group: 'party', line: 'Score to take their cores and powers. Win and snap them away.' },
+  mega: { icon: 'full', hex: '#2ee38f', group: 'party', line: 'The goal is as wide as the whole pitch.' },
+  koth: { icon: 'crown', hex: '#ffcb3d', group: 'party', line: 'Hold the ball in the ring for points. Goals are worth 3.' },
+  volleys: { icon: 'jump', hex: '#4aa8ff', group: 'party', line: 'Only volleys and headers count.' },
+  golden: { icon: 'goal', hex: '#ffcb3d', group: 'party', line: 'The next goal wins the match.' },
+  nokeep: { icon: 'shot', hex: '#ff5a3c', group: 'party', line: 'No keepers. Shoot from anywhere.' },
+  turbo: { icon: 'dash', hex: '#3fd6ff', group: 'party', line: 'Everything is faster, the clock too.' },
+  moon: { icon: 'moon', hex: '#c9d2ff', group: 'party', line: 'The ball floats like on the moon.' },
+  duel: { icon: 'fist', hex: '#ff4d5e', group: 'party', line: 'You and a keeper against one. First to 3 goals.' },
+  fkkeeper: { icon: 'glove', hex: '#9fd4ff', group: 'practice', line: 'You in goal. Save their 10 free kicks.' },
+  freekick: { icon: 'boot', hex: '#ffcb3d', group: 'practice', line: 'Practise free kicks: aim, curve and power.' },
+  tutorial: { icon: 'smile', hex: '#a4a9cf', group: 'practice', line: 'Learn the controls step by step.' },
+};
+const MODE_GROUPS = [['new', 'NEW'], ['party', 'PARTY MODES'], ['practice', 'PRACTICE']];
+const modeIcon = (k) => iconURL(MODE_ART[k].icon, MODE_ART[k].hex);
 /* OMEGA CORES (Nov 2026, from the "steal" games that top the charts; owner: "the team with all of them wins and the
    other team is no more"): each team's power cores sit on its own crossbar, a goal takes the other team's best one (the
    scorer catches it and locks it into the band on their arm), the team whose cores are worth more at the end wins, and the
@@ -1030,7 +1053,7 @@ function unlockAll(d) {
 }
 /** a save that used a 'give all' code also gets everything added in later updates (Save.validate runs this on load) */
 function codeTopUp(d) {
-  return d.codes.some((h) => CODES[h] && CODES[h].give === 'all') ? unlockAll(d) : 0;
+  return !d.topUpOff && d.codes.some((h) => CODES[h] && CODES[h].give === 'all') ? unlockAll(d) : 0; // not after START OVER, until the code is typed again
 }
 /** try a code: returns the message to show. 'all' unlocks everything you can own (not rank or level) */
 function redeemCode(d, text) {
@@ -1039,7 +1062,7 @@ function redeemCode(d, text) {
   if (!c || (c.retired && !d.codes.includes(h))) return { ok: false, msg: 'THAT CODE DOES NOT WORK' };
   if (d.codes.includes(h)) {
     if (c.give !== 'all') return { ok: false, msg: 'YOU ALREADY USED THAT CODE' };
-    const n = unlockAll(d); // used before: it still gives anything new from updates, but no more emeralds
+    d.topUpOff = false; const n = unlockAll(d); // used before: it still gives anything new from updates, but no more emeralds (typing it after START OVER gives it all back)
     return n ? { ok: true, msg: c.name + ': ' + n + ' NEW ITEM' + (n > 1 ? 'S' : '') + ' UNLOCKED' } : { ok: false, msg: 'YOU ALREADY HAVE EVERYTHING' };
   }
   d.codes.push(h);

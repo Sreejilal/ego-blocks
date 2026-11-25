@@ -52,7 +52,7 @@ const UI = {
           <button class="btn blue play" id="go-quick" type="button">PLAY <span class="sub" id="quick-sub">QUICK MATCH &middot; 4V4</span></button>
           <button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
-          <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub">CHAOS &middot; BOMB BALL &middot; OMEGA CORES</span></button>
+          <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub md-lob" id="modes-sub">CHAOS</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
           <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
@@ -282,29 +282,42 @@ const UI = {
       <div class="sub-wrap">
         <div class="sub-head"><h2>GAME PASS</h2><button class="btn small" id="pass-back" type="button">BACK</button></div>
         <section class="panel gp-top" id="gp-top"></section>
-        <section class="panel gp-week"><h3>THIS WEEK</h3><div class="gp-ch" id="gp-ch"></div></section>
-        <section class="panel gp-track-box"><h3>REWARDS</h3><div class="gp-track" id="gp-track"></div></section>
+        <section class="panel gp-track-box">
+          <div class="gp-th"><h3>REWARDS</h3><span class="gp-th-l">All 30 tiers. Scroll sideways.</span><div class="gp-nav"><button class="btn small gp-arr" type="button" id="gp-prev" aria-label="Earlier rewards"><i class="arr l"></i></button><button class="btn small gp-arr" type="button" id="gp-next" aria-label="Later rewards"><i class="arr r"></i></button></div></div>
+          <div class="gp-scroll" id="gp-scroll"><div class="gp-track" id="gp-track"></div></div>
+        </section>
+        <section class="panel gp-week"><div class="gp-th"><h3>THIS WEEK</h3><span class="gp-th-l" id="gp-week-l"></span></div><div class="gp-ch" id="gp-ch"></div></section>
       </div>
     </section>`;
   },
   renderPass() {
     const d = Save.data; Pass.sync(d);
-    const S = seasonAt(), P = d.pass, tier = Pass.tier(d), into = tier >= PASS_TIERS ? PASS_TIER_XP : P.xp % PASS_TIER_XP;
-    const days = (ms) => { const h = Math.floor(ms / 3600e3); return h >= 48 ? Math.floor(h / 24) + ' DAYS' : h + 'H ' + Math.floor(ms / 60e3) % 60 + 'M'; };
-    $('gp-top').innerHTML = `<div class="gp-tier"><span class="label">SEASON ${S.season} · ENDS IN ${days(S.seasonLeft)}</span><b>TIER ${tier} <small>/ ${PASS_TIERS}</small></b></div>
-      <div class="gp-bar"><div class="xpbar pass"><i style="width:${into / PASS_TIER_XP * 100}%"></i></div><span class="label">${tier >= PASS_TIERS ? 'PASS COMPLETE' : into + ' / ' + PASS_TIER_XP + ' XP TO TIER ' + (tier + 1)}</span></div>
-      <p class="gp-note">Free for everyone. Earn pass XP by playing well: goals, assists, shots on target, tackles, passes and wins. Standing around earns nothing. Rewards only change your looks.</p>`;
-    $('gp-ch').innerHTML = `<span class="label">NEW CHALLENGES IN ${days(S.weekLeft)}</span>` + weekChallenges(P.week).map((id) => {
-      const C = CHALLENGES[id], n = Math.min(C.goal, P.prog[id] || 0), done = P.done.includes(id);
-      return `<div class="gp-c ${done ? 'done' : ''}"><b>${esc(C.name)}</b><span class="label">${done ? 'DONE' : n + ' / ' + C.goal} · +${C.xp} XP</span><div class="xpbar"><i style="width:${n / C.goal * 100}%"></i></div></div>`;
-    }).join('');
+    const S = seasonAt(), P = d.pass, tier = Pass.tier(d), full = tier >= PASS_TIERS, into = full ? PASS_TIER_XP : P.xp % PASS_TIER_XP;
+    const days = (ms) => { const h = Math.floor(ms / 3600e3); return h >= 48 ? Math.floor(h / 24) + ' days' : h + 'h ' + Math.floor(ms / 60e3) % 60 + 'm'; };
+    const hexOf = (r) => (r.skin ? RARITY_HEX[SKINS[r.skin].rarity] || '#a4a9cf' : '#2ee38f'); // a skin in its rarity colour, emeralds green
+    const art = (r, size) => { const cv = r.skin ? skinCanvas(r.skin, size) : iconCanvas('emerald'); cv.className = 'px'; return cv; };
+    const next = full ? null : PASS_REWARDS[tier];
+    $('gp-top').innerHTML = `<div class="gp-badge"><span class="gp-season">SEASON ${S.season}</span><b>${tier}</b><span class="gp-of">OF ${PASS_TIERS}</span></div>
+      <div class="gp-prog"><span class="gp-goal">${full ? 'Pass complete. Every reward is yours.' : (PASS_TIER_XP - into) + ' XP to tier ' + (tier + 1)}</span>
+        <div class="gp-bar"><i style="width:${into / PASS_TIER_XP * 100}%"></i><span>${into} / ${PASS_TIER_XP} XP</span></div>
+        <p class="gp-note">Free for everyone. Goals, assists, shots on target, tackles, passes and wins earn pass XP. Season ${S.season} ends in ${days(S.seasonLeft)}.</p></div>
+      ${next ? `<div class="gp-next" style="--rc:${hexOf(next)}"><span class="gp-next-l">NEXT REWARD</span><span class="gv"></span><b>${esc(Pass.rewardName(next))}</b><span class="gp-next-l">TIER ${tier + 1}</span></div>` : ''}`;
+    if (next) $('gp-top').querySelector('.gv').replaceWith(art(next, 64));
     $('gp-track').innerHTML = PASS_REWARDS.map((r, i) => {
-      const n = i + 1, got = P.got >= n, now = n === tier + 1;
-      return `<div class="gp-t ${got ? 'got' : ''} ${now ? 'next' : ''}" data-i="${i}"><span class="label">TIER ${n}</span><span class="gv"></span><b>${esc(Pass.rewardName(r))}</b><span class="label">${got ? 'EARNED' : now ? 'NEXT' : ''}</span></div>`;
+      const n = i + 1, got = P.got >= n, now = !got && n === tier + 1, fill = got ? 100 : now ? into / PASS_TIER_XP * 100 : 0;
+      return `<div class="gp-t ${got ? 'got' : now ? 'next' : 'locked'}${n % 10 === 0 ? ' big' : ''}" data-i="${i}" style="--rc:${hexOf(r)}">
+        <div class="gp-card"><span class="gv"></span><b>${esc(Pass.rewardName(r))}</b>${got ? '<span class="gp-ok">EARNED</span>' : now ? '<span class="gp-here">NEXT</span>' : ''}</div>
+        <span class="gp-rail"><i style="width:${fill}%"></i></span><span class="gp-node">${n}</span></div>`;
     }).join('');
-    $('gp-track').querySelectorAll('.gp-t').forEach((el) => {
-      const r = PASS_REWARDS[+el.dataset.i], cv = r.skin ? skinCanvas(r.skin, 40) : iconCanvas('emerald');
-      cv.className = 'px'; el.querySelector('.gv').replaceWith(cv);
+    $('gp-track').querySelectorAll('.gp-t').forEach((el) => el.querySelector('.gv').replaceWith(art(PASS_REWARDS[+el.dataset.i], el.classList.contains('big') ? 60 : 44)));
+    $('gp-week-l').textContent = 'New challenges in ' + days(S.weekLeft) + '.';
+    $('gp-ch').innerHTML = weekChallenges(P.week).map((id) => {
+      const C = CHALLENGES[id], n = Math.min(C.goal, P.prog[id] || 0), done = P.done.includes(id);
+      return `<div class="gp-c ${done ? 'done' : ''}"><span class="gp-ck"></span><span class="gp-cm"><b>${esc(C.name)}</b><span class="xpbar"><i style="width:${done ? 100 : n / C.goal * 100}%"></i></span></span><span class="gp-xp"><b>+${C.xp} XP</b><span>${done ? 'DONE' : n + ' / ' + C.goal}</span></span></div>`;
+    }).join('');
+    requestAnimationFrame(() => { // start the track at the tier you are on
+      const sc = $('gp-scroll'), at = sc.querySelector('.gp-t.next') || sc.querySelector('.gp-t.got:last-of-type') || sc.querySelector('.gp-t:last-child');
+      if (at) sc.scrollLeft = Math.max(0, at.offsetLeft - sc.clientWidth * 0.3);
     });
   },
   tplHud() {
@@ -374,18 +387,27 @@ const UI = {
   tplModes() {
     return `<section id="scr-modes" class="overlay" hidden>
       <div class="dialog panel modes-box">
-        <h2>MORE MODES</h2>
-        <p class="label">JUST FOR FUN, SO NO REWARDS. QUICK MATCH, RANKED AND LAWLESS GIVE REWARDS.</p>
-        <div class="md-grid" id="md-grid"></div>
+        <div class="md-head"><h2>MORE MODES</h2><p class="md-sub">Just for fun, so no rewards. Quick Match, Ranked and Lawless give rewards.</p></div>
+        <div class="md-pick" id="md-pick"><div id="md-hero"></div><div class="md-grid" id="md-grid"></div></div>
         <button class="btn" id="md-close" type="button">CLOSE</button>
       </div>
     </section>`;
   },
   openModes() {
-    const desc = { chaos: 'THE RULES CHANGE EVERY 25 SECONDS. MOON BALL, TURBO, GIANTS AND MORE', bomb: 'THE BALL IS A BOMB. IF IT GOES OFF IN YOUR HALF, THEY SCORE', tiny: 'TINY GOALS AND NO KEEPERS. AIM CAREFULLY', heist: 'TAKE THEIR CORES AND THEIR POWERS. WIN AND SNAP THEM AWAY', mega: 'THE GOAL IS AS WIDE AS THE WHOLE PITCH', fkkeeper: 'YOU IN GOAL. SAVE THEIR 10 FREE KICKS', koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', golden: 'THE NEXT GOAL WINS THE MATCH', nokeep: 'NO KEEPERS. SHOOT FROM ANYWHERE', turbo: 'EVERYTHING IS FASTER, THE CLOCK TOO', moon: 'THE BALL FLOATS LIKE ON THE MOON', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
-    const feat = featuredAt().mode;
-    $('md-grid').innerHTML = Object.keys(desc).map((k) => `<button class="btn md-card" type="button" data-mode="${k}">${MODES[k].name}${k === feat ? '<span class="tag">FEATURED</span>' : ''}<span class="sub">${desc[k]}</span></button>`).join('');
+    const F = featuredAt(), feat = MODE_ART[F.mode] && MODES[F.mode] ? F.mode : null, online = new Set(NET_MODES.map((x) => x[0]));
+    const h = Math.floor(F.left / 3600e3), mins = Math.floor(F.left / 60e3) % 60;
+    const name = (k) => `<span class="md-n"><b>${MODES[k].name}</b>${online.has(k) ? '<i class="md-on">ONLINE TOO</i>' : ''}</span>`;
+    const card = (k) => `<button class="md-card" type="button" data-mode="${k}" style="--mc:${MODE_ART[k].hex}"><span class="md-tile"><img class="px" alt="" src="${modeIcon(k)}"></span><span class="md-txt">${name(k)}<span class="md-d">${MODE_ART[k].line}</span></span></button>`;
+    $('md-hero').innerHTML = feat ? `<button class="md-hero" type="button" data-mode="${feat}" style="--mc:${MODE_ART[feat].hex}">
+        <span class="md-art"><img class="px" alt="" src="${modeIcon(feat)}"></span>
+        <span class="md-txt"><span class="md-meta"><span class="md-tag">FEATURED</span><span class="md-left">Changes in ${h ? h + 'h ' : ''}${mins}m</span></span>${name(feat)}<span class="md-d">${MODE_ART[feat].line}</span></span>
+        <span class="md-play">PLAY</span></button>` : '';
+    $('md-grid').innerHTML = MODE_GROUPS.map(([g, title]) => {
+      const ks = Object.keys(MODE_ART).filter((k) => MODE_ART[k].group === g && k !== feat && MODES[k]);
+      return ks.length ? `<h3 class="md-h">${title}</h3><div class="md-row">${ks.map(card).join('')}</div>` : '';
+    }).join('');
     $('scr-modes').hidden = false;
+    $('md-pick').scrollTop = 0;
   },
   tplDaily() {
     return `<section id="scr-daily" class="overlay" hidden>
@@ -594,7 +616,7 @@ const UI = {
     click('go-lawless', () => Game.startMatch('lawless'));
     click('go-modes', () => this.openModes());
     click('md-close', () => { $('scr-modes').hidden = true; });
-    $('md-grid').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (!b) return; $('scr-modes').hidden = true; Sfx.init(); Game.startMatch(b.dataset.mode); });
+    $('md-pick').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (!b) return; $('scr-modes').hidden = true; Sfx.init(); Game.startMatch(b.dataset.mode); });
     click('go-spins', () => this.openSpins());
     click('go-locker', () => this.openLocker());
     click('go-howto', () => this.show('howto'));
@@ -604,6 +626,9 @@ const UI = {
     $('emote-pop').addEventListener('click', (e) => { const b = e.target.closest('[data-em]'); if (b) this.pickEmote(+b.dataset.em); });
     click('go-profile', () => this.show('profile'));
     click('go-pass', () => this.show('pass'));
+    const gpGo = (dir) => { const sc = $('gp-scroll'); sc.scrollBy({ left: dir * sc.clientWidth * 0.8, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); };
+    click('gp-prev', () => gpGo(-1)); click('gp-next', () => gpGo(1));
+    $('gp-scroll').addEventListener('wheel', (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { $('gp-scroll').scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false }); // the mouse wheel moves along the track
     click('go-online', () => Net.open());
     click('pass-back', () => this.show('lobby'));
     click('goals-back', () => this.show('lobby'));
@@ -725,6 +750,8 @@ const UI = {
     $('go-tut').hidden = d.tutorial || d.stats.played >= 3; // new players: a way into the tutorial
     $('pro-badge').src = badgeURL(tier);
     Pass.sync(d); $('pass-sub').textContent = 'TIER ' + Pass.tier(d) + ' / ' + PASS_TIERS;
+    const fm = featuredAt().mode, nModes = Object.keys(MODE_ART).filter((k) => MODE_ART[k].group).length; // MORE MODES: how many, and the featured one
+    $('modes-sub').innerHTML = MODE_ART[fm] && MODES[fm] ? `<img class="px" alt="" src="${modeIcon(fm)}">FEATURED: ${MODES[fm].name}` : nModes + ' MODES';
     $('pro-tier').textContent = TIER_NAMES[tier];
     const inTier = tier >= 5 ? 10 : Math.floor((d.rp % 100) / 10);
     $('pro-rp').innerHTML = Array.from({ length: 10 }, (_, i) => `<i class="${i < inTier ? 'on' : ''}"></i>`).join('');

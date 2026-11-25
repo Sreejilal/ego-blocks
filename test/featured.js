@@ -16,14 +16,14 @@ const check = (name, ok, info) => results.push((ok ? 'PASS ' : 'FAIL ') + name +
 
   await page.click('#go-modes');
   const panel = await page.evaluate(() => {
-    const cards = [...document.querySelectorAll('#md-grid [data-mode]')];
-    const tagged = cards.filter((c) => c.querySelector('.tag')).map((c) => c.dataset.mode);
+    const cards = [...document.querySelectorAll('#md-pick [data-mode]')]; // the featured mode is the big card on top (#md-hero), the rest in groups
+    const tagged = [...document.querySelectorAll('#md-hero [data-mode]')].map((c) => c.dataset.mode);
     return { open: !document.getElementById('scr-modes').hidden, modes: cards.map((c) => c.dataset.mode), tagged, feat: EGO.featuredAt().mode };
   });
-  check('MORE MODES lists Block Heist, Mega Goal, King of the Hill, Volleys, Duel, Free Kicks and the Tutorial', panel.open && ['heist', 'mega', 'koth', 'volleys', 'duel', 'freekick', 'tutorial'].every((k) => panel.modes.includes(k)), panel);
-  check('the featured one is tagged (or none when Lawless is featured, it is on the main menu)', panel.feat === 'lawless' ? panel.tagged.length === 0 : panel.tagged.join() === panel.feat, panel);
+  check('MORE MODES lists Omega Cores, Mega Goal, King of the Hill, Volleys, Duel, Free Kicks and the Tutorial', panel.open && ['heist', 'mega', 'koth', 'volleys', 'duel', 'freekick', 'tutorial'].every((k) => panel.modes.includes(k)), panel);
+  check('the featured one is the big card on top, and not listed twice', panel.tagged.join() === panel.feat && panel.modes.filter((k) => k === panel.feat).length === 1, panel);
   await page.screenshot({ path: __dirname + '/shots/f1_modes.png' });
-  await page.click('#md-grid [data-mode="volleys"]');
+  await page.click('#md-pick [data-mode="volleys"]');
   const started = await page.evaluate(() => ({ state: EGO.Game.state, mode: EGO.Game.lastMode, panel: !document.getElementById('scr-modes').hidden }));
   check('a card starts that mode and the panel closes', started.state === 'match' && started.mode === 'volleys' && !started.panel, started);
   await page.evaluate(() => { EGO.Game.match.dispose(); EGO.Game.match = null; EGO.Game.toLobby(); });

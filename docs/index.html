@@ -331,30 +331,69 @@ img.px, canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; }
   .pf-row > :nth-child(2) { grid-column: 1 / -1; grid-row: 1; }
 }
 
-/* game pass: tier and XP, this week's challenges, then the 30-tier reward track */
+/* game pass: a tier badge, the XP bar and the glowing next reward; a reward track you scroll sideways with a rail of
+   tier numbers under it (milestones every 10 are bigger and gold); this week's challenges as checklist rows */
 .gp-top, .gp-week, .gp-track-box { padding: 16px; display: grid; gap: 12px; }
-.gp-top { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px 20px; }
-.gp-top .gp-note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 18px; }
-.gp-tier b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 56px; line-height: .9; color: var(--gold); }
-.gp-tier small { font-size: 28px; color: var(--muted); }
-.gp-bar { display: grid; gap: 4px; }
-.xpbar.pass i { background: var(--gold); }
+.gp-top { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px 22px; }
+.gp-badge { width: 108px; height: 118px; display: grid; justify-items: center; align-content: center; gap: 2px; padding-bottom: 14px; box-sizing: border-box;
+  background: linear-gradient(180deg, #e3b21d, #a8740f); clip-path: polygon(0 0, 100% 0, 100% 76%, 50% 100%, 0 76%); }
+.gp-badge b { font-family: var(--font-display); font-weight: 400; font-size: 70px; line-height: .8; color: #fff7d6; text-shadow: 4px 4px 0 #6b4a08; }
+.gp-season, .gp-of { font-family: var(--font-label); font-size: 10px; letter-spacing: .08em; color: #3a2606; }
+.gp-prog { display: grid; gap: 8px; min-width: 0; }
+.gp-goal { font-family: var(--font-display); font-size: 32px; line-height: .9; }
+.gp-bar { position: relative; height: 22px; background: var(--ink); box-shadow: inset 0 0 0 2px var(--slate-3); }
+.gp-bar i { display: block; height: 100%; background: repeating-linear-gradient(90deg, var(--gold) 0 14px, #d9a512 14px 16px); }
+.gp-bar span { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-family: var(--font-label); font-size: 10px; letter-spacing: .06em; color: var(--text); text-shadow: 1px 1px 0 var(--ink); }
+.gp-note { margin: 0; font-family: var(--font-body); font-size: 17px; line-height: 1.15; color: var(--muted); }
+.gp-next { width: 150px; box-sizing: border-box; display: grid; justify-items: center; gap: 5px; padding: 10px 8px 12px; text-align: center; background: var(--ink); box-shadow: inset 0 0 0 3px var(--rc), 0 0 26px var(--rc); }
+.gp-next canvas { width: 64px; height: 64px; image-rendering: pixelated; }
+.gp-next b { font-family: var(--font-display); font-weight: 400; font-size: 22px; line-height: .95; }
+.gp-next-l { font-family: var(--font-label); font-size: 9px; letter-spacing: .08em; color: var(--rc); }
 .gp-week h3, .gp-track-box h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 34px; line-height: .9; }
-.gp-ch { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 10px; }
-.gp-ch > .label { grid-column: 1 / -1; }
-.gp-c { background: var(--slate-2); padding: 10px; display: grid; gap: 6px; box-shadow: inset 4px 0 0 var(--muted); }
-.gp-c b { font-family: var(--font-display); font-weight: 400; font-size: 22px; line-height: .95; }
-.gp-c.done { box-shadow: inset 4px 0 0 var(--emerald); }
+.gp-th { display: flex; align-items: center; gap: 8px 14px; flex-wrap: wrap; }
+.gp-th-l { flex: 1 1 160px; font-family: var(--font-body); font-size: 17px; color: var(--muted); }
+.gp-nav { display: flex; gap: 6px; }
+.gp-arr { padding: 8px 14px 11px; }
+.arr { display: block; width: 0; height: 0; border: 8px solid transparent; }
+.arr.l { border-right-color: currentColor; border-left-width: 0; } .arr.r { border-left-color: currentColor; border-right-width: 0; }
+.gp-scroll { overflow-x: auto; overflow-y: hidden; padding: 4px 2px 8px; scrollbar-color: var(--slate-3) var(--ink); -webkit-overflow-scrolling: touch; }
+.gp-track { display: flex; align-items: flex-end; gap: 10px; width: max-content; padding: 0 4px; }
+.gp-t { position: relative; flex: none; width: 112px; display: grid; grid-template-rows: auto 32px; justify-items: center; }
+.gp-t.big { width: 148px; }
+.gp-card { width: 100%; height: 124px; box-sizing: border-box; display: grid; justify-items: center; align-content: center; gap: 5px; padding: 8px 6px; text-align: center; background: var(--slate-2); box-shadow: inset 0 0 0 2px var(--slate-3), inset 0 -5px 0 rgba(0,0,0,.25); }
+.gp-t.big .gp-card { height: 150px; background: linear-gradient(180deg, #4a3408, var(--slate-2) 70%); box-shadow: inset 0 0 0 3px var(--gold), inset 0 -5px 0 rgba(0,0,0,.25); }
+.gp-card canvas { width: 44px; height: 44px; image-rendering: pixelated; }
+.gp-t.big .gp-card canvas { width: 60px; height: 60px; }
+.gp-card b { font-family: var(--font-display); font-weight: 400; font-size: 18px; line-height: .95; }
+.gp-t.locked .gp-card > * { opacity: .5; }
+.gp-t.got .gp-card { box-shadow: inset 0 0 0 3px var(--rc), inset 0 -5px 0 rgba(0,0,0,.25); }
+.gp-t.next .gp-card { box-shadow: inset 0 0 0 3px var(--text), 0 0 16px rgba(245,239,224,.3); }
+.gp-ok { font-family: var(--font-label); font-size: 9px; letter-spacing: .08em; color: var(--rc); }
+.gp-here { font-family: var(--font-label); font-size: 9px; letter-spacing: .08em; background: var(--text); color: var(--ink); padding: 2px 5px; }
+.gp-rail { position: absolute; left: -5px; right: -5px; bottom: 13px; height: 6px; background: var(--ink); }
+.gp-rail i { display: block; height: 100%; background: var(--gold); }
+.gp-t:first-child .gp-rail { left: 50%; } .gp-t:last-child .gp-rail { right: 50%; }
+.gp-node { position: relative; align-self: center; min-width: 28px; height: 24px; box-sizing: border-box; padding: 0 4px; display: grid; place-items: center; font-family: var(--font-display); font-size: 20px; line-height: 1; background: var(--slate-3); color: var(--muted); box-shadow: 0 0 0 3px var(--ink); }
+.gp-t.got .gp-node { background: var(--gold); color: var(--ink); }
+.gp-t.next .gp-node { background: var(--text); color: var(--ink); }
+.gp-ch { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 8px; }
+.gp-c { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 12px; background: var(--slate-2); padding: 10px 12px; }
+.gp-ck { position: relative; width: 18px; height: 18px; background: var(--ink); box-shadow: inset 0 0 0 2px var(--slate-3); }
+.gp-c.done .gp-ck { background: var(--emerald); box-shadow: none; }
+.gp-c.done .gp-ck::after { content: ''; position: absolute; left: 6px; top: 2px; width: 4px; height: 9px; border: solid var(--ink); border-width: 0 3px 3px 0; transform: rotate(45deg); }
+.gp-cm { display: grid; gap: 6px; min-width: 0; }
+.gp-cm b { font-family: var(--font-display); font-weight: 400; font-size: 22px; line-height: .95; }
+.gp-cm .xpbar { display: block; height: 8px; }
 .gp-c.done .xpbar i { background: var(--emerald); }
-.gp-track { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
-.gp-t { background: var(--slate-2); padding: 8px; display: grid; justify-items: center; gap: 4px; text-align: center; opacity: .6; }
-.gp-t canvas { width: 40px; height: 40px; }
-.gp-t b { font-family: var(--font-display); font-weight: 400; font-size: 18px; line-height: .95; }
-.gp-t.got { opacity: 1; box-shadow: inset 0 0 0 3px var(--gold); }
-.gp-t.next { opacity: 1; box-shadow: inset 0 0 0 3px var(--text); }
+.gp-xp { display: grid; justify-items: end; gap: 3px; }
+.gp-xp b { font-family: var(--font-display); font-weight: 400; font-size: 24px; line-height: .9; color: var(--gold); white-space: nowrap; }
+.gp-xp span { font-family: var(--font-label); font-size: 10px; letter-spacing: .06em; color: var(--muted); }
+.gp-c.done .gp-xp b { color: var(--emerald); }
+@media (max-width: 720px) { .gp-top { grid-template-columns: auto minmax(0, 1fr); } .gp-next { grid-column: 1 / -1; width: auto; grid-template-columns: auto auto minmax(0, 1fr) auto; justify-items: start; align-items: center; text-align: left; gap: 10px; } .gp-next canvas { width: 40px; height: 40px; } }
+@media (max-width: 420px) { .gp-badge { width: 84px; height: 96px; } .gp-badge b { font-size: 54px; } .gp-goal { font-size: 26px; } }
+@media (max-height: 460px) { .gp-top, .gp-week, .gp-track-box { padding: 12px; gap: 8px; } .gp-badge { width: 84px; height: 92px; } .gp-badge b { font-size: 52px; } .gp-goal { font-size: 26px; } .gp-card { height: 108px; } .gp-t.big .gp-card { height: 128px; } }
 .passline { display: grid; gap: 4px; }
 .passline .pl-ch { color: var(--emerald); } .passline .pl-tier { color: var(--gold); }
-@media (max-width: 560px) { .gp-top { grid-template-columns: minmax(0, 1fr); } }
 
 /* CrazyGames: blocks the screen while a video ad may play */
 #ad-block { position: absolute; inset: 0; z-index: 90; background: rgba(9,11,22,.5); }
@@ -390,13 +429,47 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 .btn.ghost.daily .dot { display: none; position: absolute; top: 4px; right: 3px; width: 8px; height: 8px; background: var(--emerald); box-shadow: 0 0 8px var(--emerald); animation: blink .8s steps(2) infinite; }
 .btn.ghost.daily.ready .dot { display: block; }
 .daily-box { width: min(520px, 100%); }
-.modes-box { width: min(640px, 100%); gap: 12px; }
-.md-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.md-card { display: grid; justify-items: start; align-content: start; gap: 6px; position: relative; font-size: 26px; padding: 10px 12px 13px; }
-.md-card .sub { white-space: normal; line-height: 1.35; }
-.md-card .tag { position: absolute; top: -9px; right: 8px; font-family: var(--font-label); font-size: 10px; letter-spacing: .08em; background: #ffcb3d; color: #2b1b00; padding: 3px 6px; border: 2px solid var(--ink); }
-@media (max-width: 560px) { .md-grid { grid-template-columns: 1fr; } .md-card { font-size: 22px; } }
-@media (max-height: 460px) { .modes-box { width: min(760px, 100%); padding: 12px 14px; gap: 8px; } .modes-box h2 { font-size: 40px; } .md-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; } .md-card { font-size: 19px; padding: 6px 8px 8px; gap: 4px; } .md-card .sub { font-size: 9px; } #md-close { font-size: 24px; padding: 4px 14px 8px; } }
+/* MORE MODES (MODE_ART): the featured mode as a big striped card in its colour, then the groups, every mode with its own
+   pixel icon on a dark tile ringed in its colour; descriptions in the body font so they read easily */
+.modes-box { width: min(820px, 100%); max-height: 100%; grid-template-rows: auto minmax(0, 1fr) auto; gap: 12px; }
+.md-head { display: grid; gap: 4px; }
+.md-head h2 { margin: 0; }
+.md-sub { margin: 0; font-family: var(--font-body); font-size: 19px; line-height: 1.1; color: var(--muted); }
+.md-pick { min-height: 0; overflow-y: auto; display: grid; align-content: start; gap: 10px; padding: 2px 8px 8px 2px; }
+.md-hero, .md-card { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: grid; align-items: center; background: var(--slate-2); border: var(--px) solid var(--ink); box-shadow: inset 0 -5px 0 rgba(0,0,0,.3), 4px 4px 0 rgba(0,0,0,.45); }
+.md-hero:focus-visible, .md-card:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.md-hero:active, .md-card:active { transform: translate(3px, 3px); box-shadow: inset 0 -2px 0 rgba(0,0,0,.3), 1px 1px 0 rgba(0,0,0,.45); }
+.md-hero { grid-template-columns: auto minmax(0, 1fr) auto; gap: 18px; padding: 14px 18px 16px 20px; overflow: hidden; }
+.md-hero::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, var(--mc) 0 3px, transparent 3px 18px); opacity: .14; pointer-events: none; }
+.md-hero::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--mc); }
+.md-art { position: relative; width: 92px; height: 92px; display: grid; place-items: center; background: var(--ink); box-shadow: 0 0 0 3px var(--mc), 0 0 22px var(--mc); }
+.md-art img { width: 72px; height: 72px; }
+.md-txt { position: relative; display: grid; gap: 4px; min-width: 0; justify-items: start; }
+.md-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.md-tag { font-family: var(--font-label); font-size: 10px; letter-spacing: .08em; background: var(--gold); color: #2b1b00; padding: 3px 6px; }
+.md-left { font-family: var(--font-body); font-size: 17px; color: var(--muted); }
+.md-n { display: flex; align-items: baseline; gap: 2px 10px; flex-wrap: wrap; }
+.md-n b { font-family: var(--font-display); font-weight: 400; font-size: 28px; line-height: .9; color: var(--text); }
+.md-hero .md-n b { font-size: 54px; text-shadow: 3px 3px 0 var(--ink); }
+.md-on { font-style: normal; font-family: var(--font-label); font-size: 9px; letter-spacing: .06em; color: var(--mc); }
+.md-d { font-family: var(--font-body); font-size: 17px; line-height: 1.1; color: var(--muted); }
+.md-hero .md-d { font-size: 20px; color: var(--text); }
+.md-play { position: relative; font-family: var(--font-display); font-size: 32px; line-height: 1; background: var(--mc); color: var(--ink); padding: 8px 20px 12px; box-shadow: inset 0 -5px 0 rgba(0,0,0,.28), 3px 3px 0 rgba(0,0,0,.45); }
+.md-h { margin: 6px 0 0; font-family: var(--font-display); font-weight: 400; font-size: 24px; line-height: 1; color: var(--muted); }
+.md-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.md-card { grid-template-columns: 52px minmax(0, 1fr); gap: 12px; padding: 8px 12px 10px 8px; }
+.md-tile { width: 52px; height: 52px; display: grid; place-items: center; background: var(--ink); box-shadow: inset 0 0 0 3px var(--mc); }
+.md-tile img { width: 36px; height: 36px; }
+.md-art img, .md-tile img, .md-lob img, .md-seg img { image-rendering: pixelated; }
+@media (hover: hover) { .md-card:hover { background: var(--slate-3); } .md-hero:hover .md-art { box-shadow: 0 0 0 3px var(--mc), 0 0 34px var(--mc); } }
+@media (max-width: 600px) { .md-row { grid-template-columns: 1fr; } .md-hero { grid-template-columns: auto minmax(0, 1fr); } .md-play { grid-column: 1 / -1; text-align: center; } .md-art { width: 64px; height: 64px; } .md-art img { width: 48px; height: 48px; } .md-hero .md-n b { font-size: 40px; } }
+@media (max-height: 460px) { .modes-box { padding: 10px 14px; gap: 8px; } .modes-box h2 { font-size: 40px; } .md-sub { font-size: 16px; } .md-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; } .md-card { grid-template-columns: 40px minmax(0, 1fr); gap: 8px; padding: 6px 8px 8px 6px; } .md-tile { width: 40px; height: 40px; } .md-tile img { width: 28px; height: 28px; } .md-n b { font-size: 22px; } .md-card .md-d { font-size: 14px; } .md-hero { padding: 8px 12px 10px 16px; gap: 12px; } .md-art { width: 60px; height: 60px; } .md-art img { width: 44px; height: 44px; } .md-hero .md-n b { font-size: 36px; } .md-hero .md-d { font-size: 16px; } .md-play { font-size: 24px; padding: 6px 14px 9px; } }
+.btn .sub.md-lob { display: inline-flex; align-items: center; gap: 6px; }
+.md-lob img { width: 16px; height: 16px; flex: none; }
+#on-mode.md-seg { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; justify-self: stretch; }
+#on-mode.md-seg button { display: flex; align-items: center; gap: 8px; text-align: left; padding: 6px 8px; box-shadow: inset 3px 0 0 var(--mc); }
+#on-mode.md-seg button img { width: 20px; height: 20px; flex: none; }
+#on-mode.md-seg button[aria-pressed="true"] { box-shadow: inset 6px 0 0 var(--mc); }
 .dl-card { background: var(--slate-2); padding: 12px; display: grid; gap: 8px; }
 .dl-card > div { display: grid; gap: 6px; justify-items: start; }
 .dl-big { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; color: var(--gold); }
@@ -1207,7 +1280,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], tutorial: false, onboarded: false, tips: [],
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], topUpOff: false, tutorial: false, onboarded: false, tips: [], // topUpOff: START OVER was pressed, so the tester pack no longer refills everything by itself
       posFor: null, fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
@@ -1275,7 +1348,7 @@ const Save = {
     });
     out.preset = Number.isInteger(out.preset) && out.preset >= 0 && out.preset < out.presets.length && out.presets[out.preset].s ? out.preset : -1;
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
-    out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
+    out.topUpOff = !!out.topUpOff; out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
     out.tips = Array.isArray(out.tips) ? out.tips.filter((t) => typeof t === 'string' && t.length < 16).slice(0, 20) : []; // the first-match tips you have seen
     out.goalSteps = out.goalSteps && typeof out.goalSteps === 'object' ? out.goalSteps : {};
@@ -1349,6 +1422,7 @@ const Save = {
     try { const S = this.store(); S.removeItem(this.key); for (const k of this.oldKeys) S.removeItem(k); } catch (e) {}
     if (typeof Portal !== 'undefined') Portal.wipe();
     this.data = Object.assign(this.defaults(), JSON.parse(JSON.stringify(keep)));
+    this.data.topUpOff = true; // owner: "when you reset you keep your characters and skins": the kept tester code must not give them all back
     this.save(); this.load(); this.validate();
   },
   save() {
@@ -1997,6 +2071,14 @@ function makeBallGeometry() {
 
 /* ---------- UI icons (pixel maps rendered to data URLs) ---------- */
 const ICON_MAPS = {
+  // the mode menus (MODE_ART in 07_data.js)
+  ball: ['............', '....kkkk....', '..kkwwwwkk..', '.kwwwkkwwwk.', '.kwwkkkkwwk.', 'kwwwkkkkwwwk', 'kkwwwkkwwwkk', 'kkkwwwwwwkkk', '.kkwwwwwwkk.', '.kwwwkkwwwk.', '..kkwkkwkk..', '....kkkk....'],
+  dice: ['............', '.kkkkkkkkkk.', '.kwwwwwwwwk.', '.kwAAwwwwwk.', '.kwAAwwwwwk.', '.kwwwAAwwwk.', '.kwwwAAwwwk.', '.kwwwwwAAwk.', '.kwwwwwAAwk.', '.kwwwwwwwwk.', '.kkkkkkkkkk.', '............'],
+  bomb: ['.......Y....', '......YRY...', '.......k....', '......k.....', '...kkkkk....', '..ksssssk...', '.kswwssssk..', '.kswsssssk..', '.ksssssssk..', '.ksssssssk..', '..ksssssk...', '...kkkkk....'],
+  goal: ['............', 'kkkkkkkkkkkk', 'kwwwwwwwwwwk', 'kwkAkAkAkAwk', 'kwAkAkAkAkwk', 'kwkAkAkAkAwk', 'kwAkAkAkAkwk', 'kwkAkAkAkAwk', 'kwk......kwk', 'kwk......kwk', 'kkk......kkk', '............'],
+  crown: ['............', '............', '.k...kk...k.', 'kYk.kYYk.kYk', 'kYYkYYYYkYYk', 'kYYYYYYYYYYk', 'kYYRYYYYRYYk', 'kYYYYYYYYYYk', 'kooooooooook', 'kkkkkkkkkkkk', '............', '............'],
+  moon: ['............', '....kkkk....', '..kkAAAAk...', '.kAAAAkk....', '.kAAAk...w..', 'kAAAk.......', 'kAAAk.....w.', '.kAAAk......', '.kAAAAkk....', '..kkAAAAk...', '....kkkk....', '............'],
+  core: ['............', '.....kk.....', '....kwAk....', '...kwAAAk...', '..kwAAAAAk..', '.kwAAAAAAAk.', '.kAAAAAAAsk.', '..kAAAAAsk..', '...kAAAsk...', '....kAsk....', '.....kk.....', '............'],
   emerald: ['.....kk.....', '....kLLk....', '...kLlEEk...', '..kLlEEEek..', '.kLlEEEEEek.', 'kLlEEEEEEeek', 'kEEEEEEEEeek', '.kEEEEEEeek.', '..kEEEEeek..', '...kEEeek...', '....keek....', '.....kk.....'],
   shot: ['............', '............', '.......kkkk.', '......kwwwwk', 'AAAA.kwwkwwk', '.....kwkkkwk', 'AAA..kwwkwwk', '......kwwwwk', 'AAAA...kkkk.', '............', '............', '............'],
   dash: ['............', '............', '.AA...AA....', '..AA...AA...', '...AA...AA..', '....AA...AA.', '....AA...AA.', '...AA...AA..', '..AA...AA...', '.AA...AA....', '............', '............'],
@@ -5140,6 +5222,29 @@ const leadRole = (roles) => roles.filter((r) => r !== 'GK').sort((a, b) => ROLE_
 const teamSizeFor = (mode, rp) => { if (mode === 'duel') return 2; if (mode === 'quick') return 4; if (mode !== 'ranked') return 3; const t = tierOf(rp); return t >= 4 ? 5 : t >= 2 ? 4 : 3; };
 /* the featured mode changes every 3 hours on a fixed schedule from the clock (UTC), so everyone sees the same one */
 const FEATURED = ['heist', 'koth', 'mega', 'volleys', 'duel', 'lawless'], FEATURED_MS = 3 * 3600 * 1000;
+/** how each mode looks in the menus (owner, Nov 25 2026: "make the ui better especially the mode choosers"): its pixel icon
+    (ICON_MAPS, drawn in its colour), its colour, one plain line, and its group in MORE MODES (none: not listed there) */
+const MODE_ART = {
+  quick: { icon: 'ball', hex: '#3d7dff', line: 'A normal match.' },
+  lawless: { icon: 'boom', hex: '#ff8a2a', line: 'Item blocks drop on the pitch. Rocket fists, slime, jetpacks.' },
+  chaos: { icon: 'dice', hex: '#ff5fb0', group: 'new', line: 'The rules change every 25 seconds: moon ball, turbo, giants and more.' },
+  bomb: { icon: 'bomb', hex: '#ff8a2a', group: 'new', line: 'The ball is a bomb. If it goes off in your half, they score.' },
+  tiny: { icon: 'goal', hex: '#7ff5bd', group: 'new', line: 'Tiny goals and no keepers. Aim carefully.' },
+  heist: { icon: 'core', hex: '#b65cff', group: 'party', line: 'Score to take their cores and powers. Win and snap them away.' },
+  mega: { icon: 'full', hex: '#2ee38f', group: 'party', line: 'The goal is as wide as the whole pitch.' },
+  koth: { icon: 'crown', hex: '#ffcb3d', group: 'party', line: 'Hold the ball in the ring for points. Goals are worth 3.' },
+  volleys: { icon: 'jump', hex: '#4aa8ff', group: 'party', line: 'Only volleys and headers count.' },
+  golden: { icon: 'goal', hex: '#ffcb3d', group: 'party', line: 'The next goal wins the match.' },
+  nokeep: { icon: 'shot', hex: '#ff5a3c', group: 'party', line: 'No keepers. Shoot from anywhere.' },
+  turbo: { icon: 'dash', hex: '#3fd6ff', group: 'party', line: 'Everything is faster, the clock too.' },
+  moon: { icon: 'moon', hex: '#c9d2ff', group: 'party', line: 'The ball floats like on the moon.' },
+  duel: { icon: 'fist', hex: '#ff4d5e', group: 'party', line: 'You and a keeper against one. First to 3 goals.' },
+  fkkeeper: { icon: 'glove', hex: '#9fd4ff', group: 'practice', line: 'You in goal. Save their 10 free kicks.' },
+  freekick: { icon: 'boot', hex: '#ffcb3d', group: 'practice', line: 'Practise free kicks: aim, curve and power.' },
+  tutorial: { icon: 'smile', hex: '#a4a9cf', group: 'practice', line: 'Learn the controls step by step.' },
+};
+const MODE_GROUPS = [['new', 'NEW'], ['party', 'PARTY MODES'], ['practice', 'PRACTICE']];
+const modeIcon = (k) => iconURL(MODE_ART[k].icon, MODE_ART[k].hex);
 /* OMEGA CORES (Nov 2026, from the "steal" games that top the charts; owner: "the team with all of them wins and the
    other team is no more"): each team's power cores sit on its own crossbar, a goal takes the other team's best one (the
    scorer catches it and locks it into the band on their arm), the team whose cores are worth more at the end wins, and the
@@ -5242,7 +5347,7 @@ function unlockAll(d) {
 }
 /** a save that used a 'give all' code also gets everything added in later updates (Save.validate runs this on load) */
 function codeTopUp(d) {
-  return d.codes.some((h) => CODES[h] && CODES[h].give === 'all') ? unlockAll(d) : 0;
+  return !d.topUpOff && d.codes.some((h) => CODES[h] && CODES[h].give === 'all') ? unlockAll(d) : 0; // not after START OVER, until the code is typed again
 }
 /** try a code: returns the message to show. 'all' unlocks everything you can own (not rank or level) */
 function redeemCode(d, text) {
@@ -5251,7 +5356,7 @@ function redeemCode(d, text) {
   if (!c || (c.retired && !d.codes.includes(h))) return { ok: false, msg: 'THAT CODE DOES NOT WORK' };
   if (d.codes.includes(h)) {
     if (c.give !== 'all') return { ok: false, msg: 'YOU ALREADY USED THAT CODE' };
-    const n = unlockAll(d); // used before: it still gives anything new from updates, but no more emeralds
+    d.topUpOff = false; const n = unlockAll(d); // used before: it still gives anything new from updates, but no more emeralds (typing it after START OVER gives it all back)
     return n ? { ok: true, msg: c.name + ': ' + n + ' NEW ITEM' + (n > 1 ? 'S' : '') + ' UNLOCKED' } : { ok: false, msg: 'YOU ALREADY HAVE EVERYTHING' };
   }
   d.codes.push(h);
@@ -9488,7 +9593,7 @@ const Admin = {
       d.pass.xp = a === 'passmax' ? PASS_TIERS * PASS_TIER_XP : Math.min(PASS_TIERS * PASS_TIER_XP, (Pass.tier(d) + 1) * PASS_TIER_XP);
       const got = []; while (d.pass.got < Pass.tier(d)) { d.pass.got++; got.push(Pass.grant(d, d.pass.got)); }
       this.say(got.length ? got.length + (got.length > 1 ? ' TIERS' : ' TIER') + ' OF REWARDS ADDED' : 'THE PASS IS COMPLETE');
-    } else if (a === 'all') { const n = unlockAll(d); this.say(n ? n + ' NEW ITEMS UNLOCKED' : 'YOU ALREADY HAVE EVERYTHING'); }
+    } else if (a === 'all') { d.topUpOff = false; const n = unlockAll(d); this.say(n ? n + ' NEW ITEMS UNLOCKED' : 'YOU ALREADY HAVE EVERYTHING'); }
     else return;
     Save.save(); UI.renderLobby(); this.render();
   },
@@ -10533,7 +10638,7 @@ const Net = {
           <div class="on-teams"><div class="on-team" id="on-t0"></div><div class="on-team" id="on-t1"></div></div>
           <button class="btn small" id="on-switch" type="button">SWITCH TEAM</button>
           <div class="on-host" id="on-host">
-            <span class="label">MODE</span><div class="seg" id="on-mode">${NET_MODES.map(([k, n]) => `<button type="button" data-m="${k}">${n}</button>`).join('')}</div>
+            <span class="label">MODE</span><div class="seg md-seg" id="on-mode">${NET_MODES.map(([k, n]) => `<button type="button" data-m="${k}" style="--mc:${MODE_ART[k].hex}"><img class="px" alt="" src="${modeIcon(k)}">${n}</button>`).join('')}</div>
             <span class="label">TEAM SIZE</span><div class="seg" id="on-size">${[3, 4, 5].map((n) => `<button type="button" data-s="${n}">${n}V${n}</button>`).join('')}</div>
             <span class="label">BOTS</span><div class="seg" id="on-bots"><button type="button" data-b="fill">FILL</button><button type="button" data-b="keepers">KEEPERS ONLY</button><button type="button" data-b="none">NONE</button></div>
             <button class="btn blue" id="on-go" type="button">START MATCH <span class="sub" id="on-go-sub">BOTS FILL EMPTY SPOTS</span></button>
@@ -11879,7 +11984,7 @@ const UI = {
           <button class="btn blue play" id="go-quick" type="button">PLAY <span class="sub" id="quick-sub">QUICK MATCH &middot; 4V4</span></button>
           <button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; ITEMS</span></button>
-          <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub">CHAOS &middot; BOMB BALL &middot; OMEGA CORES</span></button>
+          <button class="btn featured" id="go-modes" type="button">MORE MODES <span class="sub md-lob" id="modes-sub">CHAOS</span></button>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
           <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
@@ -12109,29 +12214,42 @@ const UI = {
       <div class="sub-wrap">
         <div class="sub-head"><h2>GAME PASS</h2><button class="btn small" id="pass-back" type="button">BACK</button></div>
         <section class="panel gp-top" id="gp-top"></section>
-        <section class="panel gp-week"><h3>THIS WEEK</h3><div class="gp-ch" id="gp-ch"></div></section>
-        <section class="panel gp-track-box"><h3>REWARDS</h3><div class="gp-track" id="gp-track"></div></section>
+        <section class="panel gp-track-box">
+          <div class="gp-th"><h3>REWARDS</h3><span class="gp-th-l">All 30 tiers. Scroll sideways.</span><div class="gp-nav"><button class="btn small gp-arr" type="button" id="gp-prev" aria-label="Earlier rewards"><i class="arr l"></i></button><button class="btn small gp-arr" type="button" id="gp-next" aria-label="Later rewards"><i class="arr r"></i></button></div></div>
+          <div class="gp-scroll" id="gp-scroll"><div class="gp-track" id="gp-track"></div></div>
+        </section>
+        <section class="panel gp-week"><div class="gp-th"><h3>THIS WEEK</h3><span class="gp-th-l" id="gp-week-l"></span></div><div class="gp-ch" id="gp-ch"></div></section>
       </div>
     </section>`;
   },
   renderPass() {
     const d = Save.data; Pass.sync(d);
-    const S = seasonAt(), P = d.pass, tier = Pass.tier(d), into = tier >= PASS_TIERS ? PASS_TIER_XP : P.xp % PASS_TIER_XP;
-    const days = (ms) => { const h = Math.floor(ms / 3600e3); return h >= 48 ? Math.floor(h / 24) + ' DAYS' : h + 'H ' + Math.floor(ms / 60e3) % 60 + 'M'; };
-    $('gp-top').innerHTML = `<div class="gp-tier"><span class="label">SEASON ${S.season} · ENDS IN ${days(S.seasonLeft)}</span><b>TIER ${tier} <small>/ ${PASS_TIERS}</small></b></div>
-      <div class="gp-bar"><div class="xpbar pass"><i style="width:${into / PASS_TIER_XP * 100}%"></i></div><span class="label">${tier >= PASS_TIERS ? 'PASS COMPLETE' : into + ' / ' + PASS_TIER_XP + ' XP TO TIER ' + (tier + 1)}</span></div>
-      <p class="gp-note">Free for everyone. Earn pass XP by playing well: goals, assists, shots on target, tackles, passes and wins. Standing around earns nothing. Rewards only change your looks.</p>`;
-    $('gp-ch').innerHTML = `<span class="label">NEW CHALLENGES IN ${days(S.weekLeft)}</span>` + weekChallenges(P.week).map((id) => {
-      const C = CHALLENGES[id], n = Math.min(C.goal, P.prog[id] || 0), done = P.done.includes(id);
-      return `<div class="gp-c ${done ? 'done' : ''}"><b>${esc(C.name)}</b><span class="label">${done ? 'DONE' : n + ' / ' + C.goal} · +${C.xp} XP</span><div class="xpbar"><i style="width:${n / C.goal * 100}%"></i></div></div>`;
-    }).join('');
+    const S = seasonAt(), P = d.pass, tier = Pass.tier(d), full = tier >= PASS_TIERS, into = full ? PASS_TIER_XP : P.xp % PASS_TIER_XP;
+    const days = (ms) => { const h = Math.floor(ms / 3600e3); return h >= 48 ? Math.floor(h / 24) + ' days' : h + 'h ' + Math.floor(ms / 60e3) % 60 + 'm'; };
+    const hexOf = (r) => (r.skin ? RARITY_HEX[SKINS[r.skin].rarity] || '#a4a9cf' : '#2ee38f'); // a skin in its rarity colour, emeralds green
+    const art = (r, size) => { const cv = r.skin ? skinCanvas(r.skin, size) : iconCanvas('emerald'); cv.className = 'px'; return cv; };
+    const next = full ? null : PASS_REWARDS[tier];
+    $('gp-top').innerHTML = `<div class="gp-badge"><span class="gp-season">SEASON ${S.season}</span><b>${tier}</b><span class="gp-of">OF ${PASS_TIERS}</span></div>
+      <div class="gp-prog"><span class="gp-goal">${full ? 'Pass complete. Every reward is yours.' : (PASS_TIER_XP - into) + ' XP to tier ' + (tier + 1)}</span>
+        <div class="gp-bar"><i style="width:${into / PASS_TIER_XP * 100}%"></i><span>${into} / ${PASS_TIER_XP} XP</span></div>
+        <p class="gp-note">Free for everyone. Goals, assists, shots on target, tackles, passes and wins earn pass XP. Season ${S.season} ends in ${days(S.seasonLeft)}.</p></div>
+      ${next ? `<div class="gp-next" style="--rc:${hexOf(next)}"><span class="gp-next-l">NEXT REWARD</span><span class="gv"></span><b>${esc(Pass.rewardName(next))}</b><span class="gp-next-l">TIER ${tier + 1}</span></div>` : ''}`;
+    if (next) $('gp-top').querySelector('.gv').replaceWith(art(next, 64));
     $('gp-track').innerHTML = PASS_REWARDS.map((r, i) => {
-      const n = i + 1, got = P.got >= n, now = n === tier + 1;
-      return `<div class="gp-t ${got ? 'got' : ''} ${now ? 'next' : ''}" data-i="${i}"><span class="label">TIER ${n}</span><span class="gv"></span><b>${esc(Pass.rewardName(r))}</b><span class="label">${got ? 'EARNED' : now ? 'NEXT' : ''}</span></div>`;
+      const n = i + 1, got = P.got >= n, now = !got && n === tier + 1, fill = got ? 100 : now ? into / PASS_TIER_XP * 100 : 0;
+      return `<div class="gp-t ${got ? 'got' : now ? 'next' : 'locked'}${n % 10 === 0 ? ' big' : ''}" data-i="${i}" style="--rc:${hexOf(r)}">
+        <div class="gp-card"><span class="gv"></span><b>${esc(Pass.rewardName(r))}</b>${got ? '<span class="gp-ok">EARNED</span>' : now ? '<span class="gp-here">NEXT</span>' : ''}</div>
+        <span class="gp-rail"><i style="width:${fill}%"></i></span><span class="gp-node">${n}</span></div>`;
     }).join('');
-    $('gp-track').querySelectorAll('.gp-t').forEach((el) => {
-      const r = PASS_REWARDS[+el.dataset.i], cv = r.skin ? skinCanvas(r.skin, 40) : iconCanvas('emerald');
-      cv.className = 'px'; el.querySelector('.gv').replaceWith(cv);
+    $('gp-track').querySelectorAll('.gp-t').forEach((el) => el.querySelector('.gv').replaceWith(art(PASS_REWARDS[+el.dataset.i], el.classList.contains('big') ? 60 : 44)));
+    $('gp-week-l').textContent = 'New challenges in ' + days(S.weekLeft) + '.';
+    $('gp-ch').innerHTML = weekChallenges(P.week).map((id) => {
+      const C = CHALLENGES[id], n = Math.min(C.goal, P.prog[id] || 0), done = P.done.includes(id);
+      return `<div class="gp-c ${done ? 'done' : ''}"><span class="gp-ck"></span><span class="gp-cm"><b>${esc(C.name)}</b><span class="xpbar"><i style="width:${done ? 100 : n / C.goal * 100}%"></i></span></span><span class="gp-xp"><b>+${C.xp} XP</b><span>${done ? 'DONE' : n + ' / ' + C.goal}</span></span></div>`;
+    }).join('');
+    requestAnimationFrame(() => { // start the track at the tier you are on
+      const sc = $('gp-scroll'), at = sc.querySelector('.gp-t.next') || sc.querySelector('.gp-t.got:last-of-type') || sc.querySelector('.gp-t:last-child');
+      if (at) sc.scrollLeft = Math.max(0, at.offsetLeft - sc.clientWidth * 0.3);
     });
   },
   tplHud() {
@@ -12201,18 +12319,27 @@ const UI = {
   tplModes() {
     return `<section id="scr-modes" class="overlay" hidden>
       <div class="dialog panel modes-box">
-        <h2>MORE MODES</h2>
-        <p class="label">JUST FOR FUN, SO NO REWARDS. QUICK MATCH, RANKED AND LAWLESS GIVE REWARDS.</p>
-        <div class="md-grid" id="md-grid"></div>
+        <div class="md-head"><h2>MORE MODES</h2><p class="md-sub">Just for fun, so no rewards. Quick Match, Ranked and Lawless give rewards.</p></div>
+        <div class="md-pick" id="md-pick"><div id="md-hero"></div><div class="md-grid" id="md-grid"></div></div>
         <button class="btn" id="md-close" type="button">CLOSE</button>
       </div>
     </section>`;
   },
   openModes() {
-    const desc = { chaos: 'THE RULES CHANGE EVERY 25 SECONDS. MOON BALL, TURBO, GIANTS AND MORE', bomb: 'THE BALL IS A BOMB. IF IT GOES OFF IN YOUR HALF, THEY SCORE', tiny: 'TINY GOALS AND NO KEEPERS. AIM CAREFULLY', heist: 'TAKE THEIR CORES AND THEIR POWERS. WIN AND SNAP THEM AWAY', mega: 'THE GOAL IS AS WIDE AS THE WHOLE PITCH', fkkeeper: 'YOU IN GOAL. SAVE THEIR 10 FREE KICKS', koth: 'HOLD THE BALL IN THE RING FOR POINTS. GOALS ARE WORTH 3', volleys: 'ONLY VOLLEYS AND HEADERS COUNT', duel: 'YOU AND A KEEPER AGAINST ONE. FIRST TO 3 GOALS', golden: 'THE NEXT GOAL WINS THE MATCH', nokeep: 'NO KEEPERS. SHOOT FROM ANYWHERE', turbo: 'EVERYTHING IS FASTER, THE CLOCK TOO', moon: 'THE BALL FLOATS LIKE ON THE MOON', freekick: 'PRACTISE FREE KICKS: AIM, CURVE AND POWER', tutorial: 'LEARN THE CONTROLS STEP BY STEP' };
-    const feat = featuredAt().mode;
-    $('md-grid').innerHTML = Object.keys(desc).map((k) => `<button class="btn md-card" type="button" data-mode="${k}">${MODES[k].name}${k === feat ? '<span class="tag">FEATURED</span>' : ''}<span class="sub">${desc[k]}</span></button>`).join('');
+    const F = featuredAt(), feat = MODE_ART[F.mode] && MODES[F.mode] ? F.mode : null, online = new Set(NET_MODES.map((x) => x[0]));
+    const h = Math.floor(F.left / 3600e3), mins = Math.floor(F.left / 60e3) % 60;
+    const name = (k) => `<span class="md-n"><b>${MODES[k].name}</b>${online.has(k) ? '<i class="md-on">ONLINE TOO</i>' : ''}</span>`;
+    const card = (k) => `<button class="md-card" type="button" data-mode="${k}" style="--mc:${MODE_ART[k].hex}"><span class="md-tile"><img class="px" alt="" src="${modeIcon(k)}"></span><span class="md-txt">${name(k)}<span class="md-d">${MODE_ART[k].line}</span></span></button>`;
+    $('md-hero').innerHTML = feat ? `<button class="md-hero" type="button" data-mode="${feat}" style="--mc:${MODE_ART[feat].hex}">
+        <span class="md-art"><img class="px" alt="" src="${modeIcon(feat)}"></span>
+        <span class="md-txt"><span class="md-meta"><span class="md-tag">FEATURED</span><span class="md-left">Changes in ${h ? h + 'h ' : ''}${mins}m</span></span>${name(feat)}<span class="md-d">${MODE_ART[feat].line}</span></span>
+        <span class="md-play">PLAY</span></button>` : '';
+    $('md-grid').innerHTML = MODE_GROUPS.map(([g, title]) => {
+      const ks = Object.keys(MODE_ART).filter((k) => MODE_ART[k].group === g && k !== feat && MODES[k]);
+      return ks.length ? `<h3 class="md-h">${title}</h3><div class="md-row">${ks.map(card).join('')}</div>` : '';
+    }).join('');
     $('scr-modes').hidden = false;
+    $('md-pick').scrollTop = 0;
   },
   tplDaily() {
     return `<section id="scr-daily" class="overlay" hidden>
@@ -12421,7 +12548,7 @@ const UI = {
     click('go-lawless', () => Game.startMatch('lawless'));
     click('go-modes', () => this.openModes());
     click('md-close', () => { $('scr-modes').hidden = true; });
-    $('md-grid').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (!b) return; $('scr-modes').hidden = true; Sfx.init(); Game.startMatch(b.dataset.mode); });
+    $('md-pick').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (!b) return; $('scr-modes').hidden = true; Sfx.init(); Game.startMatch(b.dataset.mode); });
     click('go-spins', () => this.openSpins());
     click('go-locker', () => this.openLocker());
     click('go-howto', () => this.show('howto'));
@@ -12431,6 +12558,9 @@ const UI = {
     $('emote-pop').addEventListener('click', (e) => { const b = e.target.closest('[data-em]'); if (b) this.pickEmote(+b.dataset.em); });
     click('go-profile', () => this.show('profile'));
     click('go-pass', () => this.show('pass'));
+    const gpGo = (dir) => { const sc = $('gp-scroll'); sc.scrollBy({ left: dir * sc.clientWidth * 0.8, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); };
+    click('gp-prev', () => gpGo(-1)); click('gp-next', () => gpGo(1));
+    $('gp-scroll').addEventListener('wheel', (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { $('gp-scroll').scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false }); // the mouse wheel moves along the track
     click('go-online', () => Net.open());
     click('pass-back', () => this.show('lobby'));
     click('goals-back', () => this.show('lobby'));
@@ -12552,6 +12682,8 @@ const UI = {
     $('go-tut').hidden = d.tutorial || d.stats.played >= 3; // new players: a way into the tutorial
     $('pro-badge').src = badgeURL(tier);
     Pass.sync(d); $('pass-sub').textContent = 'TIER ' + Pass.tier(d) + ' / ' + PASS_TIERS;
+    const fm = featuredAt().mode, nModes = Object.keys(MODE_ART).filter((k) => MODE_ART[k].group).length; // MORE MODES: how many, and the featured one
+    $('modes-sub').innerHTML = MODE_ART[fm] && MODES[fm] ? `<img class="px" alt="" src="${modeIcon(fm)}">FEATURED: ${MODES[fm].name}` : nModes + ' MODES';
     $('pro-tier').textContent = TIER_NAMES[tier];
     const inTier = tier >= 5 ? 10 : Math.floor((d.rp % 100) / 10);
     $('pro-rp').innerHTML = Array.from({ length: 10 }, (_, i) => `<i class="${i < inTier ? 'on' : ''}"></i>`).join('');

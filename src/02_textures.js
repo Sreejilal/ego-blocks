@@ -421,6 +421,14 @@ function makeBallGeometry() {
 
 /* ---------- UI icons (pixel maps rendered to data URLs) ---------- */
 const ICON_MAPS = {
+  // the mode menus (MODE_ART in 07_data.js)
+  ball: ['............', '....kkkk....', '..kkwwwwkk..', '.kwwwkkwwwk.', '.kwwkkkkwwk.', 'kwwwkkkkwwwk', 'kkwwwkkwwwkk', 'kkkwwwwwwkkk', '.kkwwwwwwkk.', '.kwwwkkwwwk.', '..kkwkkwkk..', '....kkkk....'],
+  dice: ['............', '.kkkkkkkkkk.', '.kwwwwwwwwk.', '.kwAAwwwwwk.', '.kwAAwwwwwk.', '.kwwwAAwwwk.', '.kwwwAAwwwk.', '.kwwwwwAAwk.', '.kwwwwwAAwk.', '.kwwwwwwwwk.', '.kkkkkkkkkk.', '............'],
+  bomb: ['.......Y....', '......YRY...', '.......k....', '......k.....', '...kkkkk....', '..ksssssk...', '.kswwssssk..', '.kswsssssk..', '.ksssssssk..', '.ksssssssk..', '..ksssssk...', '...kkkkk....'],
+  goal: ['............', 'kkkkkkkkkkkk', 'kwwwwwwwwwwk', 'kwkAkAkAkAwk', 'kwAkAkAkAkwk', 'kwkAkAkAkAwk', 'kwAkAkAkAkwk', 'kwkAkAkAkAwk', 'kwk......kwk', 'kwk......kwk', 'kkk......kkk', '............'],
+  crown: ['............', '............', '.k...kk...k.', 'kYk.kYYk.kYk', 'kYYkYYYYkYYk', 'kYYYYYYYYYYk', 'kYYRYYYYRYYk', 'kYYYYYYYYYYk', 'kooooooooook', 'kkkkkkkkkkkk', '............', '............'],
+  moon: ['............', '....kkkk....', '..kkAAAAk...', '.kAAAAkk....', '.kAAAk...w..', 'kAAAk.......', 'kAAAk.....w.', '.kAAAk......', '.kAAAAkk....', '..kkAAAAk...', '....kkkk....', '............'],
+  core: ['............', '.....kk.....', '....kwAk....', '...kwAAAk...', '..kwAAAAAk..', '.kwAAAAAAAk.', '.kAAAAAAAsk.', '..kAAAAAsk..', '...kAAAsk...', '....kAsk....', '.....kk.....', '............'],
   emerald: ['.....kk.....', '....kLLk....', '...kLlEEk...', '..kLlEEEek..', '.kLlEEEEEek.', 'kLlEEEEEEeek', 'kEEEEEEEEeek', '.kEEEEEEeek.', '..kEEEEeek..', '...kEEeek...', '....keek....', '.....kk.....'],
   shot: ['............', '............', '.......kkkk.', '......kwwwwk', 'AAAA.kwwkwwk', '.....kwkkkwk', 'AAA..kwwkwwk', '......kwwwwk', 'AAAA...kkkk.', '............', '............', '............'],
   dash: ['............', '............', '.AA...AA....', '..AA...AA...', '...AA...AA..', '....AA...AA.', '....AA...AA.', '...AA...AA..', '..AA...AA...', '.AA...AA....', '............', '............'],

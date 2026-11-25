@@ -106,7 +106,7 @@ const Admin = {
       d.pass.xp = a === 'passmax' ? PASS_TIERS * PASS_TIER_XP : Math.min(PASS_TIERS * PASS_TIER_XP, (Pass.tier(d) + 1) * PASS_TIER_XP);
       const got = []; while (d.pass.got < Pass.tier(d)) { d.pass.got++; got.push(Pass.grant(d, d.pass.got)); }
       this.say(got.length ? got.length + (got.length > 1 ? ' TIERS' : ' TIER') + ' OF REWARDS ADDED' : 'THE PASS IS COMPLETE');
-    } else if (a === 'all') { const n = unlockAll(d); this.say(n ? n + ' NEW ITEMS UNLOCKED' : 'YOU ALREADY HAVE EVERYTHING'); }
+    } else if (a === 'all') { d.topUpOff = false; const n = unlockAll(d); this.say(n ? n + ' NEW ITEMS UNLOCKED' : 'YOU ALREADY HAVE EVERYTHING'); }
     else return;
     Save.save(); UI.renderLobby(); this.render();
   },
