@@ -374,6 +374,7 @@ class Match {
   updateHuman(dt, c, p = this.human) {
     if (!p || !c) return;
     if (p.passHold > 0 && c.passHeld === false && !c.passUp) p.passHold = 0; // let go while it was not listening (knocked down, a restart): no pass stuck down
+    if (c.swap && !this.online && this.trySwitch(p)) return; // V: you are someone else from now
     // an online player sends their own camera direction and aim point
     if (c.camYaw != null) p.camYaw = c.camYaw;
     if (c.aim) p.aimV = c.aim;
@@ -533,7 +534,6 @@ class Match {
       if (k.type === 'pass' && k.by.team === p.team) {
         k.by.stats.passes++; this.flowAdd(k.by, 12);
         this.lastPass = { from: k.by, to: p, t: this.time };
-        if (this.story && k.by === this.human && !p.isGK && !this.online) this.switchTo(p); // STORY: you take control of whoever you pass to
       } else if (k.by.team !== p.team && (k.type === 'pass' || k.type === 'shot')) {
         this.flowAdd(p, 10);
         if (p.isHuman) this.toast('INTERCEPTED', 'good', p);
@@ -541,6 +541,7 @@ class Match {
       }
     }
     if (p.isGK && this.inOwnBox(p)) { b.held = true; p.setState('hold'); p.ai.holdT = rand(0.8, 1.4); }
+    if (this.story && !this.online && this.human && p.team === this.human.team && p !== this.human && !p.isGK) this.switchTo(p); // STORY: you always play the teammate with the ball (a pass, a tackle, an interception)
     if (!silent) Sfx.touch();
     if (p.fx.skyTrap > 0 && b.pos.y > 1.2) { p.fx.skyTrap = 0; p.fx.hang = 0.45; if (!p.onGround) p.vel.y = Math.max(p.vel.y, 0); FX.ring(b.pos.x, b.pos.y, b.pos.z, p.aura, 0.9, 16); this.label(p, 'TRAPPED', p.aura); Sfx.zap(); }
   }
@@ -1573,7 +1574,18 @@ class Match {
     c[1].material.color.copy(c[0].material.color);
     c[0].material.opacity = 0.7 + Math.sin(this.time * 6) * 0.15;
   }
-  /** STORY: you take over a teammate (the one you passed to); the player you left plays on as a bot */
+  /** V (R3, SWITCH on a phone): take over the teammate with the ball, else the one nearest the ball. Offline matches, not in
+      free kicks, the tutorial or the training drills (owner, Nov 2026: "a teammate has the ball but I still can't control him") */
+  trySwitch(p) {
+    if (this.online || this.fk || this.tut || this.drill || !p) return false;
+    const b = this.ball, mates = this.teams[p.team].filter((q) => q !== p && !q.isGK);
+    if (!mates.length) return false;
+    const carrier = b.owner && b.owner.team === p.team && b.owner !== p && !b.owner.isGK ? b.owner : null;
+    const t = carrier || mates.reduce((a, q) => (dist2D(q.pos, b.pos) < dist2D(a.pos, b.pos) ? q : a));
+    this.switchTo(t); Sfx.click();
+    return true;
+  }
+  /** you take over a teammate (V, or in STORY whoever gets the ball); the player you left plays on as a bot */
   switchTo(p) {
     const h = this.human;
     if (!h || p === h || p.team !== h.team) return;

@@ -26,7 +26,7 @@ const URL = 'file:///' + path.join(__dirname, '..', 'docs', 'index.html').replac
   const v0 = await view(A);
   check('third person: the camera sits behind you and you can see yourself', v0.cam === 'third' && v0.d > 4 && v0.seen, v0);
   await A.screenshot({ path: __dirname + '/shots/cam1_third.png' });
-  await A.keyboard.press('KeyV'); await A.evaluate(() => EGO.Game.stepManual(4, true));
+  await A.keyboard.press('KeyH'); await A.evaluate(() => EGO.Game.stepManual(4, true));
   const v1 = await view(A);
   check('V: first person, the camera is at your eyes and your own model is hidden', v1.cam === 'first' && v1.d < 0.5 && !v1.seen && v1.aim, v1);
   await A.evaluate(() => { EGO.Cam.pitch = -0.9; EGO.Game.stepManual(2, true); });
@@ -40,15 +40,15 @@ const URL = 'file:///' + path.join(__dirname, '..', 'docs', 'index.html').replac
   check('goals and the final whistle use the wide third person shot, then first person again', goal.d > 2 && goal.seen && goal.back, goal);
   // saved, and V again goes back
   const saved = await A.evaluate(() => JSON.parse(localStorage.getItem('scorz.save.v1')).settings.cam);
-  await A.keyboard.press('KeyV'); await A.evaluate(() => EGO.Game.stepManual(30, false));
+  await A.keyboard.press('KeyH'); await A.evaluate(() => EGO.Game.stepManual(30, false));
   const v2 = await view(A);
-  check('the choice is saved, and V again goes back to third person', saved === 'first' && v2.cam === 'third' && v2.seen && v2.d > 4, { saved, v2 });
+  check('the choice is saved, and H again goes back to third person', saved === 'first' && v2.cam === 'third' && v2.seen && v2.d > 4, { saved, v2 });
   // one press during hit stop still switches only once
-  const once = await A.evaluate(() => { EGO.TimeCtl.hitStop && EGO.TimeCtl.hitStop(0.2); EGO.Input.edges.add('KeyV'); EGO.Game.stepManual(5, false); return EGO.Save.data.settings.cam; });
+  const once = await A.evaluate(() => { EGO.TimeCtl.hitStop && EGO.TimeCtl.hitStop(0.2); EGO.Input.edges.add('KeyH'); EGO.Game.stepManual(5, false); return EGO.Save.data.settings.cam; });
   check('one press switches once, even in a hit stop', once === 'first', once);
   // controller R3, but R3 still watches a replay when one is offered
-  const r3 = await A.evaluate(() => { EGO.Input.edges.add('PadRS'); EGO.Game.stepManual(2, false); return EGO.Save.data.settings.cam; });
-  check('R3 on a controller switches the camera', r3 === 'third', r3);
+  const r3 = await A.evaluate(() => { const m = EGO.Game.match, before = m.human; EGO.Input.edges.add('PadRS'); EGO.Game.stepManual(20, false); return { cam: EGO.Save.data.settings.cam, switched: m.human !== before && !before.isHuman }; });
+  check('R3 on a controller (and V) switches player now, not the camera (owner: "if I press V I can change")', r3.cam === 'first' && r3.switched, r3);
   // the menu
   await A.evaluate(() => { EGO.Game.pause(); });
   await A.evaluate(() => document.querySelector('#set-cam [data-v="first"]').click());

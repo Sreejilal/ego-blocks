@@ -112,6 +112,7 @@ const Input = {
       flow: e.has('KeyG') || e.has('PadY') || e.has('T_flow'),
       emote: this.takeEmote(), awaken: e.has('KeyZ'), shiftLock: !!Save.data.settings.shiftLock, // shift lock: you always face where the camera looks // the Flow button (G, Y, FLOW) awakens you too when only the Awakening bar is full
       item: e.has('KeyX') || (e.has('PadDown') && !chatPad) || e.has('T_item'),
+      swap: e.has('KeyV') || (e.has('PadRS') && !Replay.offer) || e.has('T_swap'), // take over a teammate (owner: "if I press V I can change")
       board: k.has('Tab') || this.padHeld(PAD.BACK) || T.board,
     };
   },
@@ -163,7 +164,7 @@ const Cam = {
     const E = Input.edges, kd = Input.down;
     const turning = Input.mdx || Input.mdy || Touch.lookDX || Touch.lookDY || kd.has('ArrowLeft') || kd.has('ArrowRight') || kd.has('ArrowUp') || kd.has('ArrowDown') || Math.abs(Input.axis(2)) > 0.15 || Math.abs(Input.axis(3)) > 0.15;
     this.idleLook = turning ? 0 : (this.idleLook || 0) + realDt; // how long since you last turned the camera (Cam.keeperLook)
-    if (E.has('KeyV') || E.has('T_cam') || (E.has('PadRS') && !Replay.offer)) { this.toggle(); E.delete('KeyV'); E.delete('T_cam'); E.delete('PadRS'); } // one press, one switch
+    if (E.has('KeyH') || E.has('T_cam')) { this.toggle(); E.delete('KeyH'); E.delete('T_cam'); } // one press, one switch (owner, Nov 2026: V now switches player, so the camera is H)
     if (E.has('KeyL')) { E.delete('KeyL'); this.toggleShiftLock(); }
     if (Input.mdx || Input.mdy) this.snapYaw = this.snapPitch = null;
     this.yaw -= Input.mdx * 0.0024 * sens;

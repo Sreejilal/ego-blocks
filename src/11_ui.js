@@ -150,7 +150,8 @@ const UI = {
             ${row(key('ESC') + key('P'), 'Pause')}
             ${row(key('ENTER'), 'Watch the replay after a goal, a nutmeg or an ankle breaker. SAVE CLIP downloads it as a video')}
             ${row(key('ARROWS'), 'Turn the camera if the mouse cannot lock')}
-            ${row(key('V'), 'Switch camera: third person (behind you) or first person (your eyes)')}
+            ${row(key('V'), 'Switch player: you take over the teammate with the ball, or the one nearest it (SWITCH on a phone, R3 on a controller). In STORY matches you always play the teammate with the ball')}
+            ${row(key('H'), 'Switch camera: third person (behind you) or first person (your eyes). The camera button on a phone')}
             ${row(key('B'), 'Emote wheel: wave, clap, robot, shush, flex, point up, salute, bow, air drums. Pick with 1 to 9. Not while you have the ball')}
             ${row(key('J') + key('N'), 'Someone invited you: J joins their room, N says no thanks')}
             ${row(key('FULLSCREEN') + key('F11'), 'Fill the whole screen: the FULLSCREEN button at the top of the start screen or in the pause menu, or F11. ESC leaves it (P still pauses)')}
@@ -160,7 +161,7 @@ const UI = {
             ${row(key('A') + key('B'), 'Someone invited you: in the menus or the pause menu, A joins their room and B says no thanks')}
             ${row(key('L STICK'), 'Move')}${row(key('R STICK'), 'Camera')}${row(key('LB'), 'Sprint')}${row(key('RT'), 'Charge and shoot')}${row(key('RT') + key('L STICK'), 'Curve shot: push the left stick left or right while you charge')}
             ${row(key('LT') + key('RB'), 'Pass (hold for a lob)')}${row(key('A'), 'Jump / flick')}${row(key('B'), 'Feint')}${row(key('B') + key('B'), 'Slow-mo: tap B twice fast with the ball')}${row(key('X'), 'Slide tackle')}
-            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('D-PAD DOWN'), 'Emote wheel (not in Lawless), then the D-pad chooses and A plays it')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
+            ${row(key('D-PAD') , 'Left, Up, Right = abilities. Down = item')}${row(key('Y'), 'Flow')}${row(key('START'), 'Pause')}${row(key('R3'), 'Switch player')}${row(key('VIEW'), 'Scoreboard')}${row(key('VIEW') + key('D-PAD'), 'Online: hold VIEW and press the D-pad for quick chat')}${row(key('D-PAD DOWN'), 'Emote wheel (not in Lawless), then the D-pad chooses and A plays it')}${row(key('R3'), 'Switch camera. When a replay is offered, R3 watches it')}
           </div></section>
           <section class="panel"><h3>WINNING THE BALL</h3><ul>
             <li><b>Run into a loose ball</b> to dribble it. You cannot run through a carrier, you have to tackle.</li>

@@ -336,9 +336,11 @@ const Game = {
         UI.emoteKeys();
         Cam.look(rdt);
         m.ctl = Input.controls();
+        if (m.ctl.swap) this.swapWait = true; // V pressed in a hit stop (no match step this frame) still switches on the next one
         const skip = m.phase === 'end' && (m.ctl.shootDown || m.ctl.passDown || m.ctl.jump); // SHOOT, PASS or JUMP skips the ending
         const sdt = this.gate ? 0 : TimeCtl.step(rdt); // the first visit waits at kickoff for the click
         if (sdt > 0) {
+          if (this.swapWait) { m.ctl.swap = true; this.swapWait = false; }
           let rem = sdt, first = true;
           while (rem > 1e-5) {
             const h = Math.min(rem, 1 / 60);
