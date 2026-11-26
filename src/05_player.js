@@ -512,6 +512,18 @@ class Player {
           else { const k = Math.min(1, (t - SNAP_T - 1.1) / 0.9), e = k * k * (3 - 2 * k); aL = lerp(-3.05, 0.1, e); aLz = lerp(-0.05, 0.12, e); bx = lerp(-0.1, -0.04, e); hx = lerp(-0.4, -0.12, e); by = 0.74; } // the arm comes down slowly, standing tall
         } else if (c === 'sad') { // lost at full time: down on the knees, head down
           const k = Math.min(1, t / 0.5); by = 0.72 - 0.42 * k + Math.sin(t * 2) * 0.01; bx = 0.32 * k; lL = lR = 1.2 * k; aL = aR = 0.25 * k; aLz = 0.12; aRz = -0.12; hx = 0.5 * k;
+        } else if (c === 'talk') { // STORY scenes (Movie): talking with the hands
+          const g = Math.sin(t * 4.2), h2 = Math.sin(t * 2.7 + 1);
+          aR = -0.5 - 0.4 * Math.max(0, g); aRz = -0.22 - 0.16 * h2; aL = -0.18 - 0.25 * Math.max(0, -g); aLz = 0.24; hx = -0.04 + Math.sin(t * 5.3) * 0.05; hy = Math.sin(t * 1.3) * 0.12; bz = Math.sin(t * 1.7) * 0.03;
+        } else if (c === 'laugh') { const j = Math.abs(Math.sin(t * 13)); aL = aR = 0.3; aLz = 0.78; aRz = -0.78; hx = -0.38 - 0.08 * j; bx = -0.12 - 0.04 * j; by = 0.72 + j * 0.03; // hands on hips, head back
+        } else if (c === 'fold') { aL = -1.3; aLz = -0.5; aR = -1.4; aRz = 0.55; hx = -0.1; lLz = 0.12; lRz = -0.12; // arms folded
+        } else if (c === 'shrug') { const k = Math.min(1, t / 0.25); aL = aR = -0.6 * k; aLz = 0.9 * k; aRz = -0.9 * k; hx = 0.1; hy = 0.15 * Math.sin(t * 2); by = 0.72 + 0.03 * k;
+        } else if (c === 'give') { aL = aR = -1.45; aLz = 0.12; aRz = -0.12; bx = 0.12; hx = 0.15; // both hands held out
+        } else if (c === 'five') { const k = Math.min(1, t / 0.2); aR = -2.6 * k; aRz = -0.05; aL = 0.1; aLz = 0.3; bx = 0.1 * k; hx = -0.2 * k; // a high five
+        } else if (c === 'aim') { aR = -1.55; aRz = -0.05; aL = 0.15; aLz = 0.3; hx = -0.05; bz = -0.04; // pointing straight ahead
+        } else if (c === 'shock') { const k = Math.min(1, t / 0.15); aL = aR = -2.3 * k; aLz = -0.55 * k; aRz = 0.55 * k; bx = -0.2 * k; hx = -0.25 * k; by = 0.72 + 0.05 * k; // hands to the head
+        } else if (c === 'listen') { aR = -1.9; aRz = 1.25; aL = 0.2; aLz = 0.3; hy = -0.35; hx = -0.15; bz = 0.08; // a hand to the ear: the crowd
+        } else if (c === 'stance') { by = 0.66; bx = 0.12; aL = aR = -0.3; aLz = 0.5; aRz = -0.5; lLz = 0.25; lRz = -0.25; hx = -0.1; // ready
         } else { const j = Math.abs(Math.sin(t * 9)); by = 0.72 + j * 0.25; aLz = 2.6 + Math.sin(t * 14) * 0.3; aRz = -2.6 - Math.sin(t * 14) * 0.3; }
         break;
       }

@@ -526,6 +526,7 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 .st-goal { font-family: var(--font-label); font-size: 10px; letter-spacing: .06em; color: var(--muted); }
 .st-text { margin: 4px 0 0; font-family: var(--font-body); font-size: 18px; line-height: 1.15; color: var(--text); max-width: 62ch; }
 .st-rws { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.st-btns { display: flex; gap: 6px; align-items: center; }
 .st-rw { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-label); font-size: 10px; letter-spacing: .06em; padding: 3px 7px; background: var(--ink); color: var(--emerald); white-space: nowrap; }
 .st-rw img { width: 14px; height: 14px; image-rendering: pixelated; }
 .st-rw.bp { color: #9fd4ff; }
@@ -542,43 +543,67 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 .st-res .st-got { color: var(--gold); }
 @media (max-width: 720px) { .st-squad { grid-template-columns: 1fr; } .st-ev { grid-template-columns: 30px minmax(0, 1fr) auto; } .st-rws { grid-column: 2 / -1; grid-row: 2; justify-content: flex-start; } }
 @media (max-width: 420px) { .st-intro { grid-template-columns: 1fr; } }
-/* STORY cutscenes: a comic scene over everything (the place in its colours, speed lines, the speaker's portrait from their
-   side, a speech box that types out), a CHAPTER card and a JOINS YOUR TEAM moment */
-.cs { position: absolute; inset: 0; z-index: 70; overflow: hidden; background: #000; }
+/* STORY scenes: acted out in 3D by Movie between black film bars (.cs.mv: the page shows the stadium behind), with the
+   place's name, a speech box with the speaker's small portrait, a CHAPTER card, JOINS YOUR TEAM and a VS card. Without a
+   film it falls back to a comic backdrop (.cs-bg) */
+.cs { position: absolute; inset: 0; z-index: 70; overflow: hidden; background: #000; cursor: pointer; --bar: clamp(26px, 10vh, 92px); }
+.cs.mv { background: transparent; }
+.cs.mv .cs-bg { display: none; }
+body.movie #app > :not(#cutscene) { visibility: hidden !important; }
 .cs-bg { position: absolute; inset: 0; background: var(--sky); }
 .cs-sky { position: absolute; inset: 0 0 36% 0; background: radial-gradient(ellipse 55% 80% at 72% 100%, var(--light) 0%, transparent 62%); opacity: .4; }
 .cs-ground { position: absolute; left: 0; right: 0; bottom: 0; height: 36%; background: repeating-linear-gradient(90deg, transparent 0 70px, rgba(0,0,0,.16) 70px 140px), var(--ground); box-shadow: inset 0 6px 0 rgba(255,255,255,.12); }
 .cs-lines { position: absolute; inset: -20%; background: repeating-conic-gradient(from 0deg at 50% 62%, transparent 0deg 4deg, rgba(255,255,255,.07) 4deg 5deg); }
-.cs-face { position: absolute; bottom: 168px; width: 220px; height: 220px; background: #0c0a12; box-shadow: 0 0 0 4px var(--sc), 8px 8px 0 rgba(0,0,0,.5); transform: skewY(-3deg); }
+.cs-bar { display: none; position: absolute; left: 0; right: 0; height: var(--bar); background: #000; z-index: 1; pointer-events: none; }
+.cs.mv .cs-bar { display: block; }
+.cs-bar.t { top: 0; animation: csBarT .6s cubic-bezier(.2, .8, .3, 1) both; } .cs-bar.b { bottom: 0; animation: csBarB .6s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes csBarT { from { transform: translateY(-100%); } } @keyframes csBarB { from { transform: translateY(100%); } }
+.cs-flash { position: absolute; inset: 0; z-index: 2; opacity: 0; pointer-events: none; }
+.cs-flash.go { animation: csFlash .55s ease-out both; }
+@keyframes csFlash { from { opacity: .85; } to { opacity: 0; } }
+.cs-place { position: absolute; left: 4%; top: calc(var(--bar) + 16px); z-index: 2; display: grid; gap: 4px; padding: 10px 18px 12px 14px; background: rgba(8, 6, 14, .78); box-shadow: inset 4px 0 0 var(--gold); pointer-events: none; }
+.cs-place span { font-family: var(--font-label); font-size: 11px; letter-spacing: .2em; color: var(--gold); }
+.cs-place b { font-family: var(--font-display); font-weight: 400; font-size: clamp(26px, 4.4vh, 40px); line-height: .9; color: #fff; }
+.cs-place.go { animation: csPlace 4.2s ease both; }
+@keyframes csPlace { 0% { transform: translateX(-30px); opacity: 0; } 10%, 78% { transform: none; opacity: 1; } 100% { opacity: 0; } }
+.cs-face { position: absolute; left: 14px; top: 14px; width: 92px; height: 92px; background: #0c0a12; box-shadow: 0 0 0 3px var(--sc, #ffcb3d); }
 .cs-face:empty { display: none; }
-.cs-face.l { left: 6%; } .cs-face.r { right: 6%; }
 .cs-face canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
-.cs-face.in.l { animation: csInL .32s steps(4) both; } .cs-face.in.r { animation: csInR .32s steps(4) both; }
-@keyframes csInL { from { transform: translateX(-150%) skewY(-3deg); } to { transform: skewY(-3deg); } }
-@keyframes csInR { from { transform: translateX(150%) skewY(-3deg); } to { transform: skewY(-3deg); } }
-.cs-box { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; left: 4%; right: 4%; bottom: 22px; min-height: 128px; padding: 14px 22px 30px; display: grid; align-content: start; gap: 8px; background: #0c0a12; box-shadow: inset 0 0 0 3px var(--sc, #ffcb3d), 6px 6px 0 rgba(0,0,0,.5); }
-.cs-box.r { text-align: right; }
+.cs-face.in { animation: csPop .26s steps(3) both; }
+@keyframes csPop { from { transform: scale(.4); } to { transform: none; } }
+.cs-box { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; left: 4%; right: 4%; bottom: 22px; z-index: 3; min-height: 120px; padding: 14px 22px 30px 124px; display: grid; align-content: start; gap: 8px; background: #0c0a12; box-shadow: inset 0 0 0 3px var(--sc, #ffcb3d), 6px 6px 0 rgba(0,0,0,.5); }
+.cs.mv .cs-box { bottom: calc(var(--bar) * .35); background: rgba(10, 8, 16, .86); }
 .cs-box:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
 .cs-name { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: .9; color: var(--sc, #ffcb3d); }
 .cs-text { font-family: var(--font-body); font-size: clamp(20px, 3.2vh, 28px); line-height: 1.2; color: var(--text); min-height: 2.4em; max-width: 70ch; }
-.cs-box.r .cs-text { justify-self: end; }
 .cs-more { position: absolute; right: 16px; bottom: 10px; font-style: normal; font-family: var(--font-label); font-size: 10px; letter-spacing: .08em; color: var(--muted); }
-.cs-box.r .cs-more { right: auto; left: 16px; }
-.cs-skip { position: absolute; top: 16px; right: 16px; z-index: 4; }
-.cs-title { position: absolute; inset: 0; z-index: 3; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center; background: rgba(0,0,0,.55); }
+.cs-skip { position: absolute; top: 16px; right: 16px; z-index: 5; }
+.cs.mv .cs-skip { top: max(8px, calc(var(--bar) / 2 - 18px)); }
+.cs-title { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center; background: rgba(0,0,0,.55); }
 .cs-title span { font-family: var(--font-label); font-size: 16px; letter-spacing: .3em; color: var(--gold); }
 .cs-title b { font-family: var(--font-display); font-weight: 400; font-size: clamp(54px, 11vw, 120px); line-height: .85; color: #fff; text-shadow: 6px 6px 0 #000; }
 .cs-title.go b { animation: csSlam .5s cubic-bezier(.2, .9, .3, 1.3) both; }
 @keyframes csSlam { from { transform: scale(2.4); opacity: 0; } to { transform: none; opacity: 1; } }
-.cs-join { position: absolute; left: 50%; top: 8%; z-index: 2; transform: translateX(-50%); display: grid; justify-items: center; gap: 6px; padding: 14px 24px 16px; background: #0c0a12; box-shadow: 0 0 0 4px var(--sc), 0 0 60px var(--sc); }
+.cs-join { position: absolute; left: 50%; top: calc(var(--bar) + 12px); z-index: 4; transform: translateX(-50%); display: grid; justify-items: center; gap: 6px; padding: 14px 24px 16px; background: #0c0a12; box-shadow: 0 0 0 4px var(--sc), 0 0 60px var(--sc); pointer-events: none; }
 .cs-jface canvas { width: 128px; height: 128px; display: block; image-rendering: pixelated; }
 .cs-join b { font-family: var(--font-display); font-weight: 400; font-size: 52px; line-height: .85; color: var(--sc); text-shadow: 3px 3px 0 #000; }
 .cs-join span:last-child { font-family: var(--font-label); font-size: 13px; letter-spacing: .14em; color: #fff; }
 .cs-join.go { animation: csJoin .6s cubic-bezier(.2, .9, .3, 1.3) both; }
 @keyframes csJoin { from { transform: translateX(-50%) scale(.3); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
-@media (max-height: 460px) { .cs-face { width: 120px; height: 120px; bottom: 116px; } .cs-box { min-height: 92px; padding: 10px 16px 24px; bottom: 10px; gap: 4px; } .cs-name { font-size: 24px; } .cs-text { font-size: 18px; } .cs-join { top: 4%; padding: 8px 14px 10px; } .cs-jface canvas { width: 64px; height: 64px; } .cs-join b { font-size: 32px; } }
-@media (max-width: 560px) { .cs-face { width: 130px; height: 130px; bottom: 210px; } .cs-box { min-height: 170px; } }
-@media (prefers-reduced-motion: reduce) { .cs-face.in.l, .cs-face.in.r, .cs-title.go b, .cs-join.go { animation: none; } }
+/* VS: your club slides in from the left, theirs from the right, VS slams in the middle, the goal underneath */
+.cs-vs { position: absolute; inset: 0; z-index: 4; display: grid; grid-template-columns: 1fr auto 1fr; grid-template-rows: 1fr auto; align-items: center; background: rgba(0,0,0,.45); pointer-events: none; }
+.vs-side { display: grid; justify-items: center; gap: 6px; padding: 26px 12px; background: linear-gradient(90deg, transparent, var(--vc) 40%, var(--vc) 60%, transparent); clip-path: polygon(0 12%, 100% 0, 100% 88%, 0 100%); text-align: center; }
+.vs-side canvas { width: clamp(56px, 12vh, 96px); height: clamp(56px, 12vh, 96px); image-rendering: pixelated; filter: drop-shadow(4px 4px 0 rgba(0,0,0,.5)); }
+.vs-side b { font-family: var(--font-display); font-weight: 400; font-size: clamp(34px, 7vh, 64px); line-height: .85; color: #fff; text-shadow: 4px 4px 0 #000; }
+.vs-side span { font-family: var(--font-label); font-size: 12px; letter-spacing: .16em; color: #fff; text-shadow: 2px 2px 0 #000; }
+.vs-x { font-family: var(--font-display); font-weight: 400; font-size: clamp(64px, 16vh, 150px); line-height: .8; color: var(--gold); text-shadow: 6px 6px 0 #000; padding: 0 14px; }
+.vs-goal { grid-column: 1 / -1; justify-self: center; margin: 0 0 calc(var(--bar) + 18px); padding: 10px 18px; background: #0c0a12; box-shadow: inset 0 0 0 3px var(--gold); font-family: var(--font-label); font-size: 13px; letter-spacing: .1em; color: #fff; text-align: center; max-width: 92%; }
+.cs-vs.go .vs-side.l { animation: vsL .45s cubic-bezier(.2, .9, .3, 1.1) both; } .cs-vs.go .vs-side.r { animation: vsR .45s cubic-bezier(.2, .9, .3, 1.1) both; }
+.cs-vs.go .vs-x { animation: csSlam .4s .3s cubic-bezier(.2, .9, .3, 1.3) both; } .cs-vs.go .vs-goal { animation: csPop .3s .55s both; }
+@keyframes vsL { from { transform: translateX(-110%); } } @keyframes vsR { from { transform: translateX(110%); } }
+@media (max-height: 460px) { .cs { --bar: 22px; } .cs-face { width: 58px; height: 58px; left: 10px; top: 10px; } .cs-box { min-height: 80px; padding: 10px 16px 22px 80px; bottom: 10px; gap: 4px; } .cs-name { font-size: 22px; } .cs-text { font-size: 17px; min-height: 2.3em; } .cs-join { padding: 8px 14px 10px; } .cs-jface canvas { width: 64px; height: 64px; } .cs-join b { font-size: 32px; } .cs-place { padding: 6px 12px 8px 10px; } .vs-side { padding: 14px 8px; } .vs-goal { margin-bottom: 12px; font-size: 11px; } }
+@media (max-width: 560px) { .cs-face { width: 64px; height: 64px; } .cs-box { min-height: 150px; padding-left: 88px; } .cs-vs { grid-template-columns: 1fr; grid-template-rows: auto; align-content: center; gap: 4px; } .vs-x { justify-self: center; padding: 0; } .vs-side b { font-size: 40px; } .vs-goal { margin: 12px auto 0; } }
+@media (prefers-reduced-motion: reduce) { .cs-face.in, .cs-title.go b, .cs-join.go, .cs-bar.t, .cs-bar.b, .cs-place.go, .cs-vs.go .vs-side.l, .cs-vs.go .vs-side.r, .cs-vs.go .vs-x, .cs-vs.go .vs-goal { animation: none; } }
 /* MY TEAM: player cards (rating, spot, face, name in the rarity colour) on a pitch, the bench, SUBS in the pause menu */
 .menu .meta-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .btn.tm { background: linear-gradient(90deg, #14506b, #1d7a9e); box-shadow: inset 0 -6px 0 #0a3346, inset 0 var(--px) 0 rgba(255,255,255,.22), 4px 4px 0 rgba(0,0,0,.45); }
@@ -4210,6 +4235,18 @@ class Player {
           else { const k = Math.min(1, (t - SNAP_T - 1.1) / 0.9), e = k * k * (3 - 2 * k); aL = lerp(-3.05, 0.1, e); aLz = lerp(-0.05, 0.12, e); bx = lerp(-0.1, -0.04, e); hx = lerp(-0.4, -0.12, e); by = 0.74; } // the arm comes down slowly, standing tall
         } else if (c === 'sad') { // lost at full time: down on the knees, head down
           const k = Math.min(1, t / 0.5); by = 0.72 - 0.42 * k + Math.sin(t * 2) * 0.01; bx = 0.32 * k; lL = lR = 1.2 * k; aL = aR = 0.25 * k; aLz = 0.12; aRz = -0.12; hx = 0.5 * k;
+        } else if (c === 'talk') { // STORY scenes (Movie): talking with the hands
+          const g = Math.sin(t * 4.2), h2 = Math.sin(t * 2.7 + 1);
+          aR = -0.5 - 0.4 * Math.max(0, g); aRz = -0.22 - 0.16 * h2; aL = -0.18 - 0.25 * Math.max(0, -g); aLz = 0.24; hx = -0.04 + Math.sin(t * 5.3) * 0.05; hy = Math.sin(t * 1.3) * 0.12; bz = Math.sin(t * 1.7) * 0.03;
+        } else if (c === 'laugh') { const j = Math.abs(Math.sin(t * 13)); aL = aR = 0.3; aLz = 0.78; aRz = -0.78; hx = -0.38 - 0.08 * j; bx = -0.12 - 0.04 * j; by = 0.72 + j * 0.03; // hands on hips, head back
+        } else if (c === 'fold') { aL = -1.3; aLz = -0.5; aR = -1.4; aRz = 0.55; hx = -0.1; lLz = 0.12; lRz = -0.12; // arms folded
+        } else if (c === 'shrug') { const k = Math.min(1, t / 0.25); aL = aR = -0.6 * k; aLz = 0.9 * k; aRz = -0.9 * k; hx = 0.1; hy = 0.15 * Math.sin(t * 2); by = 0.72 + 0.03 * k;
+        } else if (c === 'give') { aL = aR = -1.45; aLz = 0.12; aRz = -0.12; bx = 0.12; hx = 0.15; // both hands held out
+        } else if (c === 'five') { const k = Math.min(1, t / 0.2); aR = -2.6 * k; aRz = -0.05; aL = 0.1; aLz = 0.3; bx = 0.1 * k; hx = -0.2 * k; // a high five
+        } else if (c === 'aim') { aR = -1.55; aRz = -0.05; aL = 0.15; aLz = 0.3; hx = -0.05; bz = -0.04; // pointing straight ahead
+        } else if (c === 'shock') { const k = Math.min(1, t / 0.15); aL = aR = -2.3 * k; aLz = -0.55 * k; aRz = 0.55 * k; bx = -0.2 * k; hx = -0.25 * k; by = 0.72 + 0.05 * k; // hands to the head
+        } else if (c === 'listen') { aR = -1.9; aRz = 1.25; aL = 0.2; aLz = 0.3; hy = -0.35; hx = -0.15; bz = 0.08; // a hand to the ear: the crowd
+        } else if (c === 'stance') { by = 0.66; bx = 0.12; aL = aR = -0.3; aLz = 0.5; aRz = -0.5; lLz = 0.25; lRz = -0.25; hx = -0.1; // ready
         } else { const j = Math.abs(Math.sin(t * 9)); by = 0.72 + j * 0.25; aLz = 2.6 + Math.sin(t * 14) * 0.3; aRz = -2.6 - Math.sin(t * 14) * 0.3; }
         break;
       }
@@ -10592,32 +10629,39 @@ const Portal = {
 
 /* ---- 11_cutscene.js ---- */
 /* =====================================================================
-   Cutscene: the STORY scenes (owner, Nov 2026: "story mode has no actual story like a cutscene"). A comic scene over the
-   whole screen: a place drawn in its colours with speed lines, the speaker's big portrait sliding in from their side, a
-   speech box that types the line out, a CHAPTER card before a chapter's first event, and a JOINS YOUR TEAM moment.
-   Tap, click, SPACE, ENTER or A goes on (a line still typing finishes first); SKIP or ESC ends it. Our own drawings.
+   Cutscene: the STORY scenes (owner, Nov 2026: "story mode has no actual story like a cutscene", then Nov 26: "the story is
+   just like a text only, I want an actual animation of the characters moving and the story to follow that").
+   The scene is acted out in 3D by Movie (11_movie.js, scripts in STORY_FILMS) between black film bars: the place's name
+   first, an opening shot with no words, then every line in a speech box with the speaker's small portrait while the
+   characters do what they say; each line goes on by itself once the action has played (tap, click, SPACE, ENTER or A goes
+   on sooner; a line still typing finishes first), then a closing shot and, before a match, a VS card. SKIP or ESC ends it.
+   A CHAPTER card comes before a chapter's first event, and JOINS YOUR TEAM when someone joins. Without a film (or without
+   WebGL) it falls back to the comic background. Test robots (navigator.webdriver) skip the opening, closing and VS shots
+   and the waiting, unless Cutscene.full.
    Cutscene.story(event, 'intro' | 'outro', done)
    ===================================================================== */
-const CS_PLACES = { // the backdrop of each place: sky, ground, light
+const CS_PLACES = { // the comic backdrop of each place (only without a 3D film): sky, ground, light
   backpitch: ['#2b3a5e', '#1d5a2e', '#ffb86b'], street: ['#4a2a3a', '#5a3a2a', '#ff8a2a'], stadium: ['#13204a', '#1f6b3a', '#a9c7ff'],
   city: ['#2a1d4a', '#2c3463', '#ff5fb0'], training: ['#123a44', '#1d5a4a', '#7ff5bd'], night: ['#090b22', '#13304a', '#c9d2ff'],
   storm: ['#2a2f3a', '#28402e', '#dfe6ff'], final: ['#3a2a07', '#1f5a2a', '#ffd54a'],
 };
 const CS_CPS = 42; // letters a second
 const Cutscene = {
-  lines: null, i: 0, shown: 0, typing: false, done: null, ev: null, tmr: 0,
+  lines: null, i: 0, shown: 0, typing: false, done: null, ev: null, tmr: 0, autoT: 0, phase: 'lines', mv: false, film: null, vs: false, full: false, noAuto: false,
   tpl() {
     return `<section id="cutscene" class="cs" hidden aria-live="polite">
       <div class="cs-bg" id="cs-bg"><i class="cs-sky"></i><i class="cs-ground"></i><i class="cs-lines"></i></div>
+      <i class="cs-bar t"></i><i class="cs-bar b"></i><i class="cs-flash" id="cs-flash"></i>
+      <div class="cs-place" id="cs-place" hidden><span id="cs-pname"></span><b id="cs-ptitle"></b></div>
       <div class="cs-title" id="cs-title" hidden><span id="cs-ch"></span><b id="cs-chname"></b></div>
       <div class="cs-join" id="cs-join" hidden><span class="cs-jface" id="cs-jface"></span><b id="cs-jname"></b><span>JOINS YOUR TEAM!</span></div>
-      <div class="cs-face" id="cs-face"></div>
+      <div class="cs-vs" id="cs-vs" hidden></div>
       <button class="btn small cs-skip" id="cs-skip" type="button">SKIP</button>
-      <button class="cs-box" id="cs-next" type="button"><b class="cs-name" id="cs-name"></b><span class="cs-text" id="cs-text"></span><i class="cs-more">TAP TO GO ON</i></button>
+      <button class="cs-box" id="cs-next" type="button"><span class="cs-face" id="cs-face"></span><b class="cs-name" id="cs-name"></b><span class="cs-text" id="cs-text"></span><i class="cs-more">TAP TO GO ON</i></button>
     </section>`;
   },
   bind() {
-    $('cs-next').addEventListener('click', () => this.next());
+    $('cutscene').addEventListener('click', (e) => { if (!e.target.closest('#cs-skip')) this.next(); }); // anywhere on the scene goes on
     $('cs-skip').addEventListener('click', () => { Sfx.click(); this.end(); });
     window.addEventListener('keydown', (e) => {
       if ($('cutscene').hidden) return;
@@ -10625,65 +10669,127 @@ const Cutscene = {
       else if (e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); this.end(); }
     }, true);
   },
+  /** the opening and closing shots, the VS card and the waiting: real players only (or a test that asks: full; noAuto keeps
+      them but waits for next(), so a slow test robot never falls behind the clock) */
+  long() { return !navigator.webdriver || this.full; },
+  auto(fn, ms) { clearTimeout(this.autoT); if (!this.noAuto) this.autoT = setTimeout(fn, ms); },
   /** who a speaker is: name, portrait and colour (RIVAL: the opponent's captain; YOU: your own player) */
   who(key) {
     const ev = this.ev;
-    if (key === 'YOU') return { name: 'YOU', canvas: () => portraitCanvas(Save.data.style, 160, Save.data.look), hex: '#3d7dff', side: 'l' };
-    if (key === 'RIVAL') { const c = ev && CLUBS[ev.foe] || CLUBS.EMBER; return { name: c.nick + ' CAPTAIN', canvas: () => portraitCanvas(RIVAL_FACE[ev && ev.foe] || 'BLITZ', 160, { sig: true }), hex: c.crest[0], side: 'r' }; }
+    if (key === 'YOU') return { name: 'YOU', canvas: () => portraitCanvas(Save.data.style, 96, Save.data.look), hex: '#3d7dff', side: 'l' };
+    if (key === 'RIVAL') { const c = ev && CLUBS[ev.foe] || CLUBS.EMBER; return { name: c.nick + ' CAPTAIN', canvas: () => portraitCanvas(RIVAL_FACE[ev && ev.foe] || 'BLITZ', 96, { sig: true }), hex: c.crest[0], side: 'r' }; }
     const C = STORY_CAST[key] || STORY_CAST.COACH;
-    return { name: C.name, canvas: () => portraitCanvas(C.face, 160, { sig: true }), hex: C.hex, side: key === 'COACH' ? 'l' : 'r' };
+    return { name: C.name, canvas: () => portraitCanvas(C.face, 96, { sig: true }), hex: C.hex, side: key === 'COACH' ? 'l' : 'r' };
   },
   /** a story event's scene: before it ('intro', with a CHAPTER card for the chapter's first event) or after you met its goal */
-  story(ev, part, done) {
+  story(ev, part, done, o = {}) {
     const lines = ev && ev[part];
     if (!lines || !lines.length) { if (done) done(); return; }
     const first = part === 'intro' && STORY[ev.ch].events[0] === ev;
-    this.play(lines, { ev, place: ev.place, title: first ? ['CHAPTER ' + (ev.ch + 1), STORY[ev.ch].name] : null }, done);
+    const film = STORY_FILMS[ev.id] && STORY_FILMS[ev.id][part];
+    this.play(lines, { ev, part, film, place: ev.place, vs: part === 'intro' && !o.watch, title: first ? ['CHAPTER ' + (ev.ch + 1), STORY[ev.ch].name] : null }, done); // WATCH: no VS card
   },
   play(lines, o, done) {
-    this.lines = lines; this.i = -1; this.done = done || null; this.ev = o.ev || null; this.last = null;
-    const P = CS_PLACES[o.place] || CS_PLACES.stadium, bg = $('cs-bg');
+    clearTimeout(this.tmr); clearTimeout(this.autoT);
+    this.lines = lines; this.i = -1; this.done = done || null; this.ev = o.ev || null; this.last = null; this.typing = false;
+    this.film = o.film && Movie.ok() ? o.film : null; this.mv = !!this.film; this.vs = !!o.vs && this.mv && !!this.ev;
+    const P = CS_PLACES[o.place] || CS_PLACES.stadium, bg = $('cs-bg'), root = $('cutscene');
     bg.style.setProperty('--sky', P[0]); bg.style.setProperty('--ground', P[1]); bg.style.setProperty('--light', P[2]);
-    $('cs-join').hidden = true; $('cs-face').innerHTML = ''; $('cs-text').textContent = ''; $('cs-name').textContent = '';
-    $('cutscene').hidden = false; Music.set(true);
+    $('cs-join').hidden = true; $('cs-vs').hidden = true; $('cs-place').hidden = true; $('cs-face').innerHTML = ''; $('cs-text').textContent = ''; $('cs-name').textContent = '';
+    $('cs-next').hidden = true;
+    root.classList.toggle('mv', this.mv);
+    root.hidden = false; Music.set(true);
+    if (this.mv) Movie.start(this.ev, o.part, this.film);
     if (o.title) { // CHAPTER 2 · THE CITY LEAGUE slams in first
+      this.phase = 'title';
       $('cs-ch').textContent = o.title[0]; $('cs-chname').textContent = o.title[1];
       const t = $('cs-title'); t.hidden = false; t.classList.remove('go'); void t.offsetWidth; t.classList.add('go');
-      $('cs-next').hidden = true; Sfx.cutin();
-      clearTimeout(this.tmr); this.tmr = setTimeout(() => { t.hidden = true; $('cs-next').hidden = false; this.next(); }, navigator.webdriver ? 50 : 1700);
-    } else { $('cs-title').hidden = true; $('cs-next').hidden = false; this.next(); }
+      Sfx.cutin();
+      this.tmr = setTimeout(() => this.begin(), navigator.webdriver ? 50 : 1900);
+    } else this.begin();
+  },
+  /** after the chapter card: where we are, the opening shot, then the lines */
+  begin() {
+    $('cs-title').hidden = true;
+    const op = this.film && this.film.open;
+    if (this.mv) { this.where(); Movie.beat(op); }
+    if (op && this.long()) { this.phase = 'open'; this.auto(() => this.next(), op.t * 1000); }
+    else { this.phase = 'lines'; this.i = -1; this.next(); }
+  },
+  /** THE BACK PITCH / FIRST TOUCH in the corner for the first moments */
+  where() {
+    const ev = this.ev, P = ev && MV_PLACES[(this.film && this.film.place) || ev.place];
+    if (!P) return;
+    $('cs-pname').textContent = P.name; $('cs-ptitle').textContent = ev.title;
+    const el = $('cs-place'); el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
   },
   next() {
-    if ($('cutscene').hidden || !$('cs-title').hidden) return;
-    if (this.typing) { this.shown = 1e9; return; } // finish the line first
+    if ($('cutscene').hidden || this.phase === 'title') return;
+    clearTimeout(this.autoT);
+    if (this.phase === 'open') { this.phase = 'lines'; this.i = -1; }
+    else if (this.phase === 'end') { this.toVs(); return; }
+    else if (this.phase === 'vs') { this.end(); return; }
+    if (this.typing) { this.finishLine(); return; } // finish the line first
     $('cs-join').hidden = true;
     this.i++;
-    if (this.i >= this.lines.length) { this.end(); return; }
+    if (this.i >= this.lines.length) { this.closing(); return; }
     const [key, text, extra] = this.lines[this.i], W = this.who(key), box = $('cs-next');
-    box.style.setProperty('--sc', W.hex); box.classList.toggle('r', W.side === 'r');
+    box.hidden = false;
+    box.style.setProperty('--sc', W.hex); box.classList.toggle('r', W.side === 'r' && !this.mv);
     $('cs-name').textContent = W.name;
-    if (this.last !== key) { // a new speaker slides in from their side
+    if (this.last !== key) { // a new speaker: their portrait pops in
       const f = $('cs-face'), cv = W.canvas(); cv.className = 'px';
-      f.innerHTML = ''; f.appendChild(cv); f.className = 'cs-face ' + W.side; f.style.setProperty('--sc', W.hex);
-      void f.offsetWidth; f.classList.add('in'); Sfx.open && Sfx.open();
+      f.innerHTML = ''; f.appendChild(cv); f.style.setProperty('--sc', W.hex);
+      f.classList.remove('in'); void f.offsetWidth; f.classList.add('in');
     }
     this.last = key;
-    if (extra === 'join' && STYLES[key]) this.join(key);
+    if (this.mv) Movie.line(this.i, key, extra); // the actors act it out (a 'join' happens in 3D, then the card)
+    else if (extra === 'join' && STYLES[key]) this.join(key);
     this.type(text);
   },
-  /** the line appears letter by letter */
+  /** the line appears letter by letter; in a 3D scene it goes on by itself once the action has played out */
   type(text) {
-    const el = $('cs-text'); this.shown = 0; this.typing = true; el.textContent = '';
+    const el = $('cs-text'); this.shown = 0; this.typing = true; el.textContent = ''; this.text = text;
     const step = () => {
       if ($('cutscene').hidden) { this.typing = false; return; }
       this.shown += CS_CPS / 30;
       const n = Math.min(text.length, Math.floor(this.shown));
       el.textContent = text.slice(0, n);
       if (n % 4 === 1) Sfx.tick();
-      if (n >= text.length) { this.typing = false; return; }
+      if (n >= text.length) { this.typing = false; this.wait(text); return; }
       this.tmr = setTimeout(step, 33);
     };
     clearTimeout(this.tmr); step();
+  },
+  /** a tap while the line types: all of it at once */
+  finishLine() { clearTimeout(this.tmr); this.typing = false; $('cs-text').textContent = this.text || ''; this.wait(this.text || ''); },
+  wait(text) {
+    if (!this.mv || !this.long() || this.phase !== 'lines') return;
+    const L = this.film.lines && this.film.lines[this.i], typed = text.length / CS_CPS;
+    const ms = Math.max(1100 + text.length * 30, ((L && L.hold) || 0) * 1000 - typed * 1000);
+    this.auto(() => this.next(), ms);
+  },
+  /** after the last line: the closing shot */
+  closing() {
+    const en = this.film && this.film.end;
+    if (en && this.long()) { this.phase = 'end'; $('cs-next').hidden = true; Movie.line(this.lines.length, null); Movie.beat(en); this.auto(() => this.toVs(), en.t * 1000); }
+    else this.toVs();
+  },
+  /** before a match: your club VS theirs, and what you have to do */
+  toVs() {
+    if (!this.vs || !this.long()) { this.end(); return; }
+    this.phase = 'vs'; $('cs-next').hidden = true;
+    const ev = this.ev, d = Save.data, star = ['IRONCLAD', 'SOLARIS'].find((k) => ev.intro.some((l) => l[0] === k));
+    const foe = ev.foe !== d.club ? ev.foe : CLUB_IDS.find((c) => c !== d.club), A = CLUBS[d.club], B = CLUBS[foe];
+    const el = $('cs-vs');
+    el.innerHTML = `<div class="vs-side l" style="--vc:${A.crest[0]}"><i class="vs-crest" data-club="${d.club}"></i><b>${A.nick}</b><span>YOU</span></div>
+      <b class="vs-x">VS</b>
+      <div class="vs-side r" style="--vc:${B.crest[0]}"><i class="vs-crest" data-club="${foe}"></i><b>${B.nick}</b><span>${star ? STYLES[star].name : 'THEIR CAPTAIN'}</span></div>
+      <p class="vs-goal">${MODES[ev.mode].name} · ${ev.size}V${ev.size} · GOAL: ${Story.goalText(ev.goal)}</p>`;
+    for (const c of el.querySelectorAll('.vs-crest')) { const cv = crestCanvas(c.dataset.club, 96); cv.className = 'px'; c.replaceWith(cv); }
+    el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
+    Sfx.cutin(); Sfx.whistle(1);
+    this.auto(() => this.end(), 2400);
   },
   /** ROGUE JOINS YOUR TEAM! with a flash */
   join(id) {
@@ -10692,12 +10798,285 @@ const Cutscene = {
     j.style.setProperty('--sc', STYLES[id].aura); j.hidden = false; j.classList.remove('go'); void j.offsetWidth; j.classList.add('go');
     Sfx.fanfare(2);
   },
+  /** leave without going on (another screen took over): the scene closes, nothing starts */
+  abort() { this.done = null; this.end(); },
   end() {
-    clearTimeout(this.tmr); this.typing = false;
+    clearTimeout(this.tmr); clearTimeout(this.autoT); this.typing = false;
     if ($('cutscene').hidden) return;
-    $('cutscene').hidden = true;
+    $('cutscene').hidden = true; $('cs-vs').hidden = true; $('cs-place').hidden = true;
+    if (this.mv) Movie.stop();
+    this.mv = false; this.phase = 'lines';
     const d = this.done; this.done = null;
     if (d) d();
+  },
+};
+
+/* ---- 11_films.js ---- */
+/* =====================================================================
+   STORY_FILMS: what happens on screen in every STORY scene (Movie, 11_movie.js). Keyed by event id, then 'intro' (before
+   the match) or 'outro' (after the first win). Each film:
+     set:   where everyone starts: KEY: [x, z, facing] (facing: an angle, 0 = towards the +z goal, or someone's key);
+            ball: 'KEY' (at their feet) or [x, z]
+     open:  the opening shot, before any words: { t: seconds, cam / cams, do: [actions] }
+     lines: one entry per line of the event's intro / outro, in order: { cam / cams, do, hold (seconds to wait at least) }
+            a missing entry gets a good shot by itself (over the shoulder or a close-up of whoever talks)
+     end:   the closing shot after the last line
+   Shots: ['close', who], ['ots', talker, listener], ['two', a, b], ['low', who], ['orbit', who, r, height, speed],
+   ['track' | 'follow' | 'lead', who], ['wide', x, z, r, height, speed], ['fly', [from], [to], who | [at], seconds],
+   ['goal', +1 | -1], ['group', [keys]]. cams: [[seconds, shot], ...] cuts during the beat.
+   The +z goal is at z = 55 (F.L); the pitch is 70 wide (x from -35 to 35).
+   ===================================================================== */
+const STORY_FILMS = {
+  bp1: {
+    intro: {
+      set: { YOU: [0, 41, 0], COACH: [9, 34, 'YOU'], RIVAL: [-12, 34, 'YOU'], R1: [-13.5, 32.5, 'YOU'], ball: 'YOU' },
+      open: { t: 5.2, cams: [[0, ['fly', [22, 16, 20], [5, 1.9, 35], 'YOU', 4]], [3.1, ['goal', 1]]], do: [['YOU', 'juggle', 2.6], ['YOU', 'shoot', 1, -2.6, 1.6], ['COACH', 'wait', 3.6], ['COACH', 'emote', 'clap', 1.6]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'walk', 3.4, 38.6]], hold: 3.2 },
+        { cam: ['low', 'YOU'], do: [['YOU', 'face', 26, 52], ['YOU', 'emote', 'aim', 1.6]] },
+        { cam: ['ots', 'COACH', 'YOU'], do: [['COACH', 'emote', 'fold', 0]] },
+        { cams: [[0, ['track', 'RIVAL']], [2.3, ['close', 'RIVAL']]], do: [['RIVAL', 'jog', -3.6, 38.2], ['RIVAL', 'emote', 'laugh', 0], ['R1', 'jog', -5.4, 36.4], ['R1', 'emote', 'laugh', 0]], hold: 3.4 },
+      ],
+      end: { t: 2.6, cam: ['two', 'YOU', 'RIVAL'], do: [['YOU', 'face', 'RIVAL'], ['YOU', 'emote', 'stance', 0], ['RIVAL', 'emote', 'fold', 0]] },
+    },
+    outro: {
+      set: { YOU: [0, 30, 3.14], M1: [2.2, 31.8, 'YOU'], COACH: [-6, 24, 'YOU'], ball: [3, 27] },
+      open: { t: 3.4, cam: ['orbit', 'YOU', 4.6, 1.5, 0.35], do: [['YOU', 'emote', 'cheer', 2.8], ['M1', 'emote', 'cheer', 2.8], ['*', 'cheer', 0.5]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['*', 'prop', 'shirt', 'COACH'], ['COACH', 'walk', -1.5, 28.4], ['COACH', 'emote', 'give', 0]], hold: 3.2 },
+        { cams: [[0, ['close', 'YOU']], [1.2, ['orbit', 'YOU', 4.2, 1.4, 0.25]]], do: [['*', 'give', 'shirt', 'YOU'], ['YOU', 'wait', 0.5], ['YOU', 'emote', 'trophy', 0], ['COACH', 'emote', 'clap', 0]], hold: 3 },
+      ],
+      end: { t: 2.8, cam: ['orbit', 'YOU', 5.5, 2.4, 0.4], do: [['M1', 'emote', 'clap', 0], ['*', 'cheer', 0.4]] },
+    },
+  },
+  bp2: {
+    intro: {
+      set: { YOU: [0, 40, 0], M1: [-9, 33, 'YOU'], COACH: [7, 35, 'YOU'], RIVAL: [-14, 30, 'YOU'], R1: [-15.5, 28.5, 'YOU'], ball: 'M1' },
+      open: { t: 4.6, cams: [[0, ['fly', [12, 7, 28], [6, 2.2, 33], 'YOU', 3.4]], [2.1, ['goal', 1]]], do: [['M1', 'pass', 'YOU'], ['YOU', 'trap'], ['YOU', 'shoot', 1, 3.6, 2.4], ['COACH', 'emote', 'fold', 0]] },
+      lines: [
+        { cam: ['ots', 'COACH', 'YOU'], do: [['COACH', 'emote', 'aim', 1.8]] },
+        { cams: [[0, ['track', 'RIVAL']], [2.3, ['close', 'RIVAL']]], do: [['RIVAL', 'jog', -4, 37.6], ['RIVAL', 'emote', 'shrug', 1.4], ['R1', 'jog', -5.6, 35.8], ['R1', 'emote', 'laugh', 0]], hold: 3 },
+        { cams: [[0, ['low', 'YOU']], [2.4, ['goal', 1]]], do: [['*', 'ball', 'YOU'], ['YOU', 'face', 0, 55], ['YOU', 'juggle', 1.8], ['YOU', 'shoot', 1, -4.2, 2.8]], hold: 4.2 },
+      ],
+      end: { t: 2.2, cam: ['two', 'RIVAL', 'YOU'], do: [['RIVAL', 'emote', 'shock', 0], ['R1', 'emote', 'shock', 0]] },
+    },
+    outro: {
+      set: { YOU: [0, 20, 3.14], COACH: [3, 16.5, 'YOU'], M1: [-2.5, 21.5, 'YOU'], ball: [5, 24] },
+      open: { t: 3.2, cam: ['wide', 0, 20, 16, 7, 0.15], do: [['YOU', 'emote', 'pump', 2.6], ['M1', 'emote', 'cheer', 2.6], ['*', 'crowd', 1], ['*', 'cheer', 1]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'emote', 'clap', 2.4], ['*', 'at', 1.6, 'cheer', 1]] },
+      ],
+      end: { t: 2.4, cam: ['low', 'YOU'], do: [['YOU', 'emote', 'wave', 0], ['*', 'cheer', 1]] },
+    },
+  },
+  bp3: {
+    intro: {
+      set: { RIVAL: [0, 30, 3.14], R1: [-2.6, 32, 'YOU'], R2: [2.6, 32.4, 'YOU'], YOU: [0, 21, 0], COACH: [-3, 18.5, 'RIVAL'], ball: 'RIVAL' },
+      open: { t: 3.8, cam: ['low', 'RIVAL'], do: [['RIVAL', 'juggle', 3.6], ['R1', 'emote', 'fold', 0], ['R2', 'emote', 'laugh', 0]] },
+      lines: [
+        { cams: [[0, ['ots', 'RIVAL', 'YOU']], [1.3, ['wide', 0, 18, 11, 4.5, 0.15]]], do: [['RIVAL', 'kick', 1.5, 0.3, 13, 1.5], ['*', 'at', 1.9, 'boom', 1.5, 13]], hold: 3.4 },
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'walk', -1.6, 20.2]] },
+        { cam: ['low', 'YOU'], do: [['YOU', 'emote', 'aim', 0]] },
+      ],
+      end: { t: 2.2, cam: ['two', 'YOU', 'RIVAL'], do: [['YOU', 'emote', 'stance', 0], ['RIVAL', 'emote', 'fold', 0]] },
+    },
+    outro: {
+      set: { RIVAL: [1.5, 27, 3.14], YOU: [-0.5, 23, 0], R1: [4, 29, 'RIVAL'], ball: [6, 31] },
+      open: { t: 2.8, cam: ['close', 'RIVAL'], do: [['RIVAL', 'emote', 'sad', 0], ['R1', 'emote', 'sad', 0]] },
+      lines: [
+        { cam: ['ots', 'RIVAL', 'YOU'], do: [['RIVAL', 'emote', 'sad', 0]] },
+        { cams: [[0, ['close', 'YOU']], [1.0, ['lead', 'YOU']]], do: [['YOU', 'wait', 0.8], ['YOU', 'walk', -1, 12], ['*', 'at', 2.2, 'boom', 6, 31]], hold: 3.6 },
+      ],
+      end: { t: 2.4, cam: ['lead', 'YOU'], do: [['YOU', 'walk', -1, 7]] },
+    },
+  },
+  bp4: {
+    intro: {
+      set: { YOU: [30, 0, -1.57], M1: [31.6, 2.2, -1.57], M2: [31.6, -2.2, -1.57], COACH: [33.2, 0.6, -1.57], ROGUE: [-2, 5, 'YOU'], RIVAL: [-8, -6, 'YOU'], R1: [-10, -8, 'YOU'], ball: 'ROGUE' },
+      open: { t: 5, cam: ['fly', [-10, 26, -38], [17, 2.2, -6], 'YOU', 4.6], do: [['YOU', 'jog', 9, 0], ['M1', 'jog', 12.8, 2.8], ['M2', 'jog', 12.8, -2.8], ['COACH', 'jog', 13.8, 0.4], ['ROGUE', 'juggle', 30], ['*', 'cheer', 1]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'walk', 9.8, 1.7]] },
+        { cam: ['low', 'ROGUE'], do: [['ROGUE', 'juggle', 1.8], ['ROGUE', 'pass', 'YOU']], hold: 3.4 },
+        { cam: ['ots', 'YOU', 'ROGUE'], do: [['YOU', 'trap'], ['YOU', 'juggle', 2.4]] },
+        { cams: [[0, ['close', 'ROGUE']], [1.6, ['two', 'YOU', 'ROGUE']]], do: [['ROGUE', 'emote', 'wave', 1.2], ['ROGUE', 'walk', -8, 12]], hold: 3.4 },
+      ],
+      end: { t: 2.6, cam: ['two', 'YOU', 'RIVAL'], do: [['RIVAL', 'jog', 4, -1.5], ['RIVAL', 'emote', 'fold', 0], ['YOU', 'face', 'RIVAL']] },
+    },
+    outro: {
+      set: { YOU: [0, 20, 3.14], M1: [-3, 19, 'YOU'], M2: [2.8, 18.2, 'YOU'], COACH: [4.5, 16, 'YOU'], ROGUE: [-22, 34, 'YOU'] },
+      open: { t: 3, cam: ['track', 'ROGUE'], do: [['ROGUE', 'sprint', -1.8, 21.8]] },
+      lines: [
+        { cam: ['two', 'ROGUE', 'YOU'], do: [['ROGUE', 'emote', 'five', 1.0], ['YOU', 'emote', 'five', 1.0]], hold: 3 },
+        { cam: ['group', ['YOU', 'ROGUE', 'M1', 'M2', 'COACH']], do: [['COACH', 'emote', 'pump', 2.2], ['M1', 'emote', 'cheer', 2.2], ['M2', 'emote', 'cheer', 2.2], ['ROGUE', 'emote', 'flex', 0]] },
+      ],
+      end: { t: 2.8, cam: ['orbit', 'ROGUE', 4.2, 1.5, 0.5], do: [['*', 'cheer', 1]] },
+    },
+  },
+  cl1: {
+    intro: {
+      set: { COACH: [0, 9, 'YOU'], YOU: [0, 13, 3.14], M1: [-3.2, 14.6, 3.14], RIVAL: [1.2, 25, 'YOU'], R1: [-2, 27, 'YOU'], ball: [3.5, 18] },
+      open: { t: 4.2, cam: ['wide', 0, 16, 16, 8, 0.14], do: [['*', 'moon'], ['*', 'ballup', 3.5, 18, 7], ['*', 'at', 1.4, 'sfx', 'boing']] },
+      lines: [
+        { cams: [[0, ['ots', 'COACH', 'YOU']], [2.6, ['low', 'M1', 0.3, 4]]], do: [['M1', 'wait', 1.2], ['M1', 'giant'], ['M1', 'emote', 'flex', 0]], hold: 3.6 },
+        { cam: ['low', 'RIVAL'], do: [['RIVAL', 'walk', 1, 19.5], ['RIVAL', 'giant'], ['RIVAL', 'emote', 'laugh', 0]] },
+        { cams: [[0, ['close', 'YOU']], [1.6, ['low', 'YOU']]], do: [['YOU', 'emote', 'shrug', 1.2], ['YOU', 'giant'], ['YOU', 'emote', 'flex', 0]], hold: 3 },
+      ],
+      end: { t: 2, cam: ['two', 'YOU', 'RIVAL'], do: [['*', 'moon', false]] },
+    },
+    outro: {
+      set: { YOU: [0, 0, 3.14], M1: [2.6, 1.4, 'YOU'], M2: [-2.6, 1.4, 'YOU'], COACH: [0, -4.5, 'YOU'] },
+      open: { t: 3.4, cam: ['orbit', 'YOU', 5.5, 1.8, 0.4], do: [['YOU', 'emote', 'dance', 0], ['M1', 'emote', 'dance', 0], ['M2', 'emote', 'robot', 0], ['*', 'confetti', 5], ['*', 'cheer', 0.8]] },
+      lines: [
+        { cam: ['close', 'COACH'], do: [['COACH', 'emote', 'shrug', 1.6]] },
+      ],
+      end: { t: 2.6, cam: ['group', ['YOU', 'M1', 'M2', 'COACH']], do: [['COACH', 'emote', 'dance', 0], ['YOU', 'emote', 'dance', 0]] },
+    },
+  },
+  cl2: {
+    intro: {
+      set: { RIVAL: [-6, 4, 0.4], YOU: [4, 26, 3.14], COACH: [12, 22, 'YOU'], M1: [-5, 30, 3.14], ball: 'RIVAL' },
+      open: { t: 4, cams: [[0, ['track', 'RIVAL', 1]], [2.1, ['two', 'YOU', 'RIVAL']]], do: [['RIVAL', 'dribble', 2.2, 20.6], ['RIVAL', 'fall', 1, 1.6], ['YOU', 'wait', 2.0], ['YOU', 'slide', 2.6, 21.4, 'win']] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'] },
+        { cam: ['close', 'RIVAL'], do: [['RIVAL', 'emote', 'aim', 1.6]] },
+        { cam: ['low', 'YOU'], do: [['YOU', 'emote', 'shush', 0]] },
+      ],
+      end: { t: 2, cam: ['two', 'YOU', 'RIVAL'] },
+    },
+    outro: {
+      set: { YOU: [0, -40, 0], M1: [-2.3, -40, 0], M2: [2.3, -40, 0], M3: [4.6, -40, 0], COACH: [-7, -36, 'YOU'] },
+      open: { t: 3.4, cam: ['fly', [-7, 0.7, -36.5], [7, 0.7, -36.5], [0, 1.3, -40], 3.4], do: [['YOU', 'emote', 'fold', 0], ['M1', 'emote', 'fold', 0], ['M2', 'emote', 'fold', 0], ['M3', 'emote', 'fold', 0]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'emote', 'clap', 2.6]] },
+      ],
+      end: { t: 2.4, cam: ['group', ['M1', 'YOU', 'M2', 'M3']], do: [['YOU', 'face', 0, -30], ['M1', 'face', -2.3, -30], ['M2', 'face', 2.3, -30], ['M3', 'face', 4.6, -30], ['YOU', 'emote', 'flex', 0], ['M1', 'emote', 'flex', 0], ['M2', 'emote', 'flex', 0], ['M3', 'emote', 'flex', 0]] },
+    },
+  },
+  cl3: {
+    intro: {
+      goals: [1.5, 1.75],
+      set: { YOU: [0, 44, 0], COACH: [3.4, 41, 'YOU'], ball: 'YOU' },
+      open: { t: 3.4, cam: ['goal', 1], do: [['YOU', 'juggle', 3.2]] },
+      lines: [
+        { cam: ['ots', 'COACH', 'YOU'], do: [['COACH', 'face', 0, 55], ['COACH', 'emote', 'aim', 1.6], ['COACH', 'face', 'YOU']], hold: 3 },
+        { cams: [[0, ['close', 'YOU']], [1.1, ['goal', 1]]], do: [['YOU', 'face', 0, 55], ['YOU', 'wait', 0.4], ['YOU', 'shoot', 1, 0, 0.9]], hold: 2.8 },
+      ],
+      end: { t: 2, cam: ['close', 'COACH'], do: [['COACH', 'emote', 'shock', 0]] },
+    },
+    outro: {
+      goals: [1.5, 1.75],
+      set: { YOU: [-2, 43, 0], COACH: [3.4, 40.5, 'YOU'], ball: 'YOU' },
+      open: { t: 3.2, cams: [[0, ['follow', 'YOU']], [0.9, ['goal', 1]]], do: [['YOU', 'face', 0, 55], ['YOU', 'shoot', 1, 0.9, 1.3]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'emote', 'shock', 1.4], ['COACH', 'emote', 'clap', 0], ['YOU', 'emote', 'shush', 0]] },
+      ],
+    },
+  },
+  cl4: {
+    intro: {
+      set: { IRONCLAD: [0, 40, 3.14], M1: [0, 25, 0], YOU: [-8, 30, 'IRONCLAD'], COACH: [-10.5, 28.5, 'IRONCLAD'], ball: 'M1' },
+      open: { t: 4, cams: [[0, ['track', 'M1', -1]], [2.0, ['low', 'IRONCLAD', 0.6, 4]]], do: [['M1', 'dribble', 0, 38.6], ['M1', 'fall', 1, 1.8], ['IRONCLAD', 'wait', 2.1], ['IRONCLAD', 'trap'], ['IRONCLAD', 'emote', 'stance', 0], ['*', 'at', 2.15, 'sfx', 'punch']] },
+      lines: [
+        { cam: ['low', 'IRONCLAD'], do: [['IRONCLAD', 'emote', 'fold', 0]] },
+        { cams: [[0, ['track', 'YOU']], [2.0, ['two', 'YOU', 'IRONCLAD']]], do: [['YOU', 'jog', -0.8, 37.6]], hold: 3.2 },
+        { cam: ['close', 'IRONCLAD'], do: [['IRONCLAD', 'emote', 'aim', 1.4]] },
+      ],
+      end: { t: 2.2, cam: ['two', 'YOU', 'IRONCLAD'], do: [['YOU', 'emote', 'stance', 0], ['IRONCLAD', 'emote', 'stance', 0]] },
+    },
+    outro: {
+      set: { YOU: [0, 22, 0], IRONCLAD: [0.4, 29, 3.14], COACH: [-9, 19, 'YOU'], M1: [-6, 17.5, 'YOU'], ball: 'YOU' },
+      open: { t: 3.8, cam: ['track', 'YOU', 1, 6], do: [['YOU', 'dribble', 0, 27.4], ['YOU', 'feint', 1], ['YOU', 'dribble', -2.4, 33.5], ['IRONCLAD', 'wait', 0.9], ['IRONCLAD', 'slide', 0.8, 27.6], ['IRONCLAD', 'fall', -1, 1.2]] },
+      lines: [
+        { cam: ['two', 'IRONCLAD', 'YOU'], do: [['IRONCLAD', 'walk', -1.2, 31.9]], hold: 3.6 },
+        { cam: ['close', 'COACH'], do: [['COACH', 'emote', 'shock', 1.2], ['COACH', 'emote', 'pump', 0]] },
+      ],
+      end: { t: 2.6, cam: ['orbit', 'IRONCLAD', 4.2, 1.5, 0.4], do: [['IRONCLAD', 'emote', 'flex', 0], ['YOU', 'emote', 'flex', 0], ['*', 'cheer', 1]] },
+    },
+  },
+  vc1: {
+    intro: {
+      set: { COACH: [-3, 4, 'YOU'], YOU: [0, 6.5, 3.14], M1: [3, 7.5, 3.14], RIVAL: [1.5, 15, 'YOU'], R1: [4.5, 16, 'YOU'], R2: [-2, 16.5, 'YOU'] },
+      open: { t: 4.6, cam: ['fly', [0, 24, -26], [5, 3.4, -4], [0, 3, 0], 4.4], do: [['*', 'cores', 0, 0, 3], ['*', 'fireworks', 5], ['*', 'cheer', 1]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'face', 0, 0], ['COACH', 'emote', 'aim', 1.8]] },
+        { cam: ['close', 'RIVAL'], do: [['RIVAL', 'walk', 1, 11.5], ['RIVAL', 'emote', 'fold', 0]] },
+        { cams: [[0, ['low', 'YOU', 0.5, 4]], [1.5, ['close', 'YOU']], [2.1, ['two', 'YOU', 'RIVAL']]], do: [['*', 'cores', 'YOU'], ['YOU', 'emote', 'snap', 0], ['*', 'at', 1.8, 'snapfx', 'YOU'], ['RIVAL', 'wait', 1.9], ['RIVAL', 'emote', 'shock', 0]], hold: 3.6 },
+      ],
+      end: { t: 2.2, cam: ['two', 'YOU', 'RIVAL'] },
+    },
+    outro: {
+      set: { YOU: [0, 10, 3.14], COACH: [-3, 7, 'YOU'], M1: [3, 8, 'YOU'] },
+      open: { t: 3, cam: ['orbit', 'YOU', 4.6, 1.6, 0.35], do: [['*', 'cores', 'YOU'], ['YOU', 'emote', 'flex', 0], ['*', 'cheer', 1]] },
+      lines: [
+        { cams: [[0, ['low', 'YOU']], [2.0, ['close', 'YOU']]], do: [['YOU', 'emote', 'snap', 0], ['*', 'at', 1.8, 'snapfx', 'YOU'], ['*', 'at', 1.9, 'cheer', 1]], hold: 3.2 },
+        { cam: ['group', ['COACH', 'YOU', 'M1']], do: [['COACH', 'emote', 'cheer', 0], ['M1', 'emote', 'cheer', 0], ['*', 'fireworks', 6]] },
+      ],
+      end: { t: 2.4, cam: ['wide', 0, 8, 18, 8, 0.2], do: [['YOU', 'emote', 'cheer', 0], ['*', 'fireworks', 4]] },
+    },
+  },
+  vc2: {
+    intro: {
+      tier: 5,
+      set: { RIVAL: [0, 14, 3.14], R1: [-2.4, 15, 3.14], R2: [2.4, 15, 3.14], R3: [-4.8, 16, 3.14], R4: [4.8, 16, 3.14], YOU: [0, 6, 0], COACH: [-3, 4, 'RIVAL'], M1: [2.6, 4.6, 0] },
+      open: { t: 3.6, cam: ['fly', [-11, 1.6, 9.5], [11, 1.6, 9.5], [0, 1.5, 15], 3.4], do: [['RIVAL', 'emote', 'fold', 0], ['R1', 'emote', 'fold', 0], ['R2', 'emote', 'fold', 0], ['R3', 'emote', 'fold', 0], ['R4', 'emote', 'fold', 0]] },
+      lines: [
+        { cam: ['low', 'RIVAL'] },
+        { cams: [[0, ['close', 'COACH']], [1.6, ['wide', 0, 0, 34, 16, 0.12]]], do: [['*', 'at', 1.6, 'cheer', 1]], hold: 3.6 },
+        { cam: ['low', 'YOU'], do: [['YOU', 'emote', 'point', 0], ['*', 'at', 0.6, 'cheer', 1]] },
+      ],
+      end: { t: 2.2, cam: ['two', 'YOU', 'RIVAL'], do: [['YOU', 'emote', 'stance', 0]] },
+    },
+    outro: {
+      tier: 5,
+      set: { YOU: [0, 0, 0], COACH: [-3.5, -3, 'YOU'], M1: [3, -2, 'YOU'], M2: [-1.5, -4, 'YOU'] },
+      open: { t: 4, cam: ['track', 'YOU', 1, 7], do: [['YOU', 'emote', 'plane', 0], ['YOU', 'glide', 8, 10, 6], ['YOU', 'glide', 0, 16, 6], ['YOU', 'glide', -6, 8, 6], ['*', 'cheer', 1], ['*', 'fireworks', 5]] },
+      lines: [
+        { cams: [[0, ['close', 'COACH']], [1.4, ['wide', -6, 8, 26, 10, 0.18]]], do: [['COACH', 'emote', 'listen', 2.6], ['*', 'cheer', 1], ['YOU', 'emote', 'listen', 0]], hold: 3.6 },
+      ],
+      end: { t: 2.8, cam: ['low', 'YOU'], do: [['YOU', 'emote', 'pump', 0], ['*', 'fireworks', 5], ['*', 'cheer', 1], ['*', 'confetti', 4]] },
+    },
+  },
+  vc3: {
+    intro: {
+      set: { COACH: [-2.4, 10, 'YOU'], YOU: [1, 13, 3.14], M1: [-2.4, 14.6, 3.14], RIVAL: [1.6, 22, 'YOU'], R1: [-1.4, 23.6, 'YOU'] },
+      open: { t: 3.8, cam: ['wide', 0, 16, 15, 6, 0.1], do: [['*', 'at', 0.5, 'lightning', 9, 26], ['*', 'at', 2.4, 'lightning', -11, 7]] },
+      lines: [
+        { cam: ['ots', 'COACH', 'YOU'] },
+        { cam: ['low', 'RIVAL'], do: [['RIVAL', 'emote', 'laugh', 0], ['*', 'at', 1.1, 'lightning', 5, 27]] },
+        { cam: ['track', 'YOU', -1, 7], do: [['YOU', 'sprint', 14, 24], ['YOU', 'sprint', 2, 15], ['YOU', 'emote', 'stance', 0]], hold: 3.4 },
+      ],
+      end: { t: 2.2, cam: ['two', 'YOU', 'RIVAL'], do: [['*', 'at', 0.8, 'lightning', -6, 30]] },
+    },
+    outro: {
+      set: { YOU: [0, 0, 3.14], COACH: [0, -4.5, 'YOU'], M1: [2.6, 1, 'YOU'], M2: [-2.6, 1, 'YOU'] },
+      open: { t: 3.2, cam: ['orbit', 'YOU', 5, 1.6, 0.4], do: [['YOU', 'emote', 'meteor', 0], ['*', 'at', 1.4, 'lightning', 10, 14]] },
+      lines: [
+        { cams: [[0, ['close', 'COACH']], [1.5, ['group', ['YOU', 'M1', 'M2', 'COACH']]]], do: [['COACH', 'emote', 'cheer', 0], ['M1', 'emote', 'cheer', 0], ['M2', 'emote', 'cheer', 0], ['YOU', 'emote', 'flex', 0], ['*', 'at', 1.2, 'lightning', 0, 26], ['*', 'cheer', 1]], hold: 3.4 },
+      ],
+    },
+  },
+  vc4: {
+    intro: {
+      set: { SOLARIS: [0, 16, 3.14], R1: [-3, 18, 3.14], R2: [3, 18, 3.14], YOU: [0, 3, 0], COACH: [-3, 1.5, 'SOLARIS'], M1: [3, 1.5, 0], M2: [-5.5, 0.5, 0] },
+      open: { t: 5.2, cam: ['fly', [28, 32, -46], [7, 3.2, 1], [0, 2, 9.5], 4.8], do: [['*', 'trophy', 0, 9.5], ['*', 'fireworks', 8], ['*', 'cheer', 1]] },
+      lines: [
+        { cam: ['low', 'SOLARIS', 0.5, 4], do: [['SOLARIS', 'glow'], ['SOLARIS', 'walk', 0, 12.4]] },
+        { cam: ['ots', 'YOU', 'SOLARIS'], do: [['YOU', 'walk', 0, 6.6]] },
+        { cam: ['close', 'SOLARIS'], do: [['SOLARIS', 'emote', 'fold', 0]] },
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'walk', -1.4, 5.4]] },
+      ],
+      end: { t: 2.6, cams: [[0, ['two', 'YOU', 'SOLARIS']], [1.2, ['low', 'YOU']]], do: [['YOU', 'glow'], ['YOU', 'face', 'SOLARIS'], ['YOU', 'emote', 'stance', 0]] },
+    },
+    outro: {
+      set: { SOLARIS: [0, 12, 3.14], YOU: [0, 6, 0], COACH: [-4, 3, 'YOU'], M1: [3, 3, 'YOU'], M2: [-2.2, 2.6, 'YOU'] },
+      open: { t: 3, cam: ['close', 'SOLARIS'], do: [['*', 'trophy', -3.5, 8.5], ['SOLARIS', 'emote', 'sad', 0]] },
+      lines: [
+        { cam: ['ots', 'SOLARIS', 'YOU'], do: [['SOLARIS', 'emote', 'sad', 1.4], ['SOLARIS', 'emote', 'laugh', 1.6]] },
+        { cam: ['two', 'SOLARIS', 'YOU'], do: [['SOLARIS', 'walk', 0.3, 7.5], ['SOLARIS', 'emote', 'five', 0.8], ['YOU', 'wait', 2.0], ['YOU', 'emote', 'five', 0.8]], hold: 3.6 },
+        { cams: [[0, ['close', 'COACH']], [2.0, ['low', 'YOU', 0.3, 4]]], do: [['*', 'at', 1.6, 'give', 'trophy', 'YOU'], ['YOU', 'wait', 1.8], ['YOU', 'emote', 'trophy', 0], ['*', 'at', 2, 'fireworks', 10], ['*', 'at', 2, 'confetti', 8], ['*', 'at', 2, 'cheer', 1], ['M1', 'wait', 2], ['M1', 'emote', 'cheer', 0], ['M2', 'wait', 2], ['M2', 'emote', 'cheer', 0], ['SOLARIS', 'wait', 2], ['SOLARIS', 'emote', 'cheer', 0]], hold: 4.4 },
+      ],
+      end: { t: 4.2, cam: ['orbit', 'YOU', 5.2, 2.2, 0.32], do: [['COACH', 'emote', 'cheer', 0], ['*', 'fireworks', 6]] },
+    },
   },
 };
 
@@ -11054,6 +11433,671 @@ const Friends = {
     add.innerHTML = others.length ? '<span class="label">PLAYERS ONLINE</span>' + others.map((p) => `<div class="fr-row"><div class="fr-who"><b>${esc(p.name)}</b><span class="label">${p.mine ? 'IN YOUR ROOM' : FR_WHAT[p.st] || ''}</span></div><div class="fr-btns"><button class="btn tiny" type="button" data-add="${esc(p.id)}">ADD FRIEND</button></div></div>`).join('') : '';
     const note = this.noteText || (Net.noServerHere() ? 'FRIENDS NEED THE ONLINE SERVER' : on ? '' : Net.ws ? 'CONNECTING...' : 'NOT ONLINE. OPEN THIS PANEL OR PLAY WITH FRIENDS TO GO ONLINE');
     const nt = $('fr-note'); nt.textContent = note; nt.hidden = !note;
+  },
+};
+
+/* ---- 11_movie.js ---- */
+/* =====================================================================
+   Movie: the STORY scenes acted out in 3D (owner, Nov 26 2026: "the story is just like a text only, I want an actual
+   animation of the characters moving and the story to follow that"). The real stadium, real player models (Player),
+   a ball and a camera that cuts between shots like a film. Each event's scene is a script in STORY_FILMS (11_films.js):
+   where everyone stands (set), an opening shot (open), what happens while each line is said (lines, in the same order
+   as the event's intro / outro lines) and a closing shot (end). Cutscene (11_cutscene.js) still shows the lines, the
+   CHAPTER card and JOINS YOUR TEAM on top, between black film bars.
+   Cutscene calls Movie.start(ev, part, film), Movie.beat(open/end), Movie.line(i, speaker, extra), Movie.stop().
+   Game.loop calls Movie.update(rdt) while Movie.on, instead of the menus or the paused match.
+   Actions are [actor, verb, ...args]; each actor does its actions one after another. '*' is the world (crowd, fireworks,
+   the ball, props): ['*', 'at', seconds, verb, ...args] waits first. A new line finishes whatever is left at once
+   (flush), so tapping fast never leaves the scene behind the words.
+   ===================================================================== */
+const MV_SPEED = { walk: 2.3, jog: 4.6, run: 7.6, sprint: 11.5 };
+const MV_G = 20; // the ball's gravity in the scenes
+const MV_PLACES = { // each place: the sky (LOOKS), rain, how full the stadium is (TIER_FANS), and its name at the start
+  backpitch: { look: 'sunset', tier: 0, name: 'THE BACK PITCH' },
+  street: { look: 'night', tier: 0, name: 'EMBER CITY, AFTER DARK' },
+  stadium: { look: 'day', tier: 3, name: 'THE CUP STADIUM' },
+  city: { look: 'sunset', tier: 2, name: 'CITY ARENA' },
+  training: { look: 'day', tier: 0, name: 'TRAINING GROUND' },
+  night: { look: 'night', tier: 4, name: 'THE VOXEL CUP, NIGHT GAME' },
+  storm: { look: 'day', rain: true, tier: 4, name: 'THE VOXEL CUP, IN A STORM' },
+  final: { look: 'night', tier: 5, name: 'THE VOXEL CUP FINAL' },
+};
+const MV_COACH_KIT = mkKit('#2a2f45', '#3a405c', 'plain', '#2a2f45', '#ffcb3d', '#ffcb3d', '#ffcb3d', '#20243a', '#ffcb3d', '#2a2f45', '#ffcb3d'); // a dark tracksuit with gold trim
+const MV_STREET_KIT = mkKit('#14161f', '#3dffb0', 'plain', '#14161f', '#3dffb0', '#3dffb0', '#3dffb0', '#14161f', '#3dffb0', '#14161f', '#3dffb0'); // ROGUE before joining: a street look
+const MV_EXTRAS = ['SPRINTER', 'ENFORCER', 'PROWLER', 'THUNDER', 'WARDEN', 'SPARK', 'MAESTRO', 'KESTREL'];
+const MV_NUM = { ROGUE: 11, IRONCLAD: 5, SOLARIS: 7 };
+const _mvA = new THREE.Vector3(), _mvB = new THREE.Vector3(), _mvC = new THREE.Vector3(), _mvD = new THREE.Vector3(), _mvE = new THREE.Vector3();
+
+const Movie = {
+  on: false, t: 0, A: {}, film: null, ev: null, shot: null, timers: [], ball: null, props: null, saved: null, hid: [], speaker: null, listener: null,
+  /** the 3D scenes need the real renderer (the page always has one; this guards odd cases) */
+  ok() { return !!(World.renderer && World.scene && World.camera); },
+  start(ev, part, film) {
+    if (this.on) this.stop();
+    this.ev = ev; this.part = part; this.film = film; this.t = 0; this.on = true; this.A = {}; this.timers = []; this.shot = null;
+    this.speaker = this.listener = null; this.confT = 0; this.confAcc = 0;
+    const d = Save.data, P = MV_PLACES[film.place || ev.place] || MV_PLACES.stadium, cam = World.camera;
+    this.saved = { look: World.look, weather: World.weather, tier: World.tier, sun: World.sunRef, fov: cam.fov, pos: cam.position.clone(), quat: cam.quaternion.clone(), gw: F.GW, gh: F.GH, show: Showcase.on };
+    Showcase.hide(); cam.clearViewOffset();
+    const m = Game.match; this.hid = []; // the paused match (a scene over the results): its players and ball step aside
+    if (m) {
+      for (const o of m.players) if (o.P) for (const x of [o.P.root, o.blob, o.ownRing, o.ring]) if (x && x.visible) this.hid.push(x);
+      if (m.ball && m.ball.mesh && m.ball.mesh.visible) this.hid.push(m.ball.mesh);
+    }
+    for (const x of this.hid) x.visible = false;
+    FX.clear(); TimeCtl.reset();
+    World.setWeather(P.rain ? 'rain' : 'clear'); World.setLook(P.look); World.setTier(film.tier != null ? film.tier : P.tier); World.setSun(SUN_MATCH);
+    const foe = ev.foe !== d.club ? ev.foe : CLUB_IDS.find((c) => c !== d.club);
+    [this.home, this.away] = matchSides(d.club, foe);
+    World.paintCrowd(this.home, this.away);
+    World.setGoal(...(film.goals || [GOAL_W0, GOAL_H0]));
+    World.excite[0] = World.excite[1] = 0;
+    Sfx.setCrowd(P.tier ? 0.45 : 0.12);
+    this.makeBall(); this.makeProps();
+    const set = Object.assign({}, film.set);
+    for (const k of new Set((ev[part] || []).map((l) => l[0]))) { // anyone who talks in this scene is on stage
+      if (set[k] || !(k === 'YOU' || k === 'COACH' || k === 'RIVAL' || STORY_CAST[k])) continue;
+      const y = set.YOU || [0, 0]; set[k] = [y[0] + 3, y[1] + 3, 'YOU'];
+    }
+    for (const k in set) if (k !== 'ball') this.actor(k, set[k]);
+    const b = set.ball;
+    if (typeof b === 'string' && this.A[b]) this.give(this.A[b]); else if (Array.isArray(b)) this.place(b[0], b[1]); else this.ball.mesh.visible = false;
+    for (const k in this.A) this.turnNow(this.A[k]);
+    document.body.classList.add('movie');
+    this.cut(['wide', 0, 0, 20, 8, 0.1]);
+  },
+  /** the story is over (or skipped): everything back the way it was */
+  stop() {
+    if (!this.on) return;
+    this.on = false;
+    for (const k in this.A) this.A[k].p.dispose();
+    this.A = {}; this.timers = [];
+    if (this.ball) this.ball.mesh.visible = false;
+    if (this.props) for (const k in this.props) this.props[k].g.visible = false;
+    FX.clear(); TimeCtl.reset();
+    const s = this.saved, cam = World.camera;
+    World.setWeather(s.weather); World.setLook(s.look); World.setTier(s.tier != null ? s.tier : tierOf(Save.data.rp)); if (s.sun) World.setSun(s.sun);
+    World.setGoal(s.gw, s.gh);
+    if (Game.match && TEAM[0] && TEAM[1]) World.paintCrowd(TEAM[0], TEAM[1]); else { const me = sideFor(Save.data.club); World.paintCrowd(me, me); }
+    World.excite[0] = World.excite[1] = 0;
+    cam.position.copy(s.pos); cam.quaternion.copy(s.quat); cam.fov = s.fov; cam.updateProjectionMatrix();
+    for (const x of this.hid) x.visible = true;
+    this.hid = [];
+    document.body.classList.remove('movie');
+    if (s.show && UI.cur === 'lobby') Showcase.show();
+  },
+  /* ---------- the cast ---------- */
+  /** who someone is: YOU (your style, look and club), COACH BRICK (a tracksuit), RIVAL (the other club's captain), R1..R4
+      (their team), M1..M3 (your team: ROGUE and IRONCLAD once they joined, then your MY TEAM picks), the story characters */
+  cast(key) {
+    const d = Save.data, ev = this.ev, home = this.home, away = this.away;
+    if (key === 'YOU') return { team: 0, role: 'ST', style: d.style, flow: d.flow, look: d.look, side: home, number: 10, name: 'YOU', skin: SKIN_TONES[d.tone] || SKIN_TONES[1] };
+    if (key === 'COACH') return { team: 0, role: 'MID', style: 'ANCHOR', side: Object.assign({}, home, { kit: MV_COACH_KIT }), number: '', name: 'COACH', skin: SKIN_TONES[3] };
+    if (key === 'RIVAL') return { team: 1, role: 'ST', style: RIVAL_FACE[ev.foe] || 'BLITZ', side: away, number: 9, name: 'RIVAL' };
+    if (/^R\d$/.test(key)) return { team: 1, role: 'MID', style: MV_EXTRAS[(+key[1] + ev.n) % MV_EXTRAS.length], side: away, number: 2 + +key[1] };
+    if (/^M\d$/.test(key)) { const st = this.mate(+key[1]); return { team: 0, role: 'MID', style: st, side: home, number: MV_NUM[st] || [7, 4, 8][+key[1] - 1] || 6 }; }
+    if (STYLES[key] && STYLES[key].story) {
+      const side = key === 'ROGUE' ? Object.assign({}, home, { club: 'STREET', kit: MV_STREET_KIT, crest: ['#3dffb0', '#14161f', 'star'] }) : ev.foe === 'SUNSPIRE' ? away : sideFor('SUNSPIRE');
+      return { team: 1, role: 'ST', style: key, side, number: MV_NUM[key] || 9 };
+    }
+    return null;
+  },
+  /** your teammates in the scenes: the story characters who already joined (from chapter 2 on), then MY TEAM */
+  mate(i) {
+    const d = Save.data, ch = this.ev.ch, own = (id) => d.styles.includes(id) && id !== d.style;
+    const list = [];
+    if (ch >= 1 && own('ROGUE')) list.push('ROGUE');
+    if (ch >= 2 && own('IRONCLAD')) list.push('IRONCLAD');
+    for (const k of ['WING', 'MID', 'DEF', 'ST']) { const id = d.squad[k]; if (id && STYLES[id] && !STYLES[id].gk && id !== d.style && !list.includes(id)) list.push(id); }
+    for (const id of ['KESTREL', 'SENTINEL', 'SPARK', 'ROOKIE']) if (id !== d.style && !list.includes(id)) list.push(id);
+    return list[i - 1] || 'ROOKIE';
+  },
+  actor(key, s) {
+    const spec = this.cast(key); if (!spec) return null;
+    const p = new Player({ scene: World.scene, ball: { owner: null } }, spec);
+    p.pos.set(s[0], 0, s[1]);
+    const a = { key, p, q: [], task: null, fixed: null, ov: null, vy: 0 };
+    if (typeof s[2] === 'number') p.yaw = s[2]; else if (s[2]) a.fixed = s[2];
+    this.A[key] = a;
+    return a;
+  },
+  /** turn someone to face who they should (no easing: the first frame of a scene) */
+  turnNow(a) { const y = this.yawTo(a, a.fixed); if (y != null) a.p.yaw = y; a.fixed = null; },
+  /** the way from an actor to a target: another actor's key or [x, z] */
+  yawTo(a, tg) {
+    if (tg == null) return null;
+    let x, z;
+    if (typeof tg === 'string') { const o = this.A[tg]; if (!o || o === a) return null; x = o.p.pos.x; z = o.p.pos.z; } else { x = tg[0]; z = tg[1]; }
+    const dx = x - a.p.pos.x, dz = z - a.p.pos.z;
+    return dx * dx + dz * dz < 0.01 ? null : Math.atan2(dx, dz);
+  },
+  /* ---------- scripts ---------- */
+  /** a beat (the opening, a line, the end): its actions and camera */
+  beat(B) {
+    if (!B) return;
+    for (const act of B.do || []) this.act(act);
+    if (B.cam) this.cut(B.cam);
+    if (B.cams) for (const [t, s] of B.cams) { if (t > 0) this.later(t, () => this.cut(s), 'cam'); else this.cut(s); }
+  },
+  /** a line starts: finish what was left, who talks to whom, the line's actions and shot (or a good one picked for it) */
+  line(i, key, extra) {
+    const L = (this.film.lines && this.film.lines[i]) || {};
+    this.flushAll();
+    for (const k in this.A) { const a = this.A[k]; a.fixed = null; if (a.p.state === 'emote' && a.p.emote === 'talk') a.p.setState('free'); }
+    const prev = this.speaker;
+    this.speaker = this.A[key] ? key : null;
+    this.listener = L.to || (prev && prev !== key && this.A[prev] ? prev : null) || (key !== 'YOU' && this.A.YOU ? 'YOU' : key !== 'COACH' && this.A.COACH ? 'COACH' : Object.keys(this.A).find((k) => k !== key) || null);
+    this.beat(L);
+    if (!L.cam && !L.cams) this.cut(this.autoShot(i, key));
+    if (extra === 'join' && this.A[key]) this.A[key].q.push({ k: 'join' }); // after they walked over: the new kit
+  },
+  autoShot(i, key) {
+    const L = this.listener;
+    if (!this.A[key]) return ['wide', 0, 0, 14, 6, 0.1];
+    if (!L || !this.A[L]) return ['close', key];
+    return i % 2 ? ['close', key] : ['ots', key, L];
+  },
+  act(act) {
+    const [who, verb, ...args] = act;
+    if (who === '*') {
+      if (verb === 'at') { const [t, v2, ...a2] = args; this.later(t, () => this.world(v2, a2), 'fx'); } else this.world(verb, args);
+      return;
+    }
+    const a = this.A[who]; if (!a) return;
+    const T = this.task(verb, args); if (T) a.q.push(T);
+  },
+  task(verb, a) {
+    if (MV_SPEED[verb]) return { k: 'move', x: a[0], z: a[1], sp: MV_SPEED[verb] };
+    switch (verb) {
+      case 'dribble': return { k: 'move', x: a[0], z: a[1], sp: a[2] || MV_SPEED.run * 0.85, ball: true };
+      case 'glide': return { k: 'move', x: a[0], z: a[1], sp: a[2] || MV_SPEED.jog, keep: true }; // moving without dropping the pose (the airplane run)
+      case 'face': return { k: 'face', tg: typeof a[0] === 'string' ? a[0] : [a[0], a[1]] };
+      case 'wait': return { k: 'wait', dur: a[0] || 0.5 };
+      case 'emote': return { k: 'emote', name: a[0], dur: a[1] || 0 };
+      case 'juggle': return { k: 'juggle', dur: a[0] || 2 };
+      case 'trap': return { k: 'trap' };
+      case 'shoot': return { k: 'kick', tx: a[1] || 0, ty: a[2] == null ? 1.2 : a[2], tz: (a[0] || 1) * (F.L + 1.2), pow: 1.15, cheer: true };
+      case 'kick': return { k: 'kick', tx: a[0], ty: a[1], tz: a[2], T: a[3], pow: 0.9 };
+      case 'pass': return { k: 'kick', to: a[0], pow: 0.6 };
+      case 'slide': return { k: 'slide', x: a[0], z: a[1], win: a[2] === 'win' };
+      case 'feint': return { k: 'feint', side: a[0] || 1 };
+      case 'fall': return { k: 'fall', dir: a[0] || 1, dur: a[1] || 1.5 };
+      case 'jump': return { k: 'jump' };
+      case 'glow': return { k: 'glow' };
+      case 'giant': return { k: 'giant', on: a[0] !== false };
+      case 'join': return { k: 'join' };
+      case 'hide': return { k: 'hide' };
+      case 'show': return { k: 'show' };
+    }
+    return null;
+  },
+  later(t, fn, kind) { this.timers.push({ at: this.t + t, fn, kind }); },
+  /** a new line: anything still going finishes at once, so the scene always matches the words */
+  flushAll() {
+    const left = this.timers; this.timers = [];
+    for (const tm of left) if (tm.kind !== 'cam') tm.fn();
+    for (const k in this.A) {
+      const a = this.A[k], all = a.task ? [a.task, ...a.q] : a.q.slice();
+      a.task = null; a.q = [];
+      for (const T of all) this.finish(a, T);
+    }
+  },
+  /** where a task would have left everyone */
+  finish(a, T) {
+    const p = a.p, B = this.ball;
+    switch (T.k) {
+      case 'move': p.pos.x = T.x; p.pos.z = T.z; if (T.ball) this.give(a); if (!T.keep && p.state !== 'free') p.setState('free'); break;
+      case 'face': { const y = this.yawTo(a, T.tg); if (y != null) p.yaw = y; a.fixed = T.tg; break; }
+      case 'emote': if (T.dur > 0) { if (p.state === 'emote') p.setState('free'); } else { p.emote = T.name; p.setState('emote', 0); } break;
+      case 'juggle': if (B.jug === a) this.give(a); break;
+      case 'trap': if (!B.own && !B.fly) this.give(a); break;
+      case 'kick':
+        if (!T.hit) {
+          if (T.to && this.A[T.to]) this.give(this.A[T.to]);
+          else if (T.cheer) { this.place(T.tx * 0.6, Math.sign(T.tz) * (F.L + 1.6)); B.inNet = true; }
+          else this.place(T.tx, T.tz);
+        }
+        p.kickT = -1; break;
+      case 'slide': p.pos.x = T.x; p.pos.z = T.z; p.setState('free'); if (T.win) this.give(a); break;
+      case 'feint': p.setState('free'); p.dash = null; p.feint = 0; break;
+      case 'fall': if (p.state === 'down') p.setState('free'); break;
+      case 'jump': p.pos.y = 0; a.vy = 0; break;
+      case 'join': this.join(a, true); break;
+      case 'glow': case 'giant': case 'hide': case 'show': this.begin(a, T); break;
+    }
+  },
+  /* ---------- the world ---------- */
+  world(v, a) {
+    const B = this.ball;
+    switch (v) {
+      case 'cheer': World.excite[0] = World.excite[1] = Math.max(World.excite[0], a[0] == null ? 1 : a[0]); Sfx.roar(a[0] == null ? 1 : a[0]); break;
+      case 'whistle': Sfx.whistle(a[0] || 1); break;
+      case 'sfx': if (Sfx[a[0]]) Sfx[a[0]](a[1]); break;
+      case 'flash': this.flash(a[0] || '#ffffff'); break;
+      case 'boom': this.boom(a[0], a[1]); break;
+      case 'lightning': this.lightning(a[0], a[1]); break;
+      case 'fireworks': { const n = a[0] || 4, hex = [this.home.hex, '#ffffff', '#ffd54a']; for (let i = 0; i < n; i++) FX.rocket(rand(-30, 30), (i % 2 ? 1 : -1) * rand(F.L + 2, F.L + 8), hex, i * 0.35); break; }
+      case 'confetti': this.confT = this.t + (a[0] || 4); break;
+      case 'ball': if (typeof a[0] === 'string') { if (this.A[a[0]]) this.give(this.A[a[0]]); } else this.place(a[0], a[1]); break;
+      case 'ballup': this.place(a[0], a[1]); B.pos.y = 0.4; B.vel.set(a[3] || 0, Math.sqrt(2 * B.g * Math.max(0.5, a[2] || 6)), a[4] || 0); B.fly = true; Sfx.kick(0.6); break;
+      case 'moon': B.g = a[0] === false ? MV_G : MV_G * 0.16; break;
+      case 'goals': World.setGoal(a[0], a[1]); break;
+      case 'crowd': World.setTier(a[0]); break;
+      case 'cores': { const C = this.props.cores; C.g.visible = true; C.on = typeof a[0] === 'string' ? a[0] : null; if (!C.on) C.at.set(a[0] || 0, a[2] || 3, a[1] || 0); C.lerp = 0; break; }
+      case 'snapfx': this.snapFx(a[0]); break;
+      case 'trophy': { const T = this.props.trophy; T.g.visible = true; T.hold = null; T.at.set(a[0] || 0, 1.0, a[1] || 0); T.lerp = 1; this.props.plinth.g.visible = true; this.props.plinth.g.position.set(a[0] || 0, 0, a[1] || 0); break; }
+      case 'prop': { const P = this.props[a[0]]; if (P) { P.g.visible = true; P.hold = a[1]; P.lerp = 1; } break; }
+      case 'give': { const P = this.props[a[0]]; if (P) { P.g.visible = true; P.hold = a[1]; P.lerp = 0; Sfx.pickup(); } break; }
+      case 'drop': { const P = this.props[a[0]]; if (P) P.g.visible = false; break; }
+    }
+  },
+  flash(hex) { const f = $('cs-flash'); if (!f) return; f.style.background = hex; f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); },
+  /** BOOM: the bomb ball goes off. Anyone close falls, the ball flies up */
+  boom(x, z) {
+    FX.explosion(x, 0, z); FX.ring(x, 0.3, z, '#ffb02e', 2.5, 30); FX.dirt(x, z, 0, 0, 20, 1.6);
+    Sfx.boom(); Shake.add(0.6); this.flash('#ffb02e');
+    for (const k in this.A) { const a = this.A[k], dx = a.p.pos.x - x, dz = a.p.pos.z - z; if (dx * dx + dz * dz < 16 && a.p.state !== 'down') { a.task = null; a.q = [{ k: 'fall', dir: 1, dur: 1.6 }]; } }
+    const B = this.ball; if (Math.hypot(B.pos.x - x, B.pos.z - z) < 3) { B.own = B.jug = null; B.vel.set(rand(-3, 3), 11, rand(-3, 3)); B.fly = true; }
+  },
+  /** a bolt of lightning from the sky (THE STORM) */
+  lightning(x, z) {
+    FX.beam(V3(x, 34, z), { pos: V3(x, 0, z) }, '#e8eeff'); FX.sparks(x, 0.3, z, '#e8eeff', 30, 8, 0.18, 0.6); FX.ring(x, 0.2, z, '#ffffff', 2, 24);
+    this.flash('#e8eeff'); Shake.add(0.35); Sfx.boom(); Sfx.zap();
+  },
+  /* ---------- the ball ---------- */
+  makeBall() {
+    if (!this.ball) {
+      if (!BALL_GEO) BALL_GEO = makeBallGeometry();
+      const mesh = new THREE.Mesh(BALL_GEO, new THREE.MeshLambertMaterial({ vertexColors: true })); mesh.castShadow = true;
+      World.scene.add(mesh);
+      this.ball = { mesh, pos: V3(), vel: V3(), own: null, jug: null, to: null, fly: false, inNet: false, g: MV_G, jt: 0 };
+    }
+    const B = this.ball; B.own = B.jug = B.to = null; B.fly = B.inNet = false; B.g = MV_G; B.vel.set(0, 0, 0); B.mesh.visible = true; B.mesh.scale.setScalar(1);
+  },
+  give(a) { const B = this.ball; B.own = a; B.jug = B.to = null; B.fly = false; B.inNet = false; B.vel.set(0, 0, 0); B.mesh.visible = true; this.feet(a, B.pos); },
+  place(x, z) { const B = this.ball; B.own = B.jug = B.to = null; B.fly = false; B.inNet = false; B.vel.set(0, 0, 0); B.pos.set(x, BALL_R, z); B.mesh.visible = true; },
+  /** the ball's spot just in front of someone's feet */
+  feet(a, out) { const p = a.p; return out.set(p.pos.x + Math.sin(p.yaw) * 0.55, BALL_R, p.pos.z + Math.cos(p.yaw) * 0.55); },
+  tickBall(dt) {
+    const B = this.ball; if (!B || !B.mesh.visible) return;
+    if (B.own) {
+      const p = B.own.p, sp = len2D(p.vel.x, p.vel.z), lead = 0.55 + Math.min(0.35, sp * 0.04) * (0.6 + 0.4 * Math.sin(this.t * 9));
+      _mvA.set(p.pos.x + Math.sin(p.yaw) * lead, BALL_R, p.pos.z + Math.cos(p.yaw) * lead);
+      B.pos.x = damp(B.pos.x, _mvA.x, 22, dt); B.pos.z = damp(B.pos.z, _mvA.z, 22, dt); B.pos.y = BALL_R;
+      B.mesh.rotation.x += dt * sp * 3;
+    } else if (B.jug) { // keepy-uppies: the ball pops from foot to foot (the touching leg lifts, see tickActor)
+      const a = B.jug, p = a.p, per = 0.56; B.jt += dt;
+      const ph = (B.jt % per) / per, n = Math.floor(B.jt / per), side = n % 2 ? 1 : -1;
+      const h = 0.45 + 1.15 * Math.sin(Math.PI * ph);
+      const sy = Math.sin(p.yaw), cy = Math.cos(p.yaw), fw = 0.42, sd = 0.12 * side;
+      B.pos.set(p.pos.x + sy * fw + cy * sd, h, p.pos.z + cy * fw - sy * sd);
+      if (n !== B.jn) { B.jn = n; Sfx.juggle(side > 0 ? 'L' : 'R'); }
+      B.mesh.rotation.x += dt * 8; B.mesh.rotation.z += dt * 2;
+    } else if (B.fly || B.vel.lengthSq() > 0.01) {
+      B.vel.y -= B.g * dt;
+      B.pos.addScaledVector(B.vel, dt);
+      if (B.pos.y < BALL_R) {
+        B.pos.y = BALL_R;
+        if (B.vel.y < -2) { B.vel.y *= -0.45; B.vel.x *= 0.78; B.vel.z *= 0.78; Sfx.thud(Math.min(0.5, -B.vel.y * 0.05)); } else { B.vel.y = 0; B.fly = false; }
+      }
+      if (B.pos.y <= BALL_R + 0.01) { const f = Math.max(0, 1 - 1.6 * dt); B.vel.x *= f; B.vel.z *= f; }
+      const s = Math.sign(B.pos.z) || 1;
+      if (!B.inNet && Math.abs(B.pos.z) > F.L && Math.abs(B.pos.x) < F.GW && B.pos.y < F.GH) { // in the net
+        B.inNet = true; World.netBulge[s > 0 ? 0 : 1] = 1; B.vel.multiplyScalar(0.12); Sfx.swoosh();
+        if (B.cheer) { World.excite[0] = World.excite[1] = 1; Sfx.roar(World.tier ? 1 : 0.35); FX.sparks(B.pos.x, B.pos.y, B.pos.z, '#ffffff', 16, 5, 0.14, 0.5); }
+      }
+      if (B.inNet) { const lim = F.L + F.GD - 0.4; if (Math.abs(B.pos.z) > lim) { B.pos.z = s * lim; B.vel.z = 0; } B.pos.x = clamp(B.pos.x, -F.GW + 0.4, F.GW - 0.4); }
+      if (B.to) { // a pass: the one it is for takes it
+        const r = this.A[B.to];
+        if (r) { this.feet(r, _mvB); if (Math.hypot(_mvB.x - B.pos.x, _mvB.z - B.pos.z) < 1.1 && B.pos.y < 1.3) { this.give(r); Sfx.touch(); } }
+      }
+      B.mesh.rotation.x += dt * len2D(B.vel.x, B.vel.z) * 2.5;
+    }
+    B.mesh.position.copy(B.pos);
+  },
+  /* ---------- props: the shirt, the cup, the power cores ---------- */
+  makeProps() {
+    if (this.props) { for (const k in this.props) { const P = this.props[k]; P.g.visible = false; P.hold = null; } this.paintShirt(); this.props.cores.on = null; return; }
+    const mk = (geo, mat) => { const g = new THREE.Mesh(geo, mat); g.castShadow = true; g.visible = false; World.scene.add(g); return g; };
+    const gold = '#ffcf3a', dark = '#2a2140';
+    const cup = new VoxBuilder();
+    cup.box(-0.17, 0, -0.17, 0.17, 0.09, 0.17, dark, { ao: 0.9 }); cup.box(-0.13, 0.09, -0.13, 0.13, 0.13, 0.13, gold);
+    cup.box(-0.05, 0.13, -0.05, 0.05, 0.32, 0.05, gold); cup.box(-0.1, 0.3, -0.1, 0.1, 0.36, 0.1, gold);
+    cup.box(-0.19, 0.36, -0.19, 0.19, 0.68, 0.19, gold); cup.box(-0.23, 0.66, -0.23, 0.23, 0.72, 0.23, '#fff1b0');
+    for (const s of [1, -1]) { cup.box(s * 0.19, 0.42, -0.03, s * 0.31, 0.47, 0.03, gold); cup.box(s * 0.27, 0.47, -0.03, s * 0.31, 0.62, 0.03, gold); cup.box(s * 0.19, 0.6, -0.03, s * 0.31, 0.64, 0.03, gold); }
+    const trophy = mk(cup.geometry(), new THREE.MeshLambertMaterial({ vertexColors: true, emissive: lin('#3a2a00'), emissiveIntensity: 1 }));
+    const pl = new VoxBuilder(); pl.box(-0.5, 0, -0.5, 0.5, 1.0, 0.5, '#1d1a2c', { ao: 0.8 }); pl.box(-0.56, 0.94, -0.56, 0.56, 1.0, 0.56, '#ffcf3a');
+    const plinth = mk(pl.geometry(), new THREE.MeshLambertMaterial({ vertexColors: true }));
+    const shirt = mk(new THREE.BufferGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true }));
+    const cores = new THREE.Group(); cores.visible = false; World.scene.add(cores);
+    RARITIES.forEach((r) => { const c = new THREE.Mesh(PlayerGeo.get().cube, new THREE.MeshBasicMaterial({ color: lin(RARITY_HEX[r]), toneMapped: false })); c.scale.setScalar(0.2); cores.add(c); });
+    this.props = {
+      trophy: { g: trophy, hold: null, at: V3(), lerp: 0, up: 0.05 },
+      plinth: { g: plinth, hold: null, at: V3(), lerp: 0, fixed: true },
+      shirt: { g: shirt, hold: null, at: V3(), lerp: 0, up: 0.1 },
+      cores: { g: cores, hold: null, at: V3(), lerp: 0, on: null, fixed: true },
+    };
+    this.paintShirt();
+  },
+  /** the shirt COACH BRICK hands you: your club's colours with your number */
+  paintShirt() {
+    const k = this.home.kit, v = new VoxBuilder();
+    v.box(-0.26, -0.36, -0.03, 0.26, 0.3, 0.03, k.shirt, { ao: 0.85 });
+    v.box(-0.44, 0.06, -0.03, -0.26, 0.3, 0.03, k.sleeve, { ao: 0.85 }); v.box(0.26, 0.06, -0.03, 0.44, 0.3, 0.03, k.sleeve, { ao: 0.85 });
+    v.box(-0.12, 0.26, -0.035, 0.12, 0.31, 0.035, k.collar, { ao: 1 });
+    v.box(-0.09, -0.14, 0.03, -0.03, 0.12, 0.04, k.number, { ao: 1 }); v.box(0.01, -0.14, 0.03, 0.11, 0.12, 0.04, k.number, { ao: 1 }); v.box(0.03, -0.1, 0.035, 0.09, 0.08, 0.045, k.shirt, { ao: 1 }); // a 10
+    const g = this.props.shirt.g; g.geometry.dispose(); g.geometry = v.geometry();
+  },
+  /** where someone's hands are (both hands' middle) */
+  hands(a, out) {
+    const P = a.p.P; P.armL.localToWorld(_mvC.set(0, -0.7, 0)); P.armR.localToWorld(_mvD.set(0, -0.7, 0));
+    return out.addVectors(_mvC, _mvD).multiplyScalar(0.5);
+  },
+  tickProps(dt) {
+    const S = this.props; if (!S) return;
+    for (const k of ['trophy', 'shirt']) {
+      const P = S[k]; if (!P.g.visible) continue;
+      if (P.hold && this.A[P.hold]) {
+        const a = this.A[P.hold]; this.hands(a, _mvA); _mvA.x += Math.sin(a.p.yaw) * 0.1; _mvA.z += Math.cos(a.p.yaw) * 0.1; _mvA.y += k === 'trophy' ? -0.15 : a.p.state === 'emote' && a.p.emote === 'trophy' ? 0.34 : 0; // a shirt held up goes over the head, not the face
+        P.lerp = Math.min(1, P.lerp + dt * 2.5); const e = smooth(P.lerp);
+        P.g.position.lerp(_mvA, P.lerp >= 1 ? 1 : Math.min(1, e * 0.6 + dt * 8));
+        const c = World.camera.position, up = k === 'shirt' && a.p.state === 'emote' && a.p.emote === 'trophy';
+        P.g.rotation.y = dampAngle(P.g.rotation.y, up ? Math.atan2(c.x - P.g.position.x, c.z - P.g.position.z) : a.p.yaw, 10, dt); // held up: shown to the camera
+      } else P.g.position.copy(P.at);
+      if (k === 'trophy' && !P.hold) P.g.rotation.y += dt * 0.6;
+      if (k === 'trophy') { P.g.scale.setScalar(P.hold ? 1.15 : 1.5); P.sp = (P.sp || 0) - dt; if (P.sp <= 0) { P.sp = 0.12; FX.glow.spawn(P.g.position.x + rand(-0.3, 0.3), P.g.position.y + rand(0.2, 1), P.g.position.z + rand(-0.3, 0.3), 0, rand(0.3, 0.8), 0, rand(0.05, 0.1), 0.8, col('#ffe27a'), 0, 0.3, 0); } }
+    }
+    const C = S.cores;
+    if (C.g.visible) { // the power cores circle a spot, or the raised hand of whoever has them (the SNAP pose)
+      if (C.on && this.A[C.on]) { const P = this.A[C.on].p.P; P.armL.localToWorld(_mvA.set(0, -0.8, 0)); } else _mvA.copy(C.at);
+      C.lerp = Math.min(1, C.lerp + dt * 1.8);
+      C.g.position.lerp(_mvA, C.lerp >= 1 ? 1 : 0.12);
+      const n = C.g.children.length, r = C.on ? 0.42 : 0.9;
+      C.g.children.forEach((c, i) => { const a = this.t * 2.2 + i / n * TAU; c.position.set(Math.cos(a) * r, Math.sin(this.t * 3 + i) * 0.12, Math.sin(a) * r); c.rotation.set(this.t * 2 + i, this.t * 1.5, 0); });
+    }
+  },
+  /** I SNAP YOU AWAY: a click, sparks in every core's colour, a white flash, and the cores vanish into the hand */
+  snapFx(key) {
+    const a = this.A[key]; if (!a) return;
+    a.p.P.armL.localToWorld(_mvA.set(0, -0.8, 0));
+    Sfx.snap(); Shake.add(0.3); this.flash('#ffffff');
+    for (const r of RARITIES) FX.sparks(_mvA.x, _mvA.y, _mvA.z, RARITY_HEX[r], 10, 5, 0.1, 0.6);
+    FX.ring(a.p.pos.x, 0.25, a.p.pos.z, '#ffffff', 2.5, 30);
+    this.props.cores.g.visible = false;
+  },
+  /* ---------- the actors ---------- */
+  begin(a, T) {
+    const p = a.p, B = this.ball;
+    T.t = 0;
+    switch (T.k) {
+      case 'move': if (!T.keep && p.state !== 'free') p.setState('free'); if (T.ball && B.own !== a) this.give(a); break;
+      case 'emote': p.emote = T.name; p.setState('emote', T.dur); p._meteor = p._heart = p._fw = -1; break;
+      case 'juggle': if (p.state !== 'free') p.setState('free'); B.own = null; B.jug = a; B.jt = 0; B.jn = -1; B.fly = false; B.mesh.visible = true; break;
+      case 'kick': if (p.state !== 'free') p.setState('free'); break;
+      case 'slide': p.setState('slide'); T.sx = p.pos.x; T.sz = p.pos.z; p.yaw = Math.atan2(T.x - p.pos.x, T.z - p.pos.z); Sfx.slide(); FX.dirt(p.pos.x, p.pos.z, Math.sin(p.yaw), Math.cos(p.yaw), 10); break;
+      case 'feint': p.setState('dash'); p.feint = T.side; p.dash = { t: 0, dur: 0.34 }; Sfx.dodge(); break;
+      case 'fall': p.fallDir = T.dir; p.setState('down', T.dur); Sfx.tackle(); if (B.own === a) { B.own = null; B.vel.set(Math.sin(p.yaw) * 4, 2, Math.cos(p.yaw) * 4); B.fly = true; } break;
+      case 'jump': a.vy = 6.5; p.onGround = false; break;
+      case 'glow': p.awakeT = 1e4; FX.awakenBurst(p); Sfx.ability(); Shake.add(0.2); break;
+      case 'giant': p.fx.big = T.on ? 1e4 : 0; if (T.on) { Sfx.boing(); FX.ring(p.pos.x, 0.2, p.pos.z, '#ffffff', 1.6, 22); } break;
+      case 'join': this.join(a); break;
+      case 'hide': p.P.root.visible = p.blob.visible = false; break;
+      case 'show': p.P.root.visible = p.blob.visible = true; break;
+    }
+  },
+  /** JOINS YOUR TEAM: a flash of light in their colour and they are wearing your shirt */
+  join(a, quiet) {
+    const p = a.p;
+    if (p.side !== this.home) { p.side = this.home; p.team = 0; p.repaint(); }
+    if (quiet) return; // finished early: the new kit only (the card would cover the next line)
+    FX.awakenBurst(p); this.flash(p.aura); Shake.add(0.25);
+    World.excite[0] = World.excite[1] = 1;
+    Cutscene.join(a.key);
+  },
+  /** one task, one frame. true when it is done */
+  run(a, T, dt) {
+    const p = a.p, B = this.ball;
+    T.t += dt;
+    switch (T.k) {
+      case 'move': {
+        const dx = T.x - p.pos.x, dz = T.z - p.pos.z, L = Math.hypot(dx, dz);
+        if (L < 0.06) { p.pos.x = T.x; p.pos.z = T.z; return true; }
+        const sp = Math.min(T.sp, L * 3.5 + 0.8), s = Math.min(L, sp * dt);
+        p.vel.set(dx / L * sp, 0, dz / L * sp);
+        p.pos.x += dx / L * s; p.pos.z += dz / L * s;
+        p.yaw = dampAngle(p.yaw, Math.atan2(dx, dz), 12, dt);
+        if (T.sp >= MV_SPEED.sprint && Math.random() < dt * 40) FX.trail(p.pos.x, p.pos.y + rand(0.5, 1.5), p.pos.z, p.aura, 0.22, 0.4); // a streak of speed
+        if (T.sp >= MV_SPEED.run && Math.random() < dt * 8) FX.dust(p.pos.x, p.pos.z, 1);
+        return false;
+      }
+      case 'face': {
+        const y = this.yawTo(a, T.tg); a.fixed = T.tg;
+        if (y == null) return true;
+        p.yaw = dampAngle(p.yaw, y, 11, dt);
+        return Math.abs(wrapA(y - p.yaw)) < 0.06 || T.t > 0.6;
+      }
+      case 'wait': return T.t >= T.dur;
+      case 'emote': return T.dur <= 0 || T.t >= T.dur;
+      case 'juggle': if (B.jug !== a) return true; if (T.t >= T.dur) { this.give(a); return true; } return false;
+      case 'trap': {
+        if (B.own === a) return true;
+        if (!B.own && !B.jug) { this.feet(a, _mvA); if (Math.hypot(_mvA.x - B.pos.x, _mvA.z - B.pos.z) < 1.6 && B.pos.y < 1.5) { this.give(a); Sfx.touch(); return true; } }
+        if (T.t > 3) { this.give(a); return true; }
+        return false;
+      }
+      case 'kick': {
+        if (!T.go) { // turn to where it goes first
+          if (T.to && this.A[T.to]) { const r = this.A[T.to].p; T.tx = r.pos.x + Math.sin(r.yaw) * 0.55; T.tz = r.pos.z + Math.cos(r.yaw) * 0.55; T.ty = BALL_R; }
+          const want = Math.atan2(T.tx - p.pos.x, T.tz - p.pos.z);
+          p.yaw = dampAngle(p.yaw, want, 16, dt);
+          if (T.t > 0.24 || Math.abs(wrapA(want - p.yaw)) < 0.08) {
+            T.go = true; p.kickT = 0; p.kickStyle = 'strike'; p.kickPow = T.pow; p.kickDur = 0.42;
+            if (B.own !== a && B.jug !== a) { this.give(a); }
+            if (B.jug === a) { B.jug = null; }
+            B.own = null; this.feet(a, B.pos);
+          }
+          return false;
+        }
+        const k = p.kickT < 0 ? 1 : p.kickT;
+        if (!T.hit && k >= 0.36) { // the boot meets the ball
+          T.hit = true;
+          const dx = T.tx - B.pos.x, dz = T.tz - B.pos.z, dist = Math.hypot(dx, dz);
+          const Tf = T.T || (T.to ? clamp(dist / 15, 0.35, 1.1) : clamp(dist / 24, 0.4, 1.3));
+          B.vel.set(dx / Tf, (T.ty - B.pos.y) / Tf + 0.5 * B.g * Tf, dz / Tf);
+          B.fly = true; B.inNet = false; B.own = null; B.to = T.to || null; B.cheer = !!T.cheer;
+          Sfx.kick(T.pow); if (T.cheer) { Shake.add(0.15); FX.sparks(B.pos.x, B.pos.y, B.pos.z, p.aura, 10, 4, 0.12, 0.35); }
+        }
+        return T.hit && p.kickT < 0;
+      }
+      case 'slide': {
+        const u = Math.min(1, T.t / 0.55), e = 1 - (1 - u) * (1 - u);
+        p.pos.x = lerp(T.sx, T.x, e); p.pos.z = lerp(T.sz, T.z, e); p.vel.set(0, 0, 0);
+        if (T.win && !T.took && B.own && B.own !== a && Math.hypot(B.pos.x - p.pos.x, B.pos.z - p.pos.z) < 1.3) { T.took = true; Sfx.tackle(); FX.dirt(p.pos.x, p.pos.z, Math.sin(p.yaw), Math.cos(p.yaw), 12); this.give(a); }
+        if (T.t >= 0.85) { p.setState('free'); if (T.win && !T.took) this.give(a); return true; }
+        return false;
+      }
+      case 'feint': {
+        p.dash.t += dt; const sx = Math.cos(p.yaw), sz = -Math.sin(p.yaw), go = p.dash.t > p.dash.dur * 0.62 ? 1 : 0;
+        p.pos.x += (Math.sin(p.yaw) * 2 - sx * T.side * 4 * go) * dt; p.pos.z += (Math.cos(p.yaw) * 2 - sz * T.side * 4 * go) * dt;
+        if (p.dash.t >= p.dash.dur) { p.setState('free'); p.dash = null; p.feint = 0; return true; }
+        return false;
+      }
+      case 'fall': return p.state !== 'down';
+      case 'jump': return a.vy === 0 && p.pos.y <= 0;
+      default: return true; // instant ones (glow, giant, join, hide, show)
+    }
+  },
+  tickActor(a, dt) {
+    const p = a.p, B = this.ball;
+    if (!a.task && a.q.length) { a.task = a.q.shift(); this.begin(a, a.task); }
+    p.vel.set(0, 0, 0); a.ov = null;
+    const T = a.task;
+    if (T && this.run(a, T, dt)) a.task = null;
+    if (!a.task && a.q.length) { a.task = a.q.shift(); this.begin(a, a.task); }
+    // the talker gestures while the line types out; everyone else turns to them
+    const talking = a.key === this.speaker && Cutscene.typing;
+    if (talking && !a.task && !a.q.length && p.state === 'free') { p.emote = 'talk'; p.setState('emote', 0); }
+    if (!talking && p.state === 'emote' && p.emote === 'talk') p.setState('free');
+    const busy = a.task && (a.task.k === 'move' || a.task.k === 'kick' || a.task.k === 'slide' || a.task.k === 'feint' || a.task.k === 'face');
+    const still = p.state === 'down' || p.state === 'slide' || p.state === 'dash' || (p.state === 'emote' && ['sad', 'chill', 'knees', 'snap', 'meteor', 'spin', 'flip'].includes(p.emote));
+    if (!busy && !still && B.jug !== a) {
+      const y = this.yawTo(a, a.fixed || (a.key === this.speaker ? this.listener : this.speaker));
+      if (y != null) p.yaw = dampAngle(p.yaw, y, 5, dt);
+    }
+    // jumping, timers the match would run (Player.tickTimers is not used here)
+    if (a.vy || p.pos.y > 0) { a.vy -= 22 * dt; p.pos.y += a.vy * dt; if (p.pos.y <= 0) { p.pos.y = 0; a.vy = 0; p.onGround = true; FX.dust(p.pos.x, p.pos.z, 3); } }
+    p.stateT += dt;
+    if (p.stateDur > 0 && p.stateT >= p.stateDur && (p.state === 'emote' || p.state === 'down')) p.setState('free');
+    if (p.kickT >= 0) { p.kickT += dt / p.kickDur; if (p.kickT >= 1) p.kickT = -1; }
+    p.animate(dt);
+    if (B.jug === a) { // keepy-uppies: the leg that touches it lifts
+      const per = 0.56, ph = (B.jt % per) / per, side = Math.floor(B.jt / per) % 2, w = Math.max(Math.exp(-Math.pow(ph / 0.14, 2)), Math.exp(-Math.pow((1 - ph) / 0.16, 2)));
+      const P = p.P; (side ? P.legL : P.legR).rotation.x = -0.85 * w; P.armL.rotation.z = 0.35 + 0.15 * w; P.armR.rotation.z = -0.35 - 0.15 * w;
+      P.headP.rotation.x = 0.25 - 0.3 * (1 - Math.sin(Math.PI * ph));
+    }
+    if (p.awakeT > 0) FX.awaken(p, dt);
+    p.P.root.updateMatrixWorld(true);
+  },
+  update(rdt) {
+    if (!this.on) return;
+    const dt = Math.min(rdt, 0.05);
+    this.t += dt;
+    for (let i = this.timers.length - 1; i >= 0; i--) { const tm = this.timers[i]; if (this.t >= tm.at) { this.timers.splice(i, 1); tm.fn(); } }
+    for (const k in this.A) this.tickActor(this.A[k], dt);
+    this.tickBall(dt);
+    this.tickProps(dt);
+    if (this.t < this.confT) { // confetti over everyone
+      this.confAcc += dt * 70;
+      const c = this.camL || _mvE.set(0, 0, 0), hexes = [this.home.hex, '#ffffff', '#ffd54a', '#ff5fb0', '#4aa8ff'];
+      while (this.confAcc > 1) { this.confAcc -= 1; FX.lit.spawn(c.x + rand(-9, 9), rand(7, 10), c.z + rand(-9, 9), rand(-1, 1), rand(-1.5, 0), rand(-1, 1), rand(0.08, 0.14), rand(2.5, 3.5), col(pick(hexes)), 0.16, 1.4, 0); }
+    }
+    this.camera(dt);
+  },
+  /* ---------- the camera ---------- */
+  cut(s) { this.shot = { s, t0: this.t, fresh: true, ang: null, side: null }; },
+  head(key, out) {
+    const a = this.A[key]; if (!a) return out.set(0, 1.6, 0);
+    const P = a.p.P; P.headP.getWorldPosition(out); out.y += 0.22 * P.root.scale.x; return out;
+  },
+  fwd(key, out) { const a = this.A[key], y = a ? a.p.yaw : 0; return out.set(Math.sin(y), 0, Math.cos(y)); },
+  /** which side of a line a camera goes: keep the side the camera is on now (films keep to one side of the action) */
+  sideOf(M, dir) { const c = World.camera.position; const s = (c.x - M.x) * dir.z - (c.z - M.z) * dir.x; return s >= 0 ? 1 : -1; },
+  /** the first frame of a shot picks its side: the one asked for, unless someone stands in the way and the other side is clearer */
+  side(S, pref, make, skip) {
+    if (S.side == null) {
+      make(pref); const b1 = this.blocked(this._D, this._L, skip);
+      if (b1) { make(-pref); S.side = this.blocked(this._D, this._L, skip) < b1 ? -pref : pref; } else S.side = pref;
+    }
+    make(S.side);
+  },
+  /** how many people stand between the camera and what it looks at (or right on top of the camera) */
+  blocked(D, L, skip) {
+    let n = 0;
+    for (const k in this.A) {
+      if (skip.includes(k) || !this.A[k].p.P.root.visible) continue;
+      const p = this.A[k].p.pos, vx = L.x - D.x, vz = L.z - D.z, wx = p.x - D.x, wz = p.z - D.z, ll = vx * vx + vz * vz || 1;
+      const len = Math.sqrt(ll), t = clamp((wx * vx + wz * vz) / ll, 0, 1), along = t * len, perp = Math.hypot(wx - vx * t, wz - vz * t);
+      if (along < len - 0.5 && perp < 0.45 + 0.6 * along / len) n++; // in front of the people filmed
+      else if (along < 3.2 && perp < 0.3 + along * 0.42) n++; // close to the lens: a big blur over the picture
+    }
+    return n;
+  },
+  /** the shot's camera [position, look-at, fov] for this frame */
+  pose(S, u, D, L) {
+    const s = S.s, k = s[0], A = this.A;
+    const has = (key) => typeof key === 'string' && A[key];
+    switch (k) {
+      case 'close': { // head and shoulders from three quarters (never straight down the line to the listener), pushing in
+        if (!has(s[1])) break;
+        const h = this.head(s[1], _mvA), y = A[s[1]].p.yaw, d = lerp(3.1, 2.7, Math.min(1, u / 5));
+        this.side(S, s[2] || 1, (sd) => { const g = y + 0.55 * sd; D.set(h.x + Math.sin(g) * d, h.y - 0.02, h.z + Math.cos(g) * d); L.set(h.x, h.y - 0.3, h.z); }, [s[1]]);
+        return 38;
+      }
+      case 'ots': { // over the listener's shoulder at the talker
+        if (!has(s[1]) || !has(s[2])) break;
+        const ha = this.head(s[1], _mvA), hb = this.head(s[2], _mvB);
+        let dx = ha.x - hb.x, dz = ha.z - hb.z; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
+        this.side(S, s[3] || 1, (sd) => { D.set(hb.x - dx * 1.7 + dz * 0.85 * sd, hb.y + 0.2, hb.z - dz * 1.7 - dx * 0.85 * sd); L.set(ha.x, ha.y - 0.25, ha.z); }, [s[1], s[2]]);
+        return 38;
+      }
+      case 'two': { // both, from the side
+        if (!has(s[1]) || !has(s[2])) break;
+        const ha = this.head(s[1], _mvA), hb = this.head(s[2], _mvB);
+        let dx = hb.x - ha.x, dz = hb.z - ha.z; const l = Math.hypot(dx, dz) || 1; dx /= l; dz /= l;
+        const M = _mvC.addVectors(ha, hb).multiplyScalar(0.5), d = Math.max(4.2, l + 2.6);
+        this.side(S, s[3] || this.sideOf(M, _mvD.set(dx, 0, dz)), (sd) => { D.set(M.x + dz * d * sd + dx * u * 0.06, M.y - 0.1, M.z - dx * d * sd + dz * u * 0.06); L.set(M.x, M.y - 0.4, M.z); }, [s[1], s[2]]);
+        return 40;
+      }
+      case 'low': { // a hero shot from down low, slowly going round
+        if (!has(s[1])) break;
+        const a = A[s[1]].p, h = this.head(s[1], _mvA), d = s[3] || 3.8, y0 = S.yaw0 == null ? (S.yaw0 = a.yaw) : S.yaw0;
+        this.side(S, 1, (sd) => { const g = y0 + (s[2] || 0.45) * sd + u * 0.07 * sd; D.set(a.pos.x + Math.sin(g) * d, 0.6, a.pos.z + Math.cos(g) * d); L.set(h.x, h.y - 0.15, h.z); }, [s[1]]);
+        return 44;
+      }
+      case 'orbit': { // round and round someone
+        if (!has(s[1])) break;
+        const a = A[s[1]].p, h = this.head(s[1], _mvA);
+        if (S.ang == null) S.ang = a.yaw + 0.5;
+        const g = S.ang + u * (s[4] == null ? 0.3 : s[4]), r = s[2] || 4.5;
+        D.set(a.pos.x + Math.sin(g) * r, s[3] || 1.7, a.pos.z + Math.cos(g) * r); L.set(h.x, h.y - 0.4, h.z);
+        return 46;
+      }
+      case 'track': // from the side, keeping up with someone running
+      case 'follow': // from behind
+      case 'lead': { // in front, walking toward the camera
+        if (!has(s[1])) break;
+        const a = A[s[1]].p, sp = len2D(a.vel.x, a.vel.z);
+        if (!S.dir) S.dir = V3(Math.sin(a.yaw), 0, Math.cos(a.yaw));
+        if (sp > 0.5) { S.dir.x = damp(S.dir.x, a.vel.x / sp, 3, 1 / 60); S.dir.z = damp(S.dir.z, a.vel.z / sp, 3, 1 / 60); const l = Math.hypot(S.dir.x, S.dir.z) || 1; S.dir.x /= l; S.dir.z /= l; }
+        const dir = S.dir;
+        if (k === 'track') { if (S.side == null) S.side = s[2] || this.sideOf(a.pos, dir); const d = s[3] || 5.5; D.set(a.pos.x + dir.z * d * S.side + dir.x * 1.4, 1.5, a.pos.z - dir.x * d * S.side + dir.z * 1.4); L.set(a.pos.x + dir.x * 1.2, 1.1, a.pos.z + dir.z * 1.2); return 46; }
+        if (k === 'follow') { D.set(a.pos.x - dir.x * 4.4, 2.0, a.pos.z - dir.z * 4.4); L.set(a.pos.x + dir.x * 4, 1.0, a.pos.z + dir.z * 4); return 50; }
+        const h = this.head(s[1], _mvA); D.set(a.pos.x + dir.x * 3.8, 1.55, a.pos.z + dir.z * 3.8); L.set(h.x, h.y - 0.25, h.z); return 42;
+      }
+      case 'wide': { // high and wide round a spot
+        if (S.ang == null) { const c = World.camera.position; S.ang = Math.atan2(c.x - (s[1] || 0), c.z - (s[2] || 0)); if (!isFinite(S.ang)) S.ang = 0.6; }
+        const g = S.ang + u * (s[5] == null ? 0.12 : s[5]), r = s[3] || 14;
+        D.set((s[1] || 0) + Math.sin(g) * r, s[4] || 6, (s[2] || 0) + Math.cos(g) * r); L.set(s[1] || 0, 1, s[2] || 0);
+        return 50;
+      }
+      case 'fly': { // a crane shot: from one spot to another, looking at someone or something
+        const q = smooth(Math.min(1, u / (s[4] || 4))), a0 = s[1], a1 = s[2];
+        D.set(lerp(a0[0], a1[0], q), lerp(a0[1], a1[1], q), lerp(a0[2], a1[2], q));
+        if (typeof s[3] === 'string') { this.head(s[3], L); L.y -= 0.3; } else L.set(s[3][0], s[3][1], s[3][2]);
+        return 48;
+      }
+      case 'goal': { // behind the net, looking out at the ball
+        const sg = s[1] || 1, B = this.ball;
+        D.set(clamp(B.pos.x * 0.35, -3, 3), 1.6, sg * (F.L + F.GD + 1.6)); L.set(B.pos.x, Math.max(0.6, B.pos.y), B.pos.z);
+        return 50;
+      }
+      case 'group': { // a few people together, from the way they face
+        const keys = (s[1] || []).filter(has); if (!keys.length) break;
+        const C = _mvC.set(0, 0, 0); let fx = 0, fz = 0, spread = 0;
+        for (const key of keys) { C.add(this.head(key, _mvA)); fx += Math.sin(A[key].p.yaw); fz += Math.cos(A[key].p.yaw); }
+        C.multiplyScalar(1 / keys.length);
+        for (const key of keys) spread = Math.max(spread, Math.hypot(A[key].p.pos.x - C.x, A[key].p.pos.z - C.z));
+        if (!S.dir) { const l = Math.hypot(fx, fz); S.dir = l > 0.3 ? V3(fx / l, 0, fz / l) : V3(0, 0, 1); }
+        const d = spread * 1.5 + 3.6 + u * 0.08;
+        D.set(C.x + S.dir.x * d + S.dir.z * 0.8, C.y + 0.5, C.z + S.dir.z * d - S.dir.x * 0.8); L.set(C.x, C.y - 0.45, C.z);
+        return 46;
+      }
+    }
+    const y = this.A.YOU ? this.A.YOU.p.pos : _mvA.set(0, 0, 0); // a shot that cannot be taken (someone is missing): a wide one
+    D.set(y.x + 9, 5, y.z - 9); L.set(y.x, 1, y.z);
+    return 50;
+  },
+  camera(dt) {
+    const S = this.shot; if (!S) return;
+    const cam = World.camera, D = this._D || (this._D = V3()), L = this._L || (this._L = V3());
+    const fov = this.pose(S, this.t - S.t0, D, L);
+    D.x = clamp(D.x, -F.BOARD_X + 0.8, F.BOARD_X - 0.8); D.z = clamp(D.z, -F.BOARD_Z + 0.8, F.BOARD_Z - 0.8); D.y = Math.max(0.3, D.y);
+    if (!this.camL) this.camL = V3();
+    if (S.fresh || S.s[0] === 'fly') { cam.position.copy(D); this.camL.copy(L); S.fresh = false; }
+    else { const r = S.s[0] === 'track' || S.s[0] === 'follow' || S.s[0] === 'lead' ? 5 : 7; cam.position.x = damp(cam.position.x, D.x, r, dt); cam.position.y = damp(cam.position.y, D.y, r, dt); cam.position.z = damp(cam.position.z, D.z, r, dt); this.camL.x = damp(this.camL.x, L.x, r + 2, dt); this.camL.y = damp(this.camL.y, L.y, r + 2, dt); this.camL.z = damp(this.camL.z, L.z, r + 2, dt); }
+    cam.position.x += Shake.x; cam.position.y += Shake.y;
+    cam.lookAt(this.camL);
+    if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix(); }
   },
 };
 
@@ -12583,6 +13627,8 @@ const StoryUI = {
       Save.save(); $('st-pick').hidden = true; if (UI.cur === 'story') this.render(); TeamUI.render(); UI.renderLobby();
     });
     $('st-chapters').addEventListener('click', (e) => {
+      const w = e.target.closest('[data-watch]');
+      if (w) { const ev = STORY_EVENTS.find((x) => x.id === w.dataset.watch); if (ev && Story.done(Save.data, ev)) { Sfx.init(); Sfx.click(); this.watch(ev); } return; }
       const b = e.target.closest('[data-ev]'); if (!b) return;
       const ev = STORY_EVENTS.find((x) => x.id === b.dataset.ev);
       if (ev && Story.open(Save.data, ev)) { Sfx.init(); Sfx.click(); this.go(ev); }
@@ -12593,6 +13639,8 @@ const StoryUI = {
     const start = () => Game.startMatch(ev.mode, { story: ev });
     if (Story.done(Save.data, ev)) start(); else Cutscene.story(ev, 'intro', start);
   },
+  /** WATCH: an event you finished, its scene before and its scene after, back to the story screen (no match) */
+  watch(ev) { Cutscene.story(ev, 'intro', () => Cutscene.story(ev, 'outro', () => { if (UI.cur === 'story') this.render(); }), { watch: true }); },
   /** the lobby button's line: how far you are */
   sub() { const d = Save.data, n = d.story.done.length, nx = Story.next(d); return nx ? 'CHAPTER ' + (nx.ch + 1) + ' · ' + n + '/' + STORY_EVENTS.length : 'FINISHED'; },
   rewards(r) {
@@ -12613,7 +13661,7 @@ const StoryUI = {
           return `<div class="st-ev ${st}"><span class="st-num">${done ? '' : e.n}</span>
             <div class="st-main"><b>${e.title}</b><span class="st-goal">${MODES[e.mode].name} · ${e.size}V${e.size} · GOAL: ${Story.goalText(e.goal)}</span>${now ? `<p class="st-text">${e.text}</p>` : ''}</div>
             <div class="st-rws">${this.rewards(e.reward)}</div>
-            ${done || now ? `<button class="btn small ${now ? 'blue' : ''} st-go" type="button" data-ev="${e.id}">${now ? 'PLAY' : 'REPLAY'}</button>` : '<span class="st-lock">LOCKED</span>'}</div>`;
+            ${done || now ? `<span class="st-btns">${done ? `<button class="btn small ghost st-watch" type="button" data-watch="${e.id}">WATCH</button>` : ''}<button class="btn small ${now ? 'blue' : ''} st-go" type="button" data-ev="${e.id}">${now ? 'PLAY' : 'REPLAY'}</button></span>` : '<span class="st-lock">LOCKED</span>'}</div>`;
         }).join('')}</div></section>`;
     }).join('');
     for (const el of document.querySelectorAll('#scr-story [data-port]')) { // portraits of the characters
@@ -12971,7 +14019,7 @@ const UI = {
             <li><b>Lawless</b> drops item blocks on the pitch: blasters (three quick shots) and scatter blasters (a spread up close) that knock players over, rocket fists, boom blocks, slime, jetpacks. Use one with the item button. No rank change.</li>
             <li><b>Training</b> (TRAINING at the bottom of the start screen): the Sprint Drill (run through 8 gates against the clock) and the Defending Drill (stop 5 attacks of two attackers) give up to 3 stars, and each star pays out the first time. Free kicks, keeper practice and the tutorial are there too.</li>
             <li><b>Daily</b>: a gift every day and a 7 day login calendar (a big reward on day 7). Missing a day never resets it.</li>
-            <li><b>Story</b> (next to Ranked): take your club from the back pitch to the Voxel Cup, one event at a time. Each event has its own rules and goal, like win by 2 or score 2 yourself, and pays out emeralds, blueprints or a character you can only get there (ROGUE, IRONCLAD, SOLARIS) the first time you meet it. Pick a character for each spot of your team, and in story matches you take control of whoever you pass to.</li>
+            <li><b>Story</b> (next to Ranked): take your club from the back pitch to the Voxel Cup, one event at a time. Each event has its own rules and goal, like win by 2 or score 2 yourself, and pays out emeralds, blueprints or a character you can only get there (ROGUE, IRONCLAD, SOLARIS) the first time you meet it. Pick a character for each spot of your team, and in story matches you take control of whoever you pass to. Before and after every event the story plays out in the stadium: the characters walk, kick, shoot and celebrate while they talk (tap to go on, SKIP to skip). WATCH on a finished event shows its scenes again.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
           </ul></section>
         </div>
@@ -14344,6 +15392,7 @@ const Game = {
   },
   applyQuality() { const q = Save.data.settings.quality; if (q === 'auto') World.setQuality(...AUTO_STEPS[this.autoStep]); else World.setQuality(q); },
   toLobby() {
+    Cutscene.abort();
     Cine.stop();
     Replay.stop(); Replay.offer = null; Replay.hideOffer(); Net.closeChat(false); UI.toggleEmotes(false); FKHud.hide(); ShotHud.hide();
     if (this.match) { this.match.dispose(); this.match = null; }
@@ -14600,7 +15649,11 @@ const Game = {
     Admin.tick(rdt);
     Touch.sync();
     const m = this.match;
-    if (m && (this.state === 'match' || this.state === 'paused' || this.state === 'results' || this.state === 'replay')) {
+    if (Movie.on) { // a STORY scene acted out in 3D (over the menus, or over the results with the match paused)
+      Movie.update(rdt);
+      Shake.update(rdt);
+      FX.update(rdt);
+    } else if (m && (this.state === 'match' || this.state === 'paused' || this.state === 'results' || this.state === 'replay')) {
       if (this.state === 'match' && Replay.offer && (Input.edges.has('Enter') || Input.edges.has('PadRS'))) { Input.consumeEdges(); Replay.start(); }
       if (this.state === 'match' && m.cfg && m.cfg.tutorial && m.phase !== 'end' && Input.edges.has('Enter')) { Input.consumeEdges(); this.skipTutorial(); return; }
       if (this.state === 'replay') {
@@ -14670,7 +15723,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Cine, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  StoryUI, Cutscene, TeamUI, TrainUI, Drill, DRILLS, LOGIN_REWARDS, Story, STORY, STORY_EVENTS, SQUAD_SLOTS, MODE_ART, CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  StoryUI, Cutscene, Movie, STORY_FILMS, MV_PLACES, TeamUI, TrainUI, Drill, DRILLS, LOGIN_REWARDS, Story, STORY, STORY_EVENTS, SQUAD_SLOTS, MODE_ART, CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {

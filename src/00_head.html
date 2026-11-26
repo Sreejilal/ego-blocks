@@ -502,6 +502,7 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 .st-goal { font-family: var(--font-label); font-size: 10px; letter-spacing: .06em; color: var(--muted); }
 .st-text { margin: 4px 0 0; font-family: var(--font-body); font-size: 18px; line-height: 1.15; color: var(--text); max-width: 62ch; }
 .st-rws { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.st-btns { display: flex; gap: 6px; align-items: center; }
 .st-rw { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-label); font-size: 10px; letter-spacing: .06em; padding: 3px 7px; background: var(--ink); color: var(--emerald); white-space: nowrap; }
 .st-rw img { width: 14px; height: 14px; image-rendering: pixelated; }
 .st-rw.bp { color: #9fd4ff; }
@@ -518,43 +519,67 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 .st-res .st-got { color: var(--gold); }
 @media (max-width: 720px) { .st-squad { grid-template-columns: 1fr; } .st-ev { grid-template-columns: 30px minmax(0, 1fr) auto; } .st-rws { grid-column: 2 / -1; grid-row: 2; justify-content: flex-start; } }
 @media (max-width: 420px) { .st-intro { grid-template-columns: 1fr; } }
-/* STORY cutscenes: a comic scene over everything (the place in its colours, speed lines, the speaker's portrait from their
-   side, a speech box that types out), a CHAPTER card and a JOINS YOUR TEAM moment */
-.cs { position: absolute; inset: 0; z-index: 70; overflow: hidden; background: #000; }
+/* STORY scenes: acted out in 3D by Movie between black film bars (.cs.mv: the page shows the stadium behind), with the
+   place's name, a speech box with the speaker's small portrait, a CHAPTER card, JOINS YOUR TEAM and a VS card. Without a
+   film it falls back to a comic backdrop (.cs-bg) */
+.cs { position: absolute; inset: 0; z-index: 70; overflow: hidden; background: #000; cursor: pointer; --bar: clamp(26px, 10vh, 92px); }
+.cs.mv { background: transparent; }
+.cs.mv .cs-bg { display: none; }
+body.movie #app > :not(#cutscene) { visibility: hidden !important; }
 .cs-bg { position: absolute; inset: 0; background: var(--sky); }
 .cs-sky { position: absolute; inset: 0 0 36% 0; background: radial-gradient(ellipse 55% 80% at 72% 100%, var(--light) 0%, transparent 62%); opacity: .4; }
 .cs-ground { position: absolute; left: 0; right: 0; bottom: 0; height: 36%; background: repeating-linear-gradient(90deg, transparent 0 70px, rgba(0,0,0,.16) 70px 140px), var(--ground); box-shadow: inset 0 6px 0 rgba(255,255,255,.12); }
 .cs-lines { position: absolute; inset: -20%; background: repeating-conic-gradient(from 0deg at 50% 62%, transparent 0deg 4deg, rgba(255,255,255,.07) 4deg 5deg); }
-.cs-face { position: absolute; bottom: 168px; width: 220px; height: 220px; background: #0c0a12; box-shadow: 0 0 0 4px var(--sc), 8px 8px 0 rgba(0,0,0,.5); transform: skewY(-3deg); }
+.cs-bar { display: none; position: absolute; left: 0; right: 0; height: var(--bar); background: #000; z-index: 1; pointer-events: none; }
+.cs.mv .cs-bar { display: block; }
+.cs-bar.t { top: 0; animation: csBarT .6s cubic-bezier(.2, .8, .3, 1) both; } .cs-bar.b { bottom: 0; animation: csBarB .6s cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes csBarT { from { transform: translateY(-100%); } } @keyframes csBarB { from { transform: translateY(100%); } }
+.cs-flash { position: absolute; inset: 0; z-index: 2; opacity: 0; pointer-events: none; }
+.cs-flash.go { animation: csFlash .55s ease-out both; }
+@keyframes csFlash { from { opacity: .85; } to { opacity: 0; } }
+.cs-place { position: absolute; left: 4%; top: calc(var(--bar) + 16px); z-index: 2; display: grid; gap: 4px; padding: 10px 18px 12px 14px; background: rgba(8, 6, 14, .78); box-shadow: inset 4px 0 0 var(--gold); pointer-events: none; }
+.cs-place span { font-family: var(--font-label); font-size: 11px; letter-spacing: .2em; color: var(--gold); }
+.cs-place b { font-family: var(--font-display); font-weight: 400; font-size: clamp(26px, 4.4vh, 40px); line-height: .9; color: #fff; }
+.cs-place.go { animation: csPlace 4.2s ease both; }
+@keyframes csPlace { 0% { transform: translateX(-30px); opacity: 0; } 10%, 78% { transform: none; opacity: 1; } 100% { opacity: 0; } }
+.cs-face { position: absolute; left: 14px; top: 14px; width: 92px; height: 92px; background: #0c0a12; box-shadow: 0 0 0 3px var(--sc, #ffcb3d); }
 .cs-face:empty { display: none; }
-.cs-face.l { left: 6%; } .cs-face.r { right: 6%; }
 .cs-face canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
-.cs-face.in.l { animation: csInL .32s steps(4) both; } .cs-face.in.r { animation: csInR .32s steps(4) both; }
-@keyframes csInL { from { transform: translateX(-150%) skewY(-3deg); } to { transform: skewY(-3deg); } }
-@keyframes csInR { from { transform: translateX(150%) skewY(-3deg); } to { transform: skewY(-3deg); } }
-.cs-box { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; left: 4%; right: 4%; bottom: 22px; min-height: 128px; padding: 14px 22px 30px; display: grid; align-content: start; gap: 8px; background: #0c0a12; box-shadow: inset 0 0 0 3px var(--sc, #ffcb3d), 6px 6px 0 rgba(0,0,0,.5); }
-.cs-box.r { text-align: right; }
+.cs-face.in { animation: csPop .26s steps(3) both; }
+@keyframes csPop { from { transform: scale(.4); } to { transform: none; } }
+.cs-box { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; left: 4%; right: 4%; bottom: 22px; z-index: 3; min-height: 120px; padding: 14px 22px 30px 124px; display: grid; align-content: start; gap: 8px; background: #0c0a12; box-shadow: inset 0 0 0 3px var(--sc, #ffcb3d), 6px 6px 0 rgba(0,0,0,.5); }
+.cs.mv .cs-box { bottom: calc(var(--bar) * .35); background: rgba(10, 8, 16, .86); }
 .cs-box:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
 .cs-name { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: .9; color: var(--sc, #ffcb3d); }
 .cs-text { font-family: var(--font-body); font-size: clamp(20px, 3.2vh, 28px); line-height: 1.2; color: var(--text); min-height: 2.4em; max-width: 70ch; }
-.cs-box.r .cs-text { justify-self: end; }
 .cs-more { position: absolute; right: 16px; bottom: 10px; font-style: normal; font-family: var(--font-label); font-size: 10px; letter-spacing: .08em; color: var(--muted); }
-.cs-box.r .cs-more { right: auto; left: 16px; }
-.cs-skip { position: absolute; top: 16px; right: 16px; z-index: 4; }
-.cs-title { position: absolute; inset: 0; z-index: 3; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center; background: rgba(0,0,0,.55); }
+.cs-skip { position: absolute; top: 16px; right: 16px; z-index: 5; }
+.cs.mv .cs-skip { top: max(8px, calc(var(--bar) / 2 - 18px)); }
+.cs-title { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center; background: rgba(0,0,0,.55); }
 .cs-title span { font-family: var(--font-label); font-size: 16px; letter-spacing: .3em; color: var(--gold); }
 .cs-title b { font-family: var(--font-display); font-weight: 400; font-size: clamp(54px, 11vw, 120px); line-height: .85; color: #fff; text-shadow: 6px 6px 0 #000; }
 .cs-title.go b { animation: csSlam .5s cubic-bezier(.2, .9, .3, 1.3) both; }
 @keyframes csSlam { from { transform: scale(2.4); opacity: 0; } to { transform: none; opacity: 1; } }
-.cs-join { position: absolute; left: 50%; top: 8%; z-index: 2; transform: translateX(-50%); display: grid; justify-items: center; gap: 6px; padding: 14px 24px 16px; background: #0c0a12; box-shadow: 0 0 0 4px var(--sc), 0 0 60px var(--sc); }
+.cs-join { position: absolute; left: 50%; top: calc(var(--bar) + 12px); z-index: 4; transform: translateX(-50%); display: grid; justify-items: center; gap: 6px; padding: 14px 24px 16px; background: #0c0a12; box-shadow: 0 0 0 4px var(--sc), 0 0 60px var(--sc); pointer-events: none; }
 .cs-jface canvas { width: 128px; height: 128px; display: block; image-rendering: pixelated; }
 .cs-join b { font-family: var(--font-display); font-weight: 400; font-size: 52px; line-height: .85; color: var(--sc); text-shadow: 3px 3px 0 #000; }
 .cs-join span:last-child { font-family: var(--font-label); font-size: 13px; letter-spacing: .14em; color: #fff; }
 .cs-join.go { animation: csJoin .6s cubic-bezier(.2, .9, .3, 1.3) both; }
 @keyframes csJoin { from { transform: translateX(-50%) scale(.3); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
-@media (max-height: 460px) { .cs-face { width: 120px; height: 120px; bottom: 116px; } .cs-box { min-height: 92px; padding: 10px 16px 24px; bottom: 10px; gap: 4px; } .cs-name { font-size: 24px; } .cs-text { font-size: 18px; } .cs-join { top: 4%; padding: 8px 14px 10px; } .cs-jface canvas { width: 64px; height: 64px; } .cs-join b { font-size: 32px; } }
-@media (max-width: 560px) { .cs-face { width: 130px; height: 130px; bottom: 210px; } .cs-box { min-height: 170px; } }
-@media (prefers-reduced-motion: reduce) { .cs-face.in.l, .cs-face.in.r, .cs-title.go b, .cs-join.go { animation: none; } }
+/* VS: your club slides in from the left, theirs from the right, VS slams in the middle, the goal underneath */
+.cs-vs { position: absolute; inset: 0; z-index: 4; display: grid; grid-template-columns: 1fr auto 1fr; grid-template-rows: 1fr auto; align-items: center; background: rgba(0,0,0,.45); pointer-events: none; }
+.vs-side { display: grid; justify-items: center; gap: 6px; padding: 26px 12px; background: linear-gradient(90deg, transparent, var(--vc) 40%, var(--vc) 60%, transparent); clip-path: polygon(0 12%, 100% 0, 100% 88%, 0 100%); text-align: center; }
+.vs-side canvas { width: clamp(56px, 12vh, 96px); height: clamp(56px, 12vh, 96px); image-rendering: pixelated; filter: drop-shadow(4px 4px 0 rgba(0,0,0,.5)); }
+.vs-side b { font-family: var(--font-display); font-weight: 400; font-size: clamp(34px, 7vh, 64px); line-height: .85; color: #fff; text-shadow: 4px 4px 0 #000; }
+.vs-side span { font-family: var(--font-label); font-size: 12px; letter-spacing: .16em; color: #fff; text-shadow: 2px 2px 0 #000; }
+.vs-x { font-family: var(--font-display); font-weight: 400; font-size: clamp(64px, 16vh, 150px); line-height: .8; color: var(--gold); text-shadow: 6px 6px 0 #000; padding: 0 14px; }
+.vs-goal { grid-column: 1 / -1; justify-self: center; margin: 0 0 calc(var(--bar) + 18px); padding: 10px 18px; background: #0c0a12; box-shadow: inset 0 0 0 3px var(--gold); font-family: var(--font-label); font-size: 13px; letter-spacing: .1em; color: #fff; text-align: center; max-width: 92%; }
+.cs-vs.go .vs-side.l { animation: vsL .45s cubic-bezier(.2, .9, .3, 1.1) both; } .cs-vs.go .vs-side.r { animation: vsR .45s cubic-bezier(.2, .9, .3, 1.1) both; }
+.cs-vs.go .vs-x { animation: csSlam .4s .3s cubic-bezier(.2, .9, .3, 1.3) both; } .cs-vs.go .vs-goal { animation: csPop .3s .55s both; }
+@keyframes vsL { from { transform: translateX(-110%); } } @keyframes vsR { from { transform: translateX(110%); } }
+@media (max-height: 460px) { .cs { --bar: 22px; } .cs-face { width: 58px; height: 58px; left: 10px; top: 10px; } .cs-box { min-height: 80px; padding: 10px 16px 22px 80px; bottom: 10px; gap: 4px; } .cs-name { font-size: 22px; } .cs-text { font-size: 17px; min-height: 2.3em; } .cs-join { padding: 8px 14px 10px; } .cs-jface canvas { width: 64px; height: 64px; } .cs-join b { font-size: 32px; } .cs-place { padding: 6px 12px 8px 10px; } .vs-side { padding: 14px 8px; } .vs-goal { margin-bottom: 12px; font-size: 11px; } }
+@media (max-width: 560px) { .cs-face { width: 64px; height: 64px; } .cs-box { min-height: 150px; padding-left: 88px; } .cs-vs { grid-template-columns: 1fr; grid-template-rows: auto; align-content: center; gap: 4px; } .vs-x { justify-self: center; padding: 0; } .vs-side b { font-size: 40px; } .vs-goal { margin: 12px auto 0; } }
+@media (prefers-reduced-motion: reduce) { .cs-face.in, .cs-title.go b, .cs-join.go, .cs-bar.t, .cs-bar.b, .cs-place.go, .cs-vs.go .vs-side.l, .cs-vs.go .vs-side.r, .cs-vs.go .vs-x, .cs-vs.go .vs-goal { animation: none; } }
 /* MY TEAM: player cards (rating, spot, face, name in the rarity colour) on a pitch, the bench, SUBS in the pause menu */
 .menu .meta-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .btn.tm { background: linear-gradient(90deg, #14506b, #1d7a9e); box-shadow: inset 0 -6px 0 #0a3346, inset 0 var(--px) 0 rgba(255,255,255,.22), 4px 4px 0 rgba(0,0,0,.45); }

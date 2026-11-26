@@ -34,6 +34,8 @@ const StoryUI = {
       Save.save(); $('st-pick').hidden = true; if (UI.cur === 'story') this.render(); TeamUI.render(); UI.renderLobby();
     });
     $('st-chapters').addEventListener('click', (e) => {
+      const w = e.target.closest('[data-watch]');
+      if (w) { const ev = STORY_EVENTS.find((x) => x.id === w.dataset.watch); if (ev && Story.done(Save.data, ev)) { Sfx.init(); Sfx.click(); this.watch(ev); } return; }
       const b = e.target.closest('[data-ev]'); if (!b) return;
       const ev = STORY_EVENTS.find((x) => x.id === b.dataset.ev);
       if (ev && Story.open(Save.data, ev)) { Sfx.init(); Sfx.click(); this.go(ev); }
@@ -44,6 +46,8 @@ const StoryUI = {
     const start = () => Game.startMatch(ev.mode, { story: ev });
     if (Story.done(Save.data, ev)) start(); else Cutscene.story(ev, 'intro', start);
   },
+  /** WATCH: an event you finished, its scene before and its scene after, back to the story screen (no match) */
+  watch(ev) { Cutscene.story(ev, 'intro', () => Cutscene.story(ev, 'outro', () => { if (UI.cur === 'story') this.render(); }), { watch: true }); },
   /** the lobby button's line: how far you are */
   sub() { const d = Save.data, n = d.story.done.length, nx = Story.next(d); return nx ? 'CHAPTER ' + (nx.ch + 1) + ' · ' + n + '/' + STORY_EVENTS.length : 'FINISHED'; },
   rewards(r) {
@@ -64,7 +68,7 @@ const StoryUI = {
           return `<div class="st-ev ${st}"><span class="st-num">${done ? '' : e.n}</span>
             <div class="st-main"><b>${e.title}</b><span class="st-goal">${MODES[e.mode].name} · ${e.size}V${e.size} · GOAL: ${Story.goalText(e.goal)}</span>${now ? `<p class="st-text">${e.text}</p>` : ''}</div>
             <div class="st-rws">${this.rewards(e.reward)}</div>
-            ${done || now ? `<button class="btn small ${now ? 'blue' : ''} st-go" type="button" data-ev="${e.id}">${now ? 'PLAY' : 'REPLAY'}</button>` : '<span class="st-lock">LOCKED</span>'}</div>`;
+            ${done || now ? `<span class="st-btns">${done ? `<button class="btn small ghost st-watch" type="button" data-watch="${e.id}">WATCH</button>` : ''}<button class="btn small ${now ? 'blue' : ''} st-go" type="button" data-ev="${e.id}">${now ? 'PLAY' : 'REPLAY'}</button></span>` : '<span class="st-lock">LOCKED</span>'}</div>`;
         }).join('')}</div></section>`;
     }).join('');
     for (const el of document.querySelectorAll('#scr-story [data-port]')) { // portraits of the characters
