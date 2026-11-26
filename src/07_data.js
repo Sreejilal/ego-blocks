@@ -677,6 +677,15 @@ const SKINS = {
   PONYTAIL: { slot: 'hair', name: 'PONYTAIL', rarity: 'Rare', shape: 'ponytail' },
   UNDERCUT: { slot: 'hair', name: 'UNDERCUT', rarity: 'Epic', shape: 'undercut' },
   AFRO: { slot: 'hair', name: 'AFRO', rarity: 'Legendary', shape: 'afro' },
+  // eight more hairstyles (owner, Nov 26 2026: "new content like hairstyles")
+  FADE: { slot: 'hair', name: 'FADE', rarity: 'Rare', shape: 'fade' },
+  TOP_KNOT: { slot: 'hair', name: 'TOP KNOT', rarity: 'Rare', shape: 'topknot' },
+  CURTAINS: { slot: 'hair', name: 'CURTAINS', rarity: 'Rare', shape: 'curtains' },
+  BRAIDS: { slot: 'hair', name: 'BRAIDS', rarity: 'Epic', shape: 'braids' },
+  TWIN_TAILS: { slot: 'hair', name: 'TWIN TAILS', rarity: 'Epic', shape: 'twintails' },
+  WOLF_CUT: { slot: 'hair', name: 'WOLF CUT', rarity: 'Legendary', shape: 'wolf' },
+  DREADS: { slot: 'hair', name: 'DREADS', rarity: 'Legendary', shape: 'dreads' },
+  BLAZE_CUT: { slot: 'hair', name: 'BLAZE CUT', rarity: 'Mythic', shape: 'blaze' },
   STYLE_COLOR: { slot: 'color', name: 'STYLE COLOUR', rarity: 'Rare', base: true, desc: 'The hair colour that comes with your style.' },
   JET: { slot: 'color', name: 'JET', rarity: 'Rare', hex: '#15131b' },
   CHESTNUT: { slot: 'color', name: 'CHESTNUT', rarity: 'Rare', hex: '#6b3e22' },
@@ -870,11 +879,50 @@ const CLUBS = {
     away: mkKit('#f4f1e8', '#141218', 'plain', '#141218', '#ffcb3d', '#ffcb3d', '#141218', '#141218', '#ffcb3d', '#f4f1e8', '#141218'),
     keeper: mkKit('#4aa8ff', '#1f6fd0', 'stripes', '#1f6fd0', '#f4f1e8', '#f4f1e8', '#f4f1e8', '#103a78', '#4aa8ff', '#4aa8ff', '#f4f1e8'),
   },
+  // six more clubs (owner, Nov 26 2026: "add more clubs")
+  FROSTPEAK: {
+    name: 'FROSTPEAK', nick: 'FROSTPEAK', short: 'FRP', crest: ['#8fd8ff', '#1d3b5c', 'snow'],
+    home: mkKit('#8fd8ff', '#ffffff', 'chevron', '#ffffff', '#8fd8ff', '#1d3b5c', '#1d3b5c', '#ffffff', '#8fd8ff', '#8fd8ff', '#ffffff'),
+    away: mkKit('#1d3b5c', '#8fd8ff', 'plain', '#1d3b5c', '#8fd8ff', '#8fd8ff', '#ffffff', '#1d3b5c', '#8fd8ff', '#1d3b5c', '#8fd8ff'),
+    keeper: mkKit('#c6ff3d', '#8fc414', 'plain', '#8fc414', '#1a1a22', '#1a1a22', '#1a1a22', '#1a1a22', '#c6ff3d', '#c6ff3d', '#1a1a22'),
+  },
+  STORMHAVEN: {
+    name: 'STORMHAVEN', nick: 'STORM', short: 'STH', crest: ['#1b2340', '#ffe14d', 'bolt'],
+    home: mkKit('#1b2340', '#ffe14d', 'bolt', '#1b2340', '#ffe14d', '#ffe14d', '#ffe14d', '#1b2340', '#ffe14d', '#1b2340', '#ffe14d'),
+    away: mkKit('#ffe14d', '#1b2340', 'bolt', '#ffe14d', '#1b2340', '#1b2340', '#1b2340', '#ffe14d', '#1b2340', '#ffe14d', '#1b2340'),
+    keeper: mkKit('#ff5a3d', '#c93a20', 'plain', '#c93a20', '#ffffff', '#ffffff', '#ffffff', '#5a1a10', '#ff5a3d', '#ff5a3d', '#ffffff'),
+  },
+  TIDEWATER: {
+    name: 'TIDEWATER BAY', nick: 'TIDE', short: 'TDW', crest: ['#14b8a6', '#f4f1e8', 'wave'],
+    home: mkKit('#14b8a6', '#f4f1e8', 'hoops', '#14b8a6', '#f4f1e8', '#0b4f49', '#ffffff', '#0b4f49', '#14b8a6', '#14b8a6', '#f4f1e8'),
+    away: mkKit('#f4f1e8', '#14b8a6', 'pinstripe', '#f4f1e8', '#14b8a6', '#14b8a6', '#0b4f49', '#14b8a6', '#f4f1e8', '#f4f1e8', '#14b8a6'),
+    keeper: mkKit('#ff8a2a', '#c95c14', 'plain', '#c95c14', '#1d1f2e', '#1d1f2e', '#1d1f2e', '#1d1f2e', '#ff8a2a', '#ff8a2a', '#1d1f2e'),
+  },
+  KINGSBRIDGE: {
+    name: 'KINGSBRIDGE', nick: 'KINGS', short: 'KBR', crest: ['#7a1d3a', '#ffcf3a', 'crown'],
+    home: mkKit('#7a1d3a', '#ffcf3a', 'plain', '#7a1d3a', '#ffcf3a', '#ffcf3a', '#ffcf3a', '#f4f1e8', '#7a1d3a', '#7a1d3a', '#ffcf3a'),
+    away: mkKit('#f4f1e8', '#7a1d3a', 'sash', '#f4f1e8', '#7a1d3a', '#7a1d3a', '#7a1d3a', '#7a1d3a', '#f4f1e8', '#f4f1e8', '#7a1d3a'),
+    keeper: mkKit('#3dd8ff', '#1f9fd0', 'plain', '#1f9fd0', '#0a2a3a', '#0a2a3a', '#0a2a3a', '#0a2a3a', '#3dd8ff', '#3dd8ff', '#0a2a3a'),
+  },
+  PALMS: {
+    name: 'PIXEL PALMS', nick: 'PALMS', short: 'PXP', crest: ['#ff5fb0', '#2ee3c4', 'palm'],
+    home: mkKit('#ff5fb0', '#2ee3c4', 'sash', '#2ee3c4', '#ff5fb0', '#2ee3c4', '#ffffff', '#2ee3c4', '#ff5fb0', '#ff5fb0', '#2ee3c4'),
+    away: mkKit('#2ee3c4', '#ff5fb0', 'plain', '#2ee3c4', '#ff5fb0', '#ff5fb0', '#1a1a22', '#ff5fb0', '#2ee3c4', '#2ee3c4', '#ff5fb0'),
+    keeper: mkKit('#f4f1e8', '#ff5fb0', 'plain', '#f4f1e8', '#ff5fb0', '#ff5fb0', '#ff5fb0', '#1a1a22', '#f4f1e8', '#f4f1e8', '#ff5fb0'),
+  },
+  COPPERHILL: {
+    name: 'COPPERHILL', nick: 'COPPER', short: 'CPH', crest: ['#9a5a2e', '#f2e3c6', 'ring'],
+    home: mkKit('#9a5a2e', '#f2e3c6', 'sash', '#9a5a2e', '#f2e3c6', '#f2e3c6', '#f2e3c6', '#3a2214', '#9a5a2e', '#9a5a2e', '#f2e3c6'),
+    away: mkKit('#2a1a10', '#c8743a', 'checker', '#2a1a10', '#c8743a', '#c8743a', '#f2e3c6', '#2a1a10', '#c8743a', '#2a1a10', '#c8743a'),
+    keeper: mkKit('#3d7dff', '#1f4fd0', 'hoops', '#1f4fd0', '#f4f1e8', '#f4f1e8', '#f4f1e8', '#102a78', '#3d7dff', '#3d7dff', '#f4f1e8'),
+  },
 };
 const CLUB_IDS = Object.keys(CLUBS);
 const KEEPER_SPARES = [
   mkKit('#ff5fb0', '#d13f8c', 'plain', '#d13f8c', '#1a1a22', '#1a1a22', '#1a1a22', '#1a1a22', '#ff5fb0', '#ff5fb0', '#1a1a22'),
   mkKit('#5a5f78', '#3a3f4f', 'hoops', '#3a3f4f', '#ffcb3d', '#ffcb3d', '#ffcb3d', '#2c3150', '#5a5f78', '#5a5f78', '#ffcb3d'),
+  mkKit('#ff6a1a', '#c94a0a', 'plain', '#c94a0a', '#1a1a22', '#1a1a22', '#1a1a22', '#1a1a22', '#ff6a1a', '#ff6a1a', '#1a1a22'), // more clubs, more colours to stay clear of
+  mkKit('#1a1a22', '#3a3a44', 'plain', '#1a1a22', '#c6ff3d', '#c6ff3d', '#c6ff3d', '#1a1a22', '#c6ff3d', '#1a1a22', '#c6ff3d'),
 ];
 /** the colours that fill most of a shirt: patterned shirts count both */
 const kitColours = (k) => (k.pattern === 'plain' || k.pattern === 'sash' ? [k.shirt] : [k.shirt, k.alt]);
@@ -897,7 +945,10 @@ function sideFor(clubId, away = false) {
 }
 /** pick both kits for a match: the away club changes if the home kits clash, keepers change if theirs clash */
 function matchSides(homeId, awayId) {
-  const home = sideFor(homeId), away = sideFor(awayId, kitClash(CLUBS[homeId].home, CLUBS[awayId].home));
+  const H = CLUBS[homeId] || CLUBS.ROVERS, A = CLUBS[awayId] || CLUBS.ROVERS;
+  // the first that you can tell apart: both home kits, the away club in its away kit, the home club in its away kit, both away
+  const pick = [[false, false], [false, true], [true, false], [true, true]].find(([h, a]) => !kitClash(h ? H.away : H.home, a ? A.away : A.home)) || [false, true];
+  const home = sideFor(homeId, pick[0]), away = sideFor(awayId, pick[1]);
   for (const [s, o] of [[home, away], [away, home]]) {
     if (kitClash(s.keeper, s.kit) || kitClash(s.keeper, o.kit)) s.keeper = KEEPER_SPARES.find((k) => !kitClash(k, s.kit) && !kitClash(k, o.kit)) || KEEPER_SPARES[0];
   }
@@ -1004,7 +1055,7 @@ const STORY_CAST = {
   IRONCLAD: { name: 'IRONCLAD', face: 'IRONCLAD', hex: '#9fb4ff' },
   SOLARIS: { name: 'SOLARIS', face: 'SOLARIS', hex: '#ff9d2e' },
 };
-const RIVAL_FACE = { MOSSWOOD: 'SHAMBLER', HARBOUR: 'KESTREL', EMBER: 'BLITZ', NIGHTFALL: 'PHANTOM', SUNSPIRE: 'CAPTAIN', ROVERS: 'TITAN' };
+const RIVAL_FACE = { MOSSWOOD: 'SHAMBLER', HARBOUR: 'KESTREL', EMBER: 'BLITZ', NIGHTFALL: 'PHANTOM', SUNSPIRE: 'CAPTAIN', ROVERS: 'TITAN', FROSTPEAK: 'SENTINEL', STORMHAVEN: 'THUNDER', TIDEWATER: 'PROWLER', KINGSBRIDGE: 'MAESTRO', PALMS: 'SPARK', COPPERHILL: 'ENFORCER' };
 const STORY_EVENTS = [];
 STORY.forEach((c, ci) => c.events.forEach((e) => { e.ch = ci; e.n = STORY_EVENTS.length + 1; STORY_EVENTS.push(e); }));
 /** your team in story matches: one character per kind of spot (the spot you play yourself uses your own style) */

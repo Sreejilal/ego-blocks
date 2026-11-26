@@ -593,6 +593,9 @@ const CREST_SYMBOLS = {
   star: ['..BB..', '..BB..', 'BBBBBB', '.BBBB.', '.B..B.', 'B....B'], flame: ['..B...', '..BB..', '.BBB.B', '.BBBBB', 'BBBBBB', '.BBBB.'],
   leaf: ['....BB', '..BBBB', '.BBBB.', 'BBBB..', 'BBB...', 'B.....'], anchor: ['..BB..', '..BB..', 'BBBBBB', '..BB..', 'B.BB.B', '.BBBB.'],
   moon: ['..BBB.', '.BB...', 'BB....', 'BB....', '.BB...', '..BBB.'], sun: ['B.BB.B', '.BBBB.', 'BBBBBB', 'BBBBBB', '.BBBB.', 'B.BB.B'],
+  snow: ['.B..B.', 'BB..BB', '..BB..', '..BB..', 'BB..BB', '.B..B.'], bolt: ['...BB.', '..BB..', '.BBBB.', '..BB..', '.BB...', 'BB....'],
+  wave: ['......', '.BB..B', 'B..BB.', '......', '.BB..B', 'B..BB.'], crown: ['B.BB.B', 'B.BB.B', 'BBBBBB', 'BBBBBB', '.BBBB.', '......'],
+  palm: ['BB..BB', '.BBBB.', 'B.BB.B', '..BB..', '..BB..', '.BBBB.'], ring: ['..BB..', '.BBBB.', 'BB..BB', 'BB..BB', '.BBBB.', '..BB..'],
 };
 function crestCanvas(clubId, size = 48) {
   const cr = CLUBS[clubId].crest, c = mkCanvas(12, 12), g = c.getContext('2d');

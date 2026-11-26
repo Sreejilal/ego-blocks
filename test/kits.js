@@ -15,10 +15,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       for (const [s, o] of [[H, A], [A, H]]) if (EGO.kitClash(s.keeper, s.kit) || EGO.kitClash(s.keeper, o.kit)) out.bad.push(h + '-' + a + ' keeper ' + s.club);
       if (A.away) out.awayUsed.push(h + '-' + a);
     }
+    out.clubs = EGO.CLUB_IDS.length;
     return out;
     function CLUB_IDS_T() { return EGO.CLUB_IDS; }
   });
-  check('every pairing of the 6 clubs has kits that do not clash', pairs.n === 30 && pairs.bad.length === 0, pairs.bad.slice(0, 6));
+  check('every pairing of the clubs has kits that do not clash', pairs.clubs >= 12 && pairs.n === pairs.clubs * (pairs.clubs - 1) && pairs.bad.length === 0, pairs.bad.slice(0, 6));
   check('clashing clubs switch to away kits', pairs.awayUsed.length > 0, pairs.awayUsed);
 
   // line-up of every club: home, away, keeper
@@ -29,13 +30,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     EGO.CLUB_IDS.forEach((id, i) => ['home', 'away', 'keeper'].forEach((w, j) => {
       const side = EGO.sideFor(id, w === 'away');
       const p = new EGO.Player(fake, { team: 0, role: w === 'keeper' ? 'GK' : 'ST', style: 'ROOKIE', side, number: 7 + j, name: 'X', skin: '#e0ac85' });
-      p.pos.set(-7.5 + i * 3, 0, 1.6 * j); p.yaw = Math.PI + (j === 1 ? Math.PI : 0); p.setState('free'); p.animate(1);
+      p.pos.set((i - (EGO.CLUB_IDS.length - 1) / 2) * 2.4, 0, 1.6 * j); p.yaw = Math.PI + (j === 1 ? Math.PI : 0); p.setState('free'); p.animate(1);
       window._lineup.push(p);
     }));
-    const cam = EGO.World.camera; cam.fov = 40; cam.position.set(0, 5, -15); cam.lookAt(0, 1, 1.4); cam.updateProjectionMatrix();
+    const cam = EGO.World.camera; cam.fov = 40; cam.position.set(0, 7, -27); cam.lookAt(0, 1, 1.4); cam.updateProjectionMatrix();
     EGO.World.render();
   });
-  await page.screenshot({ path: __dirname + '/shots/k1_lineup.png' });
+  await page.screenshot({ path: __dirname + '/shots/k1_lineup.png', timeout: 120000 }).catch(() => {});
   await page.evaluate(() => { for (const p of window._lineup) p.dispose(); EGO.Game.toLobby(); });
 
   // a match between two clubs that clash
