@@ -49,6 +49,11 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
   check('finished GOALS steps pay blueprints, once', g.bp === 2 + 3 + 2 + 3 + 5 + 2 + 3 && g.again === 0, g);
   check('some steps pay a skin you cannot spin', g.skins.includes('GRIND_BOOTS') && g.skins.includes('AWAKE_GLOVES') && !(await A.evaluate(() => Object.keys(EGO.SKINS).filter((k) => EGO.SKINS[k].obj).some((k) => EGO.poolFor('skin', 4).includes(k) || EGO.poolFor('skin', 3).includes(k)))), g);
   // keep a style for good in the Locker
+  const old = await A.evaluate(() => {
+    const d = EGO.Save.data, bp0 = d.bp; EGO.UI.openLocker(); EGO.UI.lockerTab = 'style'; EGO.UI.lockerSel = 'SPRINTER'; EGO.UI.renderLocker();
+    return { btn: !!document.getElementById('lk-keep'), api: EGO.Goals.unlock(d, 'SPRINTER'), bp: d.bp === bp0, owned: d.styles.includes('SPRINTER'), text: document.getElementById('lk-cap').textContent };
+  });
+  check('a style from an earlier spin can no longer be kept with blueprints', !old.btn && !old.api && old.bp && !old.owned && /SPIN FOR IT/.test(old.text), old);
   const keep = await A.evaluate(async () => {
     const d = EGO.Save.data; EGO.UI.openLocker(); EGO.UI.lockerTab = 'style'; EGO.UI.lockerSel = 'PHANTOM'; EGO.UI.renderLocker();
     const btn = document.getElementById('lk-keep'), text = document.getElementById('lk-cap').textContent;

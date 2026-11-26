@@ -618,6 +618,10 @@ const KEEP_HOLD = 6; // you in goal: seconds you can hold the ball before it goe
 /** SLOW-MO (C twice within SLOWMO_TAP seconds): with the ball, opponents within SLOWMO_RANGE (not keepers) move at SLOWMO_SLOW
     speed and nobody can tackle you, for SLOWMO_TIME or until the ball leaves you. Once every SLOWMO_CD seconds */
 const SLOWMO_CD = 20, SLOWMO_TIME = 2.5, SLOWMO_RANGE = 8, SLOWMO_SLOW = 0.45, SLOWMO_TAP = 0.4;
+// your shots are not lasers (owner, Nov 26 2026: "it is way too easy to score"): how far off a shot can go, in radians. A little
+// always, more from far (8 to 30 blocks out), sprinting, with a defender close and with a full blast. Close in it stays sharp
+const SHOT_ERR = { base: 0.012, far: 0.06, run: 0.03, press: 0.045, blast: 0.025 };
+const SWITCH_SLOW = 0.45; // switching to the teammate with the ball: time slows to this for a moment
 const AWAKEN_ALL = 'It comes by itself at random moments, sooner after big plays. Cooldowns reset and recharge twice as fast, and ability effects last 50% longer. Press Z for its signature move, once.';
 const RAW_FLOW_DESC = 'No Flow equipped: +8% speed. Equip one from Flow Spins for a bigger buff.';
 
@@ -1201,10 +1205,11 @@ const Goals = {
     }
     return out;
   },
-  /** keep a style for good */
+  /** keep a style for good: only the one from your latest style spin (owner, Nov 26 2026: once you spin another one, the
+      one before can no longer be kept with blueprints) */
   unlock(d, id) {
     const st = STYLES[id];
-    if (!st || st.story || d.styles.includes(id) || d.bp < BP_COST[st.rarity]) return false; // STORY characters: only from STORY mode
+    if (!st || st.story || d.styles.includes(id) || d.spunStyle !== id || d.bp < BP_COST[st.rarity]) return false; // STORY characters: only from STORY mode
     d.bp -= BP_COST[st.rarity]; d.styles.push(id);
     if (d.spunStyle === id) d.spunStyle = null;
     return true;

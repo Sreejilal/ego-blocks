@@ -1,6 +1,7 @@
 /* =====================================================================
    Input (keyboard, mouse + pointer lock, gamepad) and the camera
    ===================================================================== */
+const SHIFT_LOCK_SENS = 0.6; // how fast the camera turns in shift lock, next to normal
 const GAME_KEYS = new Set(['Space', 'Tab', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyF', 'KeyG', 'KeyC', 'KeyX', 'ShiftLeft', 'ShiftRight']);
 const PAD = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, BACK: 8, START: 9, LS: 10, RS: 11, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
 const Input = {
@@ -160,7 +161,7 @@ const Cam = {
   /** your own model is hidden in first person; show it again for replays, menus and the other view */
   unhide() { if (this.hidden && this.hidden.P) this.hidden.P.root.visible = true; this.hidden = null; },
   look(realDt) {
-    const s = Save.data.settings, sens = s.sens || 1, inv = s.invertY ? -1 : 1;
+    const s = Save.data.settings, sens = (s.sens || 1) * (s.shiftLock ? SHIFT_LOCK_SENS : 1), inv = s.invertY ? -1 : 1; // shift lock turns your player with the camera: slower (owner, Nov 26 2026: it turned too fast)
     const E = Input.edges, kd = Input.down;
     const turning = Input.mdx || Input.mdy || Touch.lookDX || Touch.lookDY || kd.has('ArrowLeft') || kd.has('ArrowRight') || kd.has('ArrowUp') || kd.has('ArrowDown') || Math.abs(Input.axis(2)) > 0.15 || Math.abs(Input.axis(3)) > 0.15;
     this.idleLook = turning ? 0 : (this.idleLook || 0) + realDt; // how long since you last turned the camera (Cam.keeperLook)

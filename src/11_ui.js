@@ -175,7 +175,7 @@ const UI = {
             <li><b>Awakening</b> is your style's own power-up. It comes by itself at random moments, and goals, assists, shots on target, tackles and tricks make it come sooner. For 20 seconds your cooldowns reset and recharge twice as fast, your abilities last longer, you get your style's own boost, and Z does its signature move once.</li>
             <li><b>Flow</b> fills from completed passes, feints, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
             <li><b>Emeralds:</b> win 150, draw 80, loss 50, plus 20 a goal and 10 an assist.</li>
-            <li><b>Style spins</b> give you a style to play with until your next style spin replaces it. <b>Blueprints</b> keep a style for good: earn them from GOALS on the BLUEPRINTS screen (start screen) and spend them in the Locker.</li>
+            <li><b>Style spins</b> give you a style to play with until your next style spin replaces it. <b>Blueprints</b> keep the style from your latest spin for good: earn them from GOALS on the BLUEPRINTS screen (start screen) and spend them in the Locker before your next style spin. Once you spin again, the one before cannot be kept.</li>
             <li><b>Spins</b>: styles cost 200, Flows 150 and skins 100. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
@@ -273,7 +273,7 @@ const UI = {
   },
   renderGoals() {
     const d = Save.data;
-    $('gl-top').innerHTML = `<b class="gl-bp">${d.bp} <small>BLUEPRINTS</small></b><p class="gp-note">A style you spin is yours until your next style spin. Earn blueprints by finishing the GOALS below. Spend them in the LOCKER: open a style and press KEEP, and it is yours for good. Rare costs ${BP_COST.Rare}, Epic ${BP_COST.Epic}, Legendary ${BP_COST.Legendary}, Mythic ${BP_COST.Mythic}, Generational ${BP_COST.Generational}. Every goal below pays blueprints at each step, and some pay a skin you cannot spin.</p><button class="btn small emerald" id="gl-locker" type="button">SPEND THEM IN THE LOCKER</button>`;
+    $('gl-top').innerHTML = `<b class="gl-bp">${d.bp} <small>BLUEPRINTS</small></b><p class="gp-note">A style you spin is yours until your next style spin. Earn blueprints by finishing the GOALS below. Spend them in the LOCKER on the style from your latest spin: open it and press KEEP, and it is yours for good. Spin again first and that one is gone. Rare costs ${BP_COST.Rare}, Epic ${BP_COST.Epic}, Legendary ${BP_COST.Legendary}, Mythic ${BP_COST.Mythic}, Generational ${BP_COST.Generational}. Every goal below pays blueprints at each step, and some pay a skin you cannot spin.</p><button class="btn small emerald" id="gl-locker" type="button">SPEND THEM IN THE LOCKER</button>`;
     $('gl-locker').addEventListener('click', () => { Sfx.click(); this.openLocker(); });
     $('gl-list').innerHTML = GOALS.map((g) => {
       const step = d.goalSteps[g.id] || 0, have = d.stats[g.stat] || 0, done = step >= g.steps.length;
@@ -1144,7 +1144,7 @@ const UI = {
     if (online) { this.introRoles = []; $('intro').hidden = false; return; }
     // every spot on your team, from the back (in goal) to the front
     const back = (r) => (r === 'GK' ? 99 : ROLE_ORDER.indexOf(r));
-    this.introRoles = m.teams[m.human.team].map((p) => p.role).sort((a, b) => back(b) - back(a));
+    this.introRoles = m.teams[m.human.team].map((p) => p.role).filter((r) => !(m.story && r === 'GK')).sort((a, b) => back(b) - back(a)); // STORY: you are the striker, no going in goal
     $('in-keys').textContent = Touch.on ? '' : 'KEYS 1-' + this.introRoles.length + ' PICK · ENTER PLAYS';
     $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role${roleFits(m.human.styleId, r) ? ' fit' : ''}" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}${roleFits(m.human.styleId, r) ? ' <i class="in-fit">YOUR ROLE</i>' : ''}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${ROLE_INFO[r][1]}</span></button>`).join('');
     this.renderIntro(m);
@@ -1299,7 +1299,7 @@ const UI = {
   /** what a card in the current tab stands for */
   lockerItem(id) {
     const d = Save.data, tab = this.lockerTab;
-    if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { gk: !!st.gk, role: ROLES[st.role].name, name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
+    if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { gk: !!st.gk, role: ROLES[st.role].name, name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'SPIN FOR IT, THEN KEEP IT WITH ' + BP_COST[st.rarity] + ' BLUEPRINTS BEFORE YOUR NEXT SPIN', bp: BP_COST[st.rarity] }; }
     if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
     if (tab === 'preset') {
       if (id === 'PNEW') return { name: '+ NEW PRESET', rarity: 'Rare', chip: d.presets.length + '/' + PRESET_MAX, base: true, owned: true, preset: true, add: true };
@@ -1401,7 +1401,7 @@ const UI = {
     cap.innerHTML = `${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<b>${esc(it.name)}</b>`
       + (it.preset ? (it.equipped ? '<span class="label lk-lock">WEARING</span>' : `<button class="btn small blue" id="lk-equip" data-sfx="equip" type="button">${it.empty ? 'START IT FROM MY LOOK' : 'WEAR IT'}</button>`)
       : it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" data-sfx="equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`)
-      + (tab === 'style' && (it.spun || !it.owned) ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
+      + (tab === 'style' && it.spun ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
     const kp = $('lk-keep');
     if (kp) kp.addEventListener('click', () => { if (Goals.unlock(d, id)) { d.style = id; this.syncPreset(); Save.save(); Sfx.coin(); this.renderLocker(); this.renderLobby(); } });
     const eq = $('lk-equip');

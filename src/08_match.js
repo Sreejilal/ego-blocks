@@ -391,7 +391,7 @@ class Match {
     const live = this.phase === 'play' || this.phase === 'out' || this.phase === 'goal' || this.phase === 'end';
     p.mx = live ? mx : 0; p.mz = live ? mz : 0; p.sprint = c.sprint;
     if (c.emote != null && c.emote >= 0 && live) this.emote(p, c.emote);
-    p.faceYaw = p.charging || c.shiftLock || p.fkHold ? cy : null; // shift lock (and a free kick): always face where the camera looks
+    p.faceYaw = p.charging || c.shiftLock || p.fkHold ? cy : null; p.shiftTurn = !!c.shiftLock && !p.charging; // shift lock (and a free kick): always face where the camera looks
     p.jetThrust = c.jumpHeld && p.fx.jetpack > 0;
     if (this.phase !== 'play') { p.charging = false; p.charge = 0; p.shotBuffer = null; return; } // a shot pressed as play stopped never fires by itself at the restart
     if (p.setPiece) { // throw-in, corner: pass plays it to a teammate, shoot plays it where you aim
@@ -598,6 +598,7 @@ class Match {
   }
   shootAt(p, target, power, o = {}) {
     const b = this.ball;
+    if (p.isHuman && !this.fk && !this.tut && !o.special && !o.exact) target = this.shotError(p, target, power); // your open-play shots can be off
     const L = this.shotLaunch(p, target, power, o), v = L.v, speed = L.speed;
     p.stats.shots++;
     const trail = o.trail || (speed > 28 ? p.aura : null);
@@ -608,6 +609,20 @@ class Match {
     const ok = this.kick(p, v.x, v.y, v.z, Object.assign({ type: 'shot', trail: trail || (L.curl ? '#7cf2ff' : null), curveDecay: L.curl ? 0 : 1.4 }, o, { cx: L.cx, cz: L.cz }));
     if (ok && L.curl) this.ball.kick.curl = L.curl;
     return ok;
+  }
+  /** where your shot really goes: off the spot you aimed at by a random angle (most land close, a few far off), bigger from
+      far, sprinting, under pressure or with a full blast (SHOT_ERR) */
+  shotError(p, target, power) {
+    const d = dist2D(p.pos, target);
+    let e = SHOT_ERR.base + SHOT_ERR.far * clamp((d - 8) / 22, 0, 1);
+    if (p.sprint && len2D(p.vel.x, p.vel.z) > RUN_SPEED + 0.5) e += SHOT_ERR.run;
+    let near = 99; for (const q of this.opponents(p)) if (!q.isGK) near = Math.min(near, dist2D(q.pos, p.pos));
+    if (near < 2.5) e += SHOT_ERR.press * (1 - near / 2.5);
+    if (power > 0.92) e += SHOT_ERR.blast;
+    const tri = () => (Math.random() + Math.random() - 1); // -1 to 1, mostly near 0
+    const dx = target.x - p.pos.x, dz = target.z - p.pos.z, l = len2D(dx, dz) || 1, side = d * Math.tan(e * tri()), up = d * Math.tan(e * 0.6 * tri());
+    this.lastShotErr = e;
+    return V3(target.x - dz / l * side, Math.max(BALL_R, target.y + up), target.z + dx / l * side);
   }
   tryShoot(p, power, aim, o = {}) {
     const b = this.ball;
@@ -1620,6 +1635,7 @@ class Match {
     this.human = p; if (this.caller === h) this.caller = p;
     this.label(p, 'YOU', '#ffcb3d', 1.2);
     Hud.switched(p);
+    if (this.ball.owner === p && !this.online) TimeCtl.slowMo(SWITCH_SLOW, 0.35); // you take over the one with the ball: a moment to see where you are (owner, Nov 26 2026: only then)
   }
   /* ---------- TRAINING drills (DRILLS in 07_data.js) ---------- */
   startDrill() {

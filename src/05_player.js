@@ -358,7 +358,7 @@ class Player {
     let fy = this.faceYaw;
     const sp = len2D(this.vel.x, this.vel.z);
     if (fy == null && sp > 0.6 && (st === 'free' || st === 'hold')) fy = Math.atan2(this.vel.x, this.vel.z);
-    if (fy != null && st !== 'dash' && st !== 'slide' && st !== 'dive' && st !== 'down') this.yaw = dampAngle(this.yaw, fy, this.charging ? 22 : 14, dt);
+    if (fy != null && st !== 'dash' && st !== 'slide' && st !== 'dive' && st !== 'down') this.yaw = dampAngle(this.yaw, fy, this.charging ? 22 : this.shiftTurn ? 8 : 14, dt); // shift lock: a smoother turn after the camera
   }
   animate(dt) {
     if (this.fx.slowed > 0) dt *= SLOWMO_SLOW; // caught in someone's SLOW-MO: arms and legs move in slow motion too

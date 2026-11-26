@@ -4094,7 +4094,7 @@ class Player {
     let fy = this.faceYaw;
     const sp = len2D(this.vel.x, this.vel.z);
     if (fy == null && sp > 0.6 && (st === 'free' || st === 'hold')) fy = Math.atan2(this.vel.x, this.vel.z);
-    if (fy != null && st !== 'dash' && st !== 'slide' && st !== 'dive' && st !== 'down') this.yaw = dampAngle(this.yaw, fy, this.charging ? 22 : 14, dt);
+    if (fy != null && st !== 'dash' && st !== 'slide' && st !== 'dive' && st !== 'down') this.yaw = dampAngle(this.yaw, fy, this.charging ? 22 : this.shiftTurn ? 8 : 14, dt); // shift lock: a smoother turn after the camera
   }
   animate(dt) {
     if (this.fx.slowed > 0) dt *= SLOWMO_SLOW; // caught in someone's SLOW-MO: arms and legs move in slow motion too
@@ -5174,6 +5174,10 @@ const KEEP_HOLD = 6; // you in goal: seconds you can hold the ball before it goe
 /** SLOW-MO (C twice within SLOWMO_TAP seconds): with the ball, opponents within SLOWMO_RANGE (not keepers) move at SLOWMO_SLOW
     speed and nobody can tackle you, for SLOWMO_TIME or until the ball leaves you. Once every SLOWMO_CD seconds */
 const SLOWMO_CD = 20, SLOWMO_TIME = 2.5, SLOWMO_RANGE = 8, SLOWMO_SLOW = 0.45, SLOWMO_TAP = 0.4;
+// your shots are not lasers (owner, Nov 26 2026: "it is way too easy to score"): how far off a shot can go, in radians. A little
+// always, more from far (8 to 30 blocks out), sprinting, with a defender close and with a full blast. Close in it stays sharp
+const SHOT_ERR = { base: 0.012, far: 0.06, run: 0.03, press: 0.045, blast: 0.025 };
+const SWITCH_SLOW = 0.45; // switching to the teammate with the ball: time slows to this for a moment
 const AWAKEN_ALL = 'It comes by itself at random moments, sooner after big plays. Cooldowns reset and recharge twice as fast, and ability effects last 50% longer. Press Z for its signature move, once.';
 const RAW_FLOW_DESC = 'No Flow equipped: +8% speed. Equip one from Flow Spins for a bigger buff.';
 
@@ -5757,10 +5761,11 @@ const Goals = {
     }
     return out;
   },
-  /** keep a style for good */
+  /** keep a style for good: only the one from your latest style spin (owner, Nov 26 2026: once you spin another one, the
+      one before can no longer be kept with blueprints) */
   unlock(d, id) {
     const st = STYLES[id];
-    if (!st || st.story || d.styles.includes(id) || d.bp < BP_COST[st.rarity]) return false; // STORY characters: only from STORY mode
+    if (!st || st.story || d.styles.includes(id) || d.spunStyle !== id || d.bp < BP_COST[st.rarity]) return false; // STORY characters: only from STORY mode
     d.bp -= BP_COST[st.rarity]; d.styles.push(id);
     if (d.spunStyle === id) d.spunStyle = null;
     return true;
@@ -6324,7 +6329,7 @@ class Match {
     const live = this.phase === 'play' || this.phase === 'out' || this.phase === 'goal' || this.phase === 'end';
     p.mx = live ? mx : 0; p.mz = live ? mz : 0; p.sprint = c.sprint;
     if (c.emote != null && c.emote >= 0 && live) this.emote(p, c.emote);
-    p.faceYaw = p.charging || c.shiftLock || p.fkHold ? cy : null; // shift lock (and a free kick): always face where the camera looks
+    p.faceYaw = p.charging || c.shiftLock || p.fkHold ? cy : null; p.shiftTurn = !!c.shiftLock && !p.charging; // shift lock (and a free kick): always face where the camera looks
     p.jetThrust = c.jumpHeld && p.fx.jetpack > 0;
     if (this.phase !== 'play') { p.charging = false; p.charge = 0; p.shotBuffer = null; return; } // a shot pressed as play stopped never fires by itself at the restart
     if (p.setPiece) { // throw-in, corner: pass plays it to a teammate, shoot plays it where you aim
@@ -6531,6 +6536,7 @@ class Match {
   }
   shootAt(p, target, power, o = {}) {
     const b = this.ball;
+    if (p.isHuman && !this.fk && !this.tut && !o.special && !o.exact) target = this.shotError(p, target, power); // your open-play shots can be off
     const L = this.shotLaunch(p, target, power, o), v = L.v, speed = L.speed;
     p.stats.shots++;
     const trail = o.trail || (speed > 28 ? p.aura : null);
@@ -6541,6 +6547,20 @@ class Match {
     const ok = this.kick(p, v.x, v.y, v.z, Object.assign({ type: 'shot', trail: trail || (L.curl ? '#7cf2ff' : null), curveDecay: L.curl ? 0 : 1.4 }, o, { cx: L.cx, cz: L.cz }));
     if (ok && L.curl) this.ball.kick.curl = L.curl;
     return ok;
+  }
+  /** where your shot really goes: off the spot you aimed at by a random angle (most land close, a few far off), bigger from
+      far, sprinting, under pressure or with a full blast (SHOT_ERR) */
+  shotError(p, target, power) {
+    const d = dist2D(p.pos, target);
+    let e = SHOT_ERR.base + SHOT_ERR.far * clamp((d - 8) / 22, 0, 1);
+    if (p.sprint && len2D(p.vel.x, p.vel.z) > RUN_SPEED + 0.5) e += SHOT_ERR.run;
+    let near = 99; for (const q of this.opponents(p)) if (!q.isGK) near = Math.min(near, dist2D(q.pos, p.pos));
+    if (near < 2.5) e += SHOT_ERR.press * (1 - near / 2.5);
+    if (power > 0.92) e += SHOT_ERR.blast;
+    const tri = () => (Math.random() + Math.random() - 1); // -1 to 1, mostly near 0
+    const dx = target.x - p.pos.x, dz = target.z - p.pos.z, l = len2D(dx, dz) || 1, side = d * Math.tan(e * tri()), up = d * Math.tan(e * 0.6 * tri());
+    this.lastShotErr = e;
+    return V3(target.x - dz / l * side, Math.max(BALL_R, target.y + up), target.z + dx / l * side);
   }
   tryShoot(p, power, aim, o = {}) {
     const b = this.ball;
@@ -7553,6 +7573,7 @@ class Match {
     this.human = p; if (this.caller === h) this.caller = p;
     this.label(p, 'YOU', '#ffcb3d', 1.2);
     Hud.switched(p);
+    if (this.ball.owner === p && !this.online) TimeCtl.slowMo(SWITCH_SLOW, 0.35); // you take over the one with the ball: a moment to see where you are (owner, Nov 26 2026: only then)
   }
   /* ---------- TRAINING drills (DRILLS in 07_data.js) ---------- */
   startDrill() {
@@ -9135,6 +9156,7 @@ const AI = {
 /* =====================================================================
    Input (keyboard, mouse + pointer lock, gamepad) and the camera
    ===================================================================== */
+const SHIFT_LOCK_SENS = 0.6; // how fast the camera turns in shift lock, next to normal
 const GAME_KEYS = new Set(['Space', 'Tab', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'KeyR', 'KeyF', 'KeyG', 'KeyC', 'KeyX', 'ShiftLeft', 'ShiftRight']);
 const PAD = { A: 0, B: 1, X: 2, Y: 3, LB: 4, RB: 5, LT: 6, RT: 7, BACK: 8, START: 9, LS: 10, RS: 11, UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15 };
 const Input = {
@@ -9294,7 +9316,7 @@ const Cam = {
   /** your own model is hidden in first person; show it again for replays, menus and the other view */
   unhide() { if (this.hidden && this.hidden.P) this.hidden.P.root.visible = true; this.hidden = null; },
   look(realDt) {
-    const s = Save.data.settings, sens = s.sens || 1, inv = s.invertY ? -1 : 1;
+    const s = Save.data.settings, sens = (s.sens || 1) * (s.shiftLock ? SHIFT_LOCK_SENS : 1), inv = s.invertY ? -1 : 1; // shift lock turns your player with the camera: slower (owner, Nov 26 2026: it turned too fast)
     const E = Input.edges, kd = Input.down;
     const turning = Input.mdx || Input.mdy || Touch.lookDX || Touch.lookDY || kd.has('ArrowLeft') || kd.has('ArrowRight') || kd.has('ArrowUp') || kd.has('ArrowDown') || Math.abs(Input.axis(2)) > 0.15 || Math.abs(Input.axis(3)) > 0.15;
     this.idleLook = turning ? 0 : (this.idleLook || 0) + realDt; // how long since you last turned the camera (Cam.keeperLook)
@@ -14275,7 +14297,7 @@ const UI = {
             <li><b>Awakening</b> is your style's own power-up. It comes by itself at random moments, and goals, assists, shots on target, tackles and tricks make it come sooner. For 20 seconds your cooldowns reset and recharge twice as fast, your abilities last longer, you get your style's own boost, and Z does its signature move once.</li>
             <li><b>Flow</b> fills from completed passes, feints, tackles and shots on target. Press G (or tap FLOW) for 15s of your Flow's buff.</li>
             <li><b>Emeralds:</b> win 150, draw 80, loss 50, plus 20 a goal and 10 an assist.</li>
-            <li><b>Style spins</b> give you a style to play with until your next style spin replaces it. <b>Blueprints</b> keep a style for good: earn them from GOALS on the BLUEPRINTS screen (start screen) and spend them in the Locker.</li>
+            <li><b>Style spins</b> give you a style to play with until your next style spin replaces it. <b>Blueprints</b> keep the style from your latest spin for good: earn them from GOALS on the BLUEPRINTS screen (start screen) and spend them in the Locker before your next style spin. Once you spin again, the one before cannot be kept.</li>
             <li><b>Spins</b>: styles cost 200, Flows 150 and skins 100. Legendary or better is guaranteed within 30 spins. Duplicates refund 50.</li>
             <li><b>Clubs:</b> pick the club you play for in the Locker. If both teams' kits look alike, the away team changes into its away kit.</li>
             <li><b>Skin spins</b> give haircuts, hair colours, boots, gloves, extras and goal celebrations. Skins only change your looks, never your stats. Try them on in the Locker.</li>
@@ -14373,7 +14395,7 @@ const UI = {
   },
   renderGoals() {
     const d = Save.data;
-    $('gl-top').innerHTML = `<b class="gl-bp">${d.bp} <small>BLUEPRINTS</small></b><p class="gp-note">A style you spin is yours until your next style spin. Earn blueprints by finishing the GOALS below. Spend them in the LOCKER: open a style and press KEEP, and it is yours for good. Rare costs ${BP_COST.Rare}, Epic ${BP_COST.Epic}, Legendary ${BP_COST.Legendary}, Mythic ${BP_COST.Mythic}, Generational ${BP_COST.Generational}. Every goal below pays blueprints at each step, and some pay a skin you cannot spin.</p><button class="btn small emerald" id="gl-locker" type="button">SPEND THEM IN THE LOCKER</button>`;
+    $('gl-top').innerHTML = `<b class="gl-bp">${d.bp} <small>BLUEPRINTS</small></b><p class="gp-note">A style you spin is yours until your next style spin. Earn blueprints by finishing the GOALS below. Spend them in the LOCKER on the style from your latest spin: open it and press KEEP, and it is yours for good. Spin again first and that one is gone. Rare costs ${BP_COST.Rare}, Epic ${BP_COST.Epic}, Legendary ${BP_COST.Legendary}, Mythic ${BP_COST.Mythic}, Generational ${BP_COST.Generational}. Every goal below pays blueprints at each step, and some pay a skin you cannot spin.</p><button class="btn small emerald" id="gl-locker" type="button">SPEND THEM IN THE LOCKER</button>`;
     $('gl-locker').addEventListener('click', () => { Sfx.click(); this.openLocker(); });
     $('gl-list').innerHTML = GOALS.map((g) => {
       const step = d.goalSteps[g.id] || 0, have = d.stats[g.stat] || 0, done = step >= g.steps.length;
@@ -15244,7 +15266,7 @@ const UI = {
     if (online) { this.introRoles = []; $('intro').hidden = false; return; }
     // every spot on your team, from the back (in goal) to the front
     const back = (r) => (r === 'GK' ? 99 : ROLE_ORDER.indexOf(r));
-    this.introRoles = m.teams[m.human.team].map((p) => p.role).sort((a, b) => back(b) - back(a));
+    this.introRoles = m.teams[m.human.team].map((p) => p.role).filter((r) => !(m.story && r === 'GK')).sort((a, b) => back(b) - back(a)); // STORY: you are the striker, no going in goal
     $('in-keys').textContent = Touch.on ? '' : 'KEYS 1-' + this.introRoles.length + ' PICK · ENTER PLAYS';
     $('in-roles').innerHTML = this.introRoles.map((r, i) => `<button class="btn in-role${roleFits(m.human.styleId, r) ? ' fit' : ''}" type="button" data-r="${r}"><span>${ROLE_INFO[r][0]}${roleFits(m.human.styleId, r) ? ' <i class="in-fit">YOUR ROLE</i>' : ''}</span><span class="sub">${Touch.on ? '' : '<b>' + (i + 1) + '</b> '}${ROLE_INFO[r][1]}</span></button>`).join('');
     this.renderIntro(m);
@@ -15399,7 +15421,7 @@ const UI = {
   /** what a card in the current tab stands for */
   lockerItem(id) {
     const d = Save.data, tab = this.lockerTab;
-    if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { gk: !!st.gk, role: ROLES[st.role].name, name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'STYLE SPINS OR ' + BP_COST[st.rarity] + ' BLUEPRINTS', bp: BP_COST[st.rarity] }; }
+    if (tab === 'style') { const st = STYLES[id], spun = d.spunStyle === id; return { gk: !!st.gk, role: ROLES[st.role].name, name: st.name, rarity: st.rarity, owned: d.styles.includes(id) || spun, spun, equipped: d.style === id, from: 'SPIN FOR IT, THEN KEEP IT WITH ' + BP_COST[st.rarity] + ' BLUEPRINTS BEFORE YOUR NEXT SPIN', bp: BP_COST[st.rarity] }; }
     if (tab === 'club') { const c = CLUBS[id]; return { name: c.name, rarity: 'Rare', chip: c.short, owned: true, equipped: d.club === id }; }
     if (tab === 'preset') {
       if (id === 'PNEW') return { name: '+ NEW PRESET', rarity: 'Rare', chip: d.presets.length + '/' + PRESET_MAX, base: true, owned: true, preset: true, add: true };
@@ -15501,7 +15523,7 @@ const UI = {
     cap.innerHTML = `${it.chip || it.base ? `<span class="chip">${it.chip || 'FREE'}</span>` : `<span class="rar" data-r="${it.rarity}">${it.rarity.toUpperCase()}</span>`}<b>${esc(it.name)}</b>`
       + (it.preset ? (it.equipped ? '<span class="label lk-lock">WEARING</span>' : `<button class="btn small blue" id="lk-equip" data-sfx="equip" type="button">${it.empty ? 'START IT FROM MY LOOK' : 'WEAR IT'}</button>`)
       : it.owned ? `<button class="btn small ${it.equipped ? '' : 'blue'}" id="lk-equip" data-sfx="equip" type="button" ${it.equipped ? 'disabled' : ''}>${it.equipped ? 'EQUIPPED' : 'EQUIP'}</button>` : `<span class="label lk-lock">LOCKED · ${it.from}</span>`)
-      + (tab === 'style' && (it.spun || !it.owned) ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
+      + (tab === 'style' && it.spun ? (d.bp >= it.bp ? `<button class="btn small emerald" id="lk-keep" type="button">KEEP FOR ${it.bp} BLUEPRINTS</button>` : `<span class="label lk-lock">${it.spun ? 'YOURS UNTIL YOUR NEXT SPIN · ' : ''}${it.bp} BLUEPRINTS KEEP IT (YOU HAVE ${d.bp})</span>`) : '');
     const kp = $('lk-keep');
     if (kp) kp.addEventListener('click', () => { if (Goals.unlock(d, id)) { d.style = id; this.syncPreset(); Save.save(); Sfx.coin(); this.renderLocker(); this.renderLobby(); } });
     const eq = $('lk-equip');
@@ -15707,6 +15729,7 @@ const Game = {
     if (!m || !this.intro || !m.human) return false;
     const h = m.human;
     if (h.role === r) return true;
+    if (m.story && r === 'GK') return false; // STORY: no going in goal
     const o = m.teams[h.team].find((p) => p.role === r && !p.isHuman);
     if (!o) return false;
     m.swapRoles(h, o); // in goal: the keeper's kit and number 1 come with it
@@ -15759,7 +15782,8 @@ const Game = {
     const intro = !o.noIntro && this.introOn(mode);
     // in goal if you chose goal (with any style: the owner plays keeper with other styles' moves), else the spot you picked
     // with this style, else its role (a keeper style: in goal)
-    const sd = Save.data, pos = sd.pos === 'GK' ? 'GK' : sd.pos && sd.posFor === sd.style ? sd.pos : roleSpot(sd.style);
+    const sd = Save.data, pos0 = sd.pos === 'GK' ? 'GK' : sd.pos && sd.posFor === sd.style ? sd.pos : roleSpot(sd.style);
+    const pos = story && pos0 === 'GK' ? 'ST' : pos0; // STORY: you are the striker the story is about, never in goal (owner, Nov 26 2026)
     applyBallLook(); // your ball
     const squad = story || !['tutorial', 'freekick', 'fkkeeper'].includes(mode) ? sd0.squad : null; // MY TEAM plays every offline match (not practice)
     this.match = new Match(mode, skill, { size, role: pos, intro, story, away, squad }); // a winger's team plays wide (Match.pickSetups)

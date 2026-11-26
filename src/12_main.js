@@ -112,6 +112,7 @@ const Game = {
     if (!m || !this.intro || !m.human) return false;
     const h = m.human;
     if (h.role === r) return true;
+    if (m.story && r === 'GK') return false; // STORY: no going in goal
     const o = m.teams[h.team].find((p) => p.role === r && !p.isHuman);
     if (!o) return false;
     m.swapRoles(h, o); // in goal: the keeper's kit and number 1 come with it
@@ -164,7 +165,8 @@ const Game = {
     const intro = !o.noIntro && this.introOn(mode);
     // in goal if you chose goal (with any style: the owner plays keeper with other styles' moves), else the spot you picked
     // with this style, else its role (a keeper style: in goal)
-    const sd = Save.data, pos = sd.pos === 'GK' ? 'GK' : sd.pos && sd.posFor === sd.style ? sd.pos : roleSpot(sd.style);
+    const sd = Save.data, pos0 = sd.pos === 'GK' ? 'GK' : sd.pos && sd.posFor === sd.style ? sd.pos : roleSpot(sd.style);
+    const pos = story && pos0 === 'GK' ? 'ST' : pos0; // STORY: you are the striker the story is about, never in goal (owner, Nov 26 2026)
     applyBallLook(); // your ball
     const squad = story || !['tutorial', 'freekick', 'fkkeeper'].includes(mode) ? sd0.squad : null; // MY TEAM plays every offline match (not practice)
     this.match = new Match(mode, skill, { size, role: pos, intro, story, away, squad }); // a winger's team plays wide (Match.pickSetups)
