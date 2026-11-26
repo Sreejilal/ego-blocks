@@ -92,6 +92,13 @@ const toPlay = (m) => { for (let i = 0; i < 400 && m.phase !== 'play'; i++) m.up
   const pick = await page.evaluate(() => ({ squad: EGO.Save.data.squad.ST, open: !document.getElementById('st-pick').hidden }));
   check('picking a character for a spot saves it', pick.squad === 'ROOKIE' && !pick.open, pick);
   await page.click('.st-ev.now [data-ev]');
+  const cs = await page.evaluate(() => ({ open: !document.getElementById('cutscene').hidden, name: document.getElementById('cs-name').textContent, face: !!document.querySelector('#cs-face canvas'), state: EGO.Game.state }));
+  check('PLAY first shows the story scene: the coach talks, the match waits', cs.open && cs.name === 'COACH BRICK' && cs.face && cs.state !== 'match', cs);
+  await page.screenshot({ path: __dirname + '/shots/story_cutscene.png' });
+  await page.click('#cs-next'); await page.click('#cs-next');
+  const said = await page.evaluate(() => document.getElementById('cs-name').textContent);
+  check('tapping goes through the lines (the next speaker)', said === 'YOU', said);
+  await page.click('#cs-skip');
   const sm = await page.evaluate(() => { const m = EGO.Game.match; return { state: EGO.Game.state, story: m && m.story && m.story.id, size: m && m.size, foe: EGO.TEAM ? EGO.TEAM[1].club : null }; });
   check('PLAY starts the event: its own size and opponent', sm.state === 'match' && sm.story === 'bp1' && sm.size === 2, sm);
   const fin = await page.evaluate(() => {
@@ -100,8 +107,12 @@ const toPlay = (m) => { for (let i = 0; i < 400 && m.phase !== 'play'; i++) m.up
     return { state: G.state, again: document.getElementById('r-again').textContent, back: document.getElementById('r-lobby').textContent, box: document.querySelector('#r-earn .st-res') && document.querySelector('#r-earn .st-res').textContent, done: EGO.Save.data.story.done.slice() };
   });
   check('winning it: EVENT DONE with the reward, NEXT EVENT and STORY buttons', fin.state === 'results' && /EVENT DONE/.test(fin.box) && /150 EMERALDS/.test(fin.box) && fin.again === 'NEXT EVENT' && fin.back === 'STORY' && fin.done.includes('bp1'), fin);
+  const out = await page.evaluate(() => ({ open: !document.getElementById('cutscene').hidden, name: document.getElementById('cs-name').textContent }));
+  check('after the win, the scene of what happens next plays over the results', out.open && out.name === 'COACH BRICK', out);
+  await page.click('#cs-skip');
   await page.screenshot({ path: __dirname + '/shots/story_result.png' });
   await page.click('#r-again');
+  await page.click('#cs-skip'); // event 2's scene
   const nx = await page.evaluate(() => ({ story: EGO.Game.match && EGO.Game.match.story && EGO.Game.match.story.id }));
   check('NEXT EVENT plays event 2', nx.story === 'bp2', nx);
   check('no errors on the page', !logs.some((l) => l.startsWith('PAGEERROR')), logs.slice(0, 5));

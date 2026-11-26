@@ -713,7 +713,7 @@ const UI = {
     });
     click('r-again', () => {
       if (Game.lastMode === 'online') { Game.toLobby(); Net.open(); }
-      else if (Game.lastStory) { const e = Game.storyNext || Game.lastStory; Game.startMatch(e.mode, { story: e }); } // STORY: the next event, or this one again
+      else if (Game.lastStory) StoryUI.go(Game.storyNext || Game.lastStory); // STORY: the next event (its scene first), or this one again
       else Game.startMatch(Game.lastMode || 'quick');
     });
     click('r-lobby', () => { if (Game.lastMode === 'online') Net.send({ t: 'leave' }); const st = !!Game.lastStory; Game.toLobby(); if (st) this.show('story'); });

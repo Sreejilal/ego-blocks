@@ -542,6 +542,43 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 .st-res .st-got { color: var(--gold); }
 @media (max-width: 720px) { .st-squad { grid-template-columns: 1fr; } .st-ev { grid-template-columns: 30px minmax(0, 1fr) auto; } .st-rws { grid-column: 2 / -1; grid-row: 2; justify-content: flex-start; } }
 @media (max-width: 420px) { .st-intro { grid-template-columns: 1fr; } }
+/* STORY cutscenes: a comic scene over everything (the place in its colours, speed lines, the speaker's portrait from their
+   side, a speech box that types out), a CHAPTER card and a JOINS YOUR TEAM moment */
+.cs { position: absolute; inset: 0; z-index: 70; overflow: hidden; background: #000; }
+.cs-bg { position: absolute; inset: 0; background: var(--sky); }
+.cs-sky { position: absolute; inset: 0 0 36% 0; background: radial-gradient(ellipse 55% 80% at 72% 100%, var(--light) 0%, transparent 62%); opacity: .4; }
+.cs-ground { position: absolute; left: 0; right: 0; bottom: 0; height: 36%; background: repeating-linear-gradient(90deg, transparent 0 70px, rgba(0,0,0,.16) 70px 140px), var(--ground); box-shadow: inset 0 6px 0 rgba(255,255,255,.12); }
+.cs-lines { position: absolute; inset: -20%; background: repeating-conic-gradient(from 0deg at 50% 62%, transparent 0deg 4deg, rgba(255,255,255,.07) 4deg 5deg); }
+.cs-face { position: absolute; bottom: 168px; width: 220px; height: 220px; background: #0c0a12; box-shadow: 0 0 0 4px var(--sc), 8px 8px 0 rgba(0,0,0,.5); transform: skewY(-3deg); }
+.cs-face:empty { display: none; }
+.cs-face.l { left: 6%; } .cs-face.r { right: 6%; }
+.cs-face canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+.cs-face.in.l { animation: csInL .32s steps(4) both; } .cs-face.in.r { animation: csInR .32s steps(4) both; }
+@keyframes csInL { from { transform: translateX(-150%) skewY(-3deg); } to { transform: skewY(-3deg); } }
+@keyframes csInR { from { transform: translateX(150%) skewY(-3deg); } to { transform: skewY(-3deg); } }
+.cs-box { all: unset; box-sizing: border-box; cursor: pointer; position: absolute; left: 4%; right: 4%; bottom: 22px; min-height: 128px; padding: 14px 22px 30px; display: grid; align-content: start; gap: 8px; background: #0c0a12; box-shadow: inset 0 0 0 3px var(--sc, #ffcb3d), 6px 6px 0 rgba(0,0,0,.5); }
+.cs-box.r { text-align: right; }
+.cs-box:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.cs-name { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: .9; color: var(--sc, #ffcb3d); }
+.cs-text { font-family: var(--font-body); font-size: clamp(20px, 3.2vh, 28px); line-height: 1.2; color: var(--text); min-height: 2.4em; max-width: 70ch; }
+.cs-box.r .cs-text { justify-self: end; }
+.cs-more { position: absolute; right: 16px; bottom: 10px; font-style: normal; font-family: var(--font-label); font-size: 10px; letter-spacing: .08em; color: var(--muted); }
+.cs-box.r .cs-more { right: auto; left: 16px; }
+.cs-skip { position: absolute; top: 16px; right: 16px; z-index: 4; }
+.cs-title { position: absolute; inset: 0; z-index: 3; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center; background: rgba(0,0,0,.55); }
+.cs-title span { font-family: var(--font-label); font-size: 16px; letter-spacing: .3em; color: var(--gold); }
+.cs-title b { font-family: var(--font-display); font-weight: 400; font-size: clamp(54px, 11vw, 120px); line-height: .85; color: #fff; text-shadow: 6px 6px 0 #000; }
+.cs-title.go b { animation: csSlam .5s cubic-bezier(.2, .9, .3, 1.3) both; }
+@keyframes csSlam { from { transform: scale(2.4); opacity: 0; } to { transform: none; opacity: 1; } }
+.cs-join { position: absolute; left: 50%; top: 8%; z-index: 2; transform: translateX(-50%); display: grid; justify-items: center; gap: 6px; padding: 14px 24px 16px; background: #0c0a12; box-shadow: 0 0 0 4px var(--sc), 0 0 60px var(--sc); }
+.cs-jface canvas { width: 128px; height: 128px; display: block; image-rendering: pixelated; }
+.cs-join b { font-family: var(--font-display); font-weight: 400; font-size: 52px; line-height: .85; color: var(--sc); text-shadow: 3px 3px 0 #000; }
+.cs-join span:last-child { font-family: var(--font-label); font-size: 13px; letter-spacing: .14em; color: #fff; }
+.cs-join.go { animation: csJoin .6s cubic-bezier(.2, .9, .3, 1.3) both; }
+@keyframes csJoin { from { transform: translateX(-50%) scale(.3); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }
+@media (max-height: 460px) { .cs-face { width: 120px; height: 120px; bottom: 116px; } .cs-box { min-height: 92px; padding: 10px 16px 24px; bottom: 10px; gap: 4px; } .cs-name { font-size: 24px; } .cs-text { font-size: 18px; } .cs-join { top: 4%; padding: 8px 14px 10px; } .cs-jface canvas { width: 64px; height: 64px; } .cs-join b { font-size: 32px; } }
+@media (max-width: 560px) { .cs-face { width: 130px; height: 130px; bottom: 210px; } .cs-box { min-height: 170px; } }
+@media (prefers-reduced-motion: reduce) { .cs-face.in.l, .cs-face.in.r, .cs-title.go b, .cs-join.go { animation: none; } }
 .dl-card { background: var(--slate-2); padding: 12px; display: grid; gap: 8px; }
 .dl-card > div { display: grid; gap: 6px; justify-items: start; }
 .dl-big { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; color: var(--gold); }
@@ -5367,24 +5404,32 @@ const modeIcon = (k) => iconURL(MODE_ART[k].icon, MODE_ART[k].hex);
    and your team plays the characters you picked (Save.data.squad, SQUAD_SLOTS) ---------- */
 const STORY = [
   { name: 'THE BACK PITCH', events: [
-    { id: 'bp1', title: 'FIRST TOUCH', mode: 'quick', size: 2, skill: 0.08, foe: 'MOSSWOOD', goal: { win: true }, reward: { em: 150 }, text: 'Your club is bottom of the league and nobody knows your name. Coach Brick gives you one chance: win a two on two on the back pitch.' },
-    { id: 'bp2', title: 'MAKE A NAME', mode: 'quick', size: 3, skill: 0.15, foe: 'HARBOUR', goal: { win: true, mine: 2 }, reward: { bp: 2 }, text: 'The coach wants goals, not excuses. Win, and score at least two of them yourself.' },
-    { id: 'bp3', title: 'THE BOMB ON THE BLOCK', mode: 'bomb', size: 3, skill: 0.2, foe: 'EMBER', goal: { win: true }, reward: { em: 250 }, text: 'Ember City play a wild game on their street: the ball is a bomb. Keep it out of your half and beat them.' },
-    { id: 'bp4', title: 'CUP DEBUT', mode: 'quick', size: 4, skill: 0.3, foe: 'NIGHTFALL', goal: { win: true, by: 2 }, reward: { style: 'ROGUE', em: 300 }, text: 'Your first real cup match. A street winger called ROGUE is watching from the fence. Win by two and ROGUE joins your team.' },
+    { id: 'bp1', place: 'backpitch', intro: [["COACH", "So you are the new kid. Our club is last in the league. Nobody even comes to watch."], ["YOU", "Then I will give them a reason to come."], ["COACH", "Big words. Win a two on two against Mosswood and you get a shirt."], ["RIVAL", "A two on two against the worst club in town? This will take five minutes."]], outro: [["COACH", "Not bad. Not bad at all. Here. This shirt is yours now."], ["YOU", "This is only the start, coach."]], title: 'FIRST TOUCH', mode: 'quick', size: 2, skill: 0.08, foe: 'MOSSWOOD', goal: { win: true }, reward: { em: 150 }, text: 'Your club is bottom of the league and nobody knows your name. Coach Brick gives you one chance: win a two on two on the back pitch.' },
+    { id: 'bp2', place: 'backpitch', intro: [["COACH", "Anyone can pass. Strikers score. I want two goals from YOU today."], ["RIVAL", "Ruby Harbour never lets a new kid score twice."], ["YOU", "Then watch closely."]], outro: [["COACH", "Two goals! People at the shop are starting to say your name."]], title: 'MAKE A NAME', mode: 'quick', size: 3, skill: 0.15, foe: 'HARBOUR', goal: { win: true, mine: 2 }, reward: { bp: 2 }, text: 'The coach wants goals, not excuses. Win, and score at least two of them yourself.' },
+    { id: 'bp3', place: 'street', intro: [["RIVAL", "On our street the ball is a bomb. Lose it in your half and BOOM."], ["COACH", "Keep it moving. Never hold it in our half."], ["YOU", "Then I will blow up their half."]], outro: [["RIVAL", "You beat us at our own game..."], ["YOU", "Next time bring a bigger bomb."]], title: 'THE BOMB ON THE BLOCK', mode: 'bomb', size: 3, skill: 0.2, foe: 'EMBER', goal: { win: true }, reward: { em: 250 }, text: 'Ember City play a wild game on their street: the ball is a bomb. Keep it out of your half and beat them.' },
+    { id: 'bp4', place: 'stadium', intro: [["COACH", "The cup. Real crowds, real pressure. Do not freeze."], ["ROGUE", "So you are the kid everyone talks about. Show me something."], ["YOU", "If we win by two, you join us?"], ["ROGUE", "Win by two and I will think about it."]], outro: [["ROGUE", "OK. You are the real deal. I am in.", "join"], ["COACH", "A winger nobody can catch. Now we are dangerous."]], title: 'CUP DEBUT', mode: 'quick', size: 4, skill: 0.3, foe: 'NIGHTFALL', goal: { win: true, by: 2 }, reward: { style: 'ROGUE', em: 300 }, text: 'Your first real cup match. A street winger called ROGUE is watching from the fence. Win by two and ROGUE joins your team.' },
   ] },
   { name: 'THE CITY LEAGUE', events: [
-    { id: 'cl1', title: 'CHAOS DERBY', mode: 'chaos', size: 4, skill: 0.35, foe: 'EMBER', goal: { win: true }, reward: { bp: 3 }, text: 'The city derby, and the league has gone mad: the rules change every 25 seconds. Keep your head and win.' },
-    { id: 'cl2', title: 'NOBODY GETS THROUGH', mode: 'quick', size: 4, skill: 0.4, foe: 'MOSSWOOD', goal: { win: true, clean: true }, reward: { em: 400 }, text: 'Mosswood only score on the break. Win without letting a single goal in.' },
-    { id: 'cl3', title: 'TINY GOAL TRIALS', mode: 'tiny', size: 3, skill: 0.45, foe: 'HARBOUR', goal: { win: true, by: 3 }, reward: { bp: 4 }, text: 'Training day. Tiny goals and no keepers. Win by three to prove your aim is real.' },
-    { id: 'cl4', title: 'THE IRON WALL', mode: 'quick', size: 4, skill: 0.55, foe: 'SUNSPIRE', goal: { win: true }, reward: { style: 'IRONCLAD', em: 500 }, text: 'Sunspire have the best defender in the city, IRONCLAD. Beat them and IRONCLAD wants to play for you.' },
+    { id: 'cl1', place: 'city', intro: [["COACH", "Welcome to the City League. The derby here is pure chaos: the rules change every 25 seconds."], ["RIVAL", "Ember City got moved up too. Revenge time."], ["YOU", "Chaos is where I play best."]], outro: [["COACH", "Moon ball, giants, tiny goals... and you still won. Unreal."]], title: 'CHAOS DERBY', mode: 'chaos', size: 4, skill: 0.35, foe: 'EMBER', goal: { win: true }, reward: { bp: 3 }, text: 'The city derby, and the league has gone mad: the rules change every 25 seconds. Keep your head and win.' },
+    { id: 'cl2', place: 'city', intro: [["COACH", "Mosswood are back, and they only score on the break."], ["RIVAL", "One chance. That is all we need."], ["YOU", "Then you get zero chances."]], outro: [["COACH", "A clean sheet! The whole team defended like a wall."]], title: 'NOBODY GETS THROUGH', mode: 'quick', size: 4, skill: 0.4, foe: 'MOSSWOOD', goal: { win: true, clean: true }, reward: { em: 400 }, text: 'Mosswood only score on the break. Win without letting a single goal in.' },
+    { id: 'cl3', place: 'training', intro: [["COACH", "Training day. Tiny goals and no keepers. If your aim is just luck, it shows here."], ["YOU", "My aim is not luck."]], outro: [["COACH", "Win by three with tiny goals. OK. Your aim is not luck. It is scary."]], title: 'TINY GOAL TRIALS', mode: 'tiny', size: 3, skill: 0.45, foe: 'HARBOUR', goal: { win: true, by: 3 }, reward: { bp: 4 }, text: 'Training day. Tiny goals and no keepers. Win by three to prove your aim is real.' },
+    { id: 'cl4', place: 'stadium', intro: [["IRONCLAD", "I am IRONCLAD. In three years nobody has dribbled past me."], ["YOU", "Then today is a big day for you."], ["IRONCLAD", "Beat Sunspire and I will tell you a secret."]], outro: [["IRONCLAD", "You got past me. The secret? I want to play for a team that wins. Your team.", "join"], ["COACH", "The best defender in the city is ours. Unbelievable."]], title: 'THE IRON WALL', mode: 'quick', size: 4, skill: 0.55, foe: 'SUNSPIRE', goal: { win: true }, reward: { style: 'IRONCLAD', em: 500 }, text: 'Sunspire have the best defender in the city, IRONCLAD. Beat them and IRONCLAD wants to play for you.' },
   ] },
   { name: 'THE VOXEL CUP', events: [
-    { id: 'vc1', title: 'QUARTER FINAL', mode: 'heist', size: 4, skill: 0.6, foe: 'NIGHTFALL', goal: { win: true }, reward: { bp: 5 }, text: 'The cup quarter final is played for power cores. Take theirs, keep yours, and snap them away.' },
-    { id: 'vc2', title: 'SEMI FINAL', mode: 'quick', size: 5, skill: 0.65, foe: 'EMBER', goal: { win: true, mine: 2 }, reward: { em: 600 }, text: 'Five a side in front of a full stadium. The fans want a hero: win, and score two yourself.' },
-    { id: 'vc3', title: 'THE STORM', mode: 'turbo', size: 4, skill: 0.7, foe: 'HARBOUR', goal: { win: true, by: 2 }, reward: { bp: 6 }, text: 'A storm hits the cup and everything moves faster. Win by two and you are in the final.' },
-    { id: 'vc4', title: 'THE FINAL', mode: 'quick', size: 5, skill: 0.85, foe: 'SUNSPIRE', goal: { win: true }, reward: { style: 'SOLARIS', em: 1000, bp: 10 }, text: 'The Voxel Cup final. The champion SOLARIS has never lost. Win the cup, and SOLARIS joins the best team in the land: yours.' },
+    { id: 'vc1', place: 'night', intro: [["COACH", "The Voxel Cup! The quarter final is played for power cores."], ["RIVAL", "Nightfall never forgets. You knocked us out of the cup once."], ["YOU", "And I will do it again. Then I snap you away."]], outro: [["YOU", "Every core is ours."], ["COACH", "Semi final, here we come!"]], title: 'QUARTER FINAL', mode: 'heist', size: 4, skill: 0.6, foe: 'NIGHTFALL', goal: { win: true }, reward: { bp: 5 }, text: 'The cup quarter final is played for power cores. Take theirs, keep yours, and snap them away.' },
+    { id: 'vc2', place: 'stadium', intro: [["RIVAL", "Ember City, third time. And this time we have five players."], ["COACH", "A full stadium is watching. They want a hero."], ["YOU", "Then they get one. Two goals, from me."]], outro: [["COACH", "Listen to that crowd. They are singing your name!"]], title: 'SEMI FINAL', mode: 'quick', size: 5, skill: 0.65, foe: 'EMBER', goal: { win: true, mine: 2 }, reward: { em: 600 }, text: 'Five a side in front of a full stadium. The fans want a hero: win, and score two yourself.' },
+    { id: 'vc3', place: 'storm', intro: [["COACH", "A storm hit the stadium. Everything is faster today."], ["RIVAL", "Ruby Harbour loves bad weather."], ["YOU", "Faster is better. We win by two."]], outro: [["COACH", "We are in the final. THE FINAL!"]], title: 'THE STORM', mode: 'turbo', size: 4, skill: 0.7, foe: 'HARBOUR', goal: { win: true, by: 2 }, reward: { bp: 6 }, text: 'A storm hits the cup and everything moves faster. Win by two and you are in the final.' },
+    { id: 'vc4', place: 'final', intro: [["SOLARIS", "So you are the one from the bottom of the league."], ["YOU", "And you are the champion who never lost."], ["SOLARIS", "Never. Not once. Today will not be different."], ["COACH", "This is it, kid. Everything we worked for."]], outro: [["SOLARIS", "I lost. For the first time ever. And it felt... amazing."], ["SOLARIS", "Can I play next to you? I want to feel that every day.", "join"], ["COACH", "From last place to the Voxel Cup. You did it, kid."]], title: 'THE FINAL', mode: 'quick', size: 5, skill: 0.85, foe: 'SUNSPIRE', goal: { win: true }, reward: { style: 'SOLARIS', em: 1000, bp: 10 }, text: 'The Voxel Cup final. The champion SOLARIS has never lost. Win the cup, and SOLARIS joins the best team in the land: yours.' },
   ] },
 ];
+/** who talks in the cutscenes: a name, a face (a style's own portrait, or yours) and a colour. RIVAL is the opponent's captain */
+const STORY_CAST = {
+  COACH: { name: 'COACH BRICK', face: 'ANCHOR', hex: '#ffcb3d' },
+  ROGUE: { name: 'ROGUE', face: 'ROGUE', hex: '#3dffb0' },
+  IRONCLAD: { name: 'IRONCLAD', face: 'IRONCLAD', hex: '#9fb4ff' },
+  SOLARIS: { name: 'SOLARIS', face: 'SOLARIS', hex: '#ff9d2e' },
+};
+const RIVAL_FACE = { MOSSWOOD: 'SHAMBLER', HARBOUR: 'KESTREL', EMBER: 'BLITZ', NIGHTFALL: 'PHANTOM', SUNSPIRE: 'CAPTAIN', ROVERS: 'TITAN' };
 const STORY_EVENTS = [];
 STORY.forEach((c, ci) => c.events.forEach((e) => { e.ch = ci; e.n = STORY_EVENTS.length + 1; STORY_EVENTS.push(e); }));
 /** your team in story matches: one character per kind of spot (the spot you play yourself uses your own style) */
@@ -10318,6 +10363,117 @@ const Portal = {
   },
 };
 
+/* ---- 11_cutscene.js ---- */
+/* =====================================================================
+   Cutscene: the STORY scenes (owner, Nov 2026: "story mode has no actual story like a cutscene"). A comic scene over the
+   whole screen: a place drawn in its colours with speed lines, the speaker's big portrait sliding in from their side, a
+   speech box that types the line out, a CHAPTER card before a chapter's first event, and a JOINS YOUR TEAM moment.
+   Tap, click, SPACE, ENTER or A goes on (a line still typing finishes first); SKIP or ESC ends it. Our own drawings.
+   Cutscene.story(event, 'intro' | 'outro', done)
+   ===================================================================== */
+const CS_PLACES = { // the backdrop of each place: sky, ground, light
+  backpitch: ['#2b3a5e', '#1d5a2e', '#ffb86b'], street: ['#4a2a3a', '#5a3a2a', '#ff8a2a'], stadium: ['#13204a', '#1f6b3a', '#a9c7ff'],
+  city: ['#2a1d4a', '#2c3463', '#ff5fb0'], training: ['#123a44', '#1d5a4a', '#7ff5bd'], night: ['#090b22', '#13304a', '#c9d2ff'],
+  storm: ['#2a2f3a', '#28402e', '#dfe6ff'], final: ['#3a2a07', '#1f5a2a', '#ffd54a'],
+};
+const CS_CPS = 42; // letters a second
+const Cutscene = {
+  lines: null, i: 0, shown: 0, typing: false, done: null, ev: null, tmr: 0,
+  tpl() {
+    return `<section id="cutscene" class="cs" hidden aria-live="polite">
+      <div class="cs-bg" id="cs-bg"><i class="cs-sky"></i><i class="cs-ground"></i><i class="cs-lines"></i></div>
+      <div class="cs-title" id="cs-title" hidden><span id="cs-ch"></span><b id="cs-chname"></b></div>
+      <div class="cs-join" id="cs-join" hidden><span class="cs-jface" id="cs-jface"></span><b id="cs-jname"></b><span>JOINS YOUR TEAM!</span></div>
+      <div class="cs-face" id="cs-face"></div>
+      <button class="btn small cs-skip" id="cs-skip" type="button">SKIP</button>
+      <button class="cs-box" id="cs-next" type="button"><b class="cs-name" id="cs-name"></b><span class="cs-text" id="cs-text"></span><i class="cs-more">TAP TO GO ON</i></button>
+    </section>`;
+  },
+  bind() {
+    $('cs-next').addEventListener('click', () => this.next());
+    $('cs-skip').addEventListener('click', () => { Sfx.click(); this.end(); });
+    window.addEventListener('keydown', (e) => {
+      if ($('cutscene').hidden) return;
+      if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); e.stopPropagation(); if (!e.repeat) this.next(); }
+      else if (e.code === 'Escape') { e.preventDefault(); e.stopPropagation(); this.end(); }
+    }, true);
+  },
+  /** who a speaker is: name, portrait and colour (RIVAL: the opponent's captain; YOU: your own player) */
+  who(key) {
+    const ev = this.ev;
+    if (key === 'YOU') return { name: 'YOU', canvas: () => portraitCanvas(Save.data.style, 160, Save.data.look), hex: '#3d7dff', side: 'l' };
+    if (key === 'RIVAL') { const c = ev && CLUBS[ev.foe] || CLUBS.EMBER; return { name: c.nick + ' CAPTAIN', canvas: () => portraitCanvas(RIVAL_FACE[ev && ev.foe] || 'BLITZ', 160, { sig: true }), hex: c.crest[0], side: 'r' }; }
+    const C = STORY_CAST[key] || STORY_CAST.COACH;
+    return { name: C.name, canvas: () => portraitCanvas(C.face, 160, { sig: true }), hex: C.hex, side: key === 'COACH' ? 'l' : 'r' };
+  },
+  /** a story event's scene: before it ('intro', with a CHAPTER card for the chapter's first event) or after you met its goal */
+  story(ev, part, done) {
+    const lines = ev && ev[part];
+    if (!lines || !lines.length) { if (done) done(); return; }
+    const first = part === 'intro' && STORY[ev.ch].events[0] === ev;
+    this.play(lines, { ev, place: ev.place, title: first ? ['CHAPTER ' + (ev.ch + 1), STORY[ev.ch].name] : null }, done);
+  },
+  play(lines, o, done) {
+    this.lines = lines; this.i = -1; this.done = done || null; this.ev = o.ev || null; this.last = null;
+    const P = CS_PLACES[o.place] || CS_PLACES.stadium, bg = $('cs-bg');
+    bg.style.setProperty('--sky', P[0]); bg.style.setProperty('--ground', P[1]); bg.style.setProperty('--light', P[2]);
+    $('cs-join').hidden = true; $('cs-face').innerHTML = ''; $('cs-text').textContent = ''; $('cs-name').textContent = '';
+    $('cutscene').hidden = false; Music.set(true);
+    if (o.title) { // CHAPTER 2 · THE CITY LEAGUE slams in first
+      $('cs-ch').textContent = o.title[0]; $('cs-chname').textContent = o.title[1];
+      const t = $('cs-title'); t.hidden = false; t.classList.remove('go'); void t.offsetWidth; t.classList.add('go');
+      $('cs-next').hidden = true; Sfx.cutin();
+      clearTimeout(this.tmr); this.tmr = setTimeout(() => { t.hidden = true; $('cs-next').hidden = false; this.next(); }, navigator.webdriver ? 50 : 1700);
+    } else { $('cs-title').hidden = true; $('cs-next').hidden = false; this.next(); }
+  },
+  next() {
+    if ($('cutscene').hidden || !$('cs-title').hidden) return;
+    if (this.typing) { this.shown = 1e9; return; } // finish the line first
+    $('cs-join').hidden = true;
+    this.i++;
+    if (this.i >= this.lines.length) { this.end(); return; }
+    const [key, text, extra] = this.lines[this.i], W = this.who(key), box = $('cs-next');
+    box.style.setProperty('--sc', W.hex); box.classList.toggle('r', W.side === 'r');
+    $('cs-name').textContent = W.name;
+    if (this.last !== key) { // a new speaker slides in from their side
+      const f = $('cs-face'), cv = W.canvas(); cv.className = 'px';
+      f.innerHTML = ''; f.appendChild(cv); f.className = 'cs-face ' + W.side; f.style.setProperty('--sc', W.hex);
+      void f.offsetWidth; f.classList.add('in'); Sfx.open && Sfx.open();
+    }
+    this.last = key;
+    if (extra === 'join' && STYLES[key]) this.join(key);
+    this.type(text);
+  },
+  /** the line appears letter by letter */
+  type(text) {
+    const el = $('cs-text'); this.shown = 0; this.typing = true; el.textContent = '';
+    const step = () => {
+      if ($('cutscene').hidden) { this.typing = false; return; }
+      this.shown += CS_CPS / 30;
+      const n = Math.min(text.length, Math.floor(this.shown));
+      el.textContent = text.slice(0, n);
+      if (n % 4 === 1) Sfx.tick();
+      if (n >= text.length) { this.typing = false; return; }
+      this.tmr = setTimeout(step, 33);
+    };
+    clearTimeout(this.tmr); step();
+  },
+  /** ROGUE JOINS YOUR TEAM! with a flash */
+  join(id) {
+    const j = $('cs-join'), f = $('cs-jface'), cv = portraitCanvas(id, 128, { sig: true }); cv.className = 'px';
+    f.innerHTML = ''; f.appendChild(cv); $('cs-jname').textContent = STYLES[id].name;
+    j.style.setProperty('--sc', STYLES[id].aura); j.hidden = false; j.classList.remove('go'); void j.offsetWidth; j.classList.add('go');
+    Sfx.fanfare(2);
+  },
+  end() {
+    clearTimeout(this.tmr); this.typing = false;
+    if ($('cutscene').hidden) return;
+    $('cutscene').hidden = true;
+    const d = this.done; this.done = null;
+    if (d) d();
+  },
+};
+
 /* ---- 11_fk.js ---- */
 /* =====================================================================
    TutHud (the tutorial's instructions and gold square) and FKHud: free kick aids. A target on the goal where you aim, dots for the
@@ -12183,10 +12339,11 @@ const StoryUI = {
     </section>
     <section id="st-pick" class="overlay" hidden>
       <div class="dialog panel st-pick-box"><h2 id="st-pick-t">STRIKER</h2><p class="md-sub">Characters you own. AUTO lets the game pick.</p><div class="st-pick-grid" id="st-pick-grid"></div><button class="btn" id="st-pick-close" type="button">CLOSE</button></div>
-    </section>`;
+    </section>` + Cutscene.tpl();
   },
   bind() {
     const click = (id, fn) => $(id).addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); });
+    Cutscene.bind();
     click('story-back', () => UI.show('lobby'));
     click('st-pick-close', () => { $('st-pick').hidden = true; });
     $('st-squad').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) { Sfx.click(); this.openPick(b.dataset.slot); } });
@@ -12200,8 +12357,13 @@ const StoryUI = {
     $('st-chapters').addEventListener('click', (e) => {
       const b = e.target.closest('[data-ev]'); if (!b) return;
       const ev = STORY_EVENTS.find((x) => x.id === b.dataset.ev);
-      if (ev && Story.open(Save.data, ev)) { Sfx.init(); Sfx.click(); Game.startMatch(ev.mode, { story: ev }); }
+      if (ev && Story.open(Save.data, ev)) { Sfx.init(); Sfx.click(); this.go(ev); }
     });
+  },
+  /** play an event: its scene first the first time, then the match (a replay goes straight in) */
+  go(ev) {
+    const start = () => Game.startMatch(ev.mode, { story: ev });
+    if (Story.done(Save.data, ev)) start(); else Cutscene.story(ev, 'intro', start);
   },
   /** the lobby button's line: how far you are */
   sub() { const d = Save.data, n = d.story.done.length, nx = Story.next(d); return nx ? 'CHAPTER ' + (nx.ch + 1) + ' · ' + n + '/' + STORY_EVENTS.length : 'FINISHED'; },
@@ -12968,7 +13130,7 @@ const UI = {
     });
     click('r-again', () => {
       if (Game.lastMode === 'online') { Game.toLobby(); Net.open(); }
-      else if (Game.lastStory) { const e = Game.storyNext || Game.lastStory; Game.startMatch(e.mode, { story: e }); } // STORY: the next event, or this one again
+      else if (Game.lastStory) StoryUI.go(Game.storyNext || Game.lastStory); // STORY: the next event (its scene first), or this one again
       else Game.startMatch(Game.lastMode || 'quick');
     });
     click('r-lobby', () => { if (Game.lastMode === 'online') Net.send({ t: 'leave' }); const st = !!Game.lastStory; Game.toLobby(); if (st) this.show('story'); });
@@ -13997,6 +14159,7 @@ const Game = {
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
     UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name + (!forfeit && m.result.battle ? ' · FREE KICK BATTLE ' + m.result.battle.join('-') : ''), xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && (fun ? 'fun' : m.result.noReward), daily, goalsDone, story: st });
+    if (st && st.first) Cutscene.story(story, 'outro'); // STORY: what happens after (a new teammate at the end of a chapter), over the results
     if (res === 'win') Sfx.fanfare(2);
     if (res === 'win' && !idle) Portal.happy();
     Portal.progress(); // a GOAL step done: their portal hears how far you are now
@@ -14109,7 +14272,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Cine, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  StoryUI, Story, STORY, STORY_EVENTS, SQUAD_SLOTS, MODE_ART, CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  StoryUI, Cutscene, Story, STORY, STORY_EVENTS, SQUAD_SLOTS, MODE_ART, CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {

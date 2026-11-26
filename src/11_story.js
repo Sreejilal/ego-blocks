@@ -17,10 +17,11 @@ const StoryUI = {
     </section>
     <section id="st-pick" class="overlay" hidden>
       <div class="dialog panel st-pick-box"><h2 id="st-pick-t">STRIKER</h2><p class="md-sub">Characters you own. AUTO lets the game pick.</p><div class="st-pick-grid" id="st-pick-grid"></div><button class="btn" id="st-pick-close" type="button">CLOSE</button></div>
-    </section>`;
+    </section>` + Cutscene.tpl();
   },
   bind() {
     const click = (id, fn) => $(id).addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); });
+    Cutscene.bind();
     click('story-back', () => UI.show('lobby'));
     click('st-pick-close', () => { $('st-pick').hidden = true; });
     $('st-squad').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) { Sfx.click(); this.openPick(b.dataset.slot); } });
@@ -34,8 +35,13 @@ const StoryUI = {
     $('st-chapters').addEventListener('click', (e) => {
       const b = e.target.closest('[data-ev]'); if (!b) return;
       const ev = STORY_EVENTS.find((x) => x.id === b.dataset.ev);
-      if (ev && Story.open(Save.data, ev)) { Sfx.init(); Sfx.click(); Game.startMatch(ev.mode, { story: ev }); }
+      if (ev && Story.open(Save.data, ev)) { Sfx.init(); Sfx.click(); this.go(ev); }
     });
+  },
+  /** play an event: its scene first the first time, then the match (a replay goes straight in) */
+  go(ev) {
+    const start = () => Game.startMatch(ev.mode, { story: ev });
+    if (Story.done(Save.data, ev)) start(); else Cutscene.story(ev, 'intro', start);
   },
   /** the lobby button's line: how far you are */
   sub() { const d = Save.data, n = d.story.done.length, nx = Story.next(d); return nx ? 'CHAPTER ' + (nx.ch + 1) + ' · ' + n + '/' + STORY_EVENTS.length : 'FINISHED'; },
