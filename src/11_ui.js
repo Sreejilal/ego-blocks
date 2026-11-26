@@ -11,7 +11,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + TeamUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + TeamUI.tpl() + TrainUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none'; $('outro').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
@@ -56,7 +56,7 @@ const UI = {
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; BLASTERS</span></button>
           <div class="spot" id="spot"><button class="btn spot-main" id="spot-play" type="button"><span class="spot-in" id="spot-in"></span><span class="spot-go">PLAY</span><span class="spot-dots" id="spot-dots"></span></button><button class="btn spot-all" id="go-modes" type="button">ALL<br>MODES</button></div>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn tm" id="go-team" type="button">TEAM <span class="sub" id="team-sub">OVR 70</span></button><button class="btn pass" id="go-pass" type="button">PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
-          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
+          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-train" type="button">TRAINING</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
       </div>
       <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
@@ -195,6 +195,8 @@ const UI = {
             <li><b>Rewards</b> (emeralds, XP, pass, GOALS) come from full-time matches: Quick Match, Ranked and Lawless. King of the Hill, Volleys and Duels are just for fun, unless you play them with friends: every friends match gives rewards. Leaving early gives nothing.</li>
             <li><b>Team size:</b> Quick Match is 4v4: a keeper, a defender, a midfielder and a striker. Lawless is 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch: blasters (three quick shots) and scatter blasters (a spread up close) that knock players over, rocket fists, boom blocks, slime, jetpacks. Use one with the item button. No rank change.</li>
+            <li><b>Training</b> (TRAINING at the bottom of the start screen): the Sprint Drill (run through 8 gates against the clock) and the Defending Drill (stop 5 attacks of two attackers) give up to 3 stars, and each star pays out the first time. Free kicks, keeper practice and the tutorial are there too.</li>
+            <li><b>Daily</b>: a gift every day and a 7 day login calendar (a big reward on day 7). Missing a day never resets it.</li>
             <li><b>Story</b> (next to Ranked): take your club from the back pitch to the Voxel Cup, one event at a time. Each event has its own rules and goal, like win by 2 or score 2 yourself, and pays out emeralds, blueprints or a character you can only get there (ROGUE, IRONCLAD, SOLARIS) the first time you meet it. Pick a character for each spot of your team, and in story matches you take control of whoever you pass to.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
           </ul></section>
@@ -432,8 +434,9 @@ const UI = {
       <div class="dialog panel daily-box">
         <h2>DAILY</h2>
         <div class="dl-card"><span class="label">TODAY'S GIFT</span><div id="dl-gift"></div></div>
+        <div class="dl-card"><span class="label">LOGIN REWARDS · COME BACK EVERY DAY</span><div class="dl-week" id="dl-week"></div><span class="label" id="dl-week-l"></span></div>
         <div class="dl-card"><span class="label">TODAY'S CHALLENGE</span><div id="dl-ch"></div></div>
-        <p class="label">A new gift and a new challenge every day. No streaks: missing a day costs nothing.</p>
+        <p class="label">A new gift, a new day of the calendar and a new challenge every day. Missing a day costs nothing: the calendar waits for you.</p>
         <button class="btn" id="dl-close" type="button">CLOSE</button>
       </div>
     </section>`;
@@ -443,6 +446,10 @@ const UI = {
     const C = DAILY_CHALLENGES[d.daily.ch];
     $('dl-gift').innerHTML = Daily.giftReady(d) ? '<button class="btn emerald" id="dl-open" type="button">OPEN TODAY\'S GIFT</button>'
       : `<b class="dl-big">${esc(this.giftText || 'OPENED')}</b><span class="label">NEXT GIFT IN ${Daily.untilTomorrow()}</span>`;
+    const got = d.daily.login % LOGIN_REWARDS.length, ready = Daily.giftReady(d), cycle = Math.floor(d.daily.login / LOGIN_REWARDS.length); // the login calendar
+    const shown = !ready && got === 0 && d.daily.login > 0 ? LOGIN_REWARDS.length : got; // just finished a week: show it full
+    $('dl-week').innerHTML = LOGIN_REWARDS.map((r, i) => `<div class="dl-day${i < shown ? ' got' : ''}${i === got && ready ? ' now' : ''}${i === 6 ? ' big' : ''}"><span>DAY ${i + 1}</span>${r.em ? `<img class="px" alt="" src="${iconURL('emerald')}">` : ''}<b>${loginText(r).replace(' EMERALDS', '').replace(' BLUEPRINTS', ' BP').replace(' BLUEPRINT', ' BP')}</b></div>`).join('');
+    $('dl-week-l').textContent = ready ? 'OPEN TODAY\'S GIFT TO GET DAY ' + (got + 1) + ': ' + loginText(LOGIN_REWARDS[got]) : 'DAY ' + (shown || LOGIN_REWARDS.length) + ' DONE. COME BACK TOMORROW FOR DAY ' + ((got % LOGIN_REWARDS.length) + 1) + (cycle && got === 0 ? ' OF A NEW WEEK' : '');
     const pct = C ? d.daily.prog / C.goal * 100 : 0;
     $('dl-ch').innerHTML = C ? `<b class="dl-big">${esc(C.name)}</b><div class="xpbar"><i style="width:${pct.toFixed(0)}%"></i></div>`
       + `<span class="label">${d.daily.done ? 'DONE! NEW CHALLENGE IN ' + Daily.untilTomorrow() : d.daily.prog + ' / ' + C.goal + ' · REWARD +' + DAILY_REWARD.emeralds + ' EMERALDS, +' + DAILY_REWARD.xp + ' XP'}</span>` : '';
@@ -451,7 +458,7 @@ const UI = {
       Sfx.init();
       const g = Daily.openGift(Save.data); if (!g) return;
       Save.save();
-      this.giftText = g.emeralds ? (g.jackpot ? 'JACKPOT! ' : '') + '+' + g.emeralds + ' EMERALDS' : '+' + g.xp + ' XP';
+      this.giftText = (g.emeralds ? (g.jackpot ? 'JACKPOT! ' : '') + '+' + g.emeralds + ' EMERALDS' : '+' + g.xp + ' XP') + (g.login ? ' · DAY ' + g.login.day + ': ' + loginText(g.login.r) : '');
       if (g.jackpot) Sfx.fanfare(2); else Sfx.coin();
       this.renderDaily(); this.renderLobby();
     });
@@ -651,7 +658,7 @@ const UI = {
     click('pass-back', () => this.show('lobby'));
     click('goals-back', () => this.show('lobby'));
     click('go-goals', () => this.show('goals'));
-    click('go-fk', () => Game.startMatch('freekick'));
+    click('go-train', () => this.show('train'));
     click('go-tut', () => Game.startMatch('tutorial'));
     click('howto-tut', () => Game.startMatch('tutorial'));
     click('lob-profile', () => this.show('profile'));
@@ -703,6 +710,7 @@ const UI = {
     Admin.bind();
     StoryUI.bind();
     TeamUI.bind();
+    TrainUI.bind();
     click('tut-skip', () => Game.skipTutorial());
     $('tut-gate').addEventListener('pointerdown', (e) => { e.preventDefault(); Game.gateGo(); });
     $('p-forfeit').addEventListener('click', () => {
@@ -717,7 +725,7 @@ const UI = {
       else if (Game.lastStory) StoryUI.go(Game.storyNext || Game.lastStory); // STORY: the next event (its scene first), or this one again
       else Game.startMatch(Game.lastMode || 'quick');
     });
-    click('r-lobby', () => { if (Game.lastMode === 'online') Net.send({ t: 'leave' }); const st = !!Game.lastStory; Game.toLobby(); if (st) this.show('story'); });
+    click('r-lobby', () => { if (Game.lastMode === 'online') Net.send({ t: 'leave' }); const st = !!Game.lastStory, tr = !!(MODES[Game.lastMode] && MODES[Game.lastMode].drill); Game.toLobby(); if (st) this.show('story'); else if (tr) this.show('train'); });
     click('go-story', () => this.show('story'));
     click('go-team', () => this.show('team'));
     click('p-subs', () => TeamUI.openSubs());
@@ -754,7 +762,7 @@ const UI = {
     this.cur = name;
     if (was && was !== name && was !== 'hud' && name !== 'hud') { if (name === 'lobby') Sfx.close(); else Sfx.open(); } // menus whoosh in and out (matches have their own sounds)
     if (name === 'team' && this.cur !== 'team') TeamUI.from = this.cur === 'story' ? 'story' : 'lobby'; // BACK goes where you came from
-    const map = { team: 'scr-team', story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
+    const map = { train: 'scr-train', team: 'scr-team', story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const t of this.ntags) t.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
@@ -765,6 +773,10 @@ const UI = {
     if (name === 'pass') this.renderPass();
     if (name === 'story') StoryUI.render();
     if (name === 'team') TeamUI.render();
+    if (name === 'train') TrainUI.render();
+    if (name === 'lobby' && !navigator.webdriver && Save.data.onboarded && Daily.giftReady(Save.data) && this.dailySeen !== dayKey()) { // a new day: the DAILY gift and calendar open by themselves, once
+      this.dailySeen = dayKey(); setTimeout(() => { if (this.cur === 'lobby' && !Game.match) { this.renderDaily(); $('scr-daily').hidden = false; } }, 700);
+    }
     if (name === 'lobby') { this.spotI = 0; this.spotShow(0); } // the spotlight starts on the featured mode
     if (name === 'goals') this.renderGoals();
     Friends.place(); // the FRIENDS panel on the side: start screen, room screen and pause menu only
@@ -812,7 +824,7 @@ const UI = {
   /* ---------- HUD ---------- */
   buildHud(m) {
     const p = m.human;
-    $('hud-mode').textContent = m.cfg.name + (m.mode === 'duel' || m.fk || m.tut ? '' : ' · ' + m.size + 'V' + m.size) + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
+    $('hud-mode').textContent = m.cfg.name + (m.mode === 'duel' || m.fk || m.tut || m.drill ? '' : ' · ' + m.size + 'V' + m.size) + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
     $('hud-badge').src = badgeURL(tierOf(Save.data.rp)); $('hud-badge').hidden = !m.cfg.ranked;
     $('hud-em-ico').src = iconURL('emerald'); $('hud-em').textContent = Save.data.emeralds;
     for (const t of [0, 1]) { // the score bar wears each club's shirt
@@ -865,6 +877,7 @@ const UI = {
     if (m.tut) { this.setText('clock', Math.min(m.tut.step + 1, TUT_STEPS.length) + '/' + TUT_STEPS.length); this.setText('clock-sub', 'TUTORIAL'); }
     else if (m.fk && m.fk.battle) { this.setText('clock', m.fk.bs[0] + '-' + m.fk.bs[1]); this.setText('clock-sub', 'FK BATTLE'); }
     else if (m.fk) { this.setText('clock', Math.min(m.fk.n, m.fk.total) + '/' + m.fk.total); this.setText('clock-sub', 'FREE KICK'); }
+    else if (m.drill) { const D = m.drill; this.setText('clock', D.kind === 'run' ? D.t.toFixed(1) : D.stops + '/' + DRILL_ATTACKS); this.setText('clock-sub', D.kind === 'run' ? 'GATE ' + Math.min(D.n + 1, D.gates.length) + ' OF ' + D.gates.length : 'STOPPED · ATTACK ' + Math.min(D.n + 1, DRILL_ATTACKS)); } // TRAINING: your time, or the attacks stopped
     else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL');
       const sec = Math.ceil(m.goldenClock), hot = sec <= 15 && sec > 0; $('clock').classList.toggle('stress', hot); // owner: "gives you that stress"
       if (hot && sec !== this.goldTick) { this.goldTick = sec; Sfx.tick(); } }
@@ -1181,6 +1194,19 @@ const UI = {
     if (r.goalsDone && r.goalsDone.length) $('r-daily').innerHTML += r.goalsDone.map((t) => `<span class="label pl-tier">GOAL DONE: ${esc(t)}</span>`).join('');
     $('hint').hidden = true;
     $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
+  },
+  /** TRAINING: a drill's result (Drill.finish): the time or the attacks stopped, the stars, the rewards for new stars */
+  showDrill(o) {
+    const r = o.r, D = DRILLS[r.mode];
+    $('r-again').textContent = 'TRY AGAIN'; $('r-lobby').textContent = 'TRAINING';
+    $('r-title').textContent = D.name; $('r-title').style.color = D.hex;
+    $('r-score').innerHTML = `<span>${r.kind === 'run' ? r.score.toFixed(2) + ' SECONDS' : r.score + ' OF ' + DRILL_ATTACKS + ' STOPPED'}</span><span class="chip">${o.better ? 'NEW BEST' : TrainUI.best(r.mode, o.rec)}</span>`;
+    $('r-stats').innerHTML = `<div class="dr-res">${TrainUI.stars(r.stars)}<span class="label">${r.kind === 'run' ? 'STARS AT ' + r.par.map((t) => t.toFixed(1) + 'S').join(', ') : 'STARS AT 3, 4 AND 5 STOPPED'}</span></div>`;
+    $('r-earn').innerHTML = o.got.length ? o.got.map((t) => `<div><span>${esc(t)}</span><span></span></div>`).join('') : `<div class="idle-note"><span>${o.rec.stars >= 3 ? 'ALL 3 STARS ARE YOURS. GO FOR A NEW BEST' : 'NO NEW STAR THIS TIME. NEXT STAR: ' + loginText(D.reward[o.rec.stars])}</span></div>`;
+    $('r-rank').hidden = true; $('r-xp').innerHTML = ''; $('r-pass').innerHTML = ''; $('r-daily').innerHTML = '';
+    $('hint').hidden = true;
+    $('scr-results').hidden = false; Music.set(true);
+    if (o.got.length) Sfx.fanfare(2);
   },
   /** the tutorial is done: a first-time reward and a button straight into a quick match */
   showTutorialDone(first) {

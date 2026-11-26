@@ -20,6 +20,8 @@ const MODES = {
   mega: { name: 'MEGA GOAL', ranked: false, items: false, goalW: F.W - F.POST, tip: 'THE GOAL IS AS WIDE AS THE PITCH' },
   chaos: { name: 'CHAOS', ranked: false, items: false, chaos: true, tip: 'THE RULES CHANGE EVERY 25 SECONDS' },
   bomb: { name: 'BOMB BALL', ranked: false, items: false, bomb: true, tip: 'THE BALL IS A BOMB · IF IT GOES OFF IN YOUR HALF, THEY SCORE' },
+  drillrun: { name: 'SPRINT DRILL', ranked: false, items: false, drill: 'run' },
+  drilldef: { name: 'DEFENDING DRILL', ranked: false, items: false, drill: 'def' },
   tiny: { name: 'TINY GOALS', ranked: false, items: false, goalW: 1.5, goalH: 1.75, noKeeper: true, tip: 'TINY GOALS AND NO KEEPERS · AIM CAREFULLY' },
   heist: { name: 'OMEGA CORES', ranked: false, items: false, heist: true, tip: 'SCORE TO TAKE THEIR BEST CORE AND ITS POWER · WIN AND YOU SNAP THEM AWAY' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
@@ -64,7 +66,7 @@ class Match {
     this.buildTeams(opts);
     // whose PASS calls make teammates look up (the human; in a test match, a bot striker that calls like a human)
     this.caller = opts.caller ? this.teams[0].find((p) => p.role === leadRole(this.rolesFor(0))) : this.autopilot ? null : this.human;
-    if (this.cfg.practice && this.human) this.startFreeKicks(); else if (this.cfg.tutorial && this.human) this.startTutorial(); else this.setupKickoff(0, true, !!opts.intro); // the intro (Game.beginIntro): no kickoff banner until it is over
+    if (this.cfg.practice && this.human) this.startFreeKicks(); else if (this.cfg.tutorial && this.human) this.startTutorial(); else if (this.cfg.drill && this.human) this.startDrill(); else this.setupKickoff(0, true, !!opts.intro); // the intro (Game.beginIntro): no kickoff banner until it is over
   }
   /* ---------- setup ---------- */
   /** a team's line-up (opts.setups to choose). 5v5: ultra defensive, ultra attacking or wide; 4v4: classic or wide (a left
@@ -80,6 +82,8 @@ class Match {
     if (this.cfg.practice && this.cfg.keeper) return team === 0 ? ['GK', 'DEF', 'DEF2'] : ['GK', 'ST', 'MID']; // keeper practice: you in goal with two in your wall, their taker
     if (this.cfg.practice) return team === 0 ? ['ST'] : ['GK', 'DEF', 'DEF2', 'MID', 'ST']; // free kicks: you against a keeper, a wall and defenders in the box
     if (this.cfg.tutorial) return team === 0 ? ['ST', 'MID'] : ['DEF']; // the tutorial: you, a teammate and one defender (an empty goal)
+    if (this.cfg.drill === 'run') return team === 0 ? ['ST'] : ['GK']; // TRAINING: the sprint drill, you alone (their keeper just stands there)
+    if (this.cfg.drill === 'def') return team === 0 ? ['GK', 'DEF'] : ['ST', 'MID']; // the defending drill: you and your keeper against two attackers
     if (this.cfg.roster && this.cfg.roster.length === this.size) return this.cfg.roster; // a mode's own line-up (Quick Match: a winger)
     const S = this.setupOf(team);
     return S ? S.roles : ROSTERS[this.size];
@@ -96,7 +100,7 @@ class Match {
     }
     for (let team = 0; team < 2; team++) {
       const roles = this.rolesFor(team), lead = leadRole(roles);
-      const mine = this.cfg.keeper ? 'GK' : team === 0 && opts.role && !this.cfg.tutorial && !this.cfg.practice && roles.includes(opts.role) && !(opts.role === 'GK' && this.cfg.noKeeper) ? opts.role : lead; // the position you picked last time (in goal too), when this line-up has it; keeper practice: in goal
+      const mine = this.cfg.keeper ? 'GK' : team === 0 && opts.role && !this.cfg.tutorial && !this.cfg.practice && !this.cfg.drill && roles.includes(opts.role) && !(opts.role === 'GK' && this.cfg.noKeeper) ? opts.role : lead; // the position you picked last time (in goal too), when this line-up has it; keeper practice: in goal
       for (const role of roles) {
         if (this.cfg.noKeeper && role === 'GK') continue; // No Keepers: open goals
         const net = opts.humans ? seat[team + role] : null;
@@ -146,6 +150,7 @@ class Match {
     for (const it of this.items) this.drop(it.mesh);
     for (const pr of this.projectiles) this.drop(pr.mesh);
     for (const h of this.hazards) this.drop(h.mesh, h.type === 'wall');
+    if (this.drill) for (const g of this.drill.meshes) { this.scene.remove(g); g.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }
     FX.clear();
   }
   /** remove a transient mesh and free its material (and geometry when it is not shared) */
@@ -285,7 +290,8 @@ class Match {
     if (ph === 'goal' && this.tut && this.phaseT >= 2) { this.phase = 'play'; this.phaseT = 0; const h = this.human; this.ball.reset(clamp(h.pos.x, -F.W + 2, F.W - 2), clamp(h.pos.z, -F.L + 3, F.L - 3)); }
     if (ph === 'goal' && !this.tut && this.phaseT >= (this.fk ? 2.4 : 3.9)) { if (this.fk) this.nextFreeKick(); else if (this.pendingEnd) this.endMatch(); else this.setupKickoff(1 - this.lastGoal.team); }
     if (ph === 'out' && this.phaseT >= 1.05) this.doRestart();
-    if ((ph === 'play' || ph === 'out') && !this.fk && !this.tut) this.tickClock(dt);
+    if ((ph === 'play' || ph === 'out') && !this.fk && !this.tut && !this.drill) this.tickClock(dt);
+    if (this.drill) this.updateDrill(dt);
     if (this.hill && ph === 'play' && !this.fk) this.updateHill(dt);
     if (this.heist) this.updateHeist(dt);
     if (this.chaos) this.updateChaos(dt);
@@ -1615,6 +1621,87 @@ class Match {
     this.label(p, 'YOU', '#ffcb3d', 1.2);
     Hud.switched(p);
   }
+  /* ---------- TRAINING drills (DRILLS in 07_data.js) ---------- */
+  startDrill() {
+    const kind = this.cfg.drill, h = this.human, s = this.dir(h.team);
+    const D = this.drill = { kind, t: 0, n: 0, stops: 0, goals: 0, wait: 0, go: 1.4, done: false, gates: [], meshes: [], par: [0, 0, 0] };
+    this.phase = 'play'; this.phaseT = 0;
+    if (kind === 'run') {
+      D.gates = DRILL_GATES.map(([x, z]) => ({ x, z: z * s }));
+      let L = 0, px = DRILL_START[0], pz = DRILL_START[1] * s;
+      for (const g of D.gates) { L += Math.hypot(g.x - px, g.z - pz); px = g.x; pz = g.z; }
+      D.par = [L / 6.2, L / 7.6, L / 8.8]; // 1, 2 and 3 stars (a run is 7.6 blocks a second, a sprint 11.4 until the stamina runs out)
+      h.pos.set(DRILL_START[0], 0, DRILL_START[1] * s); h.vel.set(0, 0, 0); h.yaw = s > 0 ? 0 : Math.PI;
+      this.ball.reset(F.W - 2, -F.L * s + 2); // out of the way
+      for (const p of this.players) if (p !== h) p.wall = true;
+      if (World.renderer) D.gates.forEach((g, i) => {
+        const grp = new THREE.Group(), ring = new THREE.Mesh(new THREE.RingGeometry(1.7, 2.3, 28), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; grp.add(ring);
+        for (const sx of [-2.4, 2.4]) { const pole = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.6, 0.22), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false })); pole.position.set(sx, 1.3, 0); grp.add(pole); }
+        grp.position.set(g.x, 0, g.z); this.scene.add(grp); D.meshes.push(grp);
+      });
+      this.drillPaint();
+      Hud.banner('SPRINT DRILL', 'RUN THROUGH THE 8 GATES IN ORDER', DRILLS.drillrun.hex, true);
+    } else { this.drillAttack(); Hud.banner('DEFENDING DRILL', 'STOP ' + DRILL_ATTACKS + ' ATTACKS: WIN THE BALL OR PUT IT OUT', DRILLS.drilldef.hex, true); }
+  }
+  /** SPRINT: the next gate gold, the ones after it white, the ones done gone */
+  drillPaint() {
+    const D = this.drill;
+    D.meshes.forEach((g, i) => { g.visible = i >= D.n; const c = i === D.n ? 0xffcb3d : 0xffffff; g.children.forEach((o) => o.material.color.setHex(c)); });
+  }
+  /** DEFENDING: a new attack from the halfway line, their striker with the ball */
+  drillAttack() {
+    const D = this.drill, h = this.human, s = this.dir(h.team), b = this.ball;
+    D.t = 0; D.wait = 0;
+    const st = this.teams[1].find((p) => p.role === 'ST'), mid = this.teams[1].find((p) => p.role === 'MID'), x = rand(-10, 10);
+    for (const p of this.players) { p.setState('free'); p.vel.set(0, 0, 0); p.wall = false; p.charging = false; p.dash = null; p.slide = null; p.kickT = -1; }
+    st.pos.set(x, 0, 0); mid.pos.set(x > 0 ? x - 12 : x + 12, 0, 6 * s); st.yaw = mid.yaw = s > 0 ? Math.PI : 0;
+    h.pos.set(0, 0, -30 * s); h.yaw = s > 0 ? 0 : Math.PI;
+    const gk = this.keeperOf(h.team); if (gk) gk.pos.set(0, 0, -(F.L - 2) * s);
+    b.reset(st.pos.x, st.pos.z); b.kick = null; this.possess(st, true);
+    this.phase = 'play';
+  }
+  updateDrill(dt) {
+    const D = this.drill, h = this.human;
+    if (!D || D.done || !h) return;
+    if (D.kind === 'run') {
+      if (D.go > 0) { // ready... GO!
+        D.go -= dt; h.pos.set(DRILL_START[0], 0, DRILL_START[1] * this.dir(h.team)); h.vel.set(0, 0, 0);
+        if (D.go <= 0) { Hud.banner('GO!', '', '#2ee38f', true); Sfx.whistle(1); }
+        return;
+      }
+      D.t += dt;
+      const g = D.gates[D.n];
+      if (g && Math.hypot(h.pos.x - g.x, h.pos.z - g.z) < 2.5) {
+        D.n++; FX.ring(g.x, 0.2, g.z, '#2ee38f', 2.4, 24); FX.sparks(g.x, 1.2, g.z, '#ffcb3d', 14, 5); Sfx.coin(); this.drillPaint();
+        if (D.n >= D.gates.length) this.endDrill(); else this.label(h, D.n + ' / ' + D.gates.length, '#ffcb3d', 0.8);
+      }
+      const ng = D.meshes[D.n]; if (ng) ng.scale.setScalar(1 + Math.sin(this.time * 8) * 0.06);
+      return;
+    }
+    if (D.wait > 0) { D.wait -= dt; if (D.wait <= 0) { if (D.n >= DRILL_ATTACKS) this.endDrill(); else this.drillAttack(); } return; }
+    D.t += dt;
+    const o = this.ball.owner;
+    if ((o && o.team === h.team) || D.t > 25) this.drillEvent('won'); // you (or your keeper) have it, or they ran out of ideas
+  }
+  /** DEFENDING: one attack is over (won, put out or a goal) */
+  drillEvent(kind) {
+    const D = this.drill;
+    if (!D || D.kind !== 'def' || D.wait > 0 || D.done) return;
+    D.n++;
+    if (kind === 'goal') { D.goals++; Hud.banner('GOAL', 'ATTACK ' + D.n + ' OF ' + DRILL_ATTACKS, '#ff4d5e', true); Sfx.deny(); }
+    else { D.stops++; Hud.banner('STOPPED!', 'ATTACK ' + D.n + ' OF ' + DRILL_ATTACKS + ' · ' + D.stops + ' STOPPED', '#2ee38f', true); Sfx.coin(); }
+    for (const p of this.teams[1]) { p.wall = true; p.mx = p.mz = 0; }
+    D.wait = 1.4; this.phase = 'play';
+  }
+  endDrill() {
+    const D = this.drill; if (D.done) return;
+    D.done = true;
+    const score = D.kind === 'run' ? Math.round(D.t * 100) / 100 : D.stops, stars = Drill.stars(D.kind, score, D.par);
+    this.result = { res: 'drill', drill: { kind: D.kind, mode: this.mode, score, stars, par: D.par } };
+    this.phase = 'end'; this.phaseT = 0; Sfx.whistle(3);
+    Hud.banner(D.kind === 'run' ? score.toFixed(2) + ' SECONDS' : D.stops + ' OF ' + DRILL_ATTACKS + ' STOPPED', stars ? stars + (stars > 1 ? ' STARS' : ' STAR') : 'TRY AGAIN FOR A STAR', '#ffcb3d', true);
+  }
   /** CHAOS: the twist on now (CHAOS_TWISTS), or null */
   twist() { return this.chaos && this.chaos.on ? CHAOS_TWISTS[this.chaos.on] : null; }
   /** CHAOS: a twist for CHAOS_LEN seconds, then CHAOS_GAP seconds of normal football, then another (never the same twice) */
@@ -1834,6 +1921,7 @@ class Match {
     if (ax > F.W + r || az > F.L + r) this.onOut();
   }
   onGoal(side) {
+    if (this.drill) { this.drillEvent('goal'); return; } // TRAINING: a goal ends that attack
     const b = this.ball, team = side > 0 ? 0 : 1, k = b.kick;
     if (this.fk && this.fk.battle) { this.battleGoal(team); return; }
     if (this.cfg.aerialOnly && !(k && k.aerial)) { // Volleys Only: a goal off the ground does not count
@@ -1896,6 +1984,7 @@ class Match {
     b.owner = null; b.kick = null;
   }
   onOut() {
+    if (this.drill) { this.drillEvent('out'); return; } // TRAINING: put out = stopped
     if (this.tut) { const h = this.human; this.ball.reset(clamp(h.pos.x, -F.W + 2, F.W - 2), clamp(h.pos.z, -F.L + 3, F.L - 3)); return; } // the tutorial: the ball comes back to you
     if (this.fk) { this.fkResult(this.fk.hit || 'MISS'); return; } // free kicks: no throw-ins, just the next kick
     const b = this.ball;

@@ -19,7 +19,7 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
   };
   const A = await mk({ viewport: { width: 1280, height: 720 } });
   await A.evaluate(() => { const s = EGO.Save.data.settings; s.cam = 'third'; s.camPicked = true; s.cutins = false; EGO.Save.data.style = 'ROOKIE'; EGO.Save.data.spunStyle = null; });
-  await A.click('#go-fk');
+  await A.click('#go-train'); await A.click('#go-fk'); // FREE KICKS is on the TRAINING screen now
   const setup = await A.evaluate(() => {
     const m = EGO.Game.match; EGO.Game.stepManual(40, true);
     const h = m.human, gz = m.oppGoalZ(0), want = Math.atan2(-m.fk.x, gz - m.fk.z);
@@ -88,7 +88,7 @@ const URL = require('url').pathToFileURL(path.join(__dirname, '..', 'docs', 'ind
   for (const [w, h, tag] of [[844, 390, 'side'], [390, 844, 'up']]) {
     const P = await mk({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
     await P.evaluate(() => { EGO.Save.data.settings.autoFs = false; });
-    await P.tap('#go-fk');
+    await P.tap('#go-train'); await P.tap('#go-fk');
     const lay = await P.evaluate(() => {
       EGO.Game.stepManual(30, true);
       const r = (sel) => { const q = document.querySelector(sel).getBoundingClientRect(); return { l: Math.round(q.left), r: Math.round(q.right), t: Math.round(q.top), b: Math.round(q.bottom) }; };

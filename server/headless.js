@@ -34,7 +34,7 @@ TimeCtl.slowMo = TimeCtl.hitStop = () => {};
 Shake.add = () => {};
 Save.data = Save.defaults();
 Save.data.settings.cutins = false;
-return { Match, World, Save, Hud, TEAM, MODES, CINE_EMOTES, CORE_POWERS, ovrOf, teamOvr, SQUAD_KEYS, AWAKEN_STORY, botStyle, poolFor, Goals, STORY, STORY_EVENTS, Story, SQUAD_OF, ITEMS, ITEM_IDS, CHAOS_TWISTS, BOMB_FUSE, gravity: () => BALL_G, ROSTERS, CLUBS, CLUB_IDS, STYLES, FLOWS, SKINS, SKIN_SLOTS, matchSides, teamSizeFor, lookFor, QUICK_CHAT, TIER_SKILL, EMOTES, ABILITIES, fkIdeal, FK_TYPES, TUT_STEPS, CURVE_ANGLE, CURVE_MIN, BALL_G, F };
+return { Match, World, Save, Hud, TEAM, MODES, CINE_EMOTES, CORE_POWERS, Drill, DRILLS, Daily, ovrOf, teamOvr, SQUAD_KEYS, AWAKEN_STORY, botStyle, poolFor, Goals, STORY, STORY_EVENTS, Story, SQUAD_OF, ITEMS, ITEM_IDS, CHAOS_TWISTS, BOMB_FUSE, gravity: () => BALL_G, ROSTERS, CLUBS, CLUB_IDS, STYLES, FLOWS, SKINS, SKIN_SLOTS, matchSides, teamSizeFor, lookFor, QUICK_CHAT, TIER_SKILL, EMOTES, ABILITIES, fkIdeal, FK_TYPES, TUT_STEPS, CURVE_ANGLE, CURVE_MIN, BALL_G, F };
 `;
 
 function load() {

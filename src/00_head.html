@@ -602,6 +602,30 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 .subs-list.off .fc-card { opacity: .45; pointer-events: none; }
 @media (max-width: 760px) { .tm-box { grid-template-columns: 1fr; } .tm-pitch { max-width: 420px; justify-self: center; width: 100%; } }
 @media (max-height: 460px) { .tm-box { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); } .fc-card { width: 64px; height: 88px; } .fc-face { width: 36px; height: 36px; } .fc-ovr { font-size: 18px; top: 7px; left: 5px; } .fc-pos { top: 23px; left: 6px; } .fc-name { font-size: 11px; max-width: 60px; } .tm-bench { grid-template-columns: repeat(3, 64px); } }
+/* TRAINING and the drills' stars; the DAILY login calendar */
+.tr-box { padding: 16px; display: grid; gap: 12px; }
+.tr-box h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 32px; line-height: .9; }
+.tr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 8px; }
+.tr-card { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; padding: 10px 12px 12px 10px; background: var(--slate-2); border: var(--px) solid var(--ink); box-shadow: inset 4px 0 0 var(--mc), inset 0 -5px 0 rgba(0,0,0,.3), 4px 4px 0 rgba(0,0,0,.45); }
+.tr-card:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.tr-card:active { transform: translate(3px, 3px); }
+@media (hover: hover) { .tr-card:hover { background: var(--slate-3); } }
+.tr-meta { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; margin-top: 4px; font-family: var(--font-label); font-size: 10px; letter-spacing: .06em; color: var(--muted); }
+.tr-next { color: var(--emerald); }
+.dr-stars { display: inline-flex; gap: 3px; }
+.dr-stars i { width: 18px; height: 18px; background: var(--slate-3); clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.dr-stars i.on { background: var(--gold); }
+.dr-res { grid-column: 1 / -1; display: grid; justify-items: center; gap: 6px; }
+.dr-res .dr-stars i { width: 44px; height: 44px; }
+.dl-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.dl-day { display: grid; justify-items: center; gap: 3px; padding: 6px 2px 7px; background: var(--ink); box-shadow: inset 0 0 0 2px var(--slate-3); text-align: center; }
+.dl-day span { font-family: var(--font-label); font-size: 8px; letter-spacing: .04em; color: var(--muted); }
+.dl-day img { width: 16px; height: 16px; image-rendering: pixelated; }
+.dl-day b { font-family: var(--font-display); font-weight: 400; font-size: 15px; line-height: .9; color: var(--text); white-space: nowrap; }
+.dl-day.got { background: #0e3a26; box-shadow: inset 0 0 0 2px var(--emerald); }
+.dl-day.now { box-shadow: inset 0 0 0 2px var(--gold), 0 0 12px rgba(255,203,61,.5); }
+.dl-day.big { background: linear-gradient(180deg, #4a3408, var(--ink)); }
+.dl-day.big.got { background: linear-gradient(180deg, #2a5a3a, #0e3a26); }
 .dl-card { background: var(--slate-2); padding: 12px; display: grid; gap: 8px; }
 .dl-card > div { display: grid; gap: 6px; justify-items: start; }
 .dl-big { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; color: var(--gold); }

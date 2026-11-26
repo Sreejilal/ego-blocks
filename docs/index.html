@@ -626,6 +626,30 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 .subs-list.off .fc-card { opacity: .45; pointer-events: none; }
 @media (max-width: 760px) { .tm-box { grid-template-columns: 1fr; } .tm-pitch { max-width: 420px; justify-self: center; width: 100%; } }
 @media (max-height: 460px) { .tm-box { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); } .fc-card { width: 64px; height: 88px; } .fc-face { width: 36px; height: 36px; } .fc-ovr { font-size: 18px; top: 7px; left: 5px; } .fc-pos { top: 23px; left: 6px; } .fc-name { font-size: 11px; max-width: 60px; } .tm-bench { grid-template-columns: repeat(3, 64px); } }
+/* TRAINING and the drills' stars; the DAILY login calendar */
+.tr-box { padding: 16px; display: grid; gap: 12px; }
+.tr-box h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 32px; line-height: .9; }
+.tr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 8px; }
+.tr-card { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 12px; align-items: center; padding: 10px 12px 12px 10px; background: var(--slate-2); border: var(--px) solid var(--ink); box-shadow: inset 4px 0 0 var(--mc), inset 0 -5px 0 rgba(0,0,0,.3), 4px 4px 0 rgba(0,0,0,.45); }
+.tr-card:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.tr-card:active { transform: translate(3px, 3px); }
+@media (hover: hover) { .tr-card:hover { background: var(--slate-3); } }
+.tr-meta { display: flex; align-items: center; gap: 6px 12px; flex-wrap: wrap; margin-top: 4px; font-family: var(--font-label); font-size: 10px; letter-spacing: .06em; color: var(--muted); }
+.tr-next { color: var(--emerald); }
+.dr-stars { display: inline-flex; gap: 3px; }
+.dr-stars i { width: 18px; height: 18px; background: var(--slate-3); clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.dr-stars i.on { background: var(--gold); }
+.dr-res { grid-column: 1 / -1; display: grid; justify-items: center; gap: 6px; }
+.dr-res .dr-stars i { width: 44px; height: 44px; }
+.dl-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.dl-day { display: grid; justify-items: center; gap: 3px; padding: 6px 2px 7px; background: var(--ink); box-shadow: inset 0 0 0 2px var(--slate-3); text-align: center; }
+.dl-day span { font-family: var(--font-label); font-size: 8px; letter-spacing: .04em; color: var(--muted); }
+.dl-day img { width: 16px; height: 16px; image-rendering: pixelated; }
+.dl-day b { font-family: var(--font-display); font-weight: 400; font-size: 15px; line-height: .9; color: var(--text); white-space: nowrap; }
+.dl-day.got { background: #0e3a26; box-shadow: inset 0 0 0 2px var(--emerald); }
+.dl-day.now { box-shadow: inset 0 0 0 2px var(--gold), 0 0 12px rgba(255,203,61,.5); }
+.dl-day.big { background: linear-gradient(180deg, #4a3408, var(--ink)); }
+.dl-day.big.got { background: linear-gradient(180deg, #2a5a3a, #0e3a26); }
 .dl-card { background: var(--slate-2); padding: 12px; display: grid; gap: 8px; }
 .dl-card > div { display: grid; gap: 6px; justify-items: start; }
 .dl-big { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; color: var(--gold); }
@@ -1439,7 +1463,7 @@ const Save = {
   defaults() {
     return {
       v: 1, emeralds: 500, styles: ['ROOKIE'], flows: [], style: 'ROOKIE', flow: null,
-      xp: 0, history: [], pass: { season: 0, week: -1, xp: 0, got: 0, prog: {}, done: [] }, daily: { gift: '', day: '', ch: '', prog: 0, done: false }, best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
+      xp: 0, history: [], pass: { season: 0, week: -1, xp: 0, got: 0, prog: {}, done: [] }, daily: { gift: '', day: '', ch: '', prog: 0, done: false, login: 0 }, drills: {}, best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
@@ -1468,7 +1492,9 @@ const Save = {
     out.xp = Math.max(0, Math.floor(Number(out.xp) || 0));
     const dl = out.daily = Object.assign({}, def.daily, out.daily && typeof out.daily === 'object' ? out.daily : {});
     for (const k of ['gift', 'day', 'ch']) dl[k] = typeof dl[k] === 'string' ? dl[k].slice(0, 16) : '';
-    dl.prog = clamp(Math.floor(Number(dl.prog) || 0), 0, 99); dl.done = !!dl.done;
+    dl.prog = clamp(Math.floor(Number(dl.prog) || 0), 0, 99); dl.done = !!dl.done; dl.login = Math.max(0, Math.floor(Number(dl.login) || 0)); // days of the login calendar
+    const dr = out.drills && typeof out.drills === 'object' && !Array.isArray(out.drills) ? out.drills : {}; out.drills = {}; // TRAINING: best and stars per drill
+    for (const k of ['drillrun', 'drilldef']) if (dr[k] && typeof dr[k] === 'object') out.drills[k] = { best: Number.isFinite(dr[k].best) ? dr[k].best : null, stars: clamp(Math.floor(Number(dr[k].stars) || 0), 0, 3) };
     const ps = out.pass = Object.assign({}, def.pass, out.pass && typeof out.pass === 'object' ? out.pass : {});
     for (const k of ['season', 'week', 'xp', 'got']) ps[k] = Math.floor(Number(ps[k]) || 0);
     ps.xp = Math.max(0, ps.xp); ps.got = clamp(ps.got, 0, 30);
@@ -5700,6 +5726,31 @@ const DAILY_CHALLENGES = {
 };
 const DAILY_IDS = Object.keys(DAILY_CHALLENGES);
 const DAILY_REWARD = { emeralds: 150, xp: 200 };
+/** the login calendar (owner, Nov 2026: "a need to login and play"): each day you open the daily gift you also get the next
+    day of LOGIN_REWARDS, a big one on day 7, then it starts again. Missing days never resets it (d.daily.login counts them) */
+const LOGIN_REWARDS = [{ em: 50 }, { em: 100 }, { bp: 1 }, { em: 150 }, { bp: 2 }, { em: 250 }, { em: 500, bp: 5 }];
+const loginText = (r) => [r.em ? '+' + r.em + ' EMERALDS' : null, r.bp ? '+' + r.bp + (r.bp > 1 ? ' BLUEPRINTS' : ' BLUEPRINT') : null].filter(Boolean).join(' ');
+/* TRAINING drills (owner, Nov 2026: "add training stuff like defending or running"): up to 3 stars; the first time you reach
+   each star its reward is yours. SPRINT: run through the gates in order (stars for the time, against par times worked out
+   from the course length); DEFENDING: stop DRILL_ATTACKS attacks of two attackers (win the ball or put it out) */
+const DRILLS = {
+  drillrun: { name: 'SPRINT DRILL', icon: 'dash', hex: '#3fd6ff', line: 'Run through the 8 gates in order, as fast as you can. Sprint, but save some stamina.', reward: [{ em: 60 }, { em: 120 }, { em: 200, bp: 1 }] },
+  drilldef: { name: 'DEFENDING DRILL', icon: 'tackle', hex: '#ff6b3d', line: 'Two attackers, five attacks. Win the ball or clear it before they score.', reward: [{ em: 60 }, { em: 120 }, { em: 200, bp: 1 }] },
+};
+const DRILL_ATTACKS = 5, DRILL_GATES = [[-12, -36], [12, -24], [-12, -12], [12, 0], [-12, 12], [12, 24], [-5, 35], [5, 45]], DRILL_START = [0, -46];
+const Drill = {
+  /** stars for a result: SPRINT by time against par (D.par: 1, 2 and 3 star times), DEFENDING by attacks stopped (3, 4, 5) */
+  stars(kind, score, par) { return kind === 'run' ? (score <= par[2] ? 3 : score <= par[1] ? 2 : score <= par[0] ? 1 : 0) : score >= 5 ? 3 : score >= 4 ? 2 : score >= 3 ? 1 : 0; },
+  /** after a drill: best result, stars, and the reward of every star reached for the first time */
+  finish(d, r) {
+    const rec = d.drills[r.mode] || (d.drills[r.mode] = { best: null, stars: 0 }), got = [], before = rec.stars;
+    const better = rec.best == null || (r.kind === 'run' ? r.score < rec.best : r.score > rec.best);
+    if (better) rec.best = r.score;
+    for (let k = before + 1; k <= r.stars; k++) { const w = DRILLS[r.mode].reward[k - 1]; if (w.em) d.emeralds += w.em; if (w.bp) d.bp += w.bp; got.push(k + (k > 1 ? ' STARS: ' : ' STAR: ') + loginText(w)); }
+    rec.stars = Math.max(before, r.stars);
+    return { r, rec, got, better };
+  },
+};
 const GIFTS = [[45, { emeralds: 100 }], [25, { emeralds: 150 }], [15, { emeralds: 250 }], [10, { xp: 300 }], [5, { emeralds: 500, jackpot: true }]];
 /** today on this device, so the day turns over at your own midnight */
 function dayKey(t = Date.now()) { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -5715,7 +5766,10 @@ const Daily = {
     for (const [w, x] of GIFTS) { if (r < w) { g = x; break; } r -= w; }
     if (g.emeralds) d.emeralds += g.emeralds;
     if (g.xp) d.xp += g.xp;
-    return g;
+    const day = d.daily.login % LOGIN_REWARDS.length, L = LOGIN_REWARDS[day]; // and the next day of the login calendar
+    if (L.em) d.emeralds += L.em; if (L.bp) d.bp += L.bp;
+    d.daily.login++;
+    return Object.assign({ login: { day: day + 1, r: L } }, g);
   },
   /** after a match: count it towards today's challenge */
   award(d, m, res, hs) {
@@ -5849,6 +5903,8 @@ const MODES = {
   mega: { name: 'MEGA GOAL', ranked: false, items: false, goalW: F.W - F.POST, tip: 'THE GOAL IS AS WIDE AS THE PITCH' },
   chaos: { name: 'CHAOS', ranked: false, items: false, chaos: true, tip: 'THE RULES CHANGE EVERY 25 SECONDS' },
   bomb: { name: 'BOMB BALL', ranked: false, items: false, bomb: true, tip: 'THE BALL IS A BOMB · IF IT GOES OFF IN YOUR HALF, THEY SCORE' },
+  drillrun: { name: 'SPRINT DRILL', ranked: false, items: false, drill: 'run' },
+  drilldef: { name: 'DEFENDING DRILL', ranked: false, items: false, drill: 'def' },
   tiny: { name: 'TINY GOALS', ranked: false, items: false, goalW: 1.5, goalH: 1.75, noKeeper: true, tip: 'TINY GOALS AND NO KEEPERS · AIM CAREFULLY' },
   heist: { name: 'OMEGA CORES', ranked: false, items: false, heist: true, tip: 'SCORE TO TAKE THEIR BEST CORE AND ITS POWER · WIN AND YOU SNAP THEM AWAY' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
@@ -5893,7 +5949,7 @@ class Match {
     this.buildTeams(opts);
     // whose PASS calls make teammates look up (the human; in a test match, a bot striker that calls like a human)
     this.caller = opts.caller ? this.teams[0].find((p) => p.role === leadRole(this.rolesFor(0))) : this.autopilot ? null : this.human;
-    if (this.cfg.practice && this.human) this.startFreeKicks(); else if (this.cfg.tutorial && this.human) this.startTutorial(); else this.setupKickoff(0, true, !!opts.intro); // the intro (Game.beginIntro): no kickoff banner until it is over
+    if (this.cfg.practice && this.human) this.startFreeKicks(); else if (this.cfg.tutorial && this.human) this.startTutorial(); else if (this.cfg.drill && this.human) this.startDrill(); else this.setupKickoff(0, true, !!opts.intro); // the intro (Game.beginIntro): no kickoff banner until it is over
   }
   /* ---------- setup ---------- */
   /** a team's line-up (opts.setups to choose). 5v5: ultra defensive, ultra attacking or wide; 4v4: classic or wide (a left
@@ -5909,6 +5965,8 @@ class Match {
     if (this.cfg.practice && this.cfg.keeper) return team === 0 ? ['GK', 'DEF', 'DEF2'] : ['GK', 'ST', 'MID']; // keeper practice: you in goal with two in your wall, their taker
     if (this.cfg.practice) return team === 0 ? ['ST'] : ['GK', 'DEF', 'DEF2', 'MID', 'ST']; // free kicks: you against a keeper, a wall and defenders in the box
     if (this.cfg.tutorial) return team === 0 ? ['ST', 'MID'] : ['DEF']; // the tutorial: you, a teammate and one defender (an empty goal)
+    if (this.cfg.drill === 'run') return team === 0 ? ['ST'] : ['GK']; // TRAINING: the sprint drill, you alone (their keeper just stands there)
+    if (this.cfg.drill === 'def') return team === 0 ? ['GK', 'DEF'] : ['ST', 'MID']; // the defending drill: you and your keeper against two attackers
     if (this.cfg.roster && this.cfg.roster.length === this.size) return this.cfg.roster; // a mode's own line-up (Quick Match: a winger)
     const S = this.setupOf(team);
     return S ? S.roles : ROSTERS[this.size];
@@ -5925,7 +5983,7 @@ class Match {
     }
     for (let team = 0; team < 2; team++) {
       const roles = this.rolesFor(team), lead = leadRole(roles);
-      const mine = this.cfg.keeper ? 'GK' : team === 0 && opts.role && !this.cfg.tutorial && !this.cfg.practice && roles.includes(opts.role) && !(opts.role === 'GK' && this.cfg.noKeeper) ? opts.role : lead; // the position you picked last time (in goal too), when this line-up has it; keeper practice: in goal
+      const mine = this.cfg.keeper ? 'GK' : team === 0 && opts.role && !this.cfg.tutorial && !this.cfg.practice && !this.cfg.drill && roles.includes(opts.role) && !(opts.role === 'GK' && this.cfg.noKeeper) ? opts.role : lead; // the position you picked last time (in goal too), when this line-up has it; keeper practice: in goal
       for (const role of roles) {
         if (this.cfg.noKeeper && role === 'GK') continue; // No Keepers: open goals
         const net = opts.humans ? seat[team + role] : null;
@@ -5975,6 +6033,7 @@ class Match {
     for (const it of this.items) this.drop(it.mesh);
     for (const pr of this.projectiles) this.drop(pr.mesh);
     for (const h of this.hazards) this.drop(h.mesh, h.type === 'wall');
+    if (this.drill) for (const g of this.drill.meshes) { this.scene.remove(g); g.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }
     FX.clear();
   }
   /** remove a transient mesh and free its material (and geometry when it is not shared) */
@@ -6114,7 +6173,8 @@ class Match {
     if (ph === 'goal' && this.tut && this.phaseT >= 2) { this.phase = 'play'; this.phaseT = 0; const h = this.human; this.ball.reset(clamp(h.pos.x, -F.W + 2, F.W - 2), clamp(h.pos.z, -F.L + 3, F.L - 3)); }
     if (ph === 'goal' && !this.tut && this.phaseT >= (this.fk ? 2.4 : 3.9)) { if (this.fk) this.nextFreeKick(); else if (this.pendingEnd) this.endMatch(); else this.setupKickoff(1 - this.lastGoal.team); }
     if (ph === 'out' && this.phaseT >= 1.05) this.doRestart();
-    if ((ph === 'play' || ph === 'out') && !this.fk && !this.tut) this.tickClock(dt);
+    if ((ph === 'play' || ph === 'out') && !this.fk && !this.tut && !this.drill) this.tickClock(dt);
+    if (this.drill) this.updateDrill(dt);
     if (this.hill && ph === 'play' && !this.fk) this.updateHill(dt);
     if (this.heist) this.updateHeist(dt);
     if (this.chaos) this.updateChaos(dt);
@@ -7444,6 +7504,87 @@ class Match {
     this.label(p, 'YOU', '#ffcb3d', 1.2);
     Hud.switched(p);
   }
+  /* ---------- TRAINING drills (DRILLS in 07_data.js) ---------- */
+  startDrill() {
+    const kind = this.cfg.drill, h = this.human, s = this.dir(h.team);
+    const D = this.drill = { kind, t: 0, n: 0, stops: 0, goals: 0, wait: 0, go: 1.4, done: false, gates: [], meshes: [], par: [0, 0, 0] };
+    this.phase = 'play'; this.phaseT = 0;
+    if (kind === 'run') {
+      D.gates = DRILL_GATES.map(([x, z]) => ({ x, z: z * s }));
+      let L = 0, px = DRILL_START[0], pz = DRILL_START[1] * s;
+      for (const g of D.gates) { L += Math.hypot(g.x - px, g.z - pz); px = g.x; pz = g.z; }
+      D.par = [L / 6.2, L / 7.6, L / 8.8]; // 1, 2 and 3 stars (a run is 7.6 blocks a second, a sprint 11.4 until the stamina runs out)
+      h.pos.set(DRILL_START[0], 0, DRILL_START[1] * s); h.vel.set(0, 0, 0); h.yaw = s > 0 ? 0 : Math.PI;
+      this.ball.reset(F.W - 2, -F.L * s + 2); // out of the way
+      for (const p of this.players) if (p !== h) p.wall = true;
+      if (World.renderer) D.gates.forEach((g, i) => {
+        const grp = new THREE.Group(), ring = new THREE.Mesh(new THREE.RingGeometry(1.7, 2.3, 28), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 0.06; grp.add(ring);
+        for (const sx of [-2.4, 2.4]) { const pole = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.6, 0.22), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false })); pole.position.set(sx, 1.3, 0); grp.add(pole); }
+        grp.position.set(g.x, 0, g.z); this.scene.add(grp); D.meshes.push(grp);
+      });
+      this.drillPaint();
+      Hud.banner('SPRINT DRILL', 'RUN THROUGH THE 8 GATES IN ORDER', DRILLS.drillrun.hex, true);
+    } else { this.drillAttack(); Hud.banner('DEFENDING DRILL', 'STOP ' + DRILL_ATTACKS + ' ATTACKS: WIN THE BALL OR PUT IT OUT', DRILLS.drilldef.hex, true); }
+  }
+  /** SPRINT: the next gate gold, the ones after it white, the ones done gone */
+  drillPaint() {
+    const D = this.drill;
+    D.meshes.forEach((g, i) => { g.visible = i >= D.n; const c = i === D.n ? 0xffcb3d : 0xffffff; g.children.forEach((o) => o.material.color.setHex(c)); });
+  }
+  /** DEFENDING: a new attack from the halfway line, their striker with the ball */
+  drillAttack() {
+    const D = this.drill, h = this.human, s = this.dir(h.team), b = this.ball;
+    D.t = 0; D.wait = 0;
+    const st = this.teams[1].find((p) => p.role === 'ST'), mid = this.teams[1].find((p) => p.role === 'MID'), x = rand(-10, 10);
+    for (const p of this.players) { p.setState('free'); p.vel.set(0, 0, 0); p.wall = false; p.charging = false; p.dash = null; p.slide = null; p.kickT = -1; }
+    st.pos.set(x, 0, 0); mid.pos.set(x > 0 ? x - 12 : x + 12, 0, 6 * s); st.yaw = mid.yaw = s > 0 ? Math.PI : 0;
+    h.pos.set(0, 0, -30 * s); h.yaw = s > 0 ? 0 : Math.PI;
+    const gk = this.keeperOf(h.team); if (gk) gk.pos.set(0, 0, -(F.L - 2) * s);
+    b.reset(st.pos.x, st.pos.z); b.kick = null; this.possess(st, true);
+    this.phase = 'play';
+  }
+  updateDrill(dt) {
+    const D = this.drill, h = this.human;
+    if (!D || D.done || !h) return;
+    if (D.kind === 'run') {
+      if (D.go > 0) { // ready... GO!
+        D.go -= dt; h.pos.set(DRILL_START[0], 0, DRILL_START[1] * this.dir(h.team)); h.vel.set(0, 0, 0);
+        if (D.go <= 0) { Hud.banner('GO!', '', '#2ee38f', true); Sfx.whistle(1); }
+        return;
+      }
+      D.t += dt;
+      const g = D.gates[D.n];
+      if (g && Math.hypot(h.pos.x - g.x, h.pos.z - g.z) < 2.5) {
+        D.n++; FX.ring(g.x, 0.2, g.z, '#2ee38f', 2.4, 24); FX.sparks(g.x, 1.2, g.z, '#ffcb3d', 14, 5); Sfx.coin(); this.drillPaint();
+        if (D.n >= D.gates.length) this.endDrill(); else this.label(h, D.n + ' / ' + D.gates.length, '#ffcb3d', 0.8);
+      }
+      const ng = D.meshes[D.n]; if (ng) ng.scale.setScalar(1 + Math.sin(this.time * 8) * 0.06);
+      return;
+    }
+    if (D.wait > 0) { D.wait -= dt; if (D.wait <= 0) { if (D.n >= DRILL_ATTACKS) this.endDrill(); else this.drillAttack(); } return; }
+    D.t += dt;
+    const o = this.ball.owner;
+    if ((o && o.team === h.team) || D.t > 25) this.drillEvent('won'); // you (or your keeper) have it, or they ran out of ideas
+  }
+  /** DEFENDING: one attack is over (won, put out or a goal) */
+  drillEvent(kind) {
+    const D = this.drill;
+    if (!D || D.kind !== 'def' || D.wait > 0 || D.done) return;
+    D.n++;
+    if (kind === 'goal') { D.goals++; Hud.banner('GOAL', 'ATTACK ' + D.n + ' OF ' + DRILL_ATTACKS, '#ff4d5e', true); Sfx.deny(); }
+    else { D.stops++; Hud.banner('STOPPED!', 'ATTACK ' + D.n + ' OF ' + DRILL_ATTACKS + ' · ' + D.stops + ' STOPPED', '#2ee38f', true); Sfx.coin(); }
+    for (const p of this.teams[1]) { p.wall = true; p.mx = p.mz = 0; }
+    D.wait = 1.4; this.phase = 'play';
+  }
+  endDrill() {
+    const D = this.drill; if (D.done) return;
+    D.done = true;
+    const score = D.kind === 'run' ? Math.round(D.t * 100) / 100 : D.stops, stars = Drill.stars(D.kind, score, D.par);
+    this.result = { res: 'drill', drill: { kind: D.kind, mode: this.mode, score, stars, par: D.par } };
+    this.phase = 'end'; this.phaseT = 0; Sfx.whistle(3);
+    Hud.banner(D.kind === 'run' ? score.toFixed(2) + ' SECONDS' : D.stops + ' OF ' + DRILL_ATTACKS + ' STOPPED', stars ? stars + (stars > 1 ? ' STARS' : ' STAR') : 'TRY AGAIN FOR A STAR', '#ffcb3d', true);
+  }
   /** CHAOS: the twist on now (CHAOS_TWISTS), or null */
   twist() { return this.chaos && this.chaos.on ? CHAOS_TWISTS[this.chaos.on] : null; }
   /** CHAOS: a twist for CHAOS_LEN seconds, then CHAOS_GAP seconds of normal football, then another (never the same twice) */
@@ -7663,6 +7804,7 @@ class Match {
     if (ax > F.W + r || az > F.L + r) this.onOut();
   }
   onGoal(side) {
+    if (this.drill) { this.drillEvent('goal'); return; } // TRAINING: a goal ends that attack
     const b = this.ball, team = side > 0 ? 0 : 1, k = b.kick;
     if (this.fk && this.fk.battle) { this.battleGoal(team); return; }
     if (this.cfg.aerialOnly && !(k && k.aerial)) { // Volleys Only: a goal off the ground does not count
@@ -7725,6 +7867,7 @@ class Match {
     b.owner = null; b.kick = null;
   }
   onOut() {
+    if (this.drill) { this.drillEvent('out'); return; } // TRAINING: put out = stopped
     if (this.tut) { const h = this.human; this.ball.reset(clamp(h.pos.x, -F.W + 2, F.W - 2), clamp(h.pos.z, -F.L + 3, F.L - 3)); return; } // the tutorial: the ball comes back to you
     if (this.fk) { this.fkResult(this.fk.hit || 'MISS'); return; } // free kicks: no throw-ins, just the next kick
     const b = this.ball;
@@ -12592,6 +12735,42 @@ const TeamUI = {
   },
 };
 
+/* ---- 11_train.js ---- */
+/* =====================================================================
+   TrainUI: the TRAINING screen (owner, Nov 2026: "add training stuff like defending or running"): the SPRINT and DEFENDING
+   drills with their stars, best result and the reward for each star, then FREE KICKS, KEEPER PRACTICE and the TUTORIAL.
+   A drill ends with UI.showDrill (from Game.finishMatch, Drill.finish)
+   ===================================================================== */
+const TrainUI = {
+  tpl() {
+    return `<section id="scr-train" class="screen sub-screen" hidden>
+      <div class="sub-wrap">
+        <div class="sub-head"><h2>TRAINING</h2><button class="btn small" id="train-back" type="button">BACK</button></div>
+        <section class="panel tr-box"><div class="gp-th"><h3>DRILLS</h3><span class="gp-th-l">Earn up to 3 stars. Each star pays out the first time you reach it.</span></div><div class="tr-grid" id="tr-drills"></div></section>
+        <section class="panel tr-box"><div class="gp-th"><h3>PRACTICE</h3><span class="gp-th-l">No clock, no pressure.</span></div><div class="tr-grid" id="tr-practice"></div></section>
+      </div>
+    </section>`;
+  },
+  bind() {
+    $('train-back').addEventListener('click', () => { Sfx.click(); UI.show('lobby'); });
+    $('scr-train').addEventListener('click', (e) => { const b = e.target.closest('[data-mode]'); if (!b || !MODES[b.dataset.mode]) return; Sfx.init(); Sfx.click(); Game.startMatch(b.dataset.mode); });
+  },
+  stars(n) { return `<span class="dr-stars" aria-label="${n} of 3 stars">${[1, 2, 3].map((k) => `<i${k <= n ? ' class="on"' : ''}></i>`).join('')}</span>`; },
+  best(id, rec) { return rec && rec.best != null ? (id === 'drillrun' ? 'BEST ' + rec.best.toFixed(2) + 'S' : 'BEST ' + rec.best + ' / ' + DRILL_ATTACKS) : 'NOT TRIED YET'; },
+  render() {
+    const d = Save.data;
+    $('tr-drills').innerHTML = Object.keys(DRILLS).map((id) => {
+      const D = DRILLS[id], rec = d.drills[id] || { best: null, stars: 0 };
+      const next = D.reward[rec.stars] ? 'NEXT STAR: ' + loginText(D.reward[rec.stars]) : 'ALL 3 STARS';
+      return `<button class="tr-card" type="button" id="go-${id}" data-mode="${id}" style="--mc:${D.hex}"><span class="md-tile"><img class="px" alt="" src="${iconURL(D.icon, D.hex)}"></span>
+        <span class="md-txt"><span class="md-n"><b>${D.name}</b></span><span class="md-d">${D.line}</span><span class="tr-meta">${this.stars(rec.stars)}<span>${this.best(id, rec)}</span><span class="tr-next">${next}</span></span></span></button>`;
+    }).join('');
+    const prac = [['freekick', 'go-fk', 'BEST ' + (d.fkBest || 0) + ' GOALS'], ['fkkeeper', 'go-fkk', ''], ['tutorial', 'go-tut2', d.tutorial ? 'DONE' : 'NEW? START HERE']];
+    $('tr-practice').innerHTML = prac.map(([k, id, meta]) => `<button class="tr-card" type="button" id="${id}" data-mode="${k}" style="--mc:${MODE_ART[k].hex}"><span class="md-tile"><img class="px" alt="" src="${modeIcon(k)}"></span>
+      <span class="md-txt"><span class="md-n"><b>${MODES[k].name}</b></span><span class="md-d">${MODE_ART[k].line}</span>${meta ? `<span class="tr-meta"><span>${meta}</span></span>` : ''}</span></button>`).join('');
+  },
+};
+
 /* ---- 11_ui.js ---- */
 /* =====================================================================
    UI: lobby, HUD, scoreboard, pause, results, spins, locker, how to play
@@ -12606,7 +12785,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + TeamUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + TeamUI.tpl() + TrainUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none'; $('outro').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
@@ -12651,7 +12830,7 @@ const UI = {
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; BLASTERS</span></button>
           <div class="spot" id="spot"><button class="btn spot-main" id="spot-play" type="button"><span class="spot-in" id="spot-in"></span><span class="spot-go">PLAY</span><span class="spot-dots" id="spot-dots"></span></button><button class="btn spot-all" id="go-modes" type="button">ALL<br>MODES</button></div>
           <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn tm" id="go-team" type="button">TEAM <span class="sub" id="team-sub">OVR 70</span></button><button class="btn pass" id="go-pass" type="button">PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
-          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
+          <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-train" type="button">TRAINING</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
       </div>
       <div class="lob-stage" id="lob-stage" aria-hidden="true"></div>
@@ -12790,6 +12969,8 @@ const UI = {
             <li><b>Rewards</b> (emeralds, XP, pass, GOALS) come from full-time matches: Quick Match, Ranked and Lawless. King of the Hill, Volleys and Duels are just for fun, unless you play them with friends: every friends match gives rewards. Leaving early gives nothing.</li>
             <li><b>Team size:</b> Quick Match is 4v4: a keeper, a defender, a midfielder and a striker. Lawless is 3v3. Ranked is 3v3 at Wood and Stone, 4v4 at Iron and Gold, and 5v5 at Diamond and Obsidian.</li>
             <li><b>Lawless</b> drops item blocks on the pitch: blasters (three quick shots) and scatter blasters (a spread up close) that knock players over, rocket fists, boom blocks, slime, jetpacks. Use one with the item button. No rank change.</li>
+            <li><b>Training</b> (TRAINING at the bottom of the start screen): the Sprint Drill (run through 8 gates against the clock) and the Defending Drill (stop 5 attacks of two attackers) give up to 3 stars, and each star pays out the first time. Free kicks, keeper practice and the tutorial are there too.</li>
+            <li><b>Daily</b>: a gift every day and a 7 day login calendar (a big reward on day 7). Missing a day never resets it.</li>
             <li><b>Story</b> (next to Ranked): take your club from the back pitch to the Voxel Cup, one event at a time. Each event has its own rules and goal, like win by 2 or score 2 yourself, and pays out emeralds, blueprints or a character you can only get there (ROGUE, IRONCLAD, SOLARIS) the first time you meet it. Pick a character for each spot of your team, and in story matches you take control of whoever you pass to.</li>
             <li><b>Golden goal</b> if it is level at full time. Still level after 2 more minutes, it is a draw.</li>
           </ul></section>
@@ -13027,8 +13208,9 @@ const UI = {
       <div class="dialog panel daily-box">
         <h2>DAILY</h2>
         <div class="dl-card"><span class="label">TODAY'S GIFT</span><div id="dl-gift"></div></div>
+        <div class="dl-card"><span class="label">LOGIN REWARDS · COME BACK EVERY DAY</span><div class="dl-week" id="dl-week"></div><span class="label" id="dl-week-l"></span></div>
         <div class="dl-card"><span class="label">TODAY'S CHALLENGE</span><div id="dl-ch"></div></div>
-        <p class="label">A new gift and a new challenge every day. No streaks: missing a day costs nothing.</p>
+        <p class="label">A new gift, a new day of the calendar and a new challenge every day. Missing a day costs nothing: the calendar waits for you.</p>
         <button class="btn" id="dl-close" type="button">CLOSE</button>
       </div>
     </section>`;
@@ -13038,6 +13220,10 @@ const UI = {
     const C = DAILY_CHALLENGES[d.daily.ch];
     $('dl-gift').innerHTML = Daily.giftReady(d) ? '<button class="btn emerald" id="dl-open" type="button">OPEN TODAY\'S GIFT</button>'
       : `<b class="dl-big">${esc(this.giftText || 'OPENED')}</b><span class="label">NEXT GIFT IN ${Daily.untilTomorrow()}</span>`;
+    const got = d.daily.login % LOGIN_REWARDS.length, ready = Daily.giftReady(d), cycle = Math.floor(d.daily.login / LOGIN_REWARDS.length); // the login calendar
+    const shown = !ready && got === 0 && d.daily.login > 0 ? LOGIN_REWARDS.length : got; // just finished a week: show it full
+    $('dl-week').innerHTML = LOGIN_REWARDS.map((r, i) => `<div class="dl-day${i < shown ? ' got' : ''}${i === got && ready ? ' now' : ''}${i === 6 ? ' big' : ''}"><span>DAY ${i + 1}</span>${r.em ? `<img class="px" alt="" src="${iconURL('emerald')}">` : ''}<b>${loginText(r).replace(' EMERALDS', '').replace(' BLUEPRINTS', ' BP').replace(' BLUEPRINT', ' BP')}</b></div>`).join('');
+    $('dl-week-l').textContent = ready ? 'OPEN TODAY\'S GIFT TO GET DAY ' + (got + 1) + ': ' + loginText(LOGIN_REWARDS[got]) : 'DAY ' + (shown || LOGIN_REWARDS.length) + ' DONE. COME BACK TOMORROW FOR DAY ' + ((got % LOGIN_REWARDS.length) + 1) + (cycle && got === 0 ? ' OF A NEW WEEK' : '');
     const pct = C ? d.daily.prog / C.goal * 100 : 0;
     $('dl-ch').innerHTML = C ? `<b class="dl-big">${esc(C.name)}</b><div class="xpbar"><i style="width:${pct.toFixed(0)}%"></i></div>`
       + `<span class="label">${d.daily.done ? 'DONE! NEW CHALLENGE IN ' + Daily.untilTomorrow() : d.daily.prog + ' / ' + C.goal + ' · REWARD +' + DAILY_REWARD.emeralds + ' EMERALDS, +' + DAILY_REWARD.xp + ' XP'}</span>` : '';
@@ -13046,7 +13232,7 @@ const UI = {
       Sfx.init();
       const g = Daily.openGift(Save.data); if (!g) return;
       Save.save();
-      this.giftText = g.emeralds ? (g.jackpot ? 'JACKPOT! ' : '') + '+' + g.emeralds + ' EMERALDS' : '+' + g.xp + ' XP';
+      this.giftText = (g.emeralds ? (g.jackpot ? 'JACKPOT! ' : '') + '+' + g.emeralds + ' EMERALDS' : '+' + g.xp + ' XP') + (g.login ? ' · DAY ' + g.login.day + ': ' + loginText(g.login.r) : '');
       if (g.jackpot) Sfx.fanfare(2); else Sfx.coin();
       this.renderDaily(); this.renderLobby();
     });
@@ -13246,7 +13432,7 @@ const UI = {
     click('pass-back', () => this.show('lobby'));
     click('goals-back', () => this.show('lobby'));
     click('go-goals', () => this.show('goals'));
-    click('go-fk', () => Game.startMatch('freekick'));
+    click('go-train', () => this.show('train'));
     click('go-tut', () => Game.startMatch('tutorial'));
     click('howto-tut', () => Game.startMatch('tutorial'));
     click('lob-profile', () => this.show('profile'));
@@ -13298,6 +13484,7 @@ const UI = {
     Admin.bind();
     StoryUI.bind();
     TeamUI.bind();
+    TrainUI.bind();
     click('tut-skip', () => Game.skipTutorial());
     $('tut-gate').addEventListener('pointerdown', (e) => { e.preventDefault(); Game.gateGo(); });
     $('p-forfeit').addEventListener('click', () => {
@@ -13312,7 +13499,7 @@ const UI = {
       else if (Game.lastStory) StoryUI.go(Game.storyNext || Game.lastStory); // STORY: the next event (its scene first), or this one again
       else Game.startMatch(Game.lastMode || 'quick');
     });
-    click('r-lobby', () => { if (Game.lastMode === 'online') Net.send({ t: 'leave' }); const st = !!Game.lastStory; Game.toLobby(); if (st) this.show('story'); });
+    click('r-lobby', () => { if (Game.lastMode === 'online') Net.send({ t: 'leave' }); const st = !!Game.lastStory, tr = !!(MODES[Game.lastMode] && MODES[Game.lastMode].drill); Game.toLobby(); if (st) this.show('story'); else if (tr) this.show('train'); });
     click('go-story', () => this.show('story'));
     click('go-team', () => this.show('team'));
     click('p-subs', () => TeamUI.openSubs());
@@ -13349,7 +13536,7 @@ const UI = {
     this.cur = name;
     if (was && was !== name && was !== 'hud' && name !== 'hud') { if (name === 'lobby') Sfx.close(); else Sfx.open(); } // menus whoosh in and out (matches have their own sounds)
     if (name === 'team' && this.cur !== 'team') TeamUI.from = this.cur === 'story' ? 'story' : 'lobby'; // BACK goes where you came from
-    const map = { team: 'scr-team', story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
+    const map = { train: 'scr-train', team: 'scr-team', story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const t of this.ntags) t.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
@@ -13360,6 +13547,10 @@ const UI = {
     if (name === 'pass') this.renderPass();
     if (name === 'story') StoryUI.render();
     if (name === 'team') TeamUI.render();
+    if (name === 'train') TrainUI.render();
+    if (name === 'lobby' && !navigator.webdriver && Save.data.onboarded && Daily.giftReady(Save.data) && this.dailySeen !== dayKey()) { // a new day: the DAILY gift and calendar open by themselves, once
+      this.dailySeen = dayKey(); setTimeout(() => { if (this.cur === 'lobby' && !Game.match) { this.renderDaily(); $('scr-daily').hidden = false; } }, 700);
+    }
     if (name === 'lobby') { this.spotI = 0; this.spotShow(0); } // the spotlight starts on the featured mode
     if (name === 'goals') this.renderGoals();
     Friends.place(); // the FRIENDS panel on the side: start screen, room screen and pause menu only
@@ -13407,7 +13598,7 @@ const UI = {
   /* ---------- HUD ---------- */
   buildHud(m) {
     const p = m.human;
-    $('hud-mode').textContent = m.cfg.name + (m.mode === 'duel' || m.fk || m.tut ? '' : ' · ' + m.size + 'V' + m.size) + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
+    $('hud-mode').textContent = m.cfg.name + (m.mode === 'duel' || m.fk || m.tut || m.drill ? '' : ' · ' + m.size + 'V' + m.size) + (m.cfg.ranked ? ' · VS ' + TIER_NAMES[m.tier] : '');
     $('hud-badge').src = badgeURL(tierOf(Save.data.rp)); $('hud-badge').hidden = !m.cfg.ranked;
     $('hud-em-ico').src = iconURL('emerald'); $('hud-em').textContent = Save.data.emeralds;
     for (const t of [0, 1]) { // the score bar wears each club's shirt
@@ -13460,6 +13651,7 @@ const UI = {
     if (m.tut) { this.setText('clock', Math.min(m.tut.step + 1, TUT_STEPS.length) + '/' + TUT_STEPS.length); this.setText('clock-sub', 'TUTORIAL'); }
     else if (m.fk && m.fk.battle) { this.setText('clock', m.fk.bs[0] + '-' + m.fk.bs[1]); this.setText('clock-sub', 'FK BATTLE'); }
     else if (m.fk) { this.setText('clock', Math.min(m.fk.n, m.fk.total) + '/' + m.fk.total); this.setText('clock-sub', 'FREE KICK'); }
+    else if (m.drill) { const D = m.drill; this.setText('clock', D.kind === 'run' ? D.t.toFixed(1) : D.stops + '/' + DRILL_ATTACKS); this.setText('clock-sub', D.kind === 'run' ? 'GATE ' + Math.min(D.n + 1, D.gates.length) + ' OF ' + D.gates.length : 'STOPPED · ATTACK ' + Math.min(D.n + 1, DRILL_ATTACKS)); } // TRAINING: your time, or the attacks stopped
     else if (m.golden) { this.setText('clock', fmtTime(m.goldenClock)); this.setText('clock-sub', 'GOLDEN GOAL');
       const sec = Math.ceil(m.goldenClock), hot = sec <= 15 && sec > 0; $('clock').classList.toggle('stress', hot); // owner: "gives you that stress"
       if (hot && sec !== this.goldTick) { this.goldTick = sec; Sfx.tick(); } }
@@ -13776,6 +13968,19 @@ const UI = {
     if (r.goalsDone && r.goalsDone.length) $('r-daily').innerHTML += r.goalsDone.map((t) => `<span class="label pl-tier">GOAL DONE: ${esc(t)}</span>`).join('');
     $('hint').hidden = true;
     $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
+  },
+  /** TRAINING: a drill's result (Drill.finish): the time or the attacks stopped, the stars, the rewards for new stars */
+  showDrill(o) {
+    const r = o.r, D = DRILLS[r.mode];
+    $('r-again').textContent = 'TRY AGAIN'; $('r-lobby').textContent = 'TRAINING';
+    $('r-title').textContent = D.name; $('r-title').style.color = D.hex;
+    $('r-score').innerHTML = `<span>${r.kind === 'run' ? r.score.toFixed(2) + ' SECONDS' : r.score + ' OF ' + DRILL_ATTACKS + ' STOPPED'}</span><span class="chip">${o.better ? 'NEW BEST' : TrainUI.best(r.mode, o.rec)}</span>`;
+    $('r-stats').innerHTML = `<div class="dr-res">${TrainUI.stars(r.stars)}<span class="label">${r.kind === 'run' ? 'STARS AT ' + r.par.map((t) => t.toFixed(1) + 'S').join(', ') : 'STARS AT 3, 4 AND 5 STOPPED'}</span></div>`;
+    $('r-earn').innerHTML = o.got.length ? o.got.map((t) => `<div><span>${esc(t)}</span><span></span></div>`).join('') : `<div class="idle-note"><span>${o.rec.stars >= 3 ? 'ALL 3 STARS ARE YOURS. GO FOR A NEW BEST' : 'NO NEW STAR THIS TIME. NEXT STAR: ' + loginText(D.reward[o.rec.stars])}</span></div>`;
+    $('r-rank').hidden = true; $('r-xp').innerHTML = ''; $('r-pass').innerHTML = ''; $('r-daily').innerHTML = '';
+    $('hint').hidden = true;
+    $('scr-results').hidden = false; Music.set(true);
+    if (o.got.length) Sfx.fanfare(2);
   },
   /** the tutorial is done: a first-time reward and a button straight into a quick match */
   showTutorialDone(first) {
@@ -14294,6 +14499,13 @@ const Game = {
       Sfx.setCrowd(0.3);
       return;
     }
+    if (m.cfg.drill) { // TRAINING: the stars and their rewards
+      if (forfeit || !m.result || !m.result.drill) { this.toLobby(); return; }
+      const o = Drill.finish(d, m.result.drill);
+      Save.save(); this.state = 'results'; m.paused = true; Input.releaseLock();
+      UI.showDrill(o); Sfx.setCrowd(0.3);
+      return;
+    }
     if (m.cfg.practice) { // free kick practice: your score and your best, no rewards
       if (forfeit) { this.toLobby(); return; }
       const P = m.result.practice || { goals: 0, total: 0, log: [] }, best = P.keeper ? 0 : d.fkBest || 0;
@@ -14458,7 +14670,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Cine, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  StoryUI, Cutscene, Story, STORY, STORY_EVENTS, SQUAD_SLOTS, MODE_ART, CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  StoryUI, Cutscene, TeamUI, TrainUI, Drill, DRILLS, LOGIN_REWARDS, Story, STORY, STORY_EVENTS, SQUAD_SLOTS, MODE_ART, CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {

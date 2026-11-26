@@ -90,7 +90,7 @@ const Save = {
   defaults() {
     return {
       v: 1, emeralds: 500, styles: ['ROOKIE'], flows: [], style: 'ROOKIE', flow: null,
-      xp: 0, history: [], pass: { season: 0, week: -1, xp: 0, got: 0, prog: {}, done: [] }, daily: { gift: '', day: '', ch: '', prog: 0, done: false }, best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
+      xp: 0, history: [], pass: { season: 0, week: -1, xp: 0, got: 0, prog: {}, done: [] }, daily: { gift: '', day: '', ch: '', prog: 0, done: false, login: 0 }, drills: {}, best: { goals: 0, assists: 0, streak: 0, run: 0, peakRp: 0 },
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
@@ -119,7 +119,9 @@ const Save = {
     out.xp = Math.max(0, Math.floor(Number(out.xp) || 0));
     const dl = out.daily = Object.assign({}, def.daily, out.daily && typeof out.daily === 'object' ? out.daily : {});
     for (const k of ['gift', 'day', 'ch']) dl[k] = typeof dl[k] === 'string' ? dl[k].slice(0, 16) : '';
-    dl.prog = clamp(Math.floor(Number(dl.prog) || 0), 0, 99); dl.done = !!dl.done;
+    dl.prog = clamp(Math.floor(Number(dl.prog) || 0), 0, 99); dl.done = !!dl.done; dl.login = Math.max(0, Math.floor(Number(dl.login) || 0)); // days of the login calendar
+    const dr = out.drills && typeof out.drills === 'object' && !Array.isArray(out.drills) ? out.drills : {}; out.drills = {}; // TRAINING: best and stars per drill
+    for (const k of ['drillrun', 'drilldef']) if (dr[k] && typeof dr[k] === 'object') out.drills[k] = { best: Number.isFinite(dr[k].best) ? dr[k].best : null, stars: clamp(Math.floor(Number(dr[k].stars) || 0), 0, 3) };
     const ps = out.pass = Object.assign({}, def.pass, out.pass && typeof out.pass === 'object' ? out.pass : {});
     for (const k of ['season', 'week', 'xp', 'got']) ps[k] = Math.floor(Number(ps[k]) || 0);
     ps.xp = Math.max(0, ps.xp); ps.got = clamp(ps.got, 0, 30);

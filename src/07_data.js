@@ -1220,6 +1220,31 @@ const DAILY_CHALLENGES = {
 };
 const DAILY_IDS = Object.keys(DAILY_CHALLENGES);
 const DAILY_REWARD = { emeralds: 150, xp: 200 };
+/** the login calendar (owner, Nov 2026: "a need to login and play"): each day you open the daily gift you also get the next
+    day of LOGIN_REWARDS, a big one on day 7, then it starts again. Missing days never resets it (d.daily.login counts them) */
+const LOGIN_REWARDS = [{ em: 50 }, { em: 100 }, { bp: 1 }, { em: 150 }, { bp: 2 }, { em: 250 }, { em: 500, bp: 5 }];
+const loginText = (r) => [r.em ? '+' + r.em + ' EMERALDS' : null, r.bp ? '+' + r.bp + (r.bp > 1 ? ' BLUEPRINTS' : ' BLUEPRINT') : null].filter(Boolean).join(' ');
+/* TRAINING drills (owner, Nov 2026: "add training stuff like defending or running"): up to 3 stars; the first time you reach
+   each star its reward is yours. SPRINT: run through the gates in order (stars for the time, against par times worked out
+   from the course length); DEFENDING: stop DRILL_ATTACKS attacks of two attackers (win the ball or put it out) */
+const DRILLS = {
+  drillrun: { name: 'SPRINT DRILL', icon: 'dash', hex: '#3fd6ff', line: 'Run through the 8 gates in order, as fast as you can. Sprint, but save some stamina.', reward: [{ em: 60 }, { em: 120 }, { em: 200, bp: 1 }] },
+  drilldef: { name: 'DEFENDING DRILL', icon: 'tackle', hex: '#ff6b3d', line: 'Two attackers, five attacks. Win the ball or clear it before they score.', reward: [{ em: 60 }, { em: 120 }, { em: 200, bp: 1 }] },
+};
+const DRILL_ATTACKS = 5, DRILL_GATES = [[-12, -36], [12, -24], [-12, -12], [12, 0], [-12, 12], [12, 24], [-5, 35], [5, 45]], DRILL_START = [0, -46];
+const Drill = {
+  /** stars for a result: SPRINT by time against par (D.par: 1, 2 and 3 star times), DEFENDING by attacks stopped (3, 4, 5) */
+  stars(kind, score, par) { return kind === 'run' ? (score <= par[2] ? 3 : score <= par[1] ? 2 : score <= par[0] ? 1 : 0) : score >= 5 ? 3 : score >= 4 ? 2 : score >= 3 ? 1 : 0; },
+  /** after a drill: best result, stars, and the reward of every star reached for the first time */
+  finish(d, r) {
+    const rec = d.drills[r.mode] || (d.drills[r.mode] = { best: null, stars: 0 }), got = [], before = rec.stars;
+    const better = rec.best == null || (r.kind === 'run' ? r.score < rec.best : r.score > rec.best);
+    if (better) rec.best = r.score;
+    for (let k = before + 1; k <= r.stars; k++) { const w = DRILLS[r.mode].reward[k - 1]; if (w.em) d.emeralds += w.em; if (w.bp) d.bp += w.bp; got.push(k + (k > 1 ? ' STARS: ' : ' STAR: ') + loginText(w)); }
+    rec.stars = Math.max(before, r.stars);
+    return { r, rec, got, better };
+  },
+};
 const GIFTS = [[45, { emeralds: 100 }], [25, { emeralds: 150 }], [15, { emeralds: 250 }], [10, { xp: 300 }], [5, { emeralds: 500, jackpot: true }]];
 /** today on this device, so the day turns over at your own midnight */
 function dayKey(t = Date.now()) { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -1235,7 +1260,10 @@ const Daily = {
     for (const [w, x] of GIFTS) { if (r < w) { g = x; break; } r -= w; }
     if (g.emeralds) d.emeralds += g.emeralds;
     if (g.xp) d.xp += g.xp;
-    return g;
+    const day = d.daily.login % LOGIN_REWARDS.length, L = LOGIN_REWARDS[day]; // and the next day of the login calendar
+    if (L.em) d.emeralds += L.em; if (L.bp) d.bp += L.bp;
+    d.daily.login++;
+    return Object.assign({ login: { day: day + 1, r: L } }, g);
   },
   /** after a match: count it towards today's challenge */
   award(d, m, res, hs) {
