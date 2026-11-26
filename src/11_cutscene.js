@@ -21,7 +21,10 @@ const Cutscene = {
   tpl() {
     return `<section id="cutscene" class="cs" hidden aria-live="polite">
       <div class="cs-bg" id="cs-bg"><i class="cs-sky"></i><i class="cs-ground"></i><i class="cs-lines"></i></div>
+      <canvas class="cs-speed" id="cs-speed" hidden></canvas>
       <i class="cs-bar t"></i><i class="cs-bar b"></i><i class="cs-flash" id="cs-flash"></i>
+      <canvas class="cs-pan" id="cs-pan" hidden></canvas>
+      <b class="cs-word" id="cs-word" hidden></b>
       <div class="cs-place" id="cs-place" hidden><span id="cs-pname"></span><b id="cs-ptitle"></b></div>
       <div class="cs-title" id="cs-title" hidden><span id="cs-ch"></span><b id="cs-chname"></b></div>
       <div class="cs-join" id="cs-join" hidden><span class="cs-jface" id="cs-jface"></span><b id="cs-jname"></b><span>JOINS YOUR TEAM!</span></div>

@@ -577,6 +577,19 @@ body.movie #app > :not(#cutscene) { visibility: hidden !important; }
 .cs-vs.go .vs-side.l { animation: vsL .45s cubic-bezier(.2, .9, .3, 1.1) both; } .cs-vs.go .vs-side.r { animation: vsR .45s cubic-bezier(.2, .9, .3, 1.1) both; }
 .cs-vs.go .vs-x { animation: csSlam .4s .3s cubic-bezier(.2, .9, .3, 1.3) both; } .cs-vs.go .vs-goal { animation: csPop .3s .55s both; }
 @keyframes vsL { from { transform: translateX(-110%); } } @keyframes vsR { from { transform: translateX(110%); } }
+/* ANIME MOMENTS (Movie): speed lines, the eye strip, impact frames, big comic words and the manga page */
+.cs-speed, .cs-pan { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.cs-speed { z-index: 1; }
+.cs-pan { z-index: 2; }
+.cs.mv .cs-bar { transition: height .16s ease-out; }
+.cs.mv.strip .cs-bar { height: calc(50% - 12vh); }
+.cs.pan .cs-box, .cs.pan .cs-place { visibility: hidden; }
+body.mv-hit canvas#gl { filter: invert(1) grayscale(1) contrast(4); }
+body.mv-hit2 canvas#gl { filter: grayscale(1) contrast(3.2) brightness(1.25); }
+.cs-word { position: absolute; z-index: 4; pointer-events: none; font-family: var(--font-display); font-weight: 400; font-size: clamp(64px, 15vh, 160px); line-height: .85; color: var(--wc, #ffcb3d); -webkit-text-stroke: 4px #000; paint-order: stroke fill; text-shadow: 7px 7px 0 #000; white-space: nowrap; transform: translate(-50%, -50%) rotate(var(--wr, -6deg)); opacity: 0; }
+.cs-word.go { animation: csWord .95s cubic-bezier(.2, .9, .3, 1.2) both; }
+@keyframes csWord { 0% { transform: translate(-50%, -50%) rotate(var(--wr, -6deg)) scale(2.6); opacity: 0; } 14% { transform: translate(-50%, -50%) rotate(var(--wr, -6deg)) scale(.92); opacity: 1; } 24% { transform: translate(-50%, -50%) rotate(var(--wr, -6deg)) scale(1); } 72% { opacity: 1; } 100% { transform: translate(-50%, -50%) rotate(var(--wr, -6deg)) scale(1.08); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { body.mv-hit canvas#gl, body.mv-hit2 canvas#gl { filter: none; } .cs.mv .cs-bar { transition: none; } .cs-word.go { animation: none; opacity: 1; } }
 @media (max-height: 460px) { .cs { --bar: 22px; } .cs-face { width: 58px; height: 58px; left: 10px; top: 10px; } .cs-box { min-height: 80px; padding: 10px 16px 22px 80px; bottom: 10px; gap: 4px; } .cs-name { font-size: 22px; } .cs-text { font-size: 17px; min-height: 2.3em; } .cs-join { padding: 8px 14px 10px; } .cs-jface canvas { width: 64px; height: 64px; } .cs-join b { font-size: 32px; } .cs-place { padding: 6px 12px 8px 10px; } .vs-side { padding: 14px 8px; } .vs-goal { margin-bottom: 12px; font-size: 11px; } }
 @media (max-width: 560px) { .cs-face { width: 64px; height: 64px; } .cs-box { min-height: 150px; padding-left: 88px; } .cs-vs { grid-template-columns: 1fr; grid-template-rows: auto; align-content: center; gap: 4px; } .vs-x { justify-self: center; padding: 0; } .vs-side b { font-size: 40px; } .vs-goal { margin: 12px auto 0; } }
 @media (prefers-reduced-motion: reduce) { .cs-face.in, .cs-title.go b, .cs-join.go, .cs-bar.t, .cs-bar.b, .cs-place.go, .cs-vs.go .vs-side.l, .cs-vs.go .vs-side.r, .cs-vs.go .vs-x, .cs-vs.go .vs-goal { animation: none; } }

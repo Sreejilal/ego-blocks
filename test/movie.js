@@ -11,9 +11,10 @@ process.on('unhandledRejection', (e) => { console.log(results.join('\n')); conso
   const { browser, page, logs } = await open({ wait: 1500 });
   // ---- the scripts ----
   const lint = await page.evaluate(() => {
-    const E = EGO, bad = [], verbs = ['walk', 'jog', 'run', 'sprint', 'dribble', 'glide', 'face', 'wait', 'emote', 'juggle', 'trap', 'shoot', 'kick', 'pass', 'slide', 'feint', 'fall', 'jump', 'glow', 'giant', 'join', 'hide', 'show'];
-    const world = ['at', 'cheer', 'whistle', 'sfx', 'flash', 'boom', 'lightning', 'fireworks', 'confetti', 'ball', 'ballup', 'moon', 'goals', 'crowd', 'cores', 'snapfx', 'trophy', 'prop', 'give', 'drop'];
-    const shots = ['close', 'ots', 'two', 'low', 'orbit', 'track', 'follow', 'lead', 'wide', 'fly', 'goal', 'group'];
+    const E = EGO, bad = [], verbs = ['walk', 'jog', 'run', 'sprint', 'dribble', 'glide', 'face', 'wait', 'emote', 'juggle', 'trap', 'shoot', 'kick', 'pass', 'slide', 'feint', 'fall', 'jump', 'glow', 'giant', 'join', 'hide', 'show', 'charge', 'glare'];
+    const world = ['at', 'cheer', 'whistle', 'sfx', 'flash', 'boom', 'lightning', 'fireworks', 'confetti', 'ball', 'ballup', 'moon', 'goals', 'crowd', 'cores', 'snapfx', 'trophy', 'prop', 'give', 'drop', 'slow', 'impact', 'lines', 'panels', 'word', 'dark'];
+    const shots = ['close', 'ots', 'two', 'low', 'orbit', 'track', 'follow', 'lead', 'wide', 'fly', 'goal', 'group', 'eyes', 'face', 'zoom', 'ballcam'];
+    const layouts = ['cols3', 'rows3', 'rows2', 'band'];
     let films = 0, acts = 0;
     for (const ev of E.STORY_EVENTS) for (const part of ['intro', 'outro']) {
       const f = E.STORY_FILMS[ev.id] && E.STORY_FILMS[ev.id][part];
@@ -26,7 +27,12 @@ process.on('unhandledRejection', (e) => { console.log(results.join('\n')); conso
         for (const s of [B.cam, ...(B.cams || []).map((c) => c[1])].filter(Boolean)) if (!shots.includes(s[0])) bad.push(ev.id + ': shot ' + s[0]);
         for (const a of B.do || []) {
           acts++;
-          if (a[0] === '*') { if (!world.includes(a[1])) bad.push(ev.id + ': world ' + a[1]); }
+          if (a[0] === '*') {
+            const w = a[1] === 'at' ? a.slice(3) : a.slice(1);
+            if (!world.includes(a[1]) || (a[1] === 'at' && !world.includes(w[0]))) bad.push(ev.id + ': world ' + w[0]);
+            if (w[0] === 'panels') { if (!layouts.includes(w[1])) bad.push(ev.id + ': page ' + w[1]); for (const s of w[2] || []) if (!shots.includes(s[0]) || (s[1] && !who.has(s[1]))) bad.push(ev.id + ': panel ' + s.join(' ')); }
+            if (w[0] === 'dark' && w[1] && !who.has(w[1])) bad.push(ev.id + ': dark ' + w[1]);
+          }
           else if (!who.has(a[0])) bad.push(ev.id + ' ' + part + ': ' + a[0] + ' is not on stage');
           else if (!verbs.includes(a[1])) bad.push(ev.id + ': verb ' + a[1]);
         }
@@ -51,8 +57,33 @@ process.on('unhandledRejection', (e) => { console.log(results.join('\n')); conso
   check('PLAY on event 1: the 3D scene starts on the back pitch with you, the coach and their captain; you juggle and the camera flies in', s0.on && s0.mv && s0.body && s0.phase === 'open' && ['COACH', 'RIVAL', 'YOU'].every((k) => s0.cast.includes(k)) && s0.juggle > 0.5 && s0.camMoved && s0.place === 'THE BACK PITCH' && s0.look === 'sunset', s0);
   await page.evaluate(() => EGO.Game.stepManual(40, true));
   await page.waitForTimeout(700); await page.screenshot({ path: __dirname + '/shots/movie_open.png', timeout: 120000 }).catch(() => {});
-  const shot = await page.evaluate(() => { const G = EGO.Game, M = EGO.Movie; G.stepManual(150, false); return { inNet: M.ball.inNet, z: +M.ball.pos.z.toFixed(1) }; });
-  check('the opening shot: your shot ends in the net', shot.inNet && shot.z > 55, shot);
+  // ANIME MOMENTS in the opening: the eye close-up, the wind-up, the impact frame, slow motion and the trail of light
+  const eyes = await page.evaluate(() => {
+    const G = EGO.Game, M = EGO.Movie; let n = 0;
+    while (M.shot.s[0] !== 'eyes' && n++ < 200) G.stepManual(1, false); // the chapter card ran on the real clock, so wait for the cut
+    G.stepManual(8, true);
+    const P = M.A.YOU.p.P, ol = M.olMat;
+    let lines = 0; P.root.traverse((o) => { if (o.material === ol) lines++; });
+    return { shot: M.shot.s[0], strip: document.getElementById('cutscene').classList.contains('strip'), glow: P.eyes.visible, glare: M.A.YOU.glare, speed: !document.getElementById('cs-speed').hidden, outlines: lines };
+  });
+  check('anime: the camera cuts to your eyes in a thin strip, they glow, speed lines round them, black lines round the players', eyes.shot === 'eyes' && eyes.strip && eyes.glow && eyes.glare && eyes.speed && eyes.outlines >= 6, eyes);
+  await page.waitForTimeout(700); await page.screenshot({ path: __dirname + '/shots/movie_eyes.png', timeout: 120000 }).catch(() => {});
+  const hit = await page.evaluate(() => {
+    const G = EGO.Game, M = EGO.Movie, Y = M.A.YOU.p; let wound = 0, n = 0;
+    while (!document.body.classList.contains('mv-hit') && n++ < 150) { G.stepManual(1, false); if (Y.charging) wound = Math.max(wound, Y.charge); }
+    G.stepManual(1, true);
+    return { n, wound: +wound.toFixed(2), hit: document.body.classList.contains('mv-hit') || document.body.classList.contains('mv-hit2'), frozen: M.ts === 0, power: !!M.ball.power, strip: document.getElementById('cutscene').classList.contains('strip') };
+  });
+  check('anime: you wind up, and when your boot hits the ball the picture flips to black and white and the action freezes', hit.n < 150 && hit.wound > 0.8 && hit.hit && hit.frozen && hit.power && !hit.strip, hit);
+  await page.waitForTimeout(250); await page.screenshot({ path: __dirname + '/shots/movie_impact.png', timeout: 120000 }).catch(() => {});
+  const slow = await page.evaluate(() => {
+    const G = EGO.Game, M = EGO.Movie; G.stepManual(24, true);
+    return { ts: +M.ts.toFixed(2), filter: document.body.classList.contains('mv-hit') || document.body.classList.contains('mv-hit2'), power: !!M.ball.power, fly: M.ball.fly, shot: M.shot.s[0] };
+  });
+  check('anime: then slow motion while the ball flies with its trail, filmed from behind the ball', slow.ts < 0.6 && !slow.filter && slow.power && slow.fly && slow.shot === 'ballcam', slow);
+  await page.waitForTimeout(700); await page.screenshot({ path: __dirname + '/shots/movie_ballcam.png', timeout: 120000 }).catch(() => {});
+  const shot = await page.evaluate(() => { const G = EGO.Game, M = EGO.Movie; G.stepManual(200, false); return { inNet: M.ball.inNet, z: +M.ball.pos.z.toFixed(1), ts: M.ts }; });
+  check('the opening shot: your shot ends in the net and time is back to normal', shot.inNet && shot.z > 55 && shot.ts === 1, shot);
   await page.evaluate(() => EGO.Cutscene.next()); // the first line
   const l0 = await page.evaluate(() => {
     const G = EGO.Game, M = EGO.Movie, c = M.A.COACH.p, p0 = c.pos.clone();
@@ -126,6 +157,48 @@ process.on('unhandledRejection', (e) => { console.log(results.join('\n')); conso
   await pic('bp4', 'outro', 0, 90, 'join');
   await pic('vc1', 'intro', 2, 115, 'snap');
   await pic('vc4', 'outro', 2, 200, 'cup');
+  await pic('vc3', 'intro', 2, 30, 'band');
+  await pic('vc2', 'intro', 2, 70, 'zoom');
+
+  // ---- anime: the manga page (the face-off before event 1's match) ----
+  const page1 = await page.evaluate(() => {
+    const G = EGO.Game, C = EGO.Cutscene, M = EGO.Movie, ev = EGO.STORY_EVENTS[0];
+    C.story(ev, 'intro', () => {}); if (C.phase === 'title') C.begin();
+    let guard = 0; while (C.phase !== 'end' && guard++ < 20) { if (C.typing) C.finishLine(); G.stepManual(2, false); C.next(); }
+    G.stepManual(62, false); G.stepManual(50, true);
+    const box = getComputedStyle(document.getElementById('cs-next')).visibility;
+    return { phase: C.phase, pan: !!M.pan, imgs: M.pan ? M.pan.imgs.length : 0, shown: !document.getElementById('cs-pan').hidden, cls: document.getElementById('cutscene').classList.contains('pan'), frozen: M.ts === 0, box };
+  });
+  check('anime: at the face-off the moment freezes and a manga page of both pairs of eyes slams in', page1.phase === 'end' && page1.pan && page1.imgs === 2 && page1.shown && page1.cls && page1.frozen && page1.box === 'hidden', page1);
+  await page.waitForTimeout(700); await page.screenshot({ path: __dirname + '/shots/movie_panels.png', timeout: 120000 }).catch(() => {});
+  const page2 = await page.evaluate(() => { const G = EGO.Game, M = EGO.Movie; G.stepManual(150, true); const r = { pan: !!M.pan, shown: !document.getElementById('cs-pan').hidden, cls: document.getElementById('cutscene').classList.contains('pan'), ts: M.ts }; EGO.Cutscene.end(); return r; });
+  check('then the page breaks apart and the scene goes on', !page2.pan && !page2.shown && !page2.cls && page2.ts === 1, page2);
+
+  // ---- anime: SOLARIS powers up in a dark world, and the world comes back on the next line ----
+  const dark = await page.evaluate(() => {
+    const G = EGO.Game, C = EGO.Cutscene, M = EGO.Movie, W = EGO.World, ev = EGO.STORY_EVENTS.find((e) => e.id === 'vc4');
+    C.story(ev, 'intro', () => {}); if (C.phase === 'title') C.begin();
+    const far0 = W.scene.fog.far; // the night final's fog, before anyone powers up
+    C.next(); G.stepManual(80, true);
+    const on = { void: M.voidM.visible, far: W.scene.fog.far, glare: M.A.SOLARIS.glare, eyes: M.A.SOLARIS.p.P.eyes.visible, shot: M.shot.s[0] };
+    return { far0, on };
+  });
+  await page.waitForTimeout(700); await page.screenshot({ path: __dirname + '/shots/movie_dark.png', timeout: 120000 }).catch(() => {});
+  const dark2 = await page.evaluate(() => { const G = EGO.Game, C = EGO.Cutscene, M = EGO.Movie, W = EGO.World; if (C.typing) C.finishLine(); C.next(); G.stepManual(5, false); const r = { void: M.voidM.visible, far: W.scene.fog.far }; C.end(); return r; });
+  check('anime: SOLARIS powers up in a dark world with glowing eyes; the next line brings the stadium back', dark.on.void && dark.on.far < 40 && dark.on.glare && dark.on.eyes && !dark2.void && dark2.far === dark.far0, { dark, dark2 });
+
+  // ---- anime: the step-over past IRONCLAD in slow motion with the camera going round ----
+  const bullet = await page.evaluate(() => {
+    const G = EGO.Game, C = EGO.Cutscene, M = EGO.Movie, ev = EGO.STORY_EVENTS.find((e) => e.id === 'cl4');
+    C.story(ev, 'outro', () => {}); if (C.phase === 'title') C.begin();
+    G.stepManual(66, true);
+    return { phase: C.phase, ts: +M.ts.toFixed(2), shot: M.shot.s[0] };
+  });
+  check('anime: the step-over past IRONCLAD plays in slow motion while the camera circles you', bullet.phase === 'open' && bullet.ts < 0.6 && bullet.shot === 'orbit', bullet);
+  await page.waitForTimeout(700); await page.screenshot({ path: __dirname + '/shots/movie_bullet.png', timeout: 120000 }).catch(() => {});
+  await page.evaluate(() => EGO.Cutscene.end());
+  const clean = await page.evaluate(() => ({ hit: document.body.classList.contains('mv-hit') || document.body.classList.contains('mv-hit2'), strip: document.getElementById('cutscene').classList.contains('strip'), speed: !document.getElementById('cs-speed').hidden, word: !document.getElementById('cs-word').hidden, void: EGO.Movie.voidM.visible }));
+  check('after the anime moments nothing is left over (no black and white, no strip, no lines, no words, no dark world)', !clean.hit && !clean.strip && !clean.speed && !clean.word && !clean.void, clean);
 
   // ---- after a win: over the results, the match out of the way ----
   const res = await page.evaluate(() => {

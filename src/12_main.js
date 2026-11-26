@@ -335,7 +335,7 @@ const Game = {
     if (Movie.on) { // a STORY scene acted out in 3D (over the menus, or over the results with the match paused)
       Movie.update(rdt);
       Shake.update(rdt);
-      FX.update(rdt);
+      FX.update(rdt * Movie.ts); // sparks and trails slow down in slow motion and stop in a frozen moment too
     } else if (m && (this.state === 'match' || this.state === 'paused' || this.state === 'results' || this.state === 'replay')) {
       if (this.state === 'match' && Replay.offer && (Input.edges.has('Enter') || Input.edges.has('PadRS'))) { Input.consumeEdges(); Replay.start(); }
       if (this.state === 'match' && m.cfg && m.cfg.tutorial && m.phase !== 'end' && Input.edges.has('Enter')) { Input.consumeEdges(); this.skipTutorial(); return; }

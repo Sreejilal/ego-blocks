@@ -92,6 +92,7 @@ const toPlay = (m) => { for (let i = 0; i < 400 && m.phase !== 'play'; i++) m.up
   const pick = await page.evaluate(() => ({ squad: EGO.Save.data.squad.MID, open: !document.getElementById('st-pick').hidden }));
   check('picking a character for a spot saves it', pick.squad === 'KESTREL' && !pick.open, pick);
   await page.click('.st-ev.now [data-ev]');
+  await page.waitForFunction(() => document.getElementById('cs-name').textContent !== '', null, { timeout: 4000 }).catch(() => {}); // the CHAPTER card comes first
   const cs = await page.evaluate(() => ({ open: !document.getElementById('cutscene').hidden, name: document.getElementById('cs-name').textContent, face: !!document.querySelector('#cs-face canvas'), state: EGO.Game.state }));
   check('PLAY first shows the story scene: the coach talks, the match waits', cs.open && cs.name === 'COACH BRICK' && cs.face && cs.state !== 'match', cs);
   await page.screenshot({ path: __dirname + '/shots/story_cutscene.png' });
