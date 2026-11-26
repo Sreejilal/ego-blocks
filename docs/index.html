@@ -579,6 +579,53 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 @media (max-height: 460px) { .cs-face { width: 120px; height: 120px; bottom: 116px; } .cs-box { min-height: 92px; padding: 10px 16px 24px; bottom: 10px; gap: 4px; } .cs-name { font-size: 24px; } .cs-text { font-size: 18px; } .cs-join { top: 4%; padding: 8px 14px 10px; } .cs-jface canvas { width: 64px; height: 64px; } .cs-join b { font-size: 32px; } }
 @media (max-width: 560px) { .cs-face { width: 130px; height: 130px; bottom: 210px; } .cs-box { min-height: 170px; } }
 @media (prefers-reduced-motion: reduce) { .cs-face.in.l, .cs-face.in.r, .cs-title.go b, .cs-join.go { animation: none; } }
+/* MY TEAM: player cards (rating, spot, face, name in the rarity colour) on a pitch, the bench, SUBS in the pause menu */
+.menu .meta-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.btn.tm { background: linear-gradient(90deg, #14506b, #1d7a9e); box-shadow: inset 0 -6px 0 #0a3346, inset 0 var(--px) 0 rgba(255,255,255,.22), 4px 4px 0 rgba(0,0,0,.45); }
+.btn.tm .sub { color: #c4ecff; }
+.tm-ovr { display: flex; align-items: baseline; gap: 8px; margin-left: auto; margin-right: 8px; font-family: var(--font-label); font-size: 11px; letter-spacing: .08em; color: var(--muted); }
+.tm-ovr b { font-family: var(--font-display); font-weight: 400; font-size: 48px; line-height: .8; color: var(--gold); text-shadow: 3px 3px 0 var(--ink); }
+.tm-box { padding: 16px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tm-pitch { position: relative; width: 100%; max-width: 520px; justify-self: center; aspect-ratio: 1 / 1; background: repeating-linear-gradient(180deg, #1d6b34 0 12%, #1a5f2e 12% 24%); box-shadow: inset 0 0 0 3px rgba(255,255,255,.55), 4px 4px 0 rgba(0,0,0,.45); overflow: hidden; }
+.tm-pitch i { position: absolute; border: 3px solid rgba(255,255,255,.45); pointer-events: none; }
+.tm-half { left: -3px; right: -3px; top: -3px; height: 50%; border-top: 0 !important; }
+.tm-circle { left: 50%; top: 50%; width: 22%; aspect-ratio: 1; border-radius: 50%; transform: translate(-50%, -50%); }
+.tm-box1 { left: 30%; right: 30%; top: -3px; height: 11%; } .tm-box2 { left: 30%; right: 30%; bottom: -3px; height: 11%; }
+.tm-side { display: grid; gap: 10px; align-content: start; }
+.tm-side h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 32px; line-height: .9; }
+.tm-note { margin: 0; font-family: var(--font-body); font-size: 17px; line-height: 1.15; color: var(--muted); }
+.tm-bench { display: grid; grid-template-columns: repeat(3, minmax(0, 92px)); gap: 10px; }
+.fc-card { all: unset; box-sizing: border-box; cursor: pointer; position: relative; width: 92px; height: 124px; display: grid; justify-items: center; align-content: end; gap: 2px; padding: 6px 4px 8px;
+  background: linear-gradient(160deg, var(--rc) -30%, #17142a 52%, #0c0a12); box-shadow: inset 0 0 0 2px var(--rc), 3px 3px 0 rgba(0,0,0,.5); clip-path: polygon(0 6%, 50% 0, 100% 6%, 100% 100%, 0 100%); }
+.tm-pitch .fc-card { position: absolute; transform: translate(-50%, -50%); }
+.fc-card.empty { background: rgba(12,10,18,.7); box-shadow: inset 0 0 0 2px #5a5f78; }
+.fc-card.me { box-shadow: inset 0 0 0 3px var(--gold), 0 0 14px rgba(255,203,61,.5), 3px 3px 0 rgba(0,0,0,.5); }
+.fc-card.sel { box-shadow: inset 0 0 0 3px #fff, 0 0 16px #fff; }
+.fc-ovr { position: absolute; left: 7px; top: 9px; font-family: var(--font-display); font-size: 26px; line-height: .8; color: #fff; text-shadow: 2px 2px 0 #000; }
+.fc-ovr.out { color: #ff7a85; }
+.fc-pos { position: absolute; left: 8px; top: 33px; font-family: var(--font-label); font-size: 9px; letter-spacing: .06em; color: var(--rc); }
+.fc-card.me .fc-pos { color: var(--gold); }
+.fc-face { width: 56px; height: 56px; image-rendering: pixelated; }
+.fc-name { font-family: var(--font-display); font-weight: 400; font-size: 15px; line-height: .9; color: #fff; max-width: 86px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-card:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.fc-card:active { transform: translate(2px, 2px); }
+.tm-pitch .fc-card:active { transform: translate(calc(-50% + 2px), calc(-50% + 2px)); }
+@media (hover: hover) { .fc-card:hover { filter: brightness(1.18); } }
+.st-team .gp-th .btn { margin-left: auto; }
+.st-tovr { font-family: var(--font-label); font-size: 11px; letter-spacing: .08em; color: var(--muted); margin-bottom: 8px; }
+.st-tovr b { font-family: var(--font-display); font-weight: 400; font-size: 30px; color: var(--gold); margin-left: 6px; }
+.tm-mini { display: flex; gap: 10px; flex-wrap: wrap; }
+.st-ovr { font-style: normal; color: var(--gold); margin-left: 6px; }
+#subs { z-index: 65; }
+#st-pick { z-index: 62; } /* the character picker sits over the team and story screens */
+.subs-box { width: min(760px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.subs-box h2 { margin: 0; }
+.subs-cols { min-height: 0; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.subs-cols h3 { margin: 0 0 8px; font-family: var(--font-display); font-weight: 400; font-size: 26px; }
+.subs-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.subs-list.off .fc-card { opacity: .45; pointer-events: none; }
+@media (max-width: 760px) { .tm-box { grid-template-columns: 1fr; } .tm-pitch { max-width: 420px; justify-self: center; width: 100%; } }
+@media (max-height: 460px) { .tm-box { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); } .fc-card { width: 64px; height: 88px; } .fc-face { width: 36px; height: 36px; } .fc-ovr { font-size: 18px; top: 7px; left: 5px; } .fc-pos { top: 23px; left: 6px; } .fc-name { font-size: 11px; max-width: 60px; } .tm-bench { grid-template-columns: repeat(3, 64px); } }
 .dl-card { background: var(--slate-2); padding: 12px; display: grid; gap: 8px; }
 .dl-card > div { display: grid; gap: 6px; justify-items: start; }
 .dl-big { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; color: var(--gold); }
@@ -1465,7 +1512,9 @@ const Save = {
     out.preset = Number.isInteger(out.preset) && out.preset >= 0 && out.preset < out.presets.length && out.presets[out.preset].s ? out.preset : -1;
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
     out.story = { done: out.story && Array.isArray(out.story.done) ? [...new Set(out.story.done.filter((x) => typeof x === 'string'))] : [] }; // STORY: the events you finished
-    out.squad = out.squad && typeof out.squad === 'object' && !Array.isArray(out.squad) ? Object.fromEntries(Object.entries(out.squad).filter(([k, v]) => ['ST', 'MID', 'DEF'].includes(k) && typeof v === 'string')) : {}; // your team in STORY matches
+    const sq = out.squad && typeof out.squad === 'object' && !Array.isArray(out.squad) ? out.squad : {}; // MY TEAM: a character per spot and up to 3 on the bench
+    out.squad = Object.fromEntries(Object.entries(sq).filter(([k, v]) => ['ST', 'WING', 'MID', 'DEF', 'GK'].includes(k) && typeof v === 'string'));
+    out.squad.bench = Array.isArray(sq.bench) ? sq.bench.filter((v) => typeof v === 'string').slice(0, 3) : [];
     out.topUpOff = !!out.topUpOff; out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
     out.tips = Array.isArray(out.tips) ? out.tips.filter((t) => typeof t === 'string' && t.length < 16).slice(0, 20) : []; // the first-match tips you have seen
@@ -1502,7 +1551,9 @@ const Save = {
     const d = this.data;
     codeTopUp(d); // the tester pack keeps up with new styles, Flows and skins
     d.styles = d.styles.filter((s) => STYLES[s]);
-    for (const k of Object.keys(d.squad)) if (!d.styles.includes(d.squad[k]) || STYLES[d.squad[k]].gk) delete d.squad[k]; // only characters you own
+    const own = (id) => d.styles.includes(id) && !!STYLES[id], seen = new Set(); // MY TEAM: only characters you own, each once, keeper styles only in goal
+    for (const k of SQUAD_KEYS) { const id = d.squad[k]; if (id && (!own(id) || !!STYLES[id].gk !== (k === 'GK') || seen.has(id))) delete d.squad[k]; else if (id) seen.add(id); }
+    d.squad.bench = (d.squad.bench || []).filter((id) => own(id) && !STYLES[id].gk && !seen.has(id) && (seen.add(id), true)).slice(0, BENCH_MAX);
     if (!d.styles.includes('ROOKIE')) d.styles.unshift('ROOKIE');
     d.flows = d.flows.filter((f) => FLOWS[f]);
     if (d.spunStyle && (!STYLES[d.spunStyle] || d.styles.includes(d.spunStyle))) d.spunStyle = null;
@@ -5433,8 +5484,22 @@ const RIVAL_FACE = { MOSSWOOD: 'SHAMBLER', HARBOUR: 'KESTREL', EMBER: 'BLITZ', N
 const STORY_EVENTS = [];
 STORY.forEach((c, ci) => c.events.forEach((e) => { e.ch = ci; e.n = STORY_EVENTS.length + 1; STORY_EVENTS.push(e); }));
 /** your team in story matches: one character per kind of spot (the spot you play yourself uses your own style) */
-const SQUAD_SLOTS = [['ST', 'STRIKER'], ['MID', 'MIDFIELD'], ['DEF', 'DEFENDER']];
-const SQUAD_OF = { ST: 'ST', FW: 'ST', MID: 'MID', LW: 'MID', RW: 'MID', DEF: 'DEF', DEF2: 'DEF' }; // a line-up spot -> its squad slot
+const SQUAD_SLOTS = [['ST', 'STRIKER'], ['WING', 'WINGER'], ['MID', 'MIDFIELD'], ['DEF', 'DEFENDER'], ['GK', 'KEEPER']];
+const SQUAD_OF = { ST: 'ST', FW: 'ST', LW: 'WING', RW: 'WING', MID: 'MID', DEF: 'DEF', DEF2: 'DEF', GK: 'GK' };
+const SQUAD_KEYS = SQUAD_SLOTS.map((x) => x[0]), BENCH_MAX = 3, SUBS_MAX = 3; // the bench: up to 3 characters; 3 subs a match
+/* MY TEAM (owner, Nov 2026: "the team system should be like [a big mobile football game] where you can have subs"): every
+   character is a card with a rating (OVR) from its rarity, 6 lower out of its position, and the team's OVR is the average
+   of the starters (you included) */
+const OVR_BASE = { Rare: 72, Epic: 78, Legendary: 84, Mythic: 88, Generational: 93 };
+const ovrOf = (id, slot) => { const st = STYLES[id]; if (!st) return 0; const b = OVR_BASE[st.rarity] || 70; return slot && slot !== 'BENCH' && st.role !== slot ? b - 6 : b; };
+/** your own spot in the team (your style's role, or in goal when you play keeper) */
+const mySlot = (d) => (d.pos === 'GK' ? 'GK' : SQUAD_OF[d.pos && d.posFor === d.style ? d.pos : roleSpot(d.style)] || 'ST');
+/** the starters' ratings averaged (an AUTO spot counts as 70: a random bot) */
+function teamOvr(d) {
+  const me = mySlot(d);
+  const r = SQUAD_KEYS.map((k) => (k === me ? ovrOf(d.style, k) : d.squad[k] ? ovrOf(d.squad[k], k) : 70));
+  return Math.round(r.reduce((a, v) => a + v, 0) / r.length);
+} // a line-up spot -> its squad slot
 const Story = {
   goalText(g) { return 'WIN' + (g.by ? ' BY ' + g.by : '') + (g.mine ? ' AND SCORE ' + g.mine + ' YOURSELF' : '') + (g.clean ? ' WITHOUT LETTING ONE IN' : ''); },
   rewardList(r) { return [r.em ? '+' + r.em + ' EMERALDS' : null, r.bp ? '+' + r.bp + ' BLUEPRINTS' : null, r.style ? 'NEW CHARACTER: ' + STYLES[r.style].name : null].filter(Boolean); },
@@ -5815,7 +5880,8 @@ class Match {
     this.online = !!opts.humans; this.humans = []; // online: every remote player, each with their own controls (p.ctl)
     this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, awakens: 0, trailed: false }; // your moments, for the weekly challenges
     this.lastGoal = null; this.pendingEnd = false;
-    this.story = opts.story || null; this.myGoals = 0; // STORY: the event being played, and the goals you scored (whoever you controlled)
+    this.story = opts.story || null; this.myGoals = 0;
+    this.bench = opts.squad && Array.isArray(opts.squad.bench) ? opts.squad.bench.filter((id) => STYLES[id]) : []; this.subsLeft = SUBS_MAX; // MY TEAM: subs from the bench // STORY: the event being played, and the goals you scored (whoever you controlled)
     // your club at home against a random other club; the away side changes kit if the colours clash
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
     const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
@@ -7348,6 +7414,24 @@ class Match {
     const t = carrier || mates.reduce((a, q) => (dist2D(q.pos, b.pos) < dist2D(a.pos, b.pos) ? q : a));
     this.switchTo(t); Sfx.click();
     return true;
+  }
+  /** MY TEAM: a substitution (pause menu SUBS). A bench character comes on in the same spot for one of your bots; the one
+      coming off goes to the bench. SUBS_MAX a match */
+  subIn(old, id) {
+    const i = this.bench.indexOf(id), h = this.human;
+    if (!old || old.isHuman || !h || old.team !== h.team || i < 0 || this.subsLeft <= 0 || !STYLES[id] || this.online) return false;
+    const num = old.number; // the shirt number stays with the spot
+    const p = new Player(this, { team: old.team, role: old.role, human: false, style: id, flow: chance(0.85) ? pick(FLOW_IDS) : null, look: botLook(), skin: null, number: num, name: pick(BOT_NAMES.filter((n) => !this.players.some((q) => q.name === n))) || old.name });
+    p.pos.copy(old.pos); p.yaw = old.yaw;
+    const b = this.ball, had = b.owner === old;
+    this.players[this.players.indexOf(old)] = p; const T = this.teams[old.team]; T[T.indexOf(old)] = p;
+    if (had) { b.owner = null; this.possess(p, true); }
+    if (this.lastPass && (this.lastPass.from === old || this.lastPass.to === old)) this.lastPass = null;
+    if (this.caller === old) this.caller = p;
+    old.dispose();
+    this.bench[i] = old.styleId; this.subsLeft--;
+    this.label(p, 'SUB ON', '#2ee38f', 1.6); FX.ring(p.pos.x, 0.2, p.pos.z, '#2ee38f', 1.6, 24); Sfx.whistle(1);
+    return p;
   }
   /** you take over a teammate (V, or in STORY whoever gets the ball); the player you left plays on as a bot */
   switchTo(p) {
@@ -12333,7 +12417,7 @@ const StoryUI = {
       <div class="sub-wrap">
         <div class="sub-head"><h2>STORY</h2><button class="btn small" id="story-back" type="button">BACK</button></div>
         <section class="panel st-intro" id="st-intro"></section>
-        <section class="panel st-team"><div class="gp-th"><h3>YOUR TEAM</h3><span class="gp-th-l">Pick who plays with you. In story matches, pass to a teammate and you take control of them.</span></div><div class="st-squad" id="st-squad"></div></section>
+        <section class="panel st-team"><div class="gp-th"><h3>YOUR TEAM</h3><span class="gp-th-l">In story matches you always play the teammate with the ball.</span><button class="btn small blue" id="st-edit" type="button">EDIT TEAM</button></div><div id="st-squad"></div></section>
         <div class="st-chapters" id="st-chapters"></div>
       </div>
     </section>
@@ -12344,15 +12428,16 @@ const StoryUI = {
   bind() {
     const click = (id, fn) => $(id).addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); });
     Cutscene.bind();
+    click('st-edit', () => UI.show('team'));
     click('story-back', () => UI.show('lobby'));
     click('st-pick-close', () => { $('st-pick').hidden = true; });
-    $('st-squad').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) { Sfx.click(); this.openPick(b.dataset.slot); } });
+    $('st-squad').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); if (b.classList.contains('me')) UI.openLocker(); else this.openPick(b.dataset.slot); });
     $('st-pick-grid').addEventListener('click', (e) => {
       const b = e.target.closest('[data-style]'); if (!b) return;
       Sfx.equip ? Sfx.equip() : Sfx.click();
       const d = Save.data;
-      if (b.dataset.style === 'AUTO') delete d.squad[this.slot]; else d.squad[this.slot] = b.dataset.style;
-      Save.save(); $('st-pick').hidden = true; this.render();
+      TeamUI.assign(d, this.slot, b.dataset.style === 'AUTO' ? null : b.dataset.style);
+      Save.save(); $('st-pick').hidden = true; if (UI.cur === 'story') this.render(); TeamUI.render(); UI.renderLobby();
     });
     $('st-chapters').addEventListener('click', (e) => {
       const b = e.target.closest('[data-ev]'); if (!b) return;
@@ -12376,10 +12461,7 @@ const StoryUI = {
     const d = Save.data, cur = Story.next(d), n = d.story.done.length;
     $('st-intro').innerHTML = `<div class="st-prog"><b>${n} / ${STORY_EVENTS.length}</b><span>EVENTS DONE</span></div>
       <p class="st-lead">${cur ? 'Take your club from the back pitch to the Voxel Cup. Every event pays out once, and three characters only come from here: ROGUE, IRONCLAD and SOLARIS.' : 'You won the Voxel Cup. Replay any event you like, the rewards are already yours.'}</p>`;
-    $('st-squad').innerHTML = SQUAD_SLOTS.map(([k, name]) => {
-      const id = d.squad[k];
-      return `<button class="st-slot" type="button" data-slot="${k}" style="--rc:${id ? RARITY_HEX[STYLES[id].rarity] : '#5a5f78'}"><i class="st-pt" data-port="${id || ''}"></i><span class="st-sl"><span class="st-role">${name}</span><b>${id ? STYLES[id].name : 'AUTO'}</b><span class="st-hint">${id ? STYLES[id].rarity.toUpperCase() + ' · ' + ROLES[STYLES[id].role].name : 'TAP TO PICK'}</span></span></button>`;
-    }).join('');
+    $('st-squad').innerHTML = `<div class="st-tovr">TEAM OVR <b>${teamOvr(d)}</b></div>` + TeamUI.mini(); TeamUI.ports($('st-squad'));
     $('st-chapters').innerHTML = STORY.map((c, ci) => {
       const got = c.events.filter((e) => Story.done(d, e)).length, locked = !c.events.some((e) => Story.open(d, e));
       return `<section class="panel st-ch${locked ? ' locked' : ''}"><div class="gp-th"><h3>CHAPTER ${ci + 1}: ${c.name}</h3><span class="gp-th-l">${locked ? 'Finish the chapter before to open it.' : got + ' of ' + c.events.length + ' done'}</span></div>
@@ -12400,17 +12482,113 @@ const StoryUI = {
     const now = document.querySelector('#st-chapters .st-ev.now');
     if (now) requestAnimationFrame(() => now.scrollIntoView({ block: 'nearest' }));
   },
-  /** the characters you own for one spot of your team (no keeper styles) */
+  /** the characters you own for a spot of your team or the bench: keeper styles only in goal, never your own character;
+      the best for the spot first. A character already in the team says where */
   openPick(slot) {
     this.slot = slot;
-    const d = Save.data, name = (SQUAD_SLOTS.find((x) => x[0] === slot) || [0, 'TEAM'])[1], cur = d.squad[slot];
-    const fits = { ST: 'ST', MID: 'MID', DEF: 'DEF' }[slot];
-    const ids = d.styles.filter((id) => STYLES[id] && !STYLES[id].gk).sort((a, b) => (STYLES[b].role === fits) - (STYLES[a].role === fits) || RARITIES.indexOf(STYLES[b].rarity) - RARITIES.indexOf(STYLES[a].rarity));
-    $('st-pick-t').textContent = name;
-    $('st-pick-grid').innerHTML = `<button class="st-card" type="button" data-style="AUTO" aria-pressed="${!cur}" style="--rc:#5a5f78"><i class="st-pt"></i><b>AUTO</b><span>THE GAME PICKS</span></button>`
-      + ids.map((id) => `<button class="st-card" type="button" data-style="${id}" aria-pressed="${cur === id}" style="--rc:${RARITY_HEX[STYLES[id].rarity]}"><i class="st-pt" data-port="${id}"></i><b>${STYLES[id].name}</b><span>${ROLES[STYLES[id].role].name}${STYLES[id].role === fits ? ' · FITS' : ''}</span></button>`).join('');
+    const d = Save.data, bench = slot[0] === 'B', gk = slot === 'GK', key = bench ? 'BENCH' : slot;
+    const cur = bench ? d.squad.bench[+slot.slice(1)] : d.squad[slot];
+    const where = (id) => { const k = SQUAD_KEYS.find((x) => d.squad[x] === id); return k ? (SQUAD_SLOTS.find((x) => x[0] === k) || [0, k])[1] : (d.squad.bench || []).includes(id) ? 'BENCH' : ''; };
+    const ids = d.styles.filter((id) => STYLES[id] && !!STYLES[id].gk === gk && id !== d.style).sort((a, b) => ovrOf(b, key) - ovrOf(a, key));
+    $('st-pick-t').textContent = bench ? 'BENCH' : (SQUAD_SLOTS.find((x) => x[0] === slot) || [0, 'TEAM'])[1];
+    $('st-pick-grid').innerHTML = `<button class="st-card" type="button" data-style="AUTO" aria-pressed="${!cur}" style="--rc:#5a5f78"><i class="st-pt"></i><b>${bench ? 'EMPTY' : 'AUTO'}</b><span>${bench ? 'NOBODY HERE' : 'THE GAME PICKS'}</span></button>`
+      + ids.map((id) => `<button class="st-card" type="button" data-style="${id}" aria-pressed="${cur === id}" style="--rc:${RARITY_HEX[STYLES[id].rarity]}"><i class="st-pt" data-port="${id}"></i><b>${STYLES[id].name} <em class="st-ovr">${ovrOf(id, key)}</em></b><span>${ROLES[STYLES[id].role].name}${!bench && STYLES[id].role === slot ? ' · FITS' : ''}${where(id) && cur !== id ? ' · IN TEAM: ' + where(id) : ''}</span></button>`).join('');
     for (const el of document.querySelectorAll('#st-pick-grid .st-pt')) { const id = el.dataset.port, cv = id ? portraitCanvas(id, 48, { sig: true }) : iconCanvas('smile', '#a4a9cf'); cv.className = 'px'; el.replaceWith(cv); }
     $('st-pick').hidden = false;
+  },
+};
+
+/* ---- 11_team.js ---- */
+/* =====================================================================
+   TeamUI: MY TEAM (owner, Nov 2026: "the team system should be like [a big mobile football game] where you can have subs").
+   Cards on a pitch for the five spots (SQUAD_SLOTS) with each character's rating (ovrOf, lower out of position), the team's
+   OVR, your own card in your spot, and a bench of up to 3 (Save.data.squad.bench). Your team plays every offline match; in
+   a match the pause menu's SUBS brings a bench character on for one of your bots (Match.subIn, SUBS_MAX a match).
+   The character picker is the story screen's (#st-pick, StoryUI.openPick)
+   ===================================================================== */
+const TM_SPOTS = { ST: [50, 16], WING: [17, 37], MID: [83, 37], DEF: [50, 58], GK: [50, 84] }; // where each spot's card sits on the pitch (%)
+const TeamUI = {
+  from: 'lobby', subPick: null,
+  tpl() {
+    return `<section id="scr-team" class="screen sub-screen" hidden>
+      <div class="sub-wrap">
+        <div class="sub-head"><h2>MY TEAM</h2><div class="tm-ovr" id="tm-ovr"></div><button class="btn small" id="team-back" type="button">BACK</button></div>
+        <section class="panel tm-box">
+          <div class="tm-pitch" id="tm-pitch"><i class="tm-half"></i><i class="tm-circle"></i><i class="tm-box1"></i><i class="tm-box2"></i></div>
+          <div class="tm-side">
+            <h3>BENCH</h3><p class="tm-note">Up to 3. In a match, the pause menu's SUBS brings them on (3 subs a match).</p>
+            <div class="tm-bench" id="tm-bench"></div>
+            <p class="tm-note">Tap a card to pick who plays there. The number is the rating: higher for rarer characters, 6 lower out of their position. You play your own spot: change your character in the LOCKER.</p>
+          </div>
+        </section>
+      </div>
+    </section>
+    <section id="subs" class="overlay" hidden>
+      <div class="dialog panel subs-box"><h2>SUBS</h2><p class="md-sub" id="subs-msg"></p>
+        <div class="subs-cols"><div><h3>BENCH</h3><div class="subs-list" id="subs-bench"></div></div><div><h3>COMING OFF</h3><div class="subs-list" id="subs-on"></div></div></div>
+        <button class="btn" id="subs-close" type="button">CLOSE</button></div>
+    </section>`;
+  },
+  bind() {
+    const click = (id, fn) => $(id).addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); });
+    click('team-back', () => UI.show(this.from || 'lobby'));
+    click('subs-close', () => { $('subs').hidden = true; });
+    const pick = (e) => {
+      const b = e.target.closest('[data-slot]'); if (!b) return;
+      Sfx.click();
+      if (b.classList.contains('me')) { UI.openLocker(); return; }
+      StoryUI.openPick(b.dataset.slot);
+    };
+    $('tm-pitch').addEventListener('click', pick); $('tm-bench').addEventListener('click', pick);
+    $('subs-bench').addEventListener('click', (e) => { const b = e.target.closest('[data-sub]'); if (!b) return; Sfx.click(); this.subPick = b.dataset.sub; this.renderSubs(); });
+    $('subs-on').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-off]'), m = Game.match; if (!b || !m || !this.subPick) return;
+      const old = m.players[+b.dataset.off], p = m.subIn(old, this.subPick);
+      if (p) { Sfx.coin(); this.subPick = null; $('subs-msg').textContent = STYLES[p.styleId].name + ' IS ON. ' + m.subsLeft + ' SUBS LEFT'; this.renderSubs(true); }
+    });
+  },
+  /** put a character in a spot or on the bench (null: AUTO / empty); a character already somewhere else moves here */
+  assign(d, slot, id) {
+    const S = d.squad; S.bench = S.bench || [];
+    if (id) { for (const k of SQUAD_KEYS) if (S[k] === id) delete S[k]; S.bench = S.bench.filter((x) => x !== id); }
+    if (slot[0] === 'B') { const i = +slot.slice(1); if (id) S.bench[Math.min(i, S.bench.length)] = id; else S.bench.splice(i, 1); S.bench = S.bench.filter(Boolean).slice(0, BENCH_MAX); }
+    else if (id) S[slot] = id; else delete S[slot];
+  },
+  /** a player card: the rating, the spot, the face, the name (in its rarity colour) */
+  card(id, slot, o = {}) {
+    const st = STYLES[id], bench = slot[0] === 'B', key = bench ? 'BENCH' : slot, ovr = st ? ovrOf(id, key) : 0, out = st && !bench && st.role !== slot;
+    const pos = o.me ? 'YOU' : bench ? (st ? ROLES[st.role].name.slice(0, 3) : 'SUB') : slot === 'WING' ? 'WG' : slot;
+    return `<button class="fc-card${o.me ? ' me' : ''}${st ? '' : ' empty'}${o.sel ? ' sel' : ''}" type="button" ${o.attr || `data-slot="${slot}"`} style="--rc:${st ? RARITY_HEX[st.rarity] : '#5a5f78'}${o.xy ? `;left:${o.xy[0]}%;top:${o.xy[1]}%` : ''}">
+      <span class="fc-ovr${out ? ' out' : ''}">${st ? ovr : bench ? '+' : '?'}</span><span class="fc-pos">${pos}</span><i class="fc-pt" data-port="${st ? id : ''}"></i><b class="fc-name">${st ? st.name : bench ? 'EMPTY' : 'AUTO'}</b></button>`;
+  },
+  /** swap the placeholder of each card for its portrait */
+  ports(root) {
+    for (const el of root.querySelectorAll('.fc-pt')) { const id = el.dataset.port, cv = id ? portraitCanvas(id, 56, { sig: true }) : iconCanvas('smile', '#a4a9cf'); cv.className = 'px fc-face'; el.replaceWith(cv); }
+  },
+  render() {
+    if (!$('tm-pitch')) return;
+    const d = Save.data, me = mySlot(d);
+    $('tm-ovr').innerHTML = `<span>TEAM OVR</span><b>${teamOvr(d)}</b>`;
+    const P = $('tm-pitch'); P.querySelectorAll('.fc-card').forEach((c) => c.remove());
+    P.insertAdjacentHTML('beforeend', SQUAD_KEYS.map((k) => (k === me ? this.card(d.style, k, { me: true, xy: TM_SPOTS[k] }) : this.card(d.squad[k], k, { xy: TM_SPOTS[k] }))).join(''));
+    $('tm-bench').innerHTML = [0, 1, 2].map((i) => this.card(d.squad.bench[i], 'B' + i)).join('');
+    this.ports(P); this.ports($('tm-bench'));
+  },
+  /** the story screen's small version: the five cards and the OVR */
+  mini() {
+    const d = Save.data, me = mySlot(d);
+    return `<div class="tm-mini">${SQUAD_KEYS.map((k) => (k === me ? this.card(d.style, k, { me: true }) : this.card(d.squad[k], k))).join('')}</div>`;
+  },
+  /** SUBS in the pause menu: pick someone on the bench, then who comes off */
+  openSubs() { this.subPick = null; $('subs-msg').textContent = ''; this.renderSubs(); $('subs').hidden = false; },
+  renderSubs(keepMsg) {
+    const m = Game.match; if (!m) return;
+    if (!keepMsg) $('subs-msg').textContent = m.subsLeft > 0 ? (this.subPick ? 'NOW PICK WHO COMES OFF' : 'PICK A PLAYER ON THE BENCH') + ' · ' + m.subsLeft + ' SUBS LEFT' : 'NO SUBS LEFT THIS MATCH';
+    $('subs-bench').innerHTML = m.bench.map((id) => this.card(id, 'B0', { attr: `data-sub="${id}"`, sel: this.subPick === id })).join('') || '<p class="tm-note">YOUR BENCH IS EMPTY. FILL IT IN MY TEAM.</p>';
+    const on = m.players.map((p, i) => [p, i]).filter(([p]) => p.team === m.human.team && !p.isHuman && !p.isGK);
+    $('subs-on').innerHTML = on.map(([p, i]) => this.card(p.styleId, SQUAD_OF[p.role] || 'MID', { attr: `data-off="${i}"` })).join('');
+    $('subs-on').classList.toggle('off', !this.subPick || m.subsLeft <= 0);
+    this.ports($('subs-bench')); this.ports($('subs-on'));
   },
 };
 
@@ -12428,7 +12606,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + TeamUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none'; $('outro').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
@@ -12472,7 +12650,7 @@ const UI = {
           <div class="duo"><button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button><button class="btn story" id="go-story" type="button">STORY <span class="sub" id="story-sub">CHAPTER 1</span></button></div>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; BLASTERS</span></button>
           <div class="spot" id="spot"><button class="btn spot-main" id="spot-play" type="button"><span class="spot-in" id="spot-in"></span><span class="spot-go">PLAY</span><span class="spot-dots" id="spot-dots"></span></button><button class="btn spot-all" id="go-modes" type="button">ALL<br>MODES</button></div>
-          <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
+          <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn tm" id="go-team" type="button">TEAM <span class="sub" id="team-sub">OVR 70</span></button><button class="btn pass" id="go-pass" type="button">PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
           <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
       </div>
@@ -12999,7 +13177,7 @@ const UI = {
           <span class="fs-only" hidden>Fullscreen</span><div class="seg fs-only" id="set-fs" hidden><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
         </div>
         <div class="p-people" id="p-people" hidden></div>
-        <div class="row"><button class="btn blue" id="p-resume" type="button">RESUME</button><button class="btn" id="p-forfeit" type="button">FORFEIT</button><button class="btn" id="p-admin" type="button" hidden>ADMIN</button><button class="btn" id="p-chat" type="button" hidden>CHAT</button></div>
+        <div class="row"><button class="btn blue" id="p-resume" type="button">RESUME</button><button class="btn" id="p-forfeit" type="button">FORFEIT</button><button class="btn" id="p-subs" type="button" hidden>SUBS</button><button class="btn" id="p-admin" type="button" hidden>ADMIN</button><button class="btn" id="p-chat" type="button" hidden>CHAT</button></div>
         <p class="label" id="p-note">Click the pitch after resuming to lock the mouse again.</p>
       </div>
     </section>`;
@@ -13119,6 +13297,7 @@ const UI = {
     click('p-resume', () => Game.resume());
     Admin.bind();
     StoryUI.bind();
+    TeamUI.bind();
     click('tut-skip', () => Game.skipTutorial());
     $('tut-gate').addEventListener('pointerdown', (e) => { e.preventDefault(); Game.gateGo(); });
     $('p-forfeit').addEventListener('click', () => {
@@ -13135,6 +13314,8 @@ const UI = {
     });
     click('r-lobby', () => { if (Game.lastMode === 'online') Net.send({ t: 'leave' }); const st = !!Game.lastStory; Game.toLobby(); if (st) this.show('story'); });
     click('go-story', () => this.show('story'));
+    click('go-team', () => this.show('team'));
+    click('p-subs', () => TeamUI.openSubs());
     click('spot-play', () => { const P = this.spotPrev, k = P && performance.now() - P.t < 400 ? P.k : $('spot-play').dataset.mode; if (k && MODES[k]) Game.startMatch(k); });
     const spot = $('spot');
     spot.addEventListener('pointerenter', () => { this.spotHold = true; }); spot.addEventListener('pointerleave', () => { this.spotHold = false; });
@@ -13167,7 +13348,8 @@ const UI = {
     const was = this.cur;
     this.cur = name;
     if (was && was !== name && was !== 'hud' && name !== 'hud') { if (name === 'lobby') Sfx.close(); else Sfx.open(); } // menus whoosh in and out (matches have their own sounds)
-    const map = { story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
+    if (name === 'team' && this.cur !== 'team') TeamUI.from = this.cur === 'story' ? 'story' : 'lobby'; // BACK goes where you came from
+    const map = { team: 'scr-team', story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const t of this.ntags) t.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
@@ -13177,6 +13359,7 @@ const UI = {
     if (name === 'profile') this.renderProfile();
     if (name === 'pass') this.renderPass();
     if (name === 'story') StoryUI.render();
+    if (name === 'team') TeamUI.render();
     if (name === 'lobby') { this.spotI = 0; this.spotShow(0); } // the spotlight starts on the featured mode
     if (name === 'goals') this.renderGoals();
     Friends.place(); // the FRIENDS panel on the side: start screen, room screen and pause menu only
@@ -13199,6 +13382,7 @@ const UI = {
     $('pro-badge').src = badgeURL(tier);
     Pass.sync(d); $('pass-sub').textContent = 'TIER ' + Pass.tier(d) + ' / ' + PASS_TIERS;
     $('story-sub').textContent = StoryUI.sub();
+    $('team-sub').textContent = 'OVR ' + teamOvr(d);
     this.spotShow(0);
     $('pro-tier').textContent = TIER_NAMES[tier];
     const inTier = tier >= 5 ? 10 : Math.floor((d.rp % 100) / 10);
@@ -13511,6 +13695,7 @@ const UI = {
     $('set-fs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === Touch.isFs()));
     $('p-note').textContent = Touch.on ? 'Tip: double tap the right side of the screen to face the goal you attack.' : 'Click the pitch after resuming to lock the mouse again.';
     $('p-admin').hidden = !(Admin.is() && Admin.inMatch());
+    const sm = Game.match; $('p-subs').hidden = !(sm && !sm.online && sm.human && sm.bench && sm.bench.length && !sm.fk && !sm.tut && sm.phase !== 'end'); // MY TEAM: substitutions
     $('p-chat').hidden = !(Game.state === 'online' && Portal.chatAllowed()); // online: the chat, one press away
     const f = $('p-forfeit'); delete f.dataset.armed; f.textContent = Game.state === 'online' ? 'LEAVE MATCH' : Game.match && Game.match.cfg.tutorial ? 'SKIP TUTORIAL' : 'FORFEIT';
     $('p-note').textContent = Game.state === 'online' ? 'Online matches keep going while this menu is open.' : $('p-note').textContent;
@@ -13615,7 +13800,7 @@ const UI = {
     $('hint').hidden = true;
     $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
   },
-  hideOverlays() { $('scr-results').hidden = true; $('scr-pause').hidden = true; $('st-pick').hidden = true; $('scr-modes').hidden = true; },
+  hideOverlays() { $('scr-results').hidden = true; $('scr-pause').hidden = true; $('st-pick').hidden = true; $('scr-modes').hidden = true; $('subs').hidden = true; },
   /* ---------- spins ---------- */
   openSpins() { this.show('spins'); this.renderSpins(true); },
   renderSpins(resetReel) {
@@ -14044,7 +14229,8 @@ const Game = {
     // with this style, else its role (a keeper style: in goal)
     const sd = Save.data, pos = sd.pos === 'GK' ? 'GK' : sd.pos && sd.posFor === sd.style ? sd.pos : roleSpot(sd.style);
     applyBallLook(); // your ball
-    this.match = new Match(mode, skill, { size, role: pos, intro, story, away, squad: story ? sd0.squad : null }); // a winger's team plays wide (Match.pickSetups)
+    const squad = story || !['tutorial', 'freekick', 'fkkeeper'].includes(mode) ? sd0.squad : null; // MY TEAM plays every offline match (not practice)
+    this.match = new Match(mode, skill, { size, role: pos, intro, story, away, squad }); // a winger's team plays wide (Match.pickSetups)
     this.lastMode = mode; this.lastStory = story; this.storyNext = null; this.ended = false;
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);

@@ -11,7 +11,7 @@ const StoryUI = {
       <div class="sub-wrap">
         <div class="sub-head"><h2>STORY</h2><button class="btn small" id="story-back" type="button">BACK</button></div>
         <section class="panel st-intro" id="st-intro"></section>
-        <section class="panel st-team"><div class="gp-th"><h3>YOUR TEAM</h3><span class="gp-th-l">Pick who plays with you. In story matches, pass to a teammate and you take control of them.</span></div><div class="st-squad" id="st-squad"></div></section>
+        <section class="panel st-team"><div class="gp-th"><h3>YOUR TEAM</h3><span class="gp-th-l">In story matches you always play the teammate with the ball.</span><button class="btn small blue" id="st-edit" type="button">EDIT TEAM</button></div><div id="st-squad"></div></section>
         <div class="st-chapters" id="st-chapters"></div>
       </div>
     </section>
@@ -22,15 +22,16 @@ const StoryUI = {
   bind() {
     const click = (id, fn) => $(id).addEventListener('click', () => { Sfx.init(); Sfx.click(); fn(); });
     Cutscene.bind();
+    click('st-edit', () => UI.show('team'));
     click('story-back', () => UI.show('lobby'));
     click('st-pick-close', () => { $('st-pick').hidden = true; });
-    $('st-squad').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (b) { Sfx.click(); this.openPick(b.dataset.slot); } });
+    $('st-squad').addEventListener('click', (e) => { const b = e.target.closest('[data-slot]'); if (!b) return; Sfx.click(); if (b.classList.contains('me')) UI.openLocker(); else this.openPick(b.dataset.slot); });
     $('st-pick-grid').addEventListener('click', (e) => {
       const b = e.target.closest('[data-style]'); if (!b) return;
       Sfx.equip ? Sfx.equip() : Sfx.click();
       const d = Save.data;
-      if (b.dataset.style === 'AUTO') delete d.squad[this.slot]; else d.squad[this.slot] = b.dataset.style;
-      Save.save(); $('st-pick').hidden = true; this.render();
+      TeamUI.assign(d, this.slot, b.dataset.style === 'AUTO' ? null : b.dataset.style);
+      Save.save(); $('st-pick').hidden = true; if (UI.cur === 'story') this.render(); TeamUI.render(); UI.renderLobby();
     });
     $('st-chapters').addEventListener('click', (e) => {
       const b = e.target.closest('[data-ev]'); if (!b) return;
@@ -54,10 +55,7 @@ const StoryUI = {
     const d = Save.data, cur = Story.next(d), n = d.story.done.length;
     $('st-intro').innerHTML = `<div class="st-prog"><b>${n} / ${STORY_EVENTS.length}</b><span>EVENTS DONE</span></div>
       <p class="st-lead">${cur ? 'Take your club from the back pitch to the Voxel Cup. Every event pays out once, and three characters only come from here: ROGUE, IRONCLAD and SOLARIS.' : 'You won the Voxel Cup. Replay any event you like, the rewards are already yours.'}</p>`;
-    $('st-squad').innerHTML = SQUAD_SLOTS.map(([k, name]) => {
-      const id = d.squad[k];
-      return `<button class="st-slot" type="button" data-slot="${k}" style="--rc:${id ? RARITY_HEX[STYLES[id].rarity] : '#5a5f78'}"><i class="st-pt" data-port="${id || ''}"></i><span class="st-sl"><span class="st-role">${name}</span><b>${id ? STYLES[id].name : 'AUTO'}</b><span class="st-hint">${id ? STYLES[id].rarity.toUpperCase() + ' · ' + ROLES[STYLES[id].role].name : 'TAP TO PICK'}</span></span></button>`;
-    }).join('');
+    $('st-squad').innerHTML = `<div class="st-tovr">TEAM OVR <b>${teamOvr(d)}</b></div>` + TeamUI.mini(); TeamUI.ports($('st-squad'));
     $('st-chapters').innerHTML = STORY.map((c, ci) => {
       const got = c.events.filter((e) => Story.done(d, e)).length, locked = !c.events.some((e) => Story.open(d, e));
       return `<section class="panel st-ch${locked ? ' locked' : ''}"><div class="gp-th"><h3>CHAPTER ${ci + 1}: ${c.name}</h3><span class="gp-th-l">${locked ? 'Finish the chapter before to open it.' : got + ' of ' + c.events.length + ' done'}</span></div>
@@ -78,15 +76,17 @@ const StoryUI = {
     const now = document.querySelector('#st-chapters .st-ev.now');
     if (now) requestAnimationFrame(() => now.scrollIntoView({ block: 'nearest' }));
   },
-  /** the characters you own for one spot of your team (no keeper styles) */
+  /** the characters you own for a spot of your team or the bench: keeper styles only in goal, never your own character;
+      the best for the spot first. A character already in the team says where */
   openPick(slot) {
     this.slot = slot;
-    const d = Save.data, name = (SQUAD_SLOTS.find((x) => x[0] === slot) || [0, 'TEAM'])[1], cur = d.squad[slot];
-    const fits = { ST: 'ST', MID: 'MID', DEF: 'DEF' }[slot];
-    const ids = d.styles.filter((id) => STYLES[id] && !STYLES[id].gk).sort((a, b) => (STYLES[b].role === fits) - (STYLES[a].role === fits) || RARITIES.indexOf(STYLES[b].rarity) - RARITIES.indexOf(STYLES[a].rarity));
-    $('st-pick-t').textContent = name;
-    $('st-pick-grid').innerHTML = `<button class="st-card" type="button" data-style="AUTO" aria-pressed="${!cur}" style="--rc:#5a5f78"><i class="st-pt"></i><b>AUTO</b><span>THE GAME PICKS</span></button>`
-      + ids.map((id) => `<button class="st-card" type="button" data-style="${id}" aria-pressed="${cur === id}" style="--rc:${RARITY_HEX[STYLES[id].rarity]}"><i class="st-pt" data-port="${id}"></i><b>${STYLES[id].name}</b><span>${ROLES[STYLES[id].role].name}${STYLES[id].role === fits ? ' · FITS' : ''}</span></button>`).join('');
+    const d = Save.data, bench = slot[0] === 'B', gk = slot === 'GK', key = bench ? 'BENCH' : slot;
+    const cur = bench ? d.squad.bench[+slot.slice(1)] : d.squad[slot];
+    const where = (id) => { const k = SQUAD_KEYS.find((x) => d.squad[x] === id); return k ? (SQUAD_SLOTS.find((x) => x[0] === k) || [0, k])[1] : (d.squad.bench || []).includes(id) ? 'BENCH' : ''; };
+    const ids = d.styles.filter((id) => STYLES[id] && !!STYLES[id].gk === gk && id !== d.style).sort((a, b) => ovrOf(b, key) - ovrOf(a, key));
+    $('st-pick-t').textContent = bench ? 'BENCH' : (SQUAD_SLOTS.find((x) => x[0] === slot) || [0, 'TEAM'])[1];
+    $('st-pick-grid').innerHTML = `<button class="st-card" type="button" data-style="AUTO" aria-pressed="${!cur}" style="--rc:#5a5f78"><i class="st-pt"></i><b>${bench ? 'EMPTY' : 'AUTO'}</b><span>${bench ? 'NOBODY HERE' : 'THE GAME PICKS'}</span></button>`
+      + ids.map((id) => `<button class="st-card" type="button" data-style="${id}" aria-pressed="${cur === id}" style="--rc:${RARITY_HEX[STYLES[id].rarity]}"><i class="st-pt" data-port="${id}"></i><b>${STYLES[id].name} <em class="st-ovr">${ovrOf(id, key)}</em></b><span>${ROLES[STYLES[id].role].name}${!bench && STYLES[id].role === slot ? ' · FITS' : ''}${where(id) && cur !== id ? ' · IN TEAM: ' + where(id) : ''}</span></button>`).join('');
     for (const el of document.querySelectorAll('#st-pick-grid .st-pt')) { const id = el.dataset.port, cv = id ? portraitCanvas(id, 48, { sig: true }) : iconCanvas('smile', '#a4a9cf'); cv.className = 'px'; el.replaceWith(cv); }
     $('st-pick').hidden = false;
   },

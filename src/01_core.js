@@ -163,7 +163,9 @@ const Save = {
     out.preset = Number.isInteger(out.preset) && out.preset >= 0 && out.preset < out.presets.length && out.presets[out.preset].s ? out.preset : -1;
     out.fkBest = clamp(Math.floor(Number(out.fkBest)), 0, 99); if (!Number.isFinite(out.fkBest)) out.fkBest = 0;
     out.story = { done: out.story && Array.isArray(out.story.done) ? [...new Set(out.story.done.filter((x) => typeof x === 'string'))] : [] }; // STORY: the events you finished
-    out.squad = out.squad && typeof out.squad === 'object' && !Array.isArray(out.squad) ? Object.fromEntries(Object.entries(out.squad).filter(([k, v]) => ['ST', 'MID', 'DEF'].includes(k) && typeof v === 'string')) : {}; // your team in STORY matches
+    const sq = out.squad && typeof out.squad === 'object' && !Array.isArray(out.squad) ? out.squad : {}; // MY TEAM: a character per spot and up to 3 on the bench
+    out.squad = Object.fromEntries(Object.entries(sq).filter(([k, v]) => ['ST', 'WING', 'MID', 'DEF', 'GK'].includes(k) && typeof v === 'string'));
+    out.squad.bench = Array.isArray(sq.bench) ? sq.bench.filter((v) => typeof v === 'string').slice(0, 3) : [];
     out.topUpOff = !!out.topUpOff; out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
     out.tips = Array.isArray(out.tips) ? out.tips.filter((t) => typeof t === 'string' && t.length < 16).slice(0, 20) : []; // the first-match tips you have seen
@@ -200,7 +202,9 @@ const Save = {
     const d = this.data;
     codeTopUp(d); // the tester pack keeps up with new styles, Flows and skins
     d.styles = d.styles.filter((s) => STYLES[s]);
-    for (const k of Object.keys(d.squad)) if (!d.styles.includes(d.squad[k]) || STYLES[d.squad[k]].gk) delete d.squad[k]; // only characters you own
+    const own = (id) => d.styles.includes(id) && !!STYLES[id], seen = new Set(); // MY TEAM: only characters you own, each once, keeper styles only in goal
+    for (const k of SQUAD_KEYS) { const id = d.squad[k]; if (id && (!own(id) || !!STYLES[id].gk !== (k === 'GK') || seen.has(id))) delete d.squad[k]; else if (id) seen.add(id); }
+    d.squad.bench = (d.squad.bench || []).filter((id) => own(id) && !STYLES[id].gk && !seen.has(id) && (seen.add(id), true)).slice(0, BENCH_MAX);
     if (!d.styles.includes('ROOKIE')) d.styles.unshift('ROOKIE');
     d.flows = d.flows.filter((f) => FLOWS[f]);
     if (d.spunStyle && (!STYLES[d.spunStyle] || d.styles.includes(d.spunStyle))) d.spunStyle = null;

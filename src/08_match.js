@@ -51,7 +51,8 @@ class Match {
     this.online = !!opts.humans; this.humans = []; // online: every remote player, each with their own controls (p.ctl)
     this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, awakens: 0, trailed: false }; // your moments, for the weekly challenges
     this.lastGoal = null; this.pendingEnd = false;
-    this.story = opts.story || null; this.myGoals = 0; // STORY: the event being played, and the goals you scored (whoever you controlled)
+    this.story = opts.story || null; this.myGoals = 0;
+    this.bench = opts.squad && Array.isArray(opts.squad.bench) ? opts.squad.bench.filter((id) => STYLES[id]) : []; this.subsLeft = SUBS_MAX; // MY TEAM: subs from the bench // STORY: the event being played, and the goals you scored (whoever you controlled)
     // your club at home against a random other club; the away side changes kit if the colours clash
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
     const away = opts.away || pick(CLUB_IDS.filter((c) => c !== home));
@@ -1584,6 +1585,24 @@ class Match {
     const t = carrier || mates.reduce((a, q) => (dist2D(q.pos, b.pos) < dist2D(a.pos, b.pos) ? q : a));
     this.switchTo(t); Sfx.click();
     return true;
+  }
+  /** MY TEAM: a substitution (pause menu SUBS). A bench character comes on in the same spot for one of your bots; the one
+      coming off goes to the bench. SUBS_MAX a match */
+  subIn(old, id) {
+    const i = this.bench.indexOf(id), h = this.human;
+    if (!old || old.isHuman || !h || old.team !== h.team || i < 0 || this.subsLeft <= 0 || !STYLES[id] || this.online) return false;
+    const num = old.number; // the shirt number stays with the spot
+    const p = new Player(this, { team: old.team, role: old.role, human: false, style: id, flow: chance(0.85) ? pick(FLOW_IDS) : null, look: botLook(), skin: null, number: num, name: pick(BOT_NAMES.filter((n) => !this.players.some((q) => q.name === n))) || old.name });
+    p.pos.copy(old.pos); p.yaw = old.yaw;
+    const b = this.ball, had = b.owner === old;
+    this.players[this.players.indexOf(old)] = p; const T = this.teams[old.team]; T[T.indexOf(old)] = p;
+    if (had) { b.owner = null; this.possess(p, true); }
+    if (this.lastPass && (this.lastPass.from === old || this.lastPass.to === old)) this.lastPass = null;
+    if (this.caller === old) this.caller = p;
+    old.dispose();
+    this.bench[i] = old.styleId; this.subsLeft--;
+    this.label(p, 'SUB ON', '#2ee38f', 1.6); FX.ring(p.pos.x, 0.2, p.pos.z, '#2ee38f', 1.6, 24); Sfx.whistle(1);
+    return p;
   }
   /** you take over a teammate (V, or in STORY whoever gets the ball); the player you left plays on as a bot */
   switchTo(p) {

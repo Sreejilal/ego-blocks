@@ -165,7 +165,8 @@ const Game = {
     // with this style, else its role (a keeper style: in goal)
     const sd = Save.data, pos = sd.pos === 'GK' ? 'GK' : sd.pos && sd.posFor === sd.style ? sd.pos : roleSpot(sd.style);
     applyBallLook(); // your ball
-    this.match = new Match(mode, skill, { size, role: pos, intro, story, away, squad: story ? sd0.squad : null }); // a winger's team plays wide (Match.pickSetups)
+    const squad = story || !['tutorial', 'freekick', 'fkkeeper'].includes(mode) ? sd0.squad : null; // MY TEAM plays every offline match (not practice)
+    this.match = new Match(mode, skill, { size, role: pos, intro, story, away, squad }); // a winger's team plays wide (Match.pickSetups)
     this.lastMode = mode; this.lastStory = story; this.storyNext = null; this.ended = false;
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);

@@ -11,7 +11,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + TeamUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none'; $('outro').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
@@ -55,7 +55,7 @@ const UI = {
           <div class="duo"><button class="btn" id="go-ranked" type="button">RANKED <span class="sub" id="rank-sub">WOOD</span></button><button class="btn story" id="go-story" type="button">STORY <span class="sub" id="story-sub">CHAPTER 1</span></button></div>
           <button class="btn hazard" id="go-lawless" type="button">LAWLESS <span class="sub">3V3 &middot; BLASTERS</span></button>
           <div class="spot" id="spot"><button class="btn spot-main" id="spot-play" type="button"><span class="spot-in" id="spot-in"></span><span class="spot-go">PLAY</span><span class="spot-dots" id="spot-dots"></span></button><button class="btn spot-all" id="go-modes" type="button">ALL<br>MODES</button></div>
-          <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn pass" id="go-pass" type="button">GAME PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
+          <div class="meta-row"><button class="btn emerald" id="go-spins" type="button">SPINS <span class="sub">FROM 100</span></button><button class="btn" id="go-locker" type="button">LOCKER <span class="sub" id="locker-sub">ROOKIE</span></button><button class="btn tm" id="go-team" type="button">TEAM <span class="sub" id="team-sub">OVR 70</span></button><button class="btn pass" id="go-pass" type="button">PASS <span class="sub" id="pass-sub">TIER 0 / 30</span></button></div>
           <div class="ghosts"><button class="btn ghost daily" id="go-daily" type="button">DAILY <i class="dot"></i></button><button class="btn ghost goals" id="go-goals" type="button">BLUEPRINTS <b class="bp-n" id="bp-n">0</b></button><button class="btn ghost" id="go-fk" type="button">FREE KICKS</button><button class="btn ghost" id="go-howto" type="button">HOW TO PLAY</button><button class="btn ghost" id="go-profile" type="button"><span>PROFILE<span class="ph-x"> &amp; HISTORY</span></span></button></div>
         </nav>
       </div>
@@ -582,7 +582,7 @@ const UI = {
           <span class="fs-only" hidden>Fullscreen</span><div class="seg fs-only" id="set-fs" hidden><button type="button" data-v="1">ON</button><button type="button" data-v="0">OFF</button></div>
         </div>
         <div class="p-people" id="p-people" hidden></div>
-        <div class="row"><button class="btn blue" id="p-resume" type="button">RESUME</button><button class="btn" id="p-forfeit" type="button">FORFEIT</button><button class="btn" id="p-admin" type="button" hidden>ADMIN</button><button class="btn" id="p-chat" type="button" hidden>CHAT</button></div>
+        <div class="row"><button class="btn blue" id="p-resume" type="button">RESUME</button><button class="btn" id="p-forfeit" type="button">FORFEIT</button><button class="btn" id="p-subs" type="button" hidden>SUBS</button><button class="btn" id="p-admin" type="button" hidden>ADMIN</button><button class="btn" id="p-chat" type="button" hidden>CHAT</button></div>
         <p class="label" id="p-note">Click the pitch after resuming to lock the mouse again.</p>
       </div>
     </section>`;
@@ -702,6 +702,7 @@ const UI = {
     click('p-resume', () => Game.resume());
     Admin.bind();
     StoryUI.bind();
+    TeamUI.bind();
     click('tut-skip', () => Game.skipTutorial());
     $('tut-gate').addEventListener('pointerdown', (e) => { e.preventDefault(); Game.gateGo(); });
     $('p-forfeit').addEventListener('click', () => {
@@ -718,6 +719,8 @@ const UI = {
     });
     click('r-lobby', () => { if (Game.lastMode === 'online') Net.send({ t: 'leave' }); const st = !!Game.lastStory; Game.toLobby(); if (st) this.show('story'); });
     click('go-story', () => this.show('story'));
+    click('go-team', () => this.show('team'));
+    click('p-subs', () => TeamUI.openSubs());
     click('spot-play', () => { const P = this.spotPrev, k = P && performance.now() - P.t < 400 ? P.k : $('spot-play').dataset.mode; if (k && MODES[k]) Game.startMatch(k); });
     const spot = $('spot');
     spot.addEventListener('pointerenter', () => { this.spotHold = true; }); spot.addEventListener('pointerleave', () => { this.spotHold = false; });
@@ -750,7 +753,8 @@ const UI = {
     const was = this.cur;
     this.cur = name;
     if (was && was !== name && was !== 'hud' && name !== 'hud') { if (name === 'lobby') Sfx.close(); else Sfx.open(); } // menus whoosh in and out (matches have their own sounds)
-    const map = { story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
+    if (name === 'team' && this.cur !== 'team') TeamUI.from = this.cur === 'story' ? 'story' : 'lobby'; // BACK goes where you came from
+    const map = { team: 'scr-team', story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const t of this.ntags) t.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
@@ -760,6 +764,7 @@ const UI = {
     if (name === 'profile') this.renderProfile();
     if (name === 'pass') this.renderPass();
     if (name === 'story') StoryUI.render();
+    if (name === 'team') TeamUI.render();
     if (name === 'lobby') { this.spotI = 0; this.spotShow(0); } // the spotlight starts on the featured mode
     if (name === 'goals') this.renderGoals();
     Friends.place(); // the FRIENDS panel on the side: start screen, room screen and pause menu only
@@ -782,6 +787,7 @@ const UI = {
     $('pro-badge').src = badgeURL(tier);
     Pass.sync(d); $('pass-sub').textContent = 'TIER ' + Pass.tier(d) + ' / ' + PASS_TIERS;
     $('story-sub').textContent = StoryUI.sub();
+    $('team-sub').textContent = 'OVR ' + teamOvr(d);
     this.spotShow(0);
     $('pro-tier').textContent = TIER_NAMES[tier];
     const inTier = tier >= 5 ? 10 : Math.floor((d.rp % 100) / 10);
@@ -1094,6 +1100,7 @@ const UI = {
     $('set-fs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.v === '1') === Touch.isFs()));
     $('p-note').textContent = Touch.on ? 'Tip: double tap the right side of the screen to face the goal you attack.' : 'Click the pitch after resuming to lock the mouse again.';
     $('p-admin').hidden = !(Admin.is() && Admin.inMatch());
+    const sm = Game.match; $('p-subs').hidden = !(sm && !sm.online && sm.human && sm.bench && sm.bench.length && !sm.fk && !sm.tut && sm.phase !== 'end'); // MY TEAM: substitutions
     $('p-chat').hidden = !(Game.state === 'online' && Portal.chatAllowed()); // online: the chat, one press away
     const f = $('p-forfeit'); delete f.dataset.armed; f.textContent = Game.state === 'online' ? 'LEAVE MATCH' : Game.match && Game.match.cfg.tutorial ? 'SKIP TUTORIAL' : 'FORFEIT';
     $('p-note').textContent = Game.state === 'online' ? 'Online matches keep going while this menu is open.' : $('p-note').textContent;
@@ -1198,7 +1205,7 @@ const UI = {
     $('hint').hidden = true;
     $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
   },
-  hideOverlays() { $('scr-results').hidden = true; $('scr-pause').hidden = true; $('st-pick').hidden = true; $('scr-modes').hidden = true; },
+  hideOverlays() { $('scr-results').hidden = true; $('scr-pause').hidden = true; $('st-pick').hidden = true; $('scr-modes').hidden = true; $('subs').hidden = true; },
   /* ---------- spins ---------- */
   openSpins() { this.show('spins'); this.renderSpins(true); },
   renderSpins(resetReel) {

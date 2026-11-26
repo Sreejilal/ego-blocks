@@ -1004,8 +1004,22 @@ const RIVAL_FACE = { MOSSWOOD: 'SHAMBLER', HARBOUR: 'KESTREL', EMBER: 'BLITZ', N
 const STORY_EVENTS = [];
 STORY.forEach((c, ci) => c.events.forEach((e) => { e.ch = ci; e.n = STORY_EVENTS.length + 1; STORY_EVENTS.push(e); }));
 /** your team in story matches: one character per kind of spot (the spot you play yourself uses your own style) */
-const SQUAD_SLOTS = [['ST', 'STRIKER'], ['MID', 'MIDFIELD'], ['DEF', 'DEFENDER']];
-const SQUAD_OF = { ST: 'ST', FW: 'ST', MID: 'MID', LW: 'MID', RW: 'MID', DEF: 'DEF', DEF2: 'DEF' }; // a line-up spot -> its squad slot
+const SQUAD_SLOTS = [['ST', 'STRIKER'], ['WING', 'WINGER'], ['MID', 'MIDFIELD'], ['DEF', 'DEFENDER'], ['GK', 'KEEPER']];
+const SQUAD_OF = { ST: 'ST', FW: 'ST', LW: 'WING', RW: 'WING', MID: 'MID', DEF: 'DEF', DEF2: 'DEF', GK: 'GK' };
+const SQUAD_KEYS = SQUAD_SLOTS.map((x) => x[0]), BENCH_MAX = 3, SUBS_MAX = 3; // the bench: up to 3 characters; 3 subs a match
+/* MY TEAM (owner, Nov 2026: "the team system should be like [a big mobile football game] where you can have subs"): every
+   character is a card with a rating (OVR) from its rarity, 6 lower out of its position, and the team's OVR is the average
+   of the starters (you included) */
+const OVR_BASE = { Rare: 72, Epic: 78, Legendary: 84, Mythic: 88, Generational: 93 };
+const ovrOf = (id, slot) => { const st = STYLES[id]; if (!st) return 0; const b = OVR_BASE[st.rarity] || 70; return slot && slot !== 'BENCH' && st.role !== slot ? b - 6 : b; };
+/** your own spot in the team (your style's role, or in goal when you play keeper) */
+const mySlot = (d) => (d.pos === 'GK' ? 'GK' : SQUAD_OF[d.pos && d.posFor === d.style ? d.pos : roleSpot(d.style)] || 'ST');
+/** the starters' ratings averaged (an AUTO spot counts as 70: a random bot) */
+function teamOvr(d) {
+  const me = mySlot(d);
+  const r = SQUAD_KEYS.map((k) => (k === me ? ovrOf(d.style, k) : d.squad[k] ? ovrOf(d.squad[k], k) : 70));
+  return Math.round(r.reduce((a, v) => a + v, 0) / r.length);
+} // a line-up spot -> its squad slot
 const Story = {
   goalText(g) { return 'WIN' + (g.by ? ' BY ' + g.by : '') + (g.mine ? ' AND SCORE ' + g.mine + ' YOURSELF' : '') + (g.clean ? ' WITHOUT LETTING ONE IN' : ''); },
   rewardList(r) { return [r.em ? '+' + r.em + ' EMERALDS' : null, r.bp ? '+' + r.bp + ' BLUEPRINTS' : null, r.style ? 'NEW CHARACTER: ' + STYLES[r.style].name : null].filter(Boolean); },

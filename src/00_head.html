@@ -555,6 +555,53 @@ body.touch #emote-pop .key, body.touch #emote-pop .em-pad { display: none; }
 @media (max-height: 460px) { .cs-face { width: 120px; height: 120px; bottom: 116px; } .cs-box { min-height: 92px; padding: 10px 16px 24px; bottom: 10px; gap: 4px; } .cs-name { font-size: 24px; } .cs-text { font-size: 18px; } .cs-join { top: 4%; padding: 8px 14px 10px; } .cs-jface canvas { width: 64px; height: 64px; } .cs-join b { font-size: 32px; } }
 @media (max-width: 560px) { .cs-face { width: 130px; height: 130px; bottom: 210px; } .cs-box { min-height: 170px; } }
 @media (prefers-reduced-motion: reduce) { .cs-face.in.l, .cs-face.in.r, .cs-title.go b, .cs-join.go { animation: none; } }
+/* MY TEAM: player cards (rating, spot, face, name in the rarity colour) on a pitch, the bench, SUBS in the pause menu */
+.menu .meta-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.btn.tm { background: linear-gradient(90deg, #14506b, #1d7a9e); box-shadow: inset 0 -6px 0 #0a3346, inset 0 var(--px) 0 rgba(255,255,255,.22), 4px 4px 0 rgba(0,0,0,.45); }
+.btn.tm .sub { color: #c4ecff; }
+.tm-ovr { display: flex; align-items: baseline; gap: 8px; margin-left: auto; margin-right: 8px; font-family: var(--font-label); font-size: 11px; letter-spacing: .08em; color: var(--muted); }
+.tm-ovr b { font-family: var(--font-display); font-weight: 400; font-size: 48px; line-height: .8; color: var(--gold); text-shadow: 3px 3px 0 var(--ink); }
+.tm-box { padding: 16px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tm-pitch { position: relative; width: 100%; max-width: 520px; justify-self: center; aspect-ratio: 1 / 1; background: repeating-linear-gradient(180deg, #1d6b34 0 12%, #1a5f2e 12% 24%); box-shadow: inset 0 0 0 3px rgba(255,255,255,.55), 4px 4px 0 rgba(0,0,0,.45); overflow: hidden; }
+.tm-pitch i { position: absolute; border: 3px solid rgba(255,255,255,.45); pointer-events: none; }
+.tm-half { left: -3px; right: -3px; top: -3px; height: 50%; border-top: 0 !important; }
+.tm-circle { left: 50%; top: 50%; width: 22%; aspect-ratio: 1; border-radius: 50%; transform: translate(-50%, -50%); }
+.tm-box1 { left: 30%; right: 30%; top: -3px; height: 11%; } .tm-box2 { left: 30%; right: 30%; bottom: -3px; height: 11%; }
+.tm-side { display: grid; gap: 10px; align-content: start; }
+.tm-side h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 32px; line-height: .9; }
+.tm-note { margin: 0; font-family: var(--font-body); font-size: 17px; line-height: 1.15; color: var(--muted); }
+.tm-bench { display: grid; grid-template-columns: repeat(3, minmax(0, 92px)); gap: 10px; }
+.fc-card { all: unset; box-sizing: border-box; cursor: pointer; position: relative; width: 92px; height: 124px; display: grid; justify-items: center; align-content: end; gap: 2px; padding: 6px 4px 8px;
+  background: linear-gradient(160deg, var(--rc) -30%, #17142a 52%, #0c0a12); box-shadow: inset 0 0 0 2px var(--rc), 3px 3px 0 rgba(0,0,0,.5); clip-path: polygon(0 6%, 50% 0, 100% 6%, 100% 100%, 0 100%); }
+.tm-pitch .fc-card { position: absolute; transform: translate(-50%, -50%); }
+.fc-card.empty { background: rgba(12,10,18,.7); box-shadow: inset 0 0 0 2px #5a5f78; }
+.fc-card.me { box-shadow: inset 0 0 0 3px var(--gold), 0 0 14px rgba(255,203,61,.5), 3px 3px 0 rgba(0,0,0,.5); }
+.fc-card.sel { box-shadow: inset 0 0 0 3px #fff, 0 0 16px #fff; }
+.fc-ovr { position: absolute; left: 7px; top: 9px; font-family: var(--font-display); font-size: 26px; line-height: .8; color: #fff; text-shadow: 2px 2px 0 #000; }
+.fc-ovr.out { color: #ff7a85; }
+.fc-pos { position: absolute; left: 8px; top: 33px; font-family: var(--font-label); font-size: 9px; letter-spacing: .06em; color: var(--rc); }
+.fc-card.me .fc-pos { color: var(--gold); }
+.fc-face { width: 56px; height: 56px; image-rendering: pixelated; }
+.fc-name { font-family: var(--font-display); font-weight: 400; font-size: 15px; line-height: .9; color: #fff; max-width: 86px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fc-card:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.fc-card:active { transform: translate(2px, 2px); }
+.tm-pitch .fc-card:active { transform: translate(calc(-50% + 2px), calc(-50% + 2px)); }
+@media (hover: hover) { .fc-card:hover { filter: brightness(1.18); } }
+.st-team .gp-th .btn { margin-left: auto; }
+.st-tovr { font-family: var(--font-label); font-size: 11px; letter-spacing: .08em; color: var(--muted); margin-bottom: 8px; }
+.st-tovr b { font-family: var(--font-display); font-weight: 400; font-size: 30px; color: var(--gold); margin-left: 6px; }
+.tm-mini { display: flex; gap: 10px; flex-wrap: wrap; }
+.st-ovr { font-style: normal; color: var(--gold); margin-left: 6px; }
+#subs { z-index: 65; }
+#st-pick { z-index: 62; } /* the character picker sits over the team and story screens */
+.subs-box { width: min(760px, 100%); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); grid-template-rows: auto auto minmax(0, 1fr) auto; }
+.subs-box h2 { margin: 0; }
+.subs-cols { min-height: 0; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.subs-cols h3 { margin: 0 0 8px; font-family: var(--font-display); font-weight: 400; font-size: 26px; }
+.subs-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.subs-list.off .fc-card { opacity: .45; pointer-events: none; }
+@media (max-width: 760px) { .tm-box { grid-template-columns: 1fr; } .tm-pitch { max-width: 420px; justify-self: center; width: 100%; } }
+@media (max-height: 460px) { .tm-box { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); } .fc-card { width: 64px; height: 88px; } .fc-face { width: 36px; height: 36px; } .fc-ovr { font-size: 18px; top: 7px; left: 5px; } .fc-pos { top: 23px; left: 6px; } .fc-name { font-size: 11px; max-width: 60px; } .tm-bench { grid-template-columns: repeat(3, 64px); } }
 .dl-card { background: var(--slate-2); padding: 12px; display: grid; gap: 8px; }
 .dl-card > div { display: grid; gap: 6px; justify-items: start; }
 .dl-big { font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: 1; color: var(--gold); }
