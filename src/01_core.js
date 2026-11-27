@@ -121,7 +121,7 @@ const Save = {
     for (const k of ['gift', 'day', 'ch']) dl[k] = typeof dl[k] === 'string' ? dl[k].slice(0, 16) : '';
     dl.prog = clamp(Math.floor(Number(dl.prog) || 0), 0, 99); dl.done = !!dl.done; dl.login = Math.max(0, Math.floor(Number(dl.login) || 0)); // days of the login calendar
     const dr = out.drills && typeof out.drills === 'object' && !Array.isArray(out.drills) ? out.drills : {}; out.drills = {}; // TRAINING: best and stars per drill
-    for (const k of ['drillrun', 'drilldef']) if (dr[k] && typeof dr[k] === 'object') out.drills[k] = { best: Number.isFinite(dr[k].best) ? dr[k].best : null, stars: clamp(Math.floor(Number(dr[k].stars) || 0), 0, 3) };
+    for (const k of ['drillrun', 'drilldef', 'drillgk']) if (dr[k] && typeof dr[k] === 'object') out.drills[k] = { best: Number.isFinite(dr[k].best) ? dr[k].best : null, stars: clamp(Math.floor(Number(dr[k].stars) || 0), 0, 3) };
     const ps = out.pass = Object.assign({}, def.pass, out.pass && typeof out.pass === 'object' ? out.pass : {});
     for (const k of ['season', 'week', 'xp', 'got']) ps[k] = Math.floor(Number(ps[k]) || 0);
     ps.xp = Math.max(0, ps.xp); ps.got = clamp(ps.got, 0, 30);

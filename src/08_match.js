@@ -22,6 +22,7 @@ const MODES = {
   bomb: { name: 'BOMB BALL', ranked: false, items: false, bomb: true, tip: 'THE BALL IS A BOMB · IF IT GOES OFF IN YOUR HALF, THEY SCORE' },
   drillrun: { name: 'SPRINT DRILL', ranked: false, items: false, drill: 'run' },
   drilldef: { name: 'DEFENDING DRILL', ranked: false, items: false, drill: 'def' },
+  drillgk: { name: 'DEFENDING DRILL: IN GOAL', ranked: false, items: false, drill: 'def', keeper: true }, // the same drill, you in goal
   tiny: { name: 'TINY GOALS', ranked: false, items: false, goalW: 1.5, goalH: 1.75, noKeeper: true, tip: 'TINY GOALS AND NO KEEPERS · AIM CAREFULLY' },
   heist: { name: 'OMEGA CORES', ranked: false, items: false, heist: true, tip: 'SCORE TO TAKE THEIR BEST CORE AND ITS POWER · WIN AND YOU SNAP THEM AWAY' },
   duel: { name: '1V1 DUEL', ranked: false, items: false, firstTo: 3, tip: 'FIRST TO 3 GOALS' },
@@ -1662,7 +1663,8 @@ class Match {
       });
       this.drillPaint();
       Hud.banner('SPRINT DRILL', 'RUN THROUGH THE 8 GATES IN ORDER', DRILLS.drillrun.hex, true);
-    } else { this.drillAttack(); Hud.banner('DEFENDING DRILL', 'STOP ' + DRILL_ATTACKS + ' ATTACKS: WIN THE BALL OR PUT IT OUT', DRILLS.drilldef.hex, true); }
+    } else if (h.isGK) { this.drillAttack(); Hud.banner('DEFENDING DRILL: IN GOAL', 'STOP ' + DRILL_ATTACKS + ' ATTACKS: SAVE IT, CATCH IT OR PUT IT OUT', DRILLS.drillgk.hex, true); }
+    else { this.drillAttack(); Hud.banner('DEFENDING DRILL', 'STOP ' + DRILL_ATTACKS + ' ATTACKS: WIN THE BALL OR PUT IT OUT', DRILLS.drilldef.hex, true); }
   }
   /** SPRINT: the next gate gold, the ones after it white, the ones done gone */
   drillPaint() {
@@ -1676,8 +1678,9 @@ class Match {
     const st = this.teams[1].find((p) => p.role === 'ST'), mid = this.teams[1].find((p) => p.role === 'MID'), x = rand(-10, 10);
     for (const p of this.players) { p.setState('free'); p.vel.set(0, 0, 0); p.wall = false; p.charging = false; p.dash = null; p.slide = null; p.kickT = -1; }
     st.pos.set(x, 0, 0); mid.pos.set(x > 0 ? x - 12 : x + 12, 0, 6 * s); st.yaw = mid.yaw = s > 0 ? Math.PI : 0;
-    h.pos.set(0, 0, -30 * s); h.yaw = s > 0 ? 0 : Math.PI;
-    const gk = this.keeperOf(h.team); if (gk) gk.pos.set(0, 0, -(F.L - 2) * s);
+    const df = this.teams[h.team].find((p) => p.role === 'DEF'), gk = this.keeperOf(h.team); // you are the defender, or the keeper (IN GOAL)
+    if (df) { df.pos.set(0, 0, -30 * s); df.yaw = s > 0 ? 0 : Math.PI; }
+    if (gk) { gk.pos.set(0, 0, -(F.L - 2) * s); gk.yaw = s > 0 ? 0 : Math.PI; }
     b.reset(st.pos.x, st.pos.z); b.kick = null; this.possess(st, true);
     this.phase = 'play';
   }

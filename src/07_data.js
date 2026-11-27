@@ -1288,6 +1288,7 @@ const loginText = (r) => [r.em ? '+' + r.em + ' EMERALDS' : null, r.bp ? '+' + r
 const DRILLS = {
   drillrun: { name: 'SPRINT DRILL', icon: 'dash', hex: '#3fd6ff', line: 'Run through the 8 gates in order, as fast as you can. Sprint, but save some stamina.', reward: [{ em: 60 }, { em: 120 }, { em: 200, bp: 1 }] },
   drilldef: { name: 'DEFENDING DRILL', icon: 'tackle', hex: '#ff6b3d', line: 'Two attackers, five attacks. Win the ball or clear it before they score.', reward: [{ em: 60 }, { em: 120 }, { em: 200, bp: 1 }] },
+  drillgk: { name: 'DEFENDING DRILL: IN GOAL', icon: 'glove', hex: '#b65cff', line: 'The same two attackers, but you are the keeper. Save it, catch it or put it out.', reward: [{ em: 60 }, { em: 120 }, { em: 200, bp: 1 }] },
 };
 const DRILL_ATTACKS = 5, DRILL_GATES = [[-12, -36], [12, -24], [-12, -12], [12, 0], [-12, 12], [12, 24], [-5, 35], [5, 45]], DRILL_START = [0, -46];
 const Drill = {

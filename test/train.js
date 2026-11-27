@@ -38,6 +38,14 @@ const STEP = 1 / 60, away = G.CLUB_IDS.find((c) => c !== 'ROVERS');
   check('after 5 attacks: 4 stopped is 2 stars', m.phase === 'end' && rd && rd.score === 4 && rd.stars === 2, rd);
   let err = null; try { m = new G.Match('drilldef', 0.6, { size: 2, home: 'ROVERS', away, length: 120 }); let s = 0; while (!m.result && s++ < 60 * 200) m.update(STEP); } catch (e) { err = e.stack.split('\n').slice(0, 2).join(' | '); }
   check('the attackers really attack (a whole drill plays by itself with no error)', !err && !!m.result, { err, res: m.result && m.result.drill });
+  // the same drill with you in goal (owner, Nov 26 2026: "the defending drill can also make you goalie")
+  m = new G.Match('drillgk', 0.5, { size: 2, home: 'ROVERS', away, length: 120 });
+  const gk = { role: m.human.role, isGK: m.human.isGK, z: +m.human.pos.z.toFixed(1), def: +m.teams[0].find((p) => p.role === 'DEF').pos.z.toFixed(1) };
+  check('DEFENDING DRILL IN GOAL: you are the keeper on your goal line, your defender out in front', gk.isGK && gk.role === 'GK' && Math.abs(gk.z) > 50 && Math.abs(gk.def) < 35, gk);
+  m.possess(m.human, true); m.update(STEP);
+  check('in goal, catching it stops the attack', m.drill.stops === 1, { stops: m.drill.stops });
+  err = null; try { m = new G.Match('drillgk', 0.6, { size: 2, home: 'ROVERS', away, length: 120, noHuman: false }); let s = 0; while (!m.result && s++ < 60 * 200) m.update(STEP); } catch (e) { err = e.stack.split('\n').slice(0, 2).join(' | '); }
+  check('a whole drill in goal plays by itself with no error, and has its own stars', !err && !!m.result && m.result.drill.mode === 'drillgk' && !!G.DRILLS.drillgk, { err, res: m.result && m.result.drill });
 
   // ---- the login calendar ----
   const dl = G.Save.defaults(); G.Save.data = dl; const e0 = dl.emeralds;
@@ -51,7 +59,7 @@ const STEP = 1 / 60, away = G.CLUB_IDS.find((c) => c !== 'ROVERS');
   await page.evaluate(() => { EGO.UI.show('lobby'); });
   await page.evaluate(() => document.getElementById('go-train').click());
   const tr = await page.evaluate(() => ({ cur: EGO.UI.cur, drills: document.querySelectorAll('#tr-drills .tr-card').length, prac: [...document.querySelectorAll('#tr-practice [data-mode]')].map((b) => b.dataset.mode) }));
-  check('TRAINING: two drills with stars, then free kicks, keeper practice and the tutorial', tr.cur === 'train' && tr.drills === 2 && tr.prac.join() === 'freekick,fkkeeper,tutorial', tr);
+  check('TRAINING: three drills with stars (the defending drill also in goal), then free kicks, keeper practice and the tutorial', tr.cur === 'train' && tr.drills === 3 && tr.prac.join() === 'freekick,fkkeeper,tutorial', tr);
   await page.screenshot({ path: __dirname + '/shots/train_screen.png', timeout: 120000 }).catch(() => {});
   await page.evaluate(() => document.getElementById('go-drillrun').click());
   const run = await page.evaluate(() => {
