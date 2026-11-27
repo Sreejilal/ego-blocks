@@ -94,7 +94,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], topUpOff: false, story: { done: [] }, squad: {}, squadLook: {}, tutorial: false, onboarded: false, tips: [], // topUpOff: START OVER was pressed, so the tester pack no longer refills everything by itself
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], topUpOff: false, story: { done: [] }, squad: {}, squadLook: {}, rankGot: 0, tutorial: false, onboarded: false, tips: [], // topUpOff: START OVER was pressed, so the tester pack no longer refills everything by itself
       posFor: null, fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
@@ -173,8 +173,10 @@ const Save = {
       if (typeof STYLES === 'undefined' || !STYLES[id] || !v || typeof v !== 'object') continue;
       const o = {}; if (Number.isInteger(v.n) && v.n >= 1 && v.n <= 99) o.n = v.n;
       for (const s of ['hair', 'color', 'face', 'boots', 'gloves', 'acc', 'kit']) if (typeof v[s] === 'string' && SKINS[v[s]] && SKINS[v[s]].slot === s) o[s] = v[s];
+      if (typeof v.flow === 'string' && FLOWS[v.flow]) o.flow = v.flow; // the Flow you gave them (none: no Flow)
       out.squadLook[id] = o;
     }
+    out.rankGot = clamp(Math.floor(Number(out.rankGot) || 0), 0, 9999); // the RANK ROAD: the last step paid
     out.topUpOff = !!out.topUpOff; out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
     out.tips = Array.isArray(out.tips) ? out.tips.filter((t) => typeof t === 'string' && t.length < 16).slice(0, 20) : []; // the first-match tips you have seen

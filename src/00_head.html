@@ -673,6 +673,36 @@ body.mv-hit2 canvas#gl { filter: grayscale(1) contrast(3.2) brightness(1.25); }
 @media (max-width: 760px) { .tm-box { grid-template-columns: 1fr; } .tm-left .tm-pitch { max-width: 380px; justify-self: center; width: 100%; } .tm-pitch .fc-card { width: 72px; height: 98px; } .tm-pitch .fc-face { width: 40px; height: 40px; } .tm-pitch .fc-name { font-size: 12px; max-width: 66px; } .tm-roster { max-height: none; } }
 @media (max-height: 460px) { .tm-box { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); } .fc-card { width: 64px; height: 88px; } .fc-face { width: 36px; height: 36px; } .fc-ovr { font-size: 18px; top: 7px; left: 5px; } .fc-pos { top: 23px; left: 6px; } .fc-name { font-size: 11px; max-width: 60px; } .tm-bench { grid-template-columns: repeat(3, 64px); } .tm-roster .fc-card { width: 64px; height: 88px; } .tm-roster { grid-template-columns: repeat(auto-fill, 64px); } .fc-num { font-size: 15px; } .fc-tag { top: 22px; } .tm-left .tm-pitch { max-width: 300px; } .tm-pitch .fc-card { width: 56px; height: 76px; padding: 4px 2px 5px; } .tm-pitch .fc-face { width: 30px; height: 30px; } .tm-pitch .fc-name { font-size: 10px; max-width: 52px; } .tm-pitch .fc-ovr { font-size: 15px; top: 5px; left: 4px; } .tm-pitch .fc-pos { top: 18px; left: 5px; font-size: 7px; } }
 /* TRAINING and the drills' stars; the DAILY login calendar */
+/* RANK ROAD (RankUI): your rank, the road of rewards (a skin at every new rank), and the button on the start screen */
+.rr-go { all: unset; box-sizing: border-box; cursor: pointer; pointer-events: auto; display: grid; gap: 1px; margin-top: 8px; padding: 6px 10px; background: rgba(255,203,61,.12); box-shadow: inset 0 0 0 2px var(--gold); }
+.rr-go span { font-family: var(--font-display); font-size: 18px; line-height: .9; color: var(--gold); }
+.rr-go b { font-family: var(--font-label); font-weight: 400; font-size: 9px; letter-spacing: .06em; color: var(--text); }
+.rr-go:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+@media (hover: hover) { .rr-go:hover { background: rgba(255,203,61,.24); } }
+.rr-top { padding: 16px; min-width: 0; max-width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+.rr-badge { width: 72px; height: 72px; image-rendering: pixelated; }
+.rr-now { display: grid; gap: 6px; min-width: 0; }
+.rr-now b { font-family: var(--font-display); font-weight: 400; font-size: 40px; line-height: .9; }
+.rr-bar { height: 12px; background: var(--ink); box-shadow: inset 0 0 0 2px var(--slate-3); }
+.rr-bar i { display: block; height: 100%; background: linear-gradient(90deg, #9a9fb0, #ffcb3d, #8fe9ff, #b65cff); }
+.rr-next { font-family: var(--font-label); font-size: 11px; letter-spacing: .06em; color: var(--gold); }
+.rr-box { padding: 14px; min-width: 0; max-width: 100%; overflow: hidden; }
+#scr-ranks .sub-wrap > * { min-width: 0; max-width: 100%; }
+.rr-road { max-width: 100%; display: grid; grid-auto-flow: column; grid-auto-columns: 150px; gap: 10px; overflow-x: auto; padding: 4px 4px 10px; }
+.rr-step { position: relative; display: grid; justify-items: center; align-content: start; gap: 6px; min-height: 210px; padding: 12px 8px; text-align: center; background: var(--slate-2); box-shadow: inset 0 0 0 2px var(--slate-3); }
+.rr-step.big { background: linear-gradient(180deg, rgba(255,203,61,.18), var(--slate-2)); }
+.rr-step.got { opacity: .62; }
+.rr-step.next { box-shadow: inset 0 0 0 3px var(--gold), 0 0 18px rgba(255,203,61,.45); opacity: 1; }
+.rr-rp { font-family: var(--font-display); font-size: 26px; line-height: .9; }
+.rr-tb { width: 34px; height: 34px; image-rendering: pixelated; }
+.rr-tn { font-family: var(--font-label); font-weight: 400; font-size: 10px; letter-spacing: .12em; color: var(--gold); }
+.rr-ico { width: 40px; height: 40px; image-rendering: pixelated; }
+.rr-skin { width: 56px; height: 56px; image-rendering: pixelated; background: var(--ink); }
+.rr-what { font-family: var(--font-body); font-size: 15px; line-height: 1.1; }
+.rr-state { margin-top: auto; font-family: var(--font-label); font-size: 10px; letter-spacing: .12em; color: var(--muted); }
+.rr-step.got .rr-state { color: var(--emerald); } .rr-step.next .rr-state { color: var(--gold); }
+.rr-res { display: grid; gap: 4px; grid-column: 1 / -1; margin-top: 6px; }
+@media (max-width: 560px) { .rr-top { grid-template-columns: auto minmax(0, 1fr); } #rr-play { grid-column: 1 / -1; } .rr-now b { font-size: 30px; } }
 .tr-box { padding: 16px; display: grid; gap: 12px; }
 .tr-box h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 32px; line-height: .9; }
 .tr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 8px; }
@@ -830,6 +860,7 @@ body.touch #hud .vaultbar { top: calc(54px + var(--safe-area-inset-top, env(safe
 .charge span { position: absolute; top: 14px; left: 0; right: 0; text-align: center; font-family: var(--font-label); font-size: 10px; letter-spacing: .1em; }
 .dock { left: 50%; bottom: calc(14px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); transform: translateX(-50%); display: grid; justify-items: center; gap: 8px; }
 .flowbar { width: 420px; max-width: 70vw; display: grid; gap: 3px; }
+.flowbar.none .track { opacity: .3; } .flowbar.none .lbl { color: var(--muted); }
 .flowbar .lbl { display: flex; justify-content: space-between; font-family: var(--font-label); font-size: 11px; letter-spacing: .1em; text-shadow: 2px 2px 0 var(--ink); }
 .flowbar .track { height: 12px; background: var(--ink); border: 2px solid var(--ink); position: relative; }
 .flowbar .fill { height: 100%; width: 0%; background: var(--aura, var(--emerald)); }

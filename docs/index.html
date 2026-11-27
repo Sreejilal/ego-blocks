@@ -697,6 +697,36 @@ body.mv-hit2 canvas#gl { filter: grayscale(1) contrast(3.2) brightness(1.25); }
 @media (max-width: 760px) { .tm-box { grid-template-columns: 1fr; } .tm-left .tm-pitch { max-width: 380px; justify-self: center; width: 100%; } .tm-pitch .fc-card { width: 72px; height: 98px; } .tm-pitch .fc-face { width: 40px; height: 40px; } .tm-pitch .fc-name { font-size: 12px; max-width: 66px; } .tm-roster { max-height: none; } }
 @media (max-height: 460px) { .tm-box { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); } .fc-card { width: 64px; height: 88px; } .fc-face { width: 36px; height: 36px; } .fc-ovr { font-size: 18px; top: 7px; left: 5px; } .fc-pos { top: 23px; left: 6px; } .fc-name { font-size: 11px; max-width: 60px; } .tm-bench { grid-template-columns: repeat(3, 64px); } .tm-roster .fc-card { width: 64px; height: 88px; } .tm-roster { grid-template-columns: repeat(auto-fill, 64px); } .fc-num { font-size: 15px; } .fc-tag { top: 22px; } .tm-left .tm-pitch { max-width: 300px; } .tm-pitch .fc-card { width: 56px; height: 76px; padding: 4px 2px 5px; } .tm-pitch .fc-face { width: 30px; height: 30px; } .tm-pitch .fc-name { font-size: 10px; max-width: 52px; } .tm-pitch .fc-ovr { font-size: 15px; top: 5px; left: 4px; } .tm-pitch .fc-pos { top: 18px; left: 5px; font-size: 7px; } }
 /* TRAINING and the drills' stars; the DAILY login calendar */
+/* RANK ROAD (RankUI): your rank, the road of rewards (a skin at every new rank), and the button on the start screen */
+.rr-go { all: unset; box-sizing: border-box; cursor: pointer; pointer-events: auto; display: grid; gap: 1px; margin-top: 8px; padding: 6px 10px; background: rgba(255,203,61,.12); box-shadow: inset 0 0 0 2px var(--gold); }
+.rr-go span { font-family: var(--font-display); font-size: 18px; line-height: .9; color: var(--gold); }
+.rr-go b { font-family: var(--font-label); font-weight: 400; font-size: 9px; letter-spacing: .06em; color: var(--text); }
+.rr-go:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+@media (hover: hover) { .rr-go:hover { background: rgba(255,203,61,.24); } }
+.rr-top { padding: 16px; min-width: 0; max-width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 16px; align-items: center; }
+.rr-badge { width: 72px; height: 72px; image-rendering: pixelated; }
+.rr-now { display: grid; gap: 6px; min-width: 0; }
+.rr-now b { font-family: var(--font-display); font-weight: 400; font-size: 40px; line-height: .9; }
+.rr-bar { height: 12px; background: var(--ink); box-shadow: inset 0 0 0 2px var(--slate-3); }
+.rr-bar i { display: block; height: 100%; background: linear-gradient(90deg, #9a9fb0, #ffcb3d, #8fe9ff, #b65cff); }
+.rr-next { font-family: var(--font-label); font-size: 11px; letter-spacing: .06em; color: var(--gold); }
+.rr-box { padding: 14px; min-width: 0; max-width: 100%; overflow: hidden; }
+#scr-ranks .sub-wrap > * { min-width: 0; max-width: 100%; }
+.rr-road { max-width: 100%; display: grid; grid-auto-flow: column; grid-auto-columns: 150px; gap: 10px; overflow-x: auto; padding: 4px 4px 10px; }
+.rr-step { position: relative; display: grid; justify-items: center; align-content: start; gap: 6px; min-height: 210px; padding: 12px 8px; text-align: center; background: var(--slate-2); box-shadow: inset 0 0 0 2px var(--slate-3); }
+.rr-step.big { background: linear-gradient(180deg, rgba(255,203,61,.18), var(--slate-2)); }
+.rr-step.got { opacity: .62; }
+.rr-step.next { box-shadow: inset 0 0 0 3px var(--gold), 0 0 18px rgba(255,203,61,.45); opacity: 1; }
+.rr-rp { font-family: var(--font-display); font-size: 26px; line-height: .9; }
+.rr-tb { width: 34px; height: 34px; image-rendering: pixelated; }
+.rr-tn { font-family: var(--font-label); font-weight: 400; font-size: 10px; letter-spacing: .12em; color: var(--gold); }
+.rr-ico { width: 40px; height: 40px; image-rendering: pixelated; }
+.rr-skin { width: 56px; height: 56px; image-rendering: pixelated; background: var(--ink); }
+.rr-what { font-family: var(--font-body); font-size: 15px; line-height: 1.1; }
+.rr-state { margin-top: auto; font-family: var(--font-label); font-size: 10px; letter-spacing: .12em; color: var(--muted); }
+.rr-step.got .rr-state { color: var(--emerald); } .rr-step.next .rr-state { color: var(--gold); }
+.rr-res { display: grid; gap: 4px; grid-column: 1 / -1; margin-top: 6px; }
+@media (max-width: 560px) { .rr-top { grid-template-columns: auto minmax(0, 1fr); } #rr-play { grid-column: 1 / -1; } .rr-now b { font-size: 30px; } }
 .tr-box { padding: 16px; display: grid; gap: 12px; }
 .tr-box h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 32px; line-height: .9; }
 .tr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 8px; }
@@ -854,6 +884,7 @@ body.touch #hud .vaultbar { top: calc(54px + var(--safe-area-inset-top, env(safe
 .charge span { position: absolute; top: 14px; left: 0; right: 0; text-align: center; font-family: var(--font-label); font-size: 10px; letter-spacing: .1em; }
 .dock { left: 50%; bottom: calc(14px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); transform: translateX(-50%); display: grid; justify-items: center; gap: 8px; }
 .flowbar { width: 420px; max-width: 70vw; display: grid; gap: 3px; }
+.flowbar.none .track { opacity: .3; } .flowbar.none .lbl { color: var(--muted); }
 .flowbar .lbl { display: flex; justify-content: space-between; font-family: var(--font-label); font-size: 11px; letter-spacing: .1em; text-shadow: 2px 2px 0 var(--ink); }
 .flowbar .track { height: 12px; background: var(--ink); border: 2px solid var(--ink); position: relative; }
 .flowbar .fill { height: 100%; width: 0%; background: var(--aura, var(--emerald)); }
@@ -1537,7 +1568,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], topUpOff: false, story: { done: [] }, squad: {}, squadLook: {}, tutorial: false, onboarded: false, tips: [], // topUpOff: START OVER was pressed, so the tester pack no longer refills everything by itself
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], topUpOff: false, story: { done: [] }, squad: {}, squadLook: {}, rankGot: 0, tutorial: false, onboarded: false, tips: [], // topUpOff: START OVER was pressed, so the tester pack no longer refills everything by itself
       posFor: null, fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
@@ -1616,8 +1647,10 @@ const Save = {
       if (typeof STYLES === 'undefined' || !STYLES[id] || !v || typeof v !== 'object') continue;
       const o = {}; if (Number.isInteger(v.n) && v.n >= 1 && v.n <= 99) o.n = v.n;
       for (const s of ['hair', 'color', 'face', 'boots', 'gloves', 'acc', 'kit']) if (typeof v[s] === 'string' && SKINS[v[s]] && SKINS[v[s]].slot === s) o[s] = v[s];
+      if (typeof v.flow === 'string' && FLOWS[v.flow]) o.flow = v.flow; // the Flow you gave them (none: no Flow)
       out.squadLook[id] = o;
     }
+    out.rankGot = clamp(Math.floor(Number(out.rankGot) || 0), 0, 9999); // the RANK ROAD: the last step paid
     out.topUpOff = !!out.topUpOff; out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
     out.tips = Array.isArray(out.tips) ? out.tips.filter((t) => typeof t === 'string' && t.length < 16).slice(0, 20) : []; // the first-match tips you have seen
@@ -5619,6 +5652,12 @@ const SKINS = {
   LILAC: { slot: 'color', name: 'LILAC', rarity: 'Epic', hex: '#c9a0ff' },
   TEAM_BOOTS: { slot: 'boots', name: 'TEAM BOOTS', rarity: 'Rare', base: true, desc: 'Plain boots in your team colours.' },
   GRIND_BOOTS: { slot: 'boots', name: 'GRINDER', rarity: 'Legendary', hex: '#ff7a1a', sparkle: true, obj: true, desc: 'From GOALS: win 25 matches.' },
+  // the RANK ROAD's skins: only from reaching a new rank in RANKED (owner, Nov 27 2026: rewards you can see and fight for)
+  RANK_STONE: { slot: 'boots', name: 'STONE BOOTS', rarity: 'Rare', hex: '#9a9fb0', obj: true, rank: 1, desc: 'From the RANK ROAD: reach STONE in RANKED.' },
+  RANK_IRON: { slot: 'acc', name: 'IRON BAND', rarity: 'Epic', acc: 'band', hex: '#c9ced8', glow: 0.15, obj: true, rank: 2, desc: 'From the RANK ROAD: reach IRON in RANKED.' },
+  RANK_GOLD: { slot: 'gloves', name: 'GOLD GLOVES', rarity: 'Legendary', hex: '#ffcb3d', obj: true, rank: 3, desc: 'From the RANK ROAD: reach GOLD in RANKED.' },
+  RANK_DIAMOND: { slot: 'kit', name: 'DIAMOND KIT', rarity: 'Mythic', pattern: 'checker', trim: '#8fe9ff', obj: true, rank: 4, desc: 'From the RANK ROAD: reach DIAMOND in RANKED.' },
+  RANK_OBSIDIAN: { slot: 'acc', name: 'OBSIDIAN CHAIN', rarity: 'Generational', acc: 'chain', hex: '#b65cff', glow: 0.6, obj: true, rank: 5, desc: 'From the RANK ROAD: reach OBSIDIAN in RANKED.' },
   CHALK: { slot: 'boots', name: 'CHALK', rarity: 'Rare', hex: '#f4efe0' },
   BLACKOUT: { slot: 'boots', name: 'BLACKOUT', rarity: 'Rare', hex: '#121217' },
   LIME: { slot: 'boots', name: 'LIME', rarity: 'Epic', hex: '#a6ff2e' },
@@ -6326,6 +6365,33 @@ const Pass = {
 };
 
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
+/* RANK ROAD (owner, Nov 27 2026: "ranked has no rewards to fight for that you can see"): a reward every 25 to 50 RP and, at every
+   new rank, a skin you can only get here. Each step is yours once, the first time you reach it (Save.data.rankGot: the RP
+   of the last step paid), even if you drop back down later */
+const RANK_ROAD = [
+  { rp: 25, em: 100 }, { rp: 50, em: 150 }, { rp: 75, bp: 1 },
+  { rp: 100, em: 250, skin: 'RANK_STONE' }, { rp: 150, em: 250, bp: 1 },
+  { rp: 200, em: 350, skin: 'RANK_IRON' }, { rp: 250, em: 350, bp: 2 },
+  { rp: 300, em: 500, skin: 'RANK_GOLD' }, { rp: 350, em: 500, bp: 2 },
+  { rp: 400, em: 750, skin: 'RANK_DIAMOND' }, { rp: 450, em: 750, bp: 3 },
+  { rp: 500, em: 1200, bp: 5, skin: 'RANK_OBSIDIAN' },
+];
+const Rank = {
+  /** pay every step reached for the first time; returns the steps paid */
+  claim(d) {
+    const got = [];
+    for (const s of RANK_ROAD) {
+      if (d.rp < s.rp || s.rp <= (d.rankGot || 0)) continue;
+      if (s.em) d.emeralds += s.em; if (s.bp) d.bp += s.bp; if (s.skin && !d.skins.includes(s.skin)) d.skins.push(s.skin);
+      d.rankGot = s.rp; got.push(s);
+    }
+    return got;
+  },
+  /** what a step gives, in words */
+  text(s) { return [s.em ? '+' + s.em + ' EMERALDS' : null, s.bp ? '+' + s.bp + (s.bp > 1 ? ' BLUEPRINTS' : ' BLUEPRINT') : null, s.skin ? SKINS[s.skin].name + ' SKIN' : null].filter(Boolean).join(' + '); },
+  /** the next step you have not been paid for (null: the whole road is done) */
+  next(d) { return RANK_ROAD.find((s) => s.rp > (d.rankGot || 0)) || null; },
+};
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /** bot difficulty 0..1 from rank points */
 /* each tier is a clear step: bot skill (reactions, passing, tackles, keepers) and how full and loud the stadium is */
@@ -6473,7 +6539,7 @@ class Match {
         let num = role === 'GK' ? (sl && sl.n) || 1 : human && !net ? 10 : sl && sl.n ? sl.n : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
         const style = net ? net.style : human ? (opts.style || Save.data.style) : sq && STYLES[sq] ? sq : team === 0 && opts.squad && !opts.teamStyle ? 'ROOKIE' : opts.teamStyle ? opts.teamStyle[team] : botStyle(role); // MY TEAM: a spot nobody was put in is ROOKIE (owner: never a random pick) // teamStyle: [home, away] for balance tests; bots mostly play a character made for their spot
-        const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
+        const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : sl ? (sl.flow && FLOWS[sl.flow] ? sl.flow : null) : team === 0 && opts.squad ? null : (chance(0.85) ? pick(FLOW_IDS) : null); // your team: only the Flow you gave them
         const look = net ? net.look : human ? (opts.look || Save.data.look) : sl ? squadLookIds(sl) : botLook();
         const tone = net ? net.tone : Save.data.tone;
         const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[Number.isInteger(tone) ? tone : 1] || SKIN_TONES[1] : null, number: num, name: net ? net.name : human ? 'YOU' : names.pop() });
@@ -7459,7 +7525,7 @@ class Match {
   }
   flowAdd(p, amt) {
     if (p && amt >= 10) this.awakeAdd(p, amt); // big plays fill the Awakening bar too
-    if (!p || p.flowT > 0) return;
+    if (!p || p.flowT > 0 || !p.flowId) return; // no Flow set: no Flow at all (owner, Nov 27 2026: players without one still got one)
     const before = p.flow;
     p.flow = Math.min(100, p.flow + amt);
     if (p.isHuman && before < 100 && p.flow >= 100) { this.toast(Touch.on ? 'FLOW READY. TAP FLOW' : 'FLOW READY. PRESS G', 'gold', p); Sfx.coin(); Hud.flowReady(); }
@@ -7907,7 +7973,7 @@ class Match {
     return true;
   }
   activateFlow(p) {
-    if (p.flow < 100 || p.flowT > 0 || !this.canAct(p)) return false;
+    if (p.flow < 100 || p.flowT > 0 || !p.flowId || !this.canAct(p)) return false;
     p.flow = 0; p.flowT = 15;
     const f = p.flowId ? FLOWS[p.flowId] : null;
     if (f && f.gamble) {
@@ -7984,7 +8050,7 @@ class Match {
     if (!old || old.isHuman || !h || old.team !== h.team || i < 0 || this.subsLeft <= 0 || !STYLES[id] || this.online) return false;
     const num = old.number; // the shirt number stays with the spot
     const sl = this.squadLooks && this.squadLooks[id];
-    const p = new Player(this, { team: old.team, role: old.role, human: false, style: id, flow: chance(0.85) ? pick(FLOW_IDS) : null, look: sl ? squadLookIds(sl) : botLook(), skin: null, number: num, name: pick(BOT_NAMES.filter((n) => !this.players.some((q) => q.name === n))) || old.name });
+    const p = new Player(this, { team: old.team, role: old.role, human: false, style: id, flow: sl && sl.flow && FLOWS[sl.flow] ? sl.flow : null, look: sl ? squadLookIds(sl) : botLook(), skin: null, number: num, name: pick(BOT_NAMES.filter((n) => !this.players.some((q) => q.name === n))) || old.name });
     p.pos.copy(old.pos); p.yaw = old.yaw;
     const b = this.ball, had = b.owner === old;
     this.players[this.players.indexOf(old)] = p; const T = this.teams[old.team]; T[T.indexOf(old)] = p;
@@ -13839,6 +13905,50 @@ const PadNav = {
   },
 };
 
+/* ---- 11_ranks.js ---- */
+/* =====================================================================
+   RankUI: the RANK ROAD (owner, Nov 27 2026: "ranked has no rewards to fight for that you can see"). Every step of
+   RANK_ROAD with its reward, your RP on the road, what you already got, the next one, and the skin at every new rank.
+   Opened from the rank panel on the start screen (and its RANK ROAD button) and from RANKED results. Rewards are paid by
+   Rank.claim after a ranked match (Game.finishMatch) and when the road is opened (an old save with RP already)
+   ===================================================================== */
+const RankUI = {
+  tpl() {
+    return `<section id="scr-ranks" class="screen sub-screen" hidden>
+      <div class="sub-wrap">
+        <div class="sub-head"><h2>RANK ROAD</h2><button class="btn small" id="ranks-back" type="button">BACK</button></div>
+        <section class="panel rr-top" id="rr-top"></section>
+        <section class="panel rr-box"><div class="rr-road" id="rr-road"></div></section>
+      </div>
+    </section>`;
+  },
+  bind() {
+    $('ranks-back').addEventListener('click', () => { Sfx.click(); UI.show('lobby'); });
+    $('scr-ranks').addEventListener('click', (e) => { if (e.target.closest('#rr-play')) { Sfx.init(); Sfx.click(); Game.startMatch('ranked'); } });
+  },
+  open() {
+    const got = Rank.claim(Save.data);
+    if (got.length) { Save.save(); UI.toast('RANK ROAD: ' + got.map((s) => Rank.text(s)).join(', '), 'gold'); Sfx.fanfare(2); }
+    UI.show('ranks');
+  },
+  render() {
+    const d = Save.data, tier = tierOf(d.rp), nx = Rank.next(d), top = RANK_ROAD[RANK_ROAD.length - 1].rp;
+    $('rr-top').innerHTML = `<img class="px rr-badge" src="${badgeURL(tier)}" alt=""><div class="rr-now"><span class="label">YOUR RANK</span><b>${TIER_NAMES[tier]} · ${d.rp} RP</b>`
+      + `<div class="rr-bar"><i style="width:${Math.min(100, d.rp / top * 100).toFixed(1)}%"></i></div>`
+      + `<span class="rr-next">${nx ? 'NEXT: ' + Rank.text(nx) + ' AT ' + nx.rp + ' RP (' + Math.max(0, nx.rp - d.rp) + ' TO GO)' : 'THE WHOLE ROAD IS YOURS. KEEP CLIMBING FOR GLORY'}</span></div>`
+      + `<button class="btn blue" id="rr-play" type="button">PLAY RANKED</button>`;
+    $('rr-road').innerHTML = RANK_ROAD.map((s) => {
+      const have = s.rp <= (d.rankGot || 0), next = nx === s, rk = s.skin ? SKINS[s.skin].rank : -1;
+      return `<div class="rr-step${have ? ' got' : ''}${next ? ' next' : ''}${s.skin ? ' big' : ''}">
+        <span class="rr-rp">${s.rp} RP</span>${s.skin ? `<img class="px rr-tb" src="${badgeURL(rk)}" alt=""><b class="rr-tn">${TIER_NAMES[rk]}</b>` : ''}
+        ${s.skin ? `<i class="rr-art" data-skin="${s.skin}"></i>` : `<img class="px rr-ico" alt="" src="${s.bp && !s.em ? iconURL('shield', '#4aa8ff') : iconURL('emerald')}">`}
+        <span class="rr-what">${Rank.text(s)}</span><span class="rr-state">${have ? 'YOURS' : next ? 'NEXT' : 'LOCKED'}</span></div>`;
+    }).join('');
+    for (const el of document.querySelectorAll('#rr-road .rr-art')) { const cv = skinCanvas(el.dataset.skin, 56); cv.className = 'px rr-skin'; el.replaceWith(cv); }
+    const n = document.querySelector('#rr-road .rr-step.next'); if (n && n.scrollIntoView) n.scrollIntoView({ block: 'nearest', inline: 'center' });
+  },
+};
+
 /* ---- 11_replay.js ---- */
 /* =====================================================================
    Replay: records the last 10 seconds of the match (every player's pose
@@ -14783,7 +14893,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + TeamUI.tpl() + TrainUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + TeamUI.tpl() + TrainUI.tpl() + RankUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none'; $('outro').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
@@ -14836,7 +14946,7 @@ const UI = {
         <div class="profile panel" id="lob-profile" role="button" tabindex="0" title="Open your profile and match history">
           <img class="badge px" id="pro-badge" alt="">
           <div><div class="label">RANK</div><div class="tier" id="pro-tier">WOOD</div></div>
-          <div><div class="rpbar" id="pro-rp"></div><div class="label" id="pro-rptxt" style="margin-top:6px">0 RP</div></div>
+          <div><div class="rpbar" id="pro-rp"></div><div class="label" id="pro-rptxt" style="margin-top:6px">0 RP</div><button class="rr-go" id="go-ranks" type="button"><span>RANK ROAD</span><b id="pro-next"></b></button></div>
           <div class="equip-row"><span class="label">STYLE</span><b id="pro-style">ROOKIE</b><span class="rar" id="pro-style-r" data-r="Rare">RARE</span><span class="label">FLOW</span><b id="pro-flow">NONE</b><span class="label">CLUB</span><b id="pro-club">ROVERS</b></div>
           <div class="label" id="pro-rec" style="grid-column:1/-1">0 W &middot; 0 D &middot; 0 L</div>
         </div>
@@ -15435,6 +15545,7 @@ const UI = {
     click('go-tut', () => Game.startMatch('tutorial'));
     click('howto-tut', () => Game.startMatch('tutorial'));
     click('lob-profile', () => this.show('profile'));
+    $('go-ranks').addEventListener('click', (e) => { e.stopPropagation(); Sfx.init(); Sfx.click(); RankUI.open(); }); // the RANK ROAD (not the profile behind it)
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
     click('profile-back', () => this.show('lobby'));
     click('lob-gift', () => { this.show('profile'); $('pf-code').value = GIFT_CODE; $('pf-code').focus(); });
@@ -15484,6 +15595,7 @@ const UI = {
     StoryUI.bind();
     TeamUI.bind();
     TrainUI.bind();
+    RankUI.bind();
     click('tut-skip', () => Game.skipTutorial());
     $('tut-gate').addEventListener('pointerdown', (e) => { e.preventDefault(); Game.gateGo(); });
     $('p-forfeit').addEventListener('click', () => {
@@ -15527,7 +15639,7 @@ const UI = {
       if (Game.playing() || Game.state === 'paused') return;
       if (e.code === 'Escape' && !$('friend-card').hidden) { $('friend-card').hidden = true; return; }
       if (e.code === 'Escape' && !$('scr-daily').hidden) { $('scr-daily').hidden = true; return; }
-      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass' || this.cur === 'goals' || this.cur === 'online') && !this.spinning && !(e.target && e.target.tagName === 'INPUT')) this.show('lobby');
+      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass' || this.cur === 'goals' || this.cur === 'online' || this.cur === 'ranks') && !this.spinning && !(e.target && e.target.tagName === 'INPUT')) this.show('lobby');
     });
   },
   show(name) {
@@ -15535,7 +15647,7 @@ const UI = {
     this.cur = name;
     if (was && was !== name && was !== 'hud' && name !== 'hud') { if (name === 'lobby') Sfx.close(); else Sfx.open(); } // menus whoosh in and out (matches have their own sounds)
     if (name === 'team' && this.cur !== 'team') TeamUI.from = this.cur === 'story' ? 'story' : 'lobby'; // BACK goes where you came from
-    const map = { train: 'scr-train', team: 'scr-team', story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
+    const map = { ranks: 'scr-ranks', train: 'scr-train', team: 'scr-team', story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const t of this.ntags) t.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
@@ -15547,6 +15659,7 @@ const UI = {
     if (name === 'story') StoryUI.render();
     if (name === 'team') TeamUI.render();
     if (name === 'train') TrainUI.render();
+    if (name === 'ranks') RankUI.render();
     if (name === 'lobby' && !navigator.webdriver && Save.data.onboarded && Daily.giftReady(Save.data) && this.dailySeen !== dayKey()) { // a new day: the DAILY gift and calendar open by themselves, once
       this.dailySeen = dayKey(); setTimeout(() => { if (this.cur === 'lobby' && !Game.match) { this.renderDaily(); $('scr-daily').hidden = false; } }, 700);
     }
@@ -15578,6 +15691,7 @@ const UI = {
     const inTier = tier >= 5 ? 10 : Math.floor((d.rp % 100) / 10);
     $('pro-rp').innerHTML = Array.from({ length: 10 }, (_, i) => `<i class="${i < inTier ? 'on' : ''}"></i>`).join('');
     $('pro-rptxt').textContent = tier >= 5 ? d.rp + ' RP · TOP TIER' : d.rp + ' RP · ' + (100 - (d.rp % 100)) + ' TO ' + TIER_NAMES[tier + 1];
+    { const nx = Rank.next(d); $('pro-next').textContent = nx ? 'NEXT AT ' + nx.rp + ' RP: ' + Rank.text(nx) : 'ALL REWARDS YOURS'; }
     $('pro-style').textContent = STYLES[d.style].name;
     $('pro-style-r').dataset.r = STYLES[d.style].rarity; $('pro-style-r').textContent = STYLES[d.style].rarity.toUpperCase();
     $('pro-flow').textContent = d.flow ? FLOWS[d.flow].name : 'NONE';
@@ -15624,7 +15738,7 @@ const UI = {
     this.slotG = { el: $('slot-g') }; this.slotZ = $('slot-z');
     $('st-ico').src = iconURL('bolt', '#ffd23d'); this.stLast = -1;
     $('flowbar').style.setProperty('--aura', p.aura);
-    $('flow-name').textContent = p.flowId ? 'FLOW · ' + FLOWS[p.flowId].name : 'FLOW';
+    $('flow-name').textContent = p.flowId ? 'FLOW · ' + FLOWS[p.flowId].name : 'NO FLOW'; $('flowbar').classList.toggle('none', !p.flowId); // no Flow picked: nothing to fill
     if (p.flowId && FLOWS[p.flowId]) $('flowbar').style.setProperty('--aura', FLOWS[p.flowId].color);
     $('awakebar').style.setProperty('--aura', p.aura); $('awakebar').hidden = true;
     $('awakeside').style.setProperty('--aura', p.aura); $('awakeside').hidden = true;
@@ -15689,7 +15803,7 @@ const UI = {
     this.slotG.el.classList.toggle('active', p.flowT > 0);
     const fpct = p.flowT > 0 ? p.flowT / 15 * 100 : p.flow;
     $('flow-fill').style.width = fpct.toFixed(1) + '%';
-    this.setText('flow-txt', p.flowT > 0 ? 'IN FLOW ' + Math.ceil(p.flowT) + 's' : p.flow >= 100 ? (Touch.on ? 'READY' : 'READY [G]') : Math.floor(p.flow) + '%');
+    this.setText('flow-txt', !p.flowId ? 'PICK ONE IN THE LOCKER' : p.flowT > 0 ? 'IN FLOW ' + Math.ceil(p.flowT) + 's' : p.flow >= 100 ? (Touch.on ? 'READY' : 'READY [G]') : Math.floor(p.flow) + '%');
     $('flowbar').classList.toggle('ready', p.flow >= 100 && p.flowT <= 0);
     if (p.style.awaken) {
       const ar = false; // no bar to fill: it comes by itself
@@ -15953,6 +16067,8 @@ const UI = {
       const tier = tierOf(r.rpAfter), moved = tierOf(r.rpBefore) !== tier;
       const delta = r.rpAfter - r.rpBefore;
       $('r-rank').innerHTML = `<img class="px" src="${badgeURL(tier)}" alt=""><div><div class="label">${moved ? (tier > tierOf(r.rpBefore) ? 'PROMOTED' : 'DEMOTED') : 'RANK'}</div><div style="font-family:var(--font-display);font-size:34px;line-height:1">${TIER_NAMES[tier]} · ${r.rpAfter} RP <span style="color:${delta >= 0 ? 'var(--emerald)' : 'var(--danger)'}">${delta >= 0 ? '+' : ''}${delta}</span></div></div>`;
+      const nx = Rank.next(Save.data); // the RANK ROAD: what this match paid, and what is next
+      $('r-rank').insertAdjacentHTML('beforeend', `<div class="rr-res">${(r.rankGot || []).map((s) => `<span class="st-got">RANK ROAD ${s.rp} RP: ${esc(Rank.text(s))}</span>`).join('')}<span class="label">${nx ? 'NEXT REWARD AT ' + nx.rp + ' RP: ' + esc(Rank.text(nx)) : 'THE WHOLE RANK ROAD IS YOURS'}</span></div>`);
       $('r-rank').hidden = false;
     } else { $('r-rank').hidden = true; }
     const lv = levelOf(Save.data.xp);
@@ -16538,7 +16654,7 @@ const Game = {
     const emeralds = earn.reduce((a, e) => a + e[1], 0);
     d.emeralds += emeralds;
     const rpBefore = d.rp;
-    if (m.cfg.ranked) d.rp = Math.max(0, d.rp + Math.min(idle ? 0 : 99, res === 'win' ? 25 : res === 'draw' ? 5 : -15));
+    const rankGot = m.cfg.ranked ? (() => { d.rp = Math.max(0, d.rp + Math.min(idle ? 0 : 99, res === 'win' ? 25 : res === 'draw' ? 5 : -15)); return Rank.claim(d); })() : []; // RANKED: RP, then any RANK ROAD steps reached
     if (!fun) { // just-for-fun matches do not count toward GOALS (their blueprints are rewards too)
       d.stats.played++;
       if (res === 'win') d.stats.wins++; else if (res === 'draw') d.stats.draws++; else d.stats.losses++;
@@ -16561,7 +16677,7 @@ const Game = {
     Save.save();
     this.state = 'results'; m.paused = true;
     Input.releaseLock();
-    UI.showResults({ res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name + (!forfeit && m.result.battle ? ' · FREE KICK BATTLE ' + m.result.battle.join('-') : ''), xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && (fun ? 'fun' : m.result.noReward), daily, goalsDone, story: st });
+    UI.showResults({ rankGot, res, score: m.score.slice(), human: hs, earn, emeralds, ranked: m.cfg.ranked, rpBefore, rpAfter: d.rp, modeName: m.cfg.name + (!forfeit && m.result.battle ? ' · FREE KICK BATTLE ' + m.result.battle.join('-') : ''), xp, level: levelOf(d.xp).level, levelUp: levelOf(d.xp).level > lvBefore, pass, idle, noReward: !forfeit && (fun ? 'fun' : m.result.noReward), daily, goalsDone, story: st });
     if (st && st.first) Cutscene.story(story, 'outro'); // STORY: what happens after (a new teammate at the end of a chapter), over the results
     if (res === 'win') Sfx.fanfare(2);
     if (res === 'win' && !idle) Portal.happy();
@@ -16679,7 +16795,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Cine, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  StoryUI, Cutscene, Movie, STORY_FILMS, MV_PLACES, crestCanvas, TeamUI, TrainUI, Drill, DRILLS, LOGIN_REWARDS, Story, STORY, STORY_EVENTS, SQUAD_SLOTS, MODE_ART, CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  StoryUI, Cutscene, Movie, STORY_FILMS, MV_PLACES, crestCanvas, RankUI, Rank, RANK_ROAD, TeamUI, TrainUI, Drill, DRILLS, LOGIN_REWARDS, Story, STORY, STORY_EVENTS, SQUAD_SLOTS, MODE_ART, CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {

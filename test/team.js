@@ -18,6 +18,11 @@ const toPlay = (m) => { for (let i = 0; i < 400 && m.phase !== 'play'; i++) m.up
   const rk = new G.Match('quick', 0.4, { size: 4, home: 'ROVERS', away, role: 'ST', squad: { bench: [] }, length: 120 });
   const fill = rk.teams[0].filter((q) => !q.isHuman).map((q) => q.role + ':' + q.styleId);
   check('nobody picked for a spot: ROOKIE plays there (never a random pick), in goal too', fill.length === 3 && fill.every((x) => x.endsWith(':ROOKIE')), fill);
+  // Flows (owner, Nov 27 2026: "when the flows are not set they somehow get a flow"): only the Flow you gave them, none means none
+  const fl = new G.Match('quick', 0.4, { size: 4, home: 'ROVERS', away, role: 'ST', squad: { MID: 'ZENITH', DEF: 'BASTION', bench: [], looks: { BASTION: { flow: 'VIPER' } } }, length: 120 });
+  const flows = fl.teams[0].filter((q) => !q.isHuman).map((q) => q.styleId + ':' + (q.flowId || 'NONE'));
+  const noFlow = fl.teams[0].find((q) => !q.isHuman && !q.flowId); fl.flowAdd(noFlow, 60);
+  check('your players only have the Flow you gave them (no Flow: none, and its bar never fills)', flows.includes('BASTION:VIPER') && flows.includes('ZENITH:NONE') && flows.filter((x) => x.endsWith(':NONE')).length === 2 && noFlow.flow === 0 && !fl.activateFlow(noFlow), flows);
 
   // the team plays, and subs
   const sq = { MID: 'ZENITH', DEF: 'BASTION', GK: 'AEGIS', bench: ['THUNDER', 'PHANTOM'] };

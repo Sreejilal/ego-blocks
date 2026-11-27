@@ -115,7 +115,7 @@ class Match {
         let num = role === 'GK' ? (sl && sl.n) || 1 : human && !net ? 10 : sl && sl.n ? sl.n : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
         const style = net ? net.style : human ? (opts.style || Save.data.style) : sq && STYLES[sq] ? sq : team === 0 && opts.squad && !opts.teamStyle ? 'ROOKIE' : opts.teamStyle ? opts.teamStyle[team] : botStyle(role); // MY TEAM: a spot nobody was put in is ROOKIE (owner: never a random pick) // teamStyle: [home, away] for balance tests; bots mostly play a character made for their spot
-        const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
+        const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : sl ? (sl.flow && FLOWS[sl.flow] ? sl.flow : null) : team === 0 && opts.squad ? null : (chance(0.85) ? pick(FLOW_IDS) : null); // your team: only the Flow you gave them
         const look = net ? net.look : human ? (opts.look || Save.data.look) : sl ? squadLookIds(sl) : botLook();
         const tone = net ? net.tone : Save.data.tone;
         const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[Number.isInteger(tone) ? tone : 1] || SKIN_TONES[1] : null, number: num, name: net ? net.name : human ? 'YOU' : names.pop() });
@@ -1101,7 +1101,7 @@ class Match {
   }
   flowAdd(p, amt) {
     if (p && amt >= 10) this.awakeAdd(p, amt); // big plays fill the Awakening bar too
-    if (!p || p.flowT > 0) return;
+    if (!p || p.flowT > 0 || !p.flowId) return; // no Flow set: no Flow at all (owner, Nov 27 2026: players without one still got one)
     const before = p.flow;
     p.flow = Math.min(100, p.flow + amt);
     if (p.isHuman && before < 100 && p.flow >= 100) { this.toast(Touch.on ? 'FLOW READY. TAP FLOW' : 'FLOW READY. PRESS G', 'gold', p); Sfx.coin(); Hud.flowReady(); }
@@ -1549,7 +1549,7 @@ class Match {
     return true;
   }
   activateFlow(p) {
-    if (p.flow < 100 || p.flowT > 0 || !this.canAct(p)) return false;
+    if (p.flow < 100 || p.flowT > 0 || !p.flowId || !this.canAct(p)) return false;
     p.flow = 0; p.flowT = 15;
     const f = p.flowId ? FLOWS[p.flowId] : null;
     if (f && f.gamble) {
@@ -1626,7 +1626,7 @@ class Match {
     if (!old || old.isHuman || !h || old.team !== h.team || i < 0 || this.subsLeft <= 0 || !STYLES[id] || this.online) return false;
     const num = old.number; // the shirt number stays with the spot
     const sl = this.squadLooks && this.squadLooks[id];
-    const p = new Player(this, { team: old.team, role: old.role, human: false, style: id, flow: chance(0.85) ? pick(FLOW_IDS) : null, look: sl ? squadLookIds(sl) : botLook(), skin: null, number: num, name: pick(BOT_NAMES.filter((n) => !this.players.some((q) => q.name === n))) || old.name });
+    const p = new Player(this, { team: old.team, role: old.role, human: false, style: id, flow: sl && sl.flow && FLOWS[sl.flow] ? sl.flow : null, look: sl ? squadLookIds(sl) : botLook(), skin: null, number: num, name: pick(BOT_NAMES.filter((n) => !this.players.some((q) => q.name === n))) || old.name });
     p.pos.copy(old.pos); p.yaw = old.yaw;
     const b = this.ball, had = b.owner === old;
     this.players[this.players.indexOf(old)] = p; const T = this.teams[old.team]; T[T.indexOf(old)] = p;

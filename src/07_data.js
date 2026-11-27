@@ -986,6 +986,12 @@ const SKINS = {
   LILAC: { slot: 'color', name: 'LILAC', rarity: 'Epic', hex: '#c9a0ff' },
   TEAM_BOOTS: { slot: 'boots', name: 'TEAM BOOTS', rarity: 'Rare', base: true, desc: 'Plain boots in your team colours.' },
   GRIND_BOOTS: { slot: 'boots', name: 'GRINDER', rarity: 'Legendary', hex: '#ff7a1a', sparkle: true, obj: true, desc: 'From GOALS: win 25 matches.' },
+  // the RANK ROAD's skins: only from reaching a new rank in RANKED (owner, Nov 27 2026: rewards you can see and fight for)
+  RANK_STONE: { slot: 'boots', name: 'STONE BOOTS', rarity: 'Rare', hex: '#9a9fb0', obj: true, rank: 1, desc: 'From the RANK ROAD: reach STONE in RANKED.' },
+  RANK_IRON: { slot: 'acc', name: 'IRON BAND', rarity: 'Epic', acc: 'band', hex: '#c9ced8', glow: 0.15, obj: true, rank: 2, desc: 'From the RANK ROAD: reach IRON in RANKED.' },
+  RANK_GOLD: { slot: 'gloves', name: 'GOLD GLOVES', rarity: 'Legendary', hex: '#ffcb3d', obj: true, rank: 3, desc: 'From the RANK ROAD: reach GOLD in RANKED.' },
+  RANK_DIAMOND: { slot: 'kit', name: 'DIAMOND KIT', rarity: 'Mythic', pattern: 'checker', trim: '#8fe9ff', obj: true, rank: 4, desc: 'From the RANK ROAD: reach DIAMOND in RANKED.' },
+  RANK_OBSIDIAN: { slot: 'acc', name: 'OBSIDIAN CHAIN', rarity: 'Generational', acc: 'chain', hex: '#b65cff', glow: 0.6, obj: true, rank: 5, desc: 'From the RANK ROAD: reach OBSIDIAN in RANKED.' },
   CHALK: { slot: 'boots', name: 'CHALK', rarity: 'Rare', hex: '#f4efe0' },
   BLACKOUT: { slot: 'boots', name: 'BLACKOUT', rarity: 'Rare', hex: '#121217' },
   LIME: { slot: 'boots', name: 'LIME', rarity: 'Epic', hex: '#a6ff2e' },
@@ -1693,6 +1699,33 @@ const Pass = {
 };
 
 const TIER_NAMES = ['WOOD', 'STONE', 'IRON', 'GOLD', 'DIAMOND', 'OBSIDIAN'];
+/* RANK ROAD (owner, Nov 27 2026: "ranked has no rewards to fight for that you can see"): a reward every 25 to 50 RP and, at every
+   new rank, a skin you can only get here. Each step is yours once, the first time you reach it (Save.data.rankGot: the RP
+   of the last step paid), even if you drop back down later */
+const RANK_ROAD = [
+  { rp: 25, em: 100 }, { rp: 50, em: 150 }, { rp: 75, bp: 1 },
+  { rp: 100, em: 250, skin: 'RANK_STONE' }, { rp: 150, em: 250, bp: 1 },
+  { rp: 200, em: 350, skin: 'RANK_IRON' }, { rp: 250, em: 350, bp: 2 },
+  { rp: 300, em: 500, skin: 'RANK_GOLD' }, { rp: 350, em: 500, bp: 2 },
+  { rp: 400, em: 750, skin: 'RANK_DIAMOND' }, { rp: 450, em: 750, bp: 3 },
+  { rp: 500, em: 1200, bp: 5, skin: 'RANK_OBSIDIAN' },
+];
+const Rank = {
+  /** pay every step reached for the first time; returns the steps paid */
+  claim(d) {
+    const got = [];
+    for (const s of RANK_ROAD) {
+      if (d.rp < s.rp || s.rp <= (d.rankGot || 0)) continue;
+      if (s.em) d.emeralds += s.em; if (s.bp) d.bp += s.bp; if (s.skin && !d.skins.includes(s.skin)) d.skins.push(s.skin);
+      d.rankGot = s.rp; got.push(s);
+    }
+    return got;
+  },
+  /** what a step gives, in words */
+  text(s) { return [s.em ? '+' + s.em + ' EMERALDS' : null, s.bp ? '+' + s.bp + (s.bp > 1 ? ' BLUEPRINTS' : ' BLUEPRINT') : null, s.skin ? SKINS[s.skin].name + ' SKIN' : null].filter(Boolean).join(' + '); },
+  /** the next step you have not been paid for (null: the whole road is done) */
+  next(d) { return RANK_ROAD.find((s) => s.rp > (d.rankGot || 0)) || null; },
+};
 const tierOf = (rp) => Math.min(5, Math.floor(rp / 100));
 /** bot difficulty 0..1 from rank points */
 /* each tier is a clear step: bot skill (reactions, passing, tackles, keepers) and how full and loud the stadium is */

@@ -11,7 +11,7 @@ const UI = {
   init() {
     const app = $('app');
     // player labels sit under the touch buttons and the menus; the scoreboard and flash sit over everything
-    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + TeamUI.tpl() + TrainUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
+    app.innerHTML = this.tplLobby() + this.tplSpins() + this.tplLocker() + this.tplHowto() + this.tplProfile() + this.tplPass() + this.tplGoals() + Net.tpl() + this.tplDaily() + this.tplModes() + StoryUI.tpl() + TeamUI.tpl() + TrainUI.tpl() + RankUI.tpl() + '<section id="friend-card" class="overlay" hidden><div class="dialog panel fc"><div class="fc-body"></div><button class="btn" id="fc-close" type="button">CLOSE</button></div></section>' + this.tplHud() + '<div id="labels"></div>' + this.tplCutin() + this.tplAwake() + this.tplIntro() + this.tplPause() + this.tplResults() + '<div id="scoreboard" class="panel" hidden></div><div id="outro" hidden><i class="ot-lines"></i><b id="ot-big"></b><span id="ot-sub"></span><span id="ot-star"></span><span class="ot-skip" id="ot-skip">SHOOT TO SKIP</span></div><div id="flash"></div>' + Net.chatPopTpl() + Net.invitePopTpl() + this.tplEmotes() + Admin.tpl();
     $('labels').style.pointerEvents = 'none'; $('scoreboard').style.pointerEvents = 'none'; $('outro').style.pointerEvents = 'none';
     for (let i = 0; i < 14; i++) { const d = document.createElement('div'); d.className = 'flabel'; d.hidden = true; $('labels').appendChild(d); this.labels.push({ el: d, p: null, t: 0, text: '', color: '' }); }
     this.ntags = []; for (let i = 0; i < 8; i++) { const d = document.createElement('div'); d.className = 'ntag'; d.hidden = true; $('labels').appendChild(d); this.ntags.push(d); } // online: a friend's name above their head
@@ -64,7 +64,7 @@ const UI = {
         <div class="profile panel" id="lob-profile" role="button" tabindex="0" title="Open your profile and match history">
           <img class="badge px" id="pro-badge" alt="">
           <div><div class="label">RANK</div><div class="tier" id="pro-tier">WOOD</div></div>
-          <div><div class="rpbar" id="pro-rp"></div><div class="label" id="pro-rptxt" style="margin-top:6px">0 RP</div></div>
+          <div><div class="rpbar" id="pro-rp"></div><div class="label" id="pro-rptxt" style="margin-top:6px">0 RP</div><button class="rr-go" id="go-ranks" type="button"><span>RANK ROAD</span><b id="pro-next"></b></button></div>
           <div class="equip-row"><span class="label">STYLE</span><b id="pro-style">ROOKIE</b><span class="rar" id="pro-style-r" data-r="Rare">RARE</span><span class="label">FLOW</span><b id="pro-flow">NONE</b><span class="label">CLUB</span><b id="pro-club">ROVERS</b></div>
           <div class="label" id="pro-rec" style="grid-column:1/-1">0 W &middot; 0 D &middot; 0 L</div>
         </div>
@@ -663,6 +663,7 @@ const UI = {
     click('go-tut', () => Game.startMatch('tutorial'));
     click('howto-tut', () => Game.startMatch('tutorial'));
     click('lob-profile', () => this.show('profile'));
+    $('go-ranks').addEventListener('click', (e) => { e.stopPropagation(); Sfx.init(); Sfx.click(); RankUI.open(); }); // the RANK ROAD (not the profile behind it)
     $('lob-profile').addEventListener('keydown', (e) => { if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); this.show('profile'); } });
     click('profile-back', () => this.show('lobby'));
     click('lob-gift', () => { this.show('profile'); $('pf-code').value = GIFT_CODE; $('pf-code').focus(); });
@@ -712,6 +713,7 @@ const UI = {
     StoryUI.bind();
     TeamUI.bind();
     TrainUI.bind();
+    RankUI.bind();
     click('tut-skip', () => Game.skipTutorial());
     $('tut-gate').addEventListener('pointerdown', (e) => { e.preventDefault(); Game.gateGo(); });
     $('p-forfeit').addEventListener('click', () => {
@@ -755,7 +757,7 @@ const UI = {
       if (Game.playing() || Game.state === 'paused') return;
       if (e.code === 'Escape' && !$('friend-card').hidden) { $('friend-card').hidden = true; return; }
       if (e.code === 'Escape' && !$('scr-daily').hidden) { $('scr-daily').hidden = true; return; }
-      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass' || this.cur === 'goals' || this.cur === 'online') && !this.spinning && !(e.target && e.target.tagName === 'INPUT')) this.show('lobby');
+      if (e.code === 'Escape' && (this.cur === 'spins' || this.cur === 'locker' || this.cur === 'howto' || this.cur === 'profile' || this.cur === 'pass' || this.cur === 'goals' || this.cur === 'online' || this.cur === 'ranks') && !this.spinning && !(e.target && e.target.tagName === 'INPUT')) this.show('lobby');
     });
   },
   show(name) {
@@ -763,7 +765,7 @@ const UI = {
     this.cur = name;
     if (was && was !== name && was !== 'hud' && name !== 'hud') { if (name === 'lobby') Sfx.close(); else Sfx.open(); } // menus whoosh in and out (matches have their own sounds)
     if (name === 'team' && this.cur !== 'team') TeamUI.from = this.cur === 'story' ? 'story' : 'lobby'; // BACK goes where you came from
-    const map = { train: 'scr-train', team: 'scr-team', story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
+    const map = { ranks: 'scr-ranks', train: 'scr-train', team: 'scr-team', story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const t of this.ntags) t.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
     if (name === 'locker') Showcase.setStage('lk-fit', 'locker'); else if (name === 'spins') Showcase.setStage('sp-fit', 'reveal'); else Showcase.setStage('lob-stage', 'lobby');
@@ -775,6 +777,7 @@ const UI = {
     if (name === 'story') StoryUI.render();
     if (name === 'team') TeamUI.render();
     if (name === 'train') TrainUI.render();
+    if (name === 'ranks') RankUI.render();
     if (name === 'lobby' && !navigator.webdriver && Save.data.onboarded && Daily.giftReady(Save.data) && this.dailySeen !== dayKey()) { // a new day: the DAILY gift and calendar open by themselves, once
       this.dailySeen = dayKey(); setTimeout(() => { if (this.cur === 'lobby' && !Game.match) { this.renderDaily(); $('scr-daily').hidden = false; } }, 700);
     }
@@ -806,6 +809,7 @@ const UI = {
     const inTier = tier >= 5 ? 10 : Math.floor((d.rp % 100) / 10);
     $('pro-rp').innerHTML = Array.from({ length: 10 }, (_, i) => `<i class="${i < inTier ? 'on' : ''}"></i>`).join('');
     $('pro-rptxt').textContent = tier >= 5 ? d.rp + ' RP · TOP TIER' : d.rp + ' RP · ' + (100 - (d.rp % 100)) + ' TO ' + TIER_NAMES[tier + 1];
+    { const nx = Rank.next(d); $('pro-next').textContent = nx ? 'NEXT AT ' + nx.rp + ' RP: ' + Rank.text(nx) : 'ALL REWARDS YOURS'; }
     $('pro-style').textContent = STYLES[d.style].name;
     $('pro-style-r').dataset.r = STYLES[d.style].rarity; $('pro-style-r').textContent = STYLES[d.style].rarity.toUpperCase();
     $('pro-flow').textContent = d.flow ? FLOWS[d.flow].name : 'NONE';
@@ -852,7 +856,7 @@ const UI = {
     this.slotG = { el: $('slot-g') }; this.slotZ = $('slot-z');
     $('st-ico').src = iconURL('bolt', '#ffd23d'); this.stLast = -1;
     $('flowbar').style.setProperty('--aura', p.aura);
-    $('flow-name').textContent = p.flowId ? 'FLOW · ' + FLOWS[p.flowId].name : 'FLOW';
+    $('flow-name').textContent = p.flowId ? 'FLOW · ' + FLOWS[p.flowId].name : 'NO FLOW'; $('flowbar').classList.toggle('none', !p.flowId); // no Flow picked: nothing to fill
     if (p.flowId && FLOWS[p.flowId]) $('flowbar').style.setProperty('--aura', FLOWS[p.flowId].color);
     $('awakebar').style.setProperty('--aura', p.aura); $('awakebar').hidden = true;
     $('awakeside').style.setProperty('--aura', p.aura); $('awakeside').hidden = true;
@@ -917,7 +921,7 @@ const UI = {
     this.slotG.el.classList.toggle('active', p.flowT > 0);
     const fpct = p.flowT > 0 ? p.flowT / 15 * 100 : p.flow;
     $('flow-fill').style.width = fpct.toFixed(1) + '%';
-    this.setText('flow-txt', p.flowT > 0 ? 'IN FLOW ' + Math.ceil(p.flowT) + 's' : p.flow >= 100 ? (Touch.on ? 'READY' : 'READY [G]') : Math.floor(p.flow) + '%');
+    this.setText('flow-txt', !p.flowId ? 'PICK ONE IN THE LOCKER' : p.flowT > 0 ? 'IN FLOW ' + Math.ceil(p.flowT) + 's' : p.flow >= 100 ? (Touch.on ? 'READY' : 'READY [G]') : Math.floor(p.flow) + '%');
     $('flowbar').classList.toggle('ready', p.flow >= 100 && p.flowT <= 0);
     if (p.style.awaken) {
       const ar = false; // no bar to fill: it comes by itself
@@ -1181,6 +1185,8 @@ const UI = {
       const tier = tierOf(r.rpAfter), moved = tierOf(r.rpBefore) !== tier;
       const delta = r.rpAfter - r.rpBefore;
       $('r-rank').innerHTML = `<img class="px" src="${badgeURL(tier)}" alt=""><div><div class="label">${moved ? (tier > tierOf(r.rpBefore) ? 'PROMOTED' : 'DEMOTED') : 'RANK'}</div><div style="font-family:var(--font-display);font-size:34px;line-height:1">${TIER_NAMES[tier]} · ${r.rpAfter} RP <span style="color:${delta >= 0 ? 'var(--emerald)' : 'var(--danger)'}">${delta >= 0 ? '+' : ''}${delta}</span></div></div>`;
+      const nx = Rank.next(Save.data); // the RANK ROAD: what this match paid, and what is next
+      $('r-rank').insertAdjacentHTML('beforeend', `<div class="rr-res">${(r.rankGot || []).map((s) => `<span class="st-got">RANK ROAD ${s.rp} RP: ${esc(Rank.text(s))}</span>`).join('')}<span class="label">${nx ? 'NEXT REWARD AT ' + nx.rp + ' RP: ' + esc(Rank.text(nx)) : 'THE WHOLE RANK ROAD IS YOURS'}</span></div>`);
       $('r-rank').hidden = false;
     } else { $('r-rank').hidden = true; }
     const lv = levelOf(Save.data.xp);
