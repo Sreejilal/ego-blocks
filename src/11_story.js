@@ -16,7 +16,7 @@ const StoryUI = {
       </div>
     </section>
     <section id="st-pick" class="overlay" hidden>
-      <div class="dialog panel st-pick-box"><h2 id="st-pick-t">STRIKER</h2><p class="md-sub">Characters you own. AUTO lets the game pick.</p><div class="st-pick-grid" id="st-pick-grid"></div><button class="btn" id="st-pick-close" type="button">CLOSE</button></div>
+      <div class="dialog panel st-pick-box"><h2 id="st-pick-t">STRIKER</h2><p class="md-sub">Characters you own. Nobody picked: ROOKIE plays there.</p><div class="st-pick-grid" id="st-pick-grid"></div><button class="btn" id="st-pick-close" type="button">CLOSE</button></div>
     </section>` + Cutscene.tpl();
   },
   bind() {
@@ -89,7 +89,7 @@ const StoryUI = {
     const where = (id) => { const k = SQUAD_KEYS.find((x) => d.squad[x] === id); return k ? (SQUAD_SLOTS.find((x) => x[0] === k) || [0, k])[1] : (d.squad.bench || []).includes(id) ? 'BENCH' : ''; };
     const ids = d.styles.filter((id) => STYLES[id] && !!STYLES[id].gk === gk && id !== d.style).sort((a, b) => ovrOf(b, key) - ovrOf(a, key));
     $('st-pick-t').textContent = bench ? 'BENCH' : (SQUAD_SLOTS.find((x) => x[0] === slot) || [0, 'TEAM'])[1];
-    $('st-pick-grid').innerHTML = `<button class="st-card" type="button" data-style="AUTO" aria-pressed="${!cur}" style="--rc:#5a5f78"><i class="st-pt"></i><b>${bench ? 'EMPTY' : 'AUTO'}</b><span>${bench ? 'NOBODY HERE' : 'THE GAME PICKS'}</span></button>`
+    $('st-pick-grid').innerHTML = `<button class="st-card" type="button" data-style="AUTO" aria-pressed="${!cur}" style="--rc:#5a5f78"><i class="st-pt" data-port="${bench ? '' : 'ROOKIE'}"></i><b>${bench ? 'EMPTY' : 'ROOKIE'}</b><span>${bench ? 'NOBODY HERE' : 'THE DEFAULT PLAYER'}</span></button>`
       + ids.map((id) => `<button class="st-card" type="button" data-style="${id}" aria-pressed="${cur === id}" style="--rc:${RARITY_HEX[STYLES[id].rarity]}"><i class="st-pt" data-port="${id}"></i><b>${STYLES[id].name} <em class="st-ovr">${ovrOf(id, key)}</em></b><span>${ROLES[STYLES[id].role].name}${!bench && STYLES[id].role === slot ? ' · FITS' : ''}${where(id) && cur !== id ? ' · IN TEAM: ' + where(id) : ''}</span></button>`).join('');
     for (const el of document.querySelectorAll('#st-pick-grid .st-pt')) { const id = el.dataset.port, cv = id ? portraitCanvas(id, 48, { sig: true }) : iconCanvas('smile', '#a4a9cf'); cv.className = 'px'; el.replaceWith(cv); }
     $('st-pick').hidden = false;

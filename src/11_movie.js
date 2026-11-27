@@ -129,8 +129,7 @@ const Movie = {
     const d = Save.data, list = [];
     for (const id of ['ROGUE', 'IRONCLAD']) if (this.joined(id) && id !== d.style) list.push(id);
     for (const k of ['WING', 'MID', 'DEF', 'ST']) { const id = d.squad[k]; if (id && STYLES[id] && !STYLES[id].gk && id !== d.style && !list.includes(id)) list.push(id); }
-    for (const id of ['KESTREL', 'SENTINEL', 'SPARK', 'ROOKIE']) if (id !== d.style && !list.includes(id)) list.push(id);
-    return list[i - 1] || 'ROOKIE';
+    return list[i - 1] || 'ROOKIE'; // nobody picked: ROOKIE, like in MY TEAM
   },
   actor(key, s) {
     const spec = this.cast(key); if (!spec) return null;

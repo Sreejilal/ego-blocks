@@ -1358,10 +1358,10 @@ const OVR_BASE = { Rare: 72, Epic: 78, Legendary: 84, Mythic: 88, Generational: 
 const ovrOf = (id, slot) => { const st = STYLES[id]; if (!st) return 0; const b = OVR_BASE[st.rarity] || 70; return slot && slot !== 'BENCH' && st.role !== slot ? b - 6 : b; };
 /** your own spot in the team (your style's role, or in goal when you play keeper) */
 const mySlot = (d) => (d.pos === 'GK' ? 'GK' : SQUAD_OF[d.pos && d.posFor === d.style ? d.pos : roleSpot(d.style)] || 'ST');
-/** the starters' ratings averaged (an AUTO spot counts as 70: a random bot) */
+/** the starters' ratings averaged (a spot nobody was put in is ROOKIE's) */
 function teamOvr(d) {
   const me = mySlot(d);
-  const r = SQUAD_KEYS.map((k) => (k === me ? ovrOf(d.style, k) : d.squad[k] ? ovrOf(d.squad[k], k) : 70));
+  const r = SQUAD_KEYS.map((k) => (k === me ? ovrOf(d.style, k) : ovrOf(d.squad[k] || 'ROOKIE', k)));
   return Math.round(r.reduce((a, v) => a + v, 0) / r.length);
 } // a line-up spot -> its squad slot
 const Story = {

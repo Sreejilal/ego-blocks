@@ -130,7 +130,7 @@ const TeamUI = {
     this.assign(Save.data, slot, id); Save.save(); this.changed();
   },
   changed() { this.render(); if (UI.cur === 'story') StoryUI.render(); UI.renderLobby(); },
-  /** put a character in a spot or on the bench (null: AUTO / empty); a character already somewhere else moves here */
+  /** put a character in a spot or on the bench (null: ROOKIE plays the spot / the bench place is empty); a character already somewhere else moves here */
   assign(d, slot, id) {
     const S = d.squad; S.bench = S.bench || [];
     if (id) { for (const k of SQUAD_KEYS) if (S[k] === id) delete S[k]; S.bench = S.bench.filter((x) => x !== id); }
@@ -163,7 +163,7 @@ const TeamUI = {
     const st = STYLES[id], bench = slot[0] === 'B', key = bench ? 'BENCH' : slot, ovr = st ? ovrOf(id, key) : 0, out = st && !bench && slot !== 'LIST' && st.role !== slot;
     const pos = o.me ? 'YOU' : bench || slot === 'LIST' ? (st ? ROLES[st.role].name.slice(0, 3) : 'SUB') : slot === 'WING' ? 'WG' : slot;
     const num = st && !o.me && Save.data.squadLook && Save.data.squadLook[id] && Save.data.squadLook[id].n;
-    const drag = st && !o.me && !o.attr ? ` data-drag="${id}"` : '';
+    const drag = st && !o.me && !o.attr && !o.filler ? ` data-drag="${id}"` : ''; // filler: ROOKIE in a spot nobody was put in (owner: never AUTO)
     return `<button class="fc-card${o.me ? ' me' : ''}${st ? '' : ' empty'}${o.sel ? ' sel' : ''}${o.dim ? ' dim' : ''}" type="button" ${o.attr || `data-slot="${slot}"`}${drag} style="--rc:${st ? RARITY_HEX[st.rarity] : '#5a5f78'}${o.xy ? `;left:${o.xy[0]}%;top:${o.xy[1]}%` : ''}">
       <span class="fc-ovr${out ? ' out' : ''}">${st ? ovr : bench ? '+' : '?'}</span><span class="fc-pos">${pos}</span>${num ? `<span class="fc-num">${num}</span>` : ''}<i class="fc-pt" data-port="${st ? id : ''}"></i><b class="fc-name">${st ? st.name : bench ? 'EMPTY' : 'AUTO'}</b>${o.tag ? `<span class="fc-tag">${o.tag}</span>` : ''}</button>`;
   },
@@ -180,7 +180,7 @@ const TeamUI = {
     if (!this.sel || (this.sel[0] === 'B' ? false : !SQUAD_KEYS.includes(this.sel))) this.sel = SQUAD_KEYS.find((k) => k !== me) || 'ST';
     $('tm-ovr').innerHTML = `<span>TEAM OVR</span><b>${teamOvr(d)}</b>`;
     const P = $('tm-pitch'); P.querySelectorAll('.fc-card').forEach((c) => c.remove());
-    P.insertAdjacentHTML('beforeend', SQUAD_KEYS.map((k) => (k === me ? this.card(d.style, k, { me: true, xy: TM_SPOTS[k], sel: this.sel === k }) : this.card(d.squad[k], k, { xy: TM_SPOTS[k], sel: this.sel === k }))).join(''));
+    P.insertAdjacentHTML('beforeend', SQUAD_KEYS.map((k) => (k === me ? this.card(d.style, k, { me: true, xy: TM_SPOTS[k], sel: this.sel === k }) : this.card(d.squad[k] || 'ROOKIE', k, { xy: TM_SPOTS[k], sel: this.sel === k, filler: !d.squad[k] }))).join(''));
     $('tm-bench').innerHTML = [0, 1, 2].map((i) => this.card(d.squad.bench[i], 'B' + i, { sel: this.sel === 'B' + i })).join('');
     this.renderSel(d, me);
     const where = (id) => { const k = SQUAD_KEYS.find((x) => d.squad[x] === id); return k ? (k === 'WING' ? 'WG' : k) : (d.squad.bench || []).includes(id) ? 'BENCH' : ''; };
@@ -194,7 +194,7 @@ const TeamUI = {
     const s = this.sel, nm = s[0] === 'B' ? 'BENCH ' + (+s.slice(1) + 1) : (SQUAD_SLOTS.find((x) => x[0] === s) || [0, s])[1], el = $('tm-sel');
     if (s === me) { el.innerHTML = `<div class="tm-who"><i class="fc-pt" data-port="${d.style}"></i><div><span class="label">${nm} · YOU</span><b>${STYLES[d.style].name}</b><p class="tm-note">This is your spot. Change your character and your look in the LOCKER.</p></div></div><button class="btn small blue" id="tm-locker" type="button">OPEN LOCKER</button>`; return; }
     const id = this.at(d, s);
-    if (!id) { el.innerHTML = `<div class="tm-who"><i class="fc-pt" data-port=""></i><div><span class="label">${nm}</span><b>${s[0] === 'B' ? 'EMPTY' : 'AUTO'}</b><p class="tm-note">${s[0] === 'B' ? 'Nobody here yet.' : 'The game picks someone.'} Tap one of your players below, or drag them here.</p></div></div>`; return; }
+    if (!id) { el.innerHTML = `<div class="tm-who"><i class="fc-pt" data-port="${s[0] === 'B' ? '' : 'ROOKIE'}"></i><div><span class="label">${nm}</span><b>${s[0] === 'B' ? 'EMPTY' : 'ROOKIE'}</b><p class="tm-note">${s[0] === 'B' ? 'Nobody here yet.' : 'ROOKIE plays here until you pick someone.'} Tap one of your players below, or drag them here.</p></div></div>`; return; }
     const L = (d.squadLook || {})[id] || {}, num = L.n || (s === 'GK' ? 1 : 0);
     const row = ([slot, label]) => { const opts = this.options(slot), cur = SKINS[L[slot] || opts[0]]; return `<div class="tm-orow"><span class="label">${label}</span><button class="btn small" type="button" data-of="${slot}" data-dir="-1" aria-label="previous ${label.toLowerCase()}">&lt;</button><b>${cur ? esc(cur.name) : 'FREE'}</b><button class="btn small" type="button" data-of="${slot}" data-dir="1" aria-label="next ${label.toLowerCase()}">&gt;</button></div>`; };
     el.innerHTML = `<div class="tm-who"><i class="fc-pt" data-port="${id}"></i><div><span class="label">${nm} · RATING ${ovrOf(id, s[0] === 'B' ? 'BENCH' : s)}</span><b>${STYLES[id].name}</b></div><button class="btn small" id="tm-out" type="button">TAKE OFF</button></div>
@@ -205,7 +205,7 @@ const TeamUI = {
   /** the story screen's small version: the five cards and the OVR */
   mini() {
     const d = Save.data, me = mySlot(d);
-    return `<div class="tm-mini">${SQUAD_KEYS.map((k) => (k === me ? this.card(d.style, k, { me: true }) : this.card(d.squad[k], k, { attr: `data-slot="${k}"` }))).join('')}</div>`;
+    return `<div class="tm-mini">${SQUAD_KEYS.map((k) => (k === me ? this.card(d.style, k, { me: true }) : this.card(d.squad[k] || 'ROOKIE', k, { attr: `data-slot="${k}"` }))).join('')}</div>`;
   },
   /** SUBS in the pause menu: pick someone on the bench, then who comes off */
   openSubs() { this.subPick = null; $('subs-msg').textContent = ''; this.renderSubs(); $('subs').hidden = false; },

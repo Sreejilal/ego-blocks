@@ -114,7 +114,7 @@ class Match {
         const sl = sq && STYLES[sq] ? looks[sq] : null; // their outfit, if you made one
         let num = role === 'GK' ? (sl && sl.n) || 1 : human && !net ? 10 : sl && sl.n ? sl.n : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
-        const style = net ? net.style : human ? (opts.style || Save.data.style) : sq && STYLES[sq] ? sq : opts.teamStyle ? opts.teamStyle[team] : botStyle(role); // teamStyle: [home, away] for balance tests; bots mostly play a character made for their spot
+        const style = net ? net.style : human ? (opts.style || Save.data.style) : sq && STYLES[sq] ? sq : team === 0 && opts.squad && !opts.teamStyle ? 'ROOKIE' : opts.teamStyle ? opts.teamStyle[team] : botStyle(role); // MY TEAM: a spot nobody was put in is ROOKIE (owner: never a random pick) // teamStyle: [home, away] for balance tests; bots mostly play a character made for their spot
         const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
         const look = net ? net.look : human ? (opts.look || Save.data.look) : sl ? squadLookIds(sl) : botLook();
         const tone = net ? net.tone : Save.data.tone;

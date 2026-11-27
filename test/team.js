@@ -14,7 +14,10 @@ const toPlay = (m) => { for (let i = 0; i < 400 && m.phase !== 'play'; i++) m.up
   d.squad = { ST: 'RAILGUN', DEF: 'BASTION', GK: 'AEGIS', MID: 'NOT_A_STYLE', WING: 'AEGIS', bench: ['THUNDER', 'PHANTOM', 'RAILGUN', 'ZENITH'] };
   G.Save.data = d; G.Save.validate();
   check('the save keeps only characters you own, keeper styles only in goal, each once, 3 on the bench at most', d.squad.ST === 'RAILGUN' && d.squad.GK === 'AEGIS' && !d.squad.MID && !d.squad.WING && d.squad.bench.join() === 'THUNDER,PHANTOM,ZENITH', d.squad);
-  check('team OVR: the starters averaged, you included (an AUTO spot counts as 70)', G.teamOvr(d) === Math.round((93 + 70 + 70 + 78 + 84) / 5) || G.teamOvr(d) > 70, G.teamOvr(d));
+  check('team OVR: the starters averaged, you included (a spot nobody was put in counts as ROOKIE)', G.teamOvr(d) === Math.round([G.ovrOf(d.style, 'ST'), G.ovrOf('ROOKIE', 'WING'), G.ovrOf('ROOKIE', 'MID'), G.ovrOf('BASTION', 'DEF'), G.ovrOf('AEGIS', 'GK')].reduce((x, y) => x + y, 0) / 5), G.teamOvr(d));
+  const rk = new G.Match('quick', 0.4, { size: 4, home: 'ROVERS', away, role: 'ST', squad: { bench: [] }, length: 120 });
+  const fill = rk.teams[0].filter((q) => !q.isHuman).map((q) => q.role + ':' + q.styleId);
+  check('nobody picked for a spot: ROOKIE plays there (never a random pick), in goal too', fill.length === 3 && fill.every((x) => x.endsWith(':ROOKIE')), fill);
 
   // the team plays, and subs
   const sq = { MID: 'ZENITH', DEF: 'BASTION', GK: 'AEGIS', bench: ['THUNDER', 'PHANTOM'] };
