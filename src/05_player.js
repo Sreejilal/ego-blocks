@@ -189,6 +189,8 @@ class Player {
     if (this.accMat) this.accMat.dispose();
   }
   setState(s, dur = 0) { this.state = s; this.stateT = 0; this.stateDur = dur; }
+  /** using a move: a short flourish of its own on top of whatever else you are doing (MOVE_ANIMS, STYLE_ANIM) */
+  moveAnim(kind) { this.mv = { kind, t: 0, dur: kind === 'spin' ? 0.5 : 0.55 }; }
   /** LAWLESS: a blocky toy blaster in the right hand while you hold a gun item (barrel along the arm, past the hand) */
   showGun(on) {
     if (!on && !this.gunMesh) return;
@@ -535,6 +537,23 @@ class Player {
         } else { const j = Math.abs(Math.sin(t * 9)); by = 0.72 + j * 0.25; aLz = 2.6 + Math.sin(t * 14) * 0.3; aRz = -2.6 - Math.sin(t * 14) * 0.3; }
         break;
       }
+    }
+    if (this.mv) { // a move's flourish: arms, head and body always; legs and a jump only when you are free to (not kicking)
+      const M = this.mv; M.t += dt; const u = clamp(M.t / M.dur, 0, 1), e = Math.sin(Math.PI * u), legs = this.kickT < 0 && (st === 'free' || st === 'dash');
+      switch (M.kind) {
+        case 'cross': if (u < 0.45) { aL = aR = -1.35; aLz = -0.55; aRz = 0.55; hx = 0.2; } else { aL = aR = -0.4; aLz = 1.7; aRz = -1.7; hx = -0.3; } break; // arms crossed, then flung wide
+        case 'point': aR = -1.7 - 0.5 * e; aRz = -0.05; aL = 0.25; aLz = 0.4; hx = -0.15; break; // pointing the way
+        case 'spin': spinY = TAU * smooth(u); aLz = 1.35; aRz = -1.35; break; // a full turn, arms out
+        case 'leap': aL = aR = -2.6 * e; aLz = 0.3; aRz = -0.3; hx = -0.3 * e; if (legs) { by += 0.32 * e; lL = lR = -0.7 * e; } break; // a hop, arms up
+        case 'stomp': aLz = 0.85; aRz = -0.85; if (legs) { lR = u < 0.5 ? -1.4 * u / 0.5 : -1.4 * (1 - u) / 0.5; by -= u > 0.5 ? 0.08 * e : 0; } break; // knee up, stamp down
+        case 'swipe': aR = -1.5; aRz = lerp(-1.3, 1.1, smooth(u)); hy = lerp(-0.45, 0.45, smooth(u)); bz = 0.12 * e; break; // a sweep of the arm across
+        case 'burst': if (u < 0.35) { aL = aR = 0.7; aLz = 0.2; aRz = -0.2; hx = 0.3; if (legs) by -= 0.12; } else { aL = aR = -0.6; aLz = 2.2; aRz = -2.2; hx = -0.45; } break; // gather, then explode out
+        case 'flex': aL = aR = -1.55; aLz = 1.45; aRz = -1.45; hx = -0.1; break; // both arms up, flexing
+        case 'salute': aR = -2.25; aRz = 1.15; aL = 0.1; aLz = 0.2; hx = -0.1; break; // two fingers from the brow
+        case 'roar': hx = -0.65 * e; aL = aR = 0.2; aLz = 0.95; aRz = -0.95; bx -= 0.12 * e; break; // head back, arms out low
+      }
+      ease = Math.max(ease, 30);
+      if (M.t >= M.dur) this.mv = null;
     }
     if (this.flipT >= 0) { bx = -this.flipT * TAU; lL = -1.2; lR = 0.3; }
     const gun = !!(this.item === 'blaster' || this.item === 'scatter' || this.gun); // LAWLESS: holding a blaster

@@ -587,12 +587,12 @@ const AI = {
     return null;
   },
   dive(m, p, dx, ky, tk, sk) {
-    const side = sgn(dx), dur = 0.4, rs = 10 + 5 * sk; // an 11-wide goal: keepers dive far (they also step across first and dive late)
+    const side = sgn(dx), dur = 0.4, rs = (10 + 5 * sk) * (p.fx.stand > 0 ? 1.5 : 1); // LAST STAND: further // an 11-wide goal: keepers dive far (they also step across first and dive late)
     const vx = clamp(dx / Math.max(0.16, Math.min(tk, dur)), -rs, rs);
     const s = m.dir(p.team);
     p.yaw = s > 0 ? 0 : Math.PI;
     const localX = side * Math.cos(p.yaw);
-    p.dive = { vx, vz: 0, dur, rest: 0.6, side: sgn(localX), high: ky > 1.7, ux: side, uz: 0 };
+    p.dive = { vx, vz: 0, dur, rest: p.fx.stand > 0 ? 0.15 : 0.6, side: sgn(localX), high: ky > 1.7, ux: side, uz: 0 };
     p.setState('dive');
     if (ky > 1.7) { p.vel.y = clamp((ky - 0.9) * 3.4, 3, p.isHuman ? 7.5 : 5.6); p.onGround = false; } // computer keepers cannot fly right up into the top corners
     Sfx.swoosh();

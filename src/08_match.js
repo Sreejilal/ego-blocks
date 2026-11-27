@@ -514,7 +514,8 @@ class Match {
     else dx = (want || sgn(b.pos.x - p.pos.x) || 1) * (big ? 5.5 : 3.2);
     if (Math.abs(dx) < 0.5) dx = sgn(dx || 1) * 0.5;
     AI.dive(this, p, dx, ky, tk, Math.max(0.8, this.skill(p)));
-    if (big && p.dive) { p.dive.vx = clamp(dx / clamp(tk, 0.25, 0.5), -24, 24); p.dive.dur = 0.5; p.dive.big = true; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 2, 20); }
+    if (p.dive && p.fx.stand > 0) { p.dive.vx *= 1.5; p.dive.rest = 0.15; } // LAST STAND: further, and up at once
+    if (big && p.dive) { p.dive.vx = clamp(dx / clamp(tk, 0.25, 0.5), -24, 24) * (p.fx.stand > 0 ? 1.5 : 1); p.dive.dur = 0.5; p.dive.big = true; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 2, 20); }
     else if (aimed && tk > 0.42 && p.dive) { // pressed early: it goes at once, a slower and floatier dive that is still stretched out when the ball gets there
       p.dive.dur = Math.min(tk, 0.85); p.dive.vx = clamp(dx / p.dive.dur, -16, 16);
       if (!p.onGround) { p.vel.y *= 0.5; p.fx.hang = p.dive.dur + 0.2; } // a high one: half the speed up at a quarter of the gravity, the same height for twice as long
@@ -1090,6 +1091,7 @@ class Match {
       if (before) for (const k in p.fx) { const d = p.fx[k] - (before[k] || 0); if (d > 0) p.fx[k] = (before[k] || 0) + d * 1.5; }
       a.cd = a.def.cd;
       this.label(p, a.def.name + (before ? '+' : ''), p.aura);
+      p.moveAnim(a.def.anim || STYLE_ANIM[p.styleId] || 'point'); // owner, Nov 26 2026: two characters never do the same move the same way
       Sfx.ability();
       if (a.def.big) this.cinematic(p, a.def.name);
       return true;
@@ -1398,6 +1400,12 @@ class Match {
         p.starfall = false;
         for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 4.5) this.knockDown(o, 1.3, o.pos.x - p.pos.x, o.pos.z - p.pos.z, 4, p);
         FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 4.5, 40); FX.sparks(p.pos.x, 0.4, p.pos.z, p.aura, 30, 8); Shake.add(this.involvesHuman(p) ? 0.4 : 0.1); Sfx.boom();
+      }
+      if (p.fx.intercept > 0 && p.state === 'free' && !b.owner && b.kick && b.kick.type === 'pass' && b.kick.by && b.kick.by.team !== p.team && dist2D(b.pos, p.pos) < 4 && b.pos.y < 2.6) { // SENTINEL's INTERCEPT
+        b.vel.set(0, 0, 0); this.possess(p); p.fx.intercept = 0; p.stats.steals++; this.label(p, 'INTERCEPTED', p.aura); FX.ring(p.pos.x, 0.3, p.pos.z, p.aura, 2, 24); Sfx.save(); continue;
+      }
+      if (p.fx.ironwall > 0 && p.state === 'free' && b.owner && b.owner.team !== p.team && !b.owner.isGK && dist2D(b.owner.pos, p.pos) < 2.3) { // IRONCLAD's IRON WALL
+        if (this.steal(p, b.owner)) { p.fx.ironwall = 0; this.label(p, 'IRON WALL', '#9fb4ff'); FX.ring(p.pos.x, 0.3, p.pos.z, '#9fb4ff', 2, 24); Sfx.punch(); continue; }
       }
       if (!(p.fx.block > 0) || p.state !== 'free' || b.owner || b.vel.lengthSq() < 36) continue;
       const k = b.kick; if (k && k.by && k.by.team === p.team) continue;

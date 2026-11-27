@@ -566,6 +566,7 @@ const UI = {
     $('ci-name').textContent = name; $('ci-style').textContent = p.style.name + ' STYLE';
     el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
     clearTimeout(this.ciT); this.ciT = setTimeout(() => { el.hidden = true; el.classList.remove('go'); }, 820);
+    const B = document.body.classList; B.add('mv-hit'); setTimeout(() => { B.remove('mv-hit'); B.add('mv-hit2'); }, 70); setTimeout(() => B.remove('mv-hit2'), 140); // an impact frame, like the story scenes
   },
   tplPause() {
     return `<section id="scr-pause" class="overlay" hidden>

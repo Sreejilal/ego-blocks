@@ -3975,6 +3975,8 @@ class Player {
     if (this.accMat) this.accMat.dispose();
   }
   setState(s, dur = 0) { this.state = s; this.stateT = 0; this.stateDur = dur; }
+  /** using a move: a short flourish of its own on top of whatever else you are doing (MOVE_ANIMS, STYLE_ANIM) */
+  moveAnim(kind) { this.mv = { kind, t: 0, dur: kind === 'spin' ? 0.5 : 0.55 }; }
   /** LAWLESS: a blocky toy blaster in the right hand while you hold a gun item (barrel along the arm, past the hand) */
   showGun(on) {
     if (!on && !this.gunMesh) return;
@@ -4322,6 +4324,23 @@ class Player {
         break;
       }
     }
+    if (this.mv) { // a move's flourish: arms, head and body always; legs and a jump only when you are free to (not kicking)
+      const M = this.mv; M.t += dt; const u = clamp(M.t / M.dur, 0, 1), e = Math.sin(Math.PI * u), legs = this.kickT < 0 && (st === 'free' || st === 'dash');
+      switch (M.kind) {
+        case 'cross': if (u < 0.45) { aL = aR = -1.35; aLz = -0.55; aRz = 0.55; hx = 0.2; } else { aL = aR = -0.4; aLz = 1.7; aRz = -1.7; hx = -0.3; } break; // arms crossed, then flung wide
+        case 'point': aR = -1.7 - 0.5 * e; aRz = -0.05; aL = 0.25; aLz = 0.4; hx = -0.15; break; // pointing the way
+        case 'spin': spinY = TAU * smooth(u); aLz = 1.35; aRz = -1.35; break; // a full turn, arms out
+        case 'leap': aL = aR = -2.6 * e; aLz = 0.3; aRz = -0.3; hx = -0.3 * e; if (legs) { by += 0.32 * e; lL = lR = -0.7 * e; } break; // a hop, arms up
+        case 'stomp': aLz = 0.85; aRz = -0.85; if (legs) { lR = u < 0.5 ? -1.4 * u / 0.5 : -1.4 * (1 - u) / 0.5; by -= u > 0.5 ? 0.08 * e : 0; } break; // knee up, stamp down
+        case 'swipe': aR = -1.5; aRz = lerp(-1.3, 1.1, smooth(u)); hy = lerp(-0.45, 0.45, smooth(u)); bz = 0.12 * e; break; // a sweep of the arm across
+        case 'burst': if (u < 0.35) { aL = aR = 0.7; aLz = 0.2; aRz = -0.2; hx = 0.3; if (legs) by -= 0.12; } else { aL = aR = -0.6; aLz = 2.2; aRz = -2.2; hx = -0.45; } break; // gather, then explode out
+        case 'flex': aL = aR = -1.55; aLz = 1.45; aRz = -1.45; hx = -0.1; break; // both arms up, flexing
+        case 'salute': aR = -2.25; aRz = 1.15; aL = 0.1; aLz = 0.2; hx = -0.1; break; // two fingers from the brow
+        case 'roar': hx = -0.65 * e; aL = aR = 0.2; aLz = 0.95; aRz = -0.95; bx -= 0.12 * e; break; // head back, arms out low
+      }
+      ease = Math.max(ease, 30);
+      if (M.t >= M.dur) this.mv = null;
+    }
     if (this.flipT >= 0) { bx = -this.flipT * TAU; lL = -1.2; lR = 0.3; }
     const gun = !!(this.item === 'blaster' || this.item === 'scatter' || this.gun); // LAWLESS: holding a blaster
     if (gun && st === 'free' && !this.charging && this.kickT < 0) { aR = -1.45; aRz = 0.04; } // held up, ready to fire
@@ -4624,48 +4643,48 @@ const GK_ONLY = 'KEEPERS ONLY: PLAY IN GOAL';
 const STYLES = {
   ROOKIE: { name: 'ROOKIE', rarity: 'Rare', hair: '#3b2a22', hairShape: 'short', aura: '#3fd6ff', blurb: 'Reads the whole pitch. The free starter, and it can still win games.', abilities: ['vision', 'quickShot', 'burst'], awaken: { move: { name: 'PERFECT VISION', kind: 'vision', desc: 'See every passing lane for 8s and burst away.' }, name: 'FIRST LIGHT', desc: '+12% speed and shot power.', mods: { speed: 1.12, shot: 1.12 } } },
   SPRINTER: { name: 'SPRINTER', rarity: 'Rare', hair: '#c8323e', hairShape: 'long', aura: '#ff5a3c', blurb: 'Raw pace. Burns past the back line, then bends it in.', abilities: ['turbo', 'cutInside', 'curler'], awaken: { move: { name: 'LIGHT SPEED', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'RED LINE', desc: '+18% speed, and sprinting costs no stamina.', mods: { speed: 1.18, stamDrain: 0 } } },
-  PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'snapPass'], awaken: { move: { name: 'SHADOW STEP', kind: 'shadow', desc: 'Flash forward and freeze every defender near you.' }, name: 'NIGHTFALL', desc: 'Your feint recharges three times as fast, and you are 10% faster.', perk: 'dodge', mods: { speed: 1.1 } } },
+  PHANTOM: { name: 'PHANTOM', rarity: 'Epic', hair: '#17151f', hairShape: 'bob', aura: '#9a6bff', blurb: 'A slippery dribbler that leaves black feathers and frozen defenders behind.', abilities: ['zigzag', 'feint', 'shadowStep'], awaken: { move: { name: 'SHADOW STEP', kind: 'shadow', desc: 'Flash forward and freeze every defender near you.' }, name: 'NIGHTFALL', desc: 'Your feint recharges three times as fast, and you are 10% faster.', perk: 'dodge', mods: { speed: 1.1 } } },
   TRICKSTER: { name: 'TRICKSTER', rarity: 'Epic', hair: '#ff5fb0', hairShape: 'messy', aura: '#ff5fb0', blurb: 'Flicks, nutmegs and snap feints. Makes defenders look silly.', abilities: ['rainbow', 'nutmeg', 'whiplash'], awaken: { move: { name: 'ANKLE STORM', kind: 'storm', desc: 'Every opponent near you loses their footing.' }, name: 'SHOWTIME', desc: 'Your feint recharges three times as fast and tricks recharge even faster.', perk: 'dodge', mods: { cdRate: 1.5 } } },
-  ENFORCER: { name: 'ENFORCER', rarity: 'Epic', hair: '#8a1f33', hairShape: 'swept', aura: '#ffb02e', blurb: 'Midfield general. Flattens attackers and threads perfect through balls.', abilities: ['armSwipe', 'pinpointPass', 'lockdown'], awaken: { move: { name: 'SHOCKWAVE', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'IRON WALL', desc: 'Tackles reach 60% further and come back twice as fast, and nobody can tackle you.', perk: 'tank', mods: { tackleRange: 1.6, tackleCd: 0.5 } } },
+  ENFORCER: { name: 'ENFORCER', rarity: 'Epic', hair: '#8a1f33', hairShape: 'swept', aura: '#ffb02e', blurb: 'Midfield general. Flattens attackers and threads perfect through balls.', abilities: ['armSwipe', 'pinpointPass', 'shoulderCharge'], awaken: { move: { name: 'SHOCKWAVE', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'IRON WALL', desc: 'Tackles reach 60% further and come back twice as fast, and nobody can tackle you.', perk: 'tank', mods: { tackleRange: 1.6, tackleCd: 0.5 } } },
   SHAMBLER: { name: 'SHAMBLER', rarity: 'Legendary', hair: '#a6c49c', hairShape: 'messy', aura: '#7dff6a', blurb: 'An undead dribble nobody can tackle, and long arms that steal anything.', abilities: ['undeadShuffle', 'graveGrab', 'lurch'], awaken: { move: { name: 'GRAVE PULL', kind: 'pull', desc: 'Pull the ball to your feet from up to 14 blocks away.' }, name: 'RISEN', desc: 'Nobody can tackle you, and you are 12% faster.', perk: 'tank', mods: { speed: 1.12 } } },
   PROWLER: { name: 'PROWLER', rarity: 'Legendary', hair: '#2b2f3a', hairShape: 'swept', aura: '#ff9d2e', blurb: 'A predator in the box. Smells loose balls first and finishes them first time.', abilities: ['scent', 'pounce', 'oneTouch'], awaken: { move: { name: 'APEX POUNCE', kind: 'pounce', desc: 'Leap onto the ball from up to 16 blocks away.' }, name: 'APEX', desc: '+22% speed when you do not have the ball, and +20% shot power.', mods: { huntSpeed: 1.22, shot: 1.2 } } },
-  MAGNET: { name: 'MAGNET', rarity: 'Mythic', hair: '#eef2f7', hairShape: 'fluffy', aura: '#8fd4ff', blurb: 'Kills any high ball dead on the boot, then finishes it in the air.', abilities: ['skyTrap', 'volley', 'fakeVolley'], awaken: { move: { name: 'SKY CANNON', kind: 'skycannon', desc: 'Pop the ball up and volley it at full power.' }, name: 'GRAVITY', desc: '+22% shot power and 10% faster.', mods: { shot: 1.22, speed: 1.1 } } },
+  MAGNET: { name: 'MAGNET', rarity: 'Mythic', hair: '#eef2f7', hairShape: 'fluffy', aura: '#8fd4ff', blurb: 'Kills any high ball dead on the boot, then finishes it in the air.', abilities: ['skyTrap', 'volley', 'magnetPull'], awaken: { move: { name: 'SKY CANNON', kind: 'skycannon', desc: 'Pop the ball up and volley it at full power.' }, name: 'GRAVITY', desc: '+22% shot power and 10% faster.', mods: { shot: 1.22, speed: 1.1 } } },
   THUNDER: { name: 'THUNDER', rarity: 'Mythic', hair: '#f2f2f2', hairShape: 'flattop', aura: '#ffe14d', blurb: 'A long-range bomber. Shots from 30 blocks out that dip, wobble and burn keepers.', abilities: ['longBomb', 'loaded', 'knuckle'], awaken: { move: { name: 'THUNDERBOLT', kind: 'bolt', desc: 'A straight shot so hard the keeper cannot catch it.' }, name: 'STORM', desc: '+30% shot power.', mods: { shot: 1.3 } } },
-  WARDEN: { name: 'WARDEN', rarity: 'Epic', hair: '#3a3f4a', hairShape: 'crop', aura: '#5fb0ff', blurb: 'A wall at the back. Blocks shots, clears danger and shuts the best striker out of the game.', abilities: ['bodyBlock', 'clearance', 'lockdown'],
+  WARDEN: { name: 'WARDEN', rarity: 'Epic', hair: '#3a3f4a', hairShape: 'crop', aura: '#5fb0ff', blurb: 'A wall at the back. Blocks shots, clears danger and shuts the best striker out of the game.', abilities: ['bodyBlock', 'sweepKick', 'lockdown'],
     awaken: { move: { name: 'FORTRESS', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'BULWARK', desc: 'Tackles reach further and come back faster, and nobody can tackle you.', perk: 'tank', mods: { tackleRange: 1.5, tackleCd: 0.6 } } },
   MAESTRO: { name: 'MAESTRO', rarity: 'Legendary', hair: '#5a3a22', hairShape: 'ponytail', aura: '#e6c35c', blurb: 'Runs the game. One-twos, perfect through balls and a whole team that plays faster.', abilities: ['oneTwo', 'pinpointPass', 'tempo'],
     awaken: { move: { name: 'SYMPHONY', kind: 'symphony', desc: 'Your whole team bursts away, and you see every passing lane.' }, name: 'CONDUCTOR', desc: 'Abilities recharge even faster and you are 10% quicker.', mods: { cdRate: 1.3, speed: 1.1 } } },
   BLITZ: { name: 'BLITZ', rarity: 'Legendary', hair: '#ff3b2f', hairShape: 'undercut', aura: '#ff3b5c', blurb: 'Never stops running. Hunts the ball down and pokes it away without leaving the ground.', abilities: ['hunt', 'poke', 'burst'],
     awaken: { move: { name: 'RED ALERT', kind: 'steal', desc: 'Lunge at a carrier up to 10 blocks away and take the ball.' }, name: 'FRENZY', desc: '+15% speed, and tackles come back twice as fast.', mods: { speed: 1.15, tackleCd: 0.5 } } },
-  COMET: { name: 'COMET', rarity: 'Mythic', hair: '#bde8ff', hairShape: 'afro', aura: '#7cf2ff', blurb: 'Lives in the air. Rocket jumps, overheads and volleys from anywhere.', abilities: ['rocketJump', 'overhead', 'volley'],
+  COMET: { name: 'COMET', rarity: 'Mythic', hair: '#bde8ff', hairShape: 'afro', aura: '#7cf2ff', blurb: 'Lives in the air. Rocket jumps, overheads and volleys from anywhere.', abilities: ['rocketJump', 'overhead', 'meteorStrike'],
     awaken: { move: { name: 'STARFALL', kind: 'starfall', desc: 'Leap sky high and crash down, knocking over everyone near you.' }, name: 'ORBIT', desc: '+20% shot power, 15% faster, and abilities recharge faster.', mods: { shot: 1.2, speed: 1.15, cdRate: 1.3 } } },
   RAILGUN: { name: 'RAILGUN', rarity: 'Generational', hair: '#f2d35a', hairShape: 'spiky', aura: '#4c7dff', blurb: 'The striker of a generation. Shots fly dead straight from anywhere.', abilities: ['impactShot', 'call', 'overhead'], awaken: { move: { name: 'RAILSHOT', kind: 'bolt', desc: 'Dead straight, top power, from anywhere.' }, name: 'OVERDRIVE', desc: '+25% shot power, 10% faster, and abilities recharge faster.', mods: { shot: 1.25, speed: 1.1, cdRate: 1.3 } } },
-  KESTREL: { name: 'KESTREL', rarity: 'Rare', hair: '#d9a53a', hairShape: 'spiky', aura: '#7fe0ff', blurb: 'Never stops running. Fresh legs, quick passes and quick shots.', abilities: ['secondWind', 'snapPass', 'quickShot'],
+  KESTREL: { name: 'KESTREL', rarity: 'Rare', hair: '#d9a53a', hairShape: 'spiky', aura: '#7fe0ff', blurb: 'Never stops running. Fresh legs, quick passes and quick shots.', abilities: ['secondWind', 'snapPass', 'skyPass'],
     awaken: { move: { name: 'SLIPSTREAM', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'TAILWIND', desc: '+12% speed, and sprinting costs half the stamina.', mods: { speed: 1.12, stamDrain: 0.5 } } },
-  ANCHOR: { name: 'ANCHOR', rarity: 'Rare', hair: '#2d2a28', hairShape: 'crop', aura: '#4fd0a0', blurb: 'A tidy defender. Wins the ball back, clears it long and never runs out of legs.', abilities: ['lurch', 'clearance', 'secondWind'],
+  ANCHOR: { name: 'ANCHOR', rarity: 'Rare', hair: '#2d2a28', hairShape: 'crop', aura: '#4fd0a0', blurb: 'A tidy defender. Wins the ball back, clears it long and never runs out of legs.', abilities: ['lurch', 'anchorDrop', 'secondWind'],
     awaken: { move: { name: 'DEEP WATER', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'BEDROCK', desc: 'Tackles come back faster, and nobody can tackle you.', perk: 'tank', mods: { tackleCd: 0.6 } } },
-  FEATHER: { name: 'FEATHER', rarity: 'Epic', hair: '#f4f0e6', hairShape: 'bob', aura: '#ffb8e6', blurb: 'A soft touch. Chips the keeper and floats the ball over tackles.', abilities: ['chipShot', 'rainbow', 'feint'],
+  FEATHER: { name: 'FEATHER', rarity: 'Epic', hair: '#f4f0e6', hairShape: 'bob', aura: '#ffb8e6', blurb: 'A soft touch. Chips the keeper and floats the ball over tackles.', abilities: ['chipShot', 'rainbow', 'dropShot'],
     awaken: { move: { name: 'UPDRAFT', kind: 'skycannon', desc: 'Pop the ball up and volley it at full power.' }, name: 'WEIGHTLESS', desc: '+12% speed and +15% shot power.', mods: { speed: 1.12, shot: 1.15 } } },
-  CAPTAIN: { name: 'CAPTAIN', rarity: 'Legendary', hair: '#7a4a24', hairShape: 'swept', aura: '#ff7043', blurb: 'Leads from the front. Shields the team, keeps everyone running and threads the killer ball.', abilities: ['rally', 'pinpointPass', 'secondWind'],
+  CAPTAIN: { name: 'CAPTAIN', rarity: 'Legendary', hair: '#7a4a24', hairShape: 'swept', aura: '#ff7043', blurb: 'Leads from the front. Shields the team, keeps everyone running and threads the killer ball.', abilities: ['rally', 'pinpointPass', 'command'],
     awaken: { move: { name: 'ARMBAND', kind: 'symphony', desc: 'Your whole team bursts away, and you see every passing lane.' }, name: 'LEADER', desc: 'Abilities recharge faster and you are 10% quicker.', mods: { cdRate: 1.25, speed: 1.1 } } },
   GLACIER: { name: 'GLACIER', rarity: 'Mythic', hair: '#cfefff', hairShape: 'long', aura: '#9fe8ff', blurb: 'Freezes the game around the ball, then picks the corner with a wobbling shot.', abilities: ['frost', 'bodyBlock', 'knuckle'],
     awaken: { move: { name: 'WHITEOUT', kind: 'shadow', desc: 'Flash forward and freeze every defender near you.' }, name: 'DEEP FREEZE', desc: '+18% shot power, and tackles reach 30% further.', mods: { shot: 1.18, tackleRange: 1.3 } } },
-  SPARK: { name: 'SPARK', rarity: 'Rare', hair: '#e8ff5a', hairShape: 'bun', aura: '#c6ff3d', blurb: 'Quick feet and a short fuse. Zaps the nearest defender, then snaps a pass or a shot.', abilities: ['zap', 'snapPass', 'quickShot'],
+  SPARK: { name: 'SPARK', rarity: 'Rare', hair: '#e8ff5a', hairShape: 'bun', aura: '#c6ff3d', blurb: 'Quick feet and a short fuse. Zaps the nearest defender, then snaps a pass or a shot.', abilities: ['zap', 'sparkDash', 'quickShot'],
     awaken: { move: { name: 'LIGHTNING STEP', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'OVERLOAD', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
   TITAN: { name: 'TITAN', rarity: 'Legendary', hair: '#4a2c1a', hairShape: 'mohawk', aura: '#ff8a2a', blurb: 'A battering ram at the back. Charges through anyone in the way, blocks shots and boots the ball clear.', abilities: ['ram', 'bodyBlock', 'clearance'],
     awaken: { move: { name: 'EARTHQUAKE', kind: 'shockwave', desc: 'Knock down every opponent near you.' }, name: 'JUGGERNAUT', desc: 'Nobody can tackle you, abilities recharge faster and you are 10% faster.', perk: 'tank', mods: { speed: 1.1, cdRate: 1.3 } } },
   // the content pack (owner, Nov 2026: "make way more content"): six more characters, made from tried and tested powers
-  VORTEX: { name: 'VORTEX', rarity: 'Epic', hair: '#1f8fff', hairShape: 'swept', aura: '#4dd8ff', blurb: 'Spins defenders dizzy. Zigzags through, cuts inside and bends it into the corner.', abilities: ['zigzag', 'cutInside', 'curler'],
+  VORTEX: { name: 'VORTEX', rarity: 'Epic', hair: '#1f8fff', hairShape: 'swept', aura: '#4dd8ff', blurb: 'Spins defenders dizzy. Zigzags through, cuts inside and bends it into the corner.', abilities: ['tornadoSpin', 'cutInside', 'curler'],
     awaken: { move: { name: 'CYCLONE', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'WHIRLWIND', desc: '+12% speed and +10% shot power.', mods: { speed: 1.12, shot: 1.1 } } },
-  NOVA: { name: 'NOVA', rarity: 'Legendary', hair: '#ffe9a3', hairShape: 'fluffy', aura: '#ffd84d', blurb: 'A shooting star. Rockets into the air, kills high balls dead and chips the keeper.', abilities: ['rocketJump', 'skyTrap', 'chipShot'],
+  NOVA: { name: 'NOVA', rarity: 'Legendary', hair: '#ffe9a3', hairShape: 'fluffy', aura: '#ffd84d', blurb: 'A shooting star. Rockets into the air, kills high balls dead and chips the keeper.', abilities: ['rocketJump', 'supernova', 'chipShot'],
     awaken: { move: { name: 'SUPERNOVA', kind: 'starfall', desc: 'Leap sky high and crash down, knocking over everyone near you.' }, name: 'STARLIGHT', desc: '+15% shot power, and abilities recharge faster.', mods: { shot: 1.15, cdRate: 1.3 } } },
-  SENTINEL: { name: 'SENTINEL', rarity: 'Rare', hair: '#3a3f55', hairShape: 'crop', aura: '#9aa6ff', blurb: 'Reads every pass. Steps in, pokes it away and sends it long.', abilities: ['poke', 'bodyBlock', 'clearance'],
+  SENTINEL: { name: 'SENTINEL', rarity: 'Rare', hair: '#3a3f55', hairShape: 'crop', aura: '#9aa6ff', blurb: 'Reads every pass. Steps in, pokes it away and sends it long.', abilities: ['poke', 'bodyBlock', 'intercept'],
     awaken: { move: { name: 'NO ENTRY', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'WATCHTOWER', desc: 'Tackles reach 25% further and come back faster.', mods: { tackleRange: 1.25, tackleCd: 0.75 } } },
-  JESTER: { name: 'JESTER', rarity: 'Epic', hair: '#ff9ad8', hairShape: 'afro', aura: '#ff5fd2', blurb: 'Pure showtime. Rainbow flicks, fake shots and feints that leave defenders on the floor.', abilities: ['rainbow', 'fakeVolley', 'feint'],
+  JESTER: { name: 'JESTER', rarity: 'Epic', hair: '#ff9ad8', hairShape: 'afro', aura: '#ff5fd2', blurb: 'Pure showtime. Rainbow flicks, fake shots and feints that leave defenders on the floor.', abilities: ['rainbow', 'fakeVolley', 'jokerSwap'],
     awaken: { move: { name: 'GRAND FINALE', kind: 'shadow', desc: 'Flash forward and freeze every defender near you.' }, name: 'SHOWTIME', desc: '+10% speed, and abilities recharge faster.', perk: 'dodge', mods: { speed: 1.1, cdRate: 1.25 } } },
-  TEMPEST: { name: 'TEMPEST', rarity: 'Mythic', hair: '#2a1f4f', hairShape: 'long', aura: '#7a5cff', blurb: 'A storm in boots. Zaps the nearest defender, locks down their best attacker and hits a wobbling knuckleball.', abilities: ['zap', 'lockdown', 'knuckle'],
+  TEMPEST: { name: 'TEMPEST', rarity: 'Mythic', hair: '#2a1f4f', hairShape: 'long', aura: '#7a5cff', blurb: 'A storm in boots. Zaps the nearest defender, locks down their best attacker and hits a wobbling knuckleball.', abilities: ['zap', 'gale', 'knuckle'],
     awaken: { move: { name: 'THUNDERCLAP', kind: 'storm', desc: 'Every opponent near you loses their footing.' }, name: 'SUPERCELL', desc: '+15% shot power, and tackles reach 30% further.', mods: { shot: 1.15, tackleRange: 1.3 } } },
-  ACE: { name: 'ACE', rarity: 'Legendary', hair: '#c4161c', hairShape: 'messy', aura: '#ff3d3d', blurb: 'Never wastes a touch. Quick shots, first-time finishes and fresh legs when everyone else is tired.', abilities: ['quickShot', 'oneTouch', 'secondWind'],
+  ACE: { name: 'ACE', rarity: 'Legendary', hair: '#c4161c', hairShape: 'messy', aura: '#ff3d3d', blurb: 'Never wastes a touch. Quick shots, first-time finishes and fresh legs when everyone else is tired.', abilities: ['quickShot', 'oneTouch', 'aceShot'],
     awaken: { move: { name: 'ACE SHOT', kind: 'bolt', desc: 'A straight shot so hard the keeper cannot catch it.' }, name: 'IN THE ZONE', desc: '+12% speed and +12% shot power.', mods: { speed: 1.12, shot: 1.12 } } },
   // keeper styles (owner, Nov 2026): spun, kept and equipped like any style; their powers work when you play in goal (in goal any other style's moves work too). Bots never get them
   FORTRESS: { name: 'FORTRESS', rarity: 'Rare', gk: true, hair: '#2b2b33', hairShape: 'flattop', aura: '#ffb02e', blurb: 'A keeper built like a wall. Giant gloves, hands of iron and a kick that reaches the other box. Its powers work in goal.', abilities: ['bigGloves', 'ironHands', 'cannonKick'],
@@ -4676,19 +4695,19 @@ const STYLES = {
   // its own: FLASH STEP), a defender and a third keeper
   ZENITH: { name: 'ZENITH', rarity: 'Generational', hair: '#f3eeff', hairShape: 'undercut', aura: '#d65cff', blurb: 'The winger of a generation. Blinks past defenders in a flash of light, then bends it into the top corner.', abilities: ['flashStep', 'zigzag', 'curler'],
     awaken: { move: { name: 'WORLD STOP', kind: 'worldstop', desc: 'Every opponent within 12 blocks freezes for 1.5s while you burst away.' }, name: 'HIGHEST POINT', desc: '+15% speed, +15% shot power, and abilities recharge faster.', mods: { speed: 1.15, shot: 1.15, cdRate: 1.3 } } },
-  BASTION: { name: 'BASTION', rarity: 'Epic', hair: '#1d1d24', hairShape: 'flattop', aura: '#ff6b3d', blurb: 'A defender who never gives an inch. Swipes attackers off the ball, keeps the whole back line standing and sends it long.', abilities: ['armSwipe', 'rally', 'clearance'],
+  BASTION: { name: 'BASTION', rarity: 'Epic', hair: '#1d1d24', hairShape: 'flattop', aura: '#ff6b3d', blurb: 'A defender who never gives an inch. Swipes attackers off the ball, keeps the whole back line standing and sends it long.', abilities: ['armSwipe', 'rally', 'shieldBash'],
     awaken: { move: { name: 'LAST STAND', kind: 'steal', desc: 'Lunge at a carrier up to 10 blocks away and take the ball.' }, name: 'IMMOVABLE', desc: 'Nobody can tackle you, and tackles reach 40% further.', perk: 'tank', mods: { tackleRange: 1.4 } } },
-  AEGIS: { name: 'AEGIS', rarity: 'Legendary', gk: true, hair: '#e9e4d8', hairShape: 'long', aura: '#ffe066', blurb: 'A keeper like a golden shield. Holds every shot, leaps right across the goal and slows shots down. Its powers work in goal.', abilities: ['ironHands', 'catLeap', 'slowShot'],
+  AEGIS: { name: 'AEGIS', rarity: 'Legendary', gk: true, hair: '#e9e4d8', hairShape: 'long', aura: '#ffe066', blurb: 'A keeper like a golden shield. Holds every shot, leaps right across the goal and slows shots down. Its powers work in goal.', abilities: ['ironHands', 'catLeap', 'lastStand'],
     awaken: { move: { name: 'SHIELD WALL', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'GUARDIAN', desc: '+12% speed, and abilities recharge faster.', mods: { speed: 1.12, cdRate: 1.3 } } },
 };
 /* STORY characters (owner, Nov 25 2026: "one time only characters"): you only get them by finishing a STORY chapter. Never in
    spins, never on bots, never for blueprints (story: true) */
 Object.assign(STYLES, {
-  ROGUE: { name: 'ROGUE', rarity: 'Epic', story: true, hair: '#2b2b33', hairShape: 'swept', aura: '#3dffb0', blurb: 'A street winger from the back pitches. Cuts inside, nutmegs anyone and never stops running.', abilities: ['cutInside', 'nutmeg', 'burst'],
+  ROGUE: { name: 'ROGUE', rarity: 'Epic', story: true, hair: '#2b2b33', hairShape: 'swept', aura: '#3dffb0', blurb: 'A street winger from the back pitches. Cuts inside, nutmegs anyone and never stops running.', abilities: ['cutInside', 'nutmeg', 'streetSpin'],
     awaken: { move: { name: 'STREET DASH', kind: 'lightspeed', desc: 'A huge dash forward that nobody can tackle.' }, name: 'BACK PITCH', desc: '+14% speed, and abilities recharge faster.', mods: { speed: 1.14, cdRate: 1.3 } } },
-  IRONCLAD: { name: 'IRONCLAD', rarity: 'Legendary', story: true, hair: '#8a8f9e', hairShape: 'flattop', aura: '#9fb4ff', blurb: 'The wall of the City League. Nothing gets past, and every clearance lands at a teammate\'s feet.', abilities: ['bodyBlock', 'clearance', 'lockdown'],
+  IRONCLAD: { name: 'IRONCLAD', rarity: 'Legendary', story: true, hair: '#8a8f9e', hairShape: 'flattop', aura: '#9fb4ff', blurb: 'The wall of the City League. Nothing gets past, and every clearance lands at a teammate\'s feet.', abilities: ['bodyBlock', 'ironWall', 'lockdown'],
     awaken: { move: { name: 'IRON GATE', kind: 'fortress', desc: 'Every opponent near you slows right down for 3s.' }, name: 'UNBREAKABLE', desc: 'Nobody can tackle you, and tackles reach 40% further.', perk: 'tank', mods: { tackleRange: 1.4 } } },
-  SOLARIS: { name: 'SOLARIS', rarity: 'Generational', story: true, hair: '#ffd23d', hairShape: 'spiky', aura: '#ff9d2e', blurb: 'The champion of the Voxel Cup. Shots burn like the sun, and keepers never see them coming.', abilities: ['impactShot', 'volley', 'loaded'],
+  SOLARIS: { name: 'SOLARIS', rarity: 'Generational', story: true, hair: '#ffd23d', hairShape: 'spiky', aura: '#ff9d2e', blurb: 'The champion of the Voxel Cup. Shots burn like the sun, and keepers never see them coming.', abilities: ['impactShot', 'solarFlare', 'loaded'],
     awaken: { move: { name: 'SOLAR FLARE', kind: 'worldstop', desc: 'Every opponent within 12 blocks freezes for 1.5s while you burst away.' }, name: 'SUPERNOVA HEART', desc: '+15% speed, +20% shot power, and abilities recharge faster.', mods: { speed: 1.15, shot: 1.2, cdRate: 1.3 } } },
 });
 /** each character's role (owner, Nov 2026: "place each character's role so one defender one winger"): shown in the Locker,
@@ -4707,6 +4726,18 @@ const roleSpot = (id) => ROLES[(STYLES[id] || STYLES.ROOKIE).role].spots[0];
 const roleFits = (id, spot) => !!STYLES[id] && ROLES[STYLES[id].role].spots.includes(spot);
 const STYLE_IDS = Object.keys(STYLES);
 const GK_IDS = STYLE_IDS.filter((k) => STYLES[k].gk); // keeper styles
+// how each character moves when it uses a move (Player.moveAnim): picked from MOVE_ANIMS so that two characters with the same move
+// never do it the same way (owner, Nov 26 2026: "if you can't, at least change their animation")
+const MOVE_ANIMS = ['cross', 'point', 'spin', 'leap', 'stomp', 'swipe', 'burst', 'flex', 'salute', 'roar'];
+const STYLE_ANIM = (() => {
+  const out = {};
+  for (const id of STYLE_IDS) {
+    let h = 0; for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const taken = new Set(STYLE_IDS.filter((o) => out[o] && STYLES[o].abilities.some((a) => STYLES[id].abilities.includes(a))).map((o) => out[o]));
+    out[id] = MOVE_ANIMS.map((_, i) => MOVE_ANIMS[(h + i) % MOVE_ANIMS.length]).find((k) => !taken.has(k)) || MOVE_ANIMS[h % MOVE_ANIMS.length];
+  }
+  return out;
+})();
 /** a bot's style: common styles most of the time, the rare ones now and then (like the spins) */
 const BOT_STYLE_ODDS = { Rare: 40, Epic: 30, Legendary: 15, Mythic: 10, Generational: 5 };
 function botStyle(spot) {
@@ -4733,6 +4764,275 @@ function nearBall(p, m, r = 1.9) {
 function aimFor(p, m, corner = false) { return p.isHuman ? (p.aimV || m.aim).clone() : AI.shotTarget(p, m, null, corner); }
 
 const ABILITIES = {
+  /* signature moves (owner, Nov 26 2026: "actual new moves, not a different person with a combo of some random moves"): every
+     character that only had moves other characters have too gets one of its own (anim: how its user moves, Player.moveAnim) */
+  shadowStep: { // PHANTOM
+    name: 'SHADOW STEP', cd: 12, icon: 'dash', big: true, anim: 'cross',
+    desc: 'With the ball: vanish and appear right behind the defender in front of you, the ball still at your feet.',
+    use(p, m) {
+      if (m.ball.owner !== p) return NEED_BALL;
+      const t = m.opponentInFront(p, 6, 0.9); if (!t) return 'NOBODY IN FRONT';
+      const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+      FX.sparks(p.pos.x, 1, p.pos.z, '#2a1d3a', 24, 4, 0.2, 0.6); FX.sparks(p.pos.x, 1, p.pos.z, p.aura, 10, 3);
+      p.pos.set(clamp(t.pos.x + fx * 1.8, -F.W + 1, F.W - 1), 0, clamp(t.pos.z + fz * 1.8, -F.L + 1.5, F.L - 1.5));
+      m.ball.pos.set(p.pos.x + fx * 0.6, BALL_R, p.pos.z + fz * 0.6);
+      p.tackleProof = 0.5; t.pickBlock = Math.max(t.pickBlock, 0.6);
+      FX.sparks(p.pos.x, 1, p.pos.z, '#2a1d3a', 24, 4, 0.2, 0.6); FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 1.4, 20); Sfx.dodge();
+      return true;
+    },
+    ai(p, m, c) { return c.hasBall && c.oppInFront && c.dGoal < 40; },
+  },
+  shoulderCharge: { // ENFORCER
+    name: 'SHOULDER CHARGE', cd: 13, icon: 'grab', big: true, anim: 'roar',
+    desc: 'Off the ball: charge at the opponent in front. If you reach them, they go flying and drop the ball.',
+    use(p, m) {
+      if (m.ball.owner === p) return 'ONLY OFF THE BALL';
+      const t = m.opponentInFront(p, 7, 0.8); if (!t) return 'NO TARGET IN RANGE';
+      const dx = t.pos.x - p.pos.x, dz = t.pos.z - p.pos.z, l = len2D(dx, dz) || 1;
+      p.yaw = Math.atan2(dx, dz);
+      m.dashP(p, dx / l, dz / l, 16, clamp(l / 16, 0.15, 0.42), { onEnd: () => {
+        if (dist2D(t.pos, p.pos) < 2.3 && t.state !== 'down' && m.knockDown(t, 1.4, dx / l, dz / l, 6, p)) { Sfx.punch(); FX.sparks(t.pos.x, 1.2, t.pos.z, p.aura, 16, 5); if (m.involvesHuman(p, t)) Shake.add(0.35); }
+      } });
+      Sfx.dodge(); return true;
+    },
+    ai(p, m, c) { return !c.hasBall && c.carrierOpp && c.carrierDist < 6 && c.carrierDist > 2; },
+  },
+  magnetPull: { // MAGNET
+    name: 'MAGNET PULL', cd: 10, icon: 'trap', anim: 'point',
+    desc: 'A loose ball up to 12 blocks away flies straight to your feet.',
+    use(p, m) {
+      const b = m.ball; if (b.owner) return 'ONLY A LOOSE BALL';
+      const dx = p.pos.x - b.pos.x, dz = p.pos.z - b.pos.z, d = Math.hypot(dx, dz);
+      if (d > 12) return 'TOO FAR AWAY'; if (d < 1.2) return 'IT IS AT YOUR FEET';
+      const T = clamp(d / 18, 0.25, 0.6);
+      b.vel.set(dx / T, (BALL_R - b.pos.y + 0.5 * BALL_G * T * T) / T, dz / T); b.curve.set(0, 0, 0); b.gMul = 1; b.straightT = 0;
+      b.kick = { by: p, type: 'pass', to: p, t: m.time, trail: p.aura, special: null, counted: false, aerial: false, curved: false, fx: b.pos.x, fz: b.pos.z }; b.touch(p);
+      FX.ring(b.pos.x, b.pos.y, b.pos.z, p.aura, 1, 16); FX.ring(p.pos.x, 0.3, p.pos.z, p.aura, 1.4, 20); Sfx.zap();
+      return true;
+    },
+    ai(p, m, c) { return !m.ball.owner && c.looseDist > 3 && c.looseDist < 11; },
+  },
+  sweepKick: { // WARDEN
+    name: 'SWEEP KICK', cd: 12, icon: 'boot', anim: 'spin',
+    desc: 'A spinning low sweep: everyone close to you loses their footing, and a ball they carry pops loose.',
+    use(p, m) {
+      const near = m.opponents(p).filter((o) => !o.isGK && o.state !== 'down' && dist2D(o.pos, p.pos) < 2.8);
+      if (!near.length) return 'NOBODY CLOSE ENOUGH';
+      for (const o of near) { const dx = o.pos.x - p.pos.x, dz = o.pos.z - p.pos.z, l = len2D(dx, dz) || 1; m.knockDown(o, 0.9, dx / l, dz / l, 2.5, p); }
+      FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 2.8, 30); FX.dirt(p.pos.x, p.pos.z, 0, 0, 14, 1.2); Sfx.slide();
+      return true;
+    },
+    ai(p, m, c) { return c.carrierOpp && c.carrierDist < 2.6; },
+  },
+  meteorStrike: { // COMET
+    name: 'METEOR STRIKE', cd: 9, icon: 'shot', big: true, anim: 'leap',
+    desc: 'With the ball close: leap high and smash it down at goal in a trail of fire. Hard for keepers to read.',
+    use(p, m) {
+      if (!nearBall(p, m)) return NEED_BALL;
+      const b = m.ball;
+      if (b.owner === p) { b.release(); b.pos.set(p.pos.x + Math.sin(p.yaw) * 0.5, BALL_R, p.pos.z + Math.cos(p.yaw) * 0.5); } // from your boot
+      b.vel.set(Math.sin(p.yaw) * 0.6, 8, Math.cos(p.yaw) * 0.6); b.kick = { by: p, type: 'flick', t: m.time, trail: '#ff7a2e' }; b.touch(p); p.pickBlock = 0.5;
+      p.vel.y = 7.5; p.onGround = false;
+      p.pending = { t: 0.36, fn: () => {
+        if (dist2D(b.pos, p.pos) < 3 && (!b.owner || b.owner === p)) { m.shootAt(p, aimFor(p, m, true), 1, { mult: 1.22, trail: '#ff7a2e', special: 'volley', keepPos: true, aerial: true }); FX.sparks(b.pos.x, b.pos.y, b.pos.z, '#ff7a2e', 24, 7); }
+      } };
+      FX.ring(p.pos.x, 0.2, p.pos.z, '#ff7a2e', 1.6, 22); Sfx.boing();
+      return true;
+    },
+    ai(p, m, c) { return c.hasBall && c.dGoal < 24 && c.angleOK; },
+  },
+  skyPass: { // KESTREL
+    name: 'SKY PASS', cd: 9, icon: 'pass', big: true, anim: 'salute',
+    desc: 'With the ball: a high hanging pass that drops onto your teammate furthest up the pitch.',
+    use(p, m) {
+      if (m.ball.owner !== p) return NEED_BALL;
+      let best = null; for (const t of m.teams[p.team]) if (t !== p && !t.isGK && (!best || m.prog(p.team, t.pos) > m.prog(p.team, best.pos))) best = t;
+      if (!best || m.prog(p.team, best.pos) < m.prog(p.team, p.pos) - 2) return 'NOBODY UP AHEAD';
+      m.passTo(p, best, { lob: true }); FX.ring(p.pos.x, 0.3, p.pos.z, p.aura, 1.2, 18);
+      return true;
+    },
+    ai(p, m, c) { return c.hasBall && c.pressure < 5 && c.dGoal > 25; },
+  },
+  anchorDrop: { // ANCHOR
+    name: 'ANCHOR DROP', cd: 14, icon: 'wall', anim: 'stomp',
+    desc: 'Stamp the ground: every opponent within 5 blocks slows right down for 2.5s.',
+    use(p, m) {
+      const near = m.opponents(p).filter((o) => !o.isGK && dist2D(o.pos, p.pos) < 5);
+      if (!near.length) return 'NOBODY CLOSE ENOUGH';
+      for (const o of near) { o.fx.slowed = Math.max(o.fx.slowed || 0, 2.5); FX.ring(o.pos.x, 0.2, o.pos.z, '#9fb4ff', 0.9, 14); }
+      FX.ring(p.pos.x, 0.15, p.pos.z, p.aura, 5, 40); FX.dust(p.pos.x, p.pos.z, 10); if (m.involvesHuman(p, ...near)) Shake.add(0.3); Sfx.boom();
+      return true;
+    },
+    ai(p, m, c) { return c.defending && c.carrierDist < 4.5; },
+  },
+  dropShot: { // FEATHER
+    name: 'DROP SHOT', cd: 10, icon: 'shot', big: true, anim: 'swipe',
+    desc: 'A shot that floats up over the keeper and drops hard under the bar.',
+    use(p, m) {
+      if (!nearBall(p, m)) return NEED_BALL;
+      const t = aimFor(p, m), b = m.ball; t.y = clamp(t.y, 1.2, F.GH - 0.5);
+      const from = b.owner === p ? V3(p.pos.x + Math.sin(p.yaw) * 0.6, BALL_R, p.pos.z + Math.cos(p.yaw) * 0.6) : b.pos.clone();
+      const d = dist2D(from, t), T = clamp(d / 15, 0.6, 1.9), g = BALL_G * 1.7;
+      p.stats.shots++;
+      return m.kick(p, (t.x - from.x) / T, (t.y - from.y + 0.5 * g * T * T) / T, (t.z - from.z) / T, { type: 'shot', gMul: 1.7, trail: p.aura, kickStyle: 'strike', kickDur: 0.36, special: 'chip' }) || NEED_BALL;
+    },
+    ai(p, m, c) { return c.hasBall && c.dGoal > 12 && c.dGoal < 28 && c.angleOK; },
+  },
+  command: { // CAPTAIN
+    name: 'COMMAND', cd: 18, icon: 'call', anim: 'point',
+    desc: 'Rally your team: every teammate\'s moves are 5 seconds closer to ready, and their stamina fills right up.',
+    use(p, m) {
+      for (const q of m.teams[p.team]) { if (q === p) continue; for (const a of q.abil) a.cd = Math.max(0, a.cd - 5); q.stamina = 100; q.exhausted = false; FX.ring(q.pos.x, 0.25, q.pos.z, p.aura, 1.2, 16); }
+      FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 2.4, 28); Sfx.cutin();
+      return true;
+    },
+    ai(p, m, c) { return m.teams[p.team].some((q) => q !== p && q.abil.some((a) => a.cd > 6)); },
+  },
+  sparkDash: { // SPARK
+    name: 'SPARK DASH', cd: 11, icon: 'bolt', big: true, anim: 'burst',
+    desc: 'With the ball: an electric dash 9 blocks ahead. Anyone you pass close to is shocked for a moment.',
+    use(p, m) {
+      if (m.ball.owner !== p) return NEED_BALL;
+      const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw);
+      for (const o of m.opponents(p)) {
+        if (o.isGK) continue;
+        const dx = o.pos.x - p.pos.x, dz = o.pos.z - p.pos.z, along = dx * fx + dz * fz, side = Math.abs(dx * fz - dz * fx);
+        if (along > -0.5 && along < 9.5 && side < 1.8 && m.stun(o, 0.7)) FX.sparks(o.pos.x, 1.2, o.pos.z, '#ffe14d', 10, 4);
+      }
+      m.dashP(p, fx, fz, 20, 0.45); p.tackleProof = 0.5;
+      for (let i = 0; i < 9; i++) FX.trail(p.pos.x + fx * i, 0.6 + Math.random(), p.pos.z + fz * i, '#ffe14d', 0.2, 0.4);
+      Sfx.zap(); return true;
+    },
+    ai(p, m, c) { return c.hasBall && c.oppInFront && c.dGoal < 35; },
+  },
+  tornadoSpin: { // VORTEX
+    name: 'TORNADO SPIN', cd: 12, icon: 'flip', big: true, anim: 'spin',
+    desc: 'Spin like a tornado: everyone within 3 blocks is blown away, and nobody can tackle you while you spin.',
+    use(p, m) {
+      const near = m.opponents(p).filter((o) => !o.isGK && o.state !== 'down' && dist2D(o.pos, p.pos) < 3.2);
+      if (!near.length) return 'NOBODY CLOSE ENOUGH';
+      for (const o of near) { const dx = o.pos.x - p.pos.x, dz = o.pos.z - p.pos.z, l = len2D(dx, dz) || 1; m.knockDown(o, 0.6, dx / l, dz / l, 7, p); }
+      p.tackleProof = 0.8; FX.ring(p.pos.x, 0.3, p.pos.z, '#ffffff', 2.2, 26); FX.ring(p.pos.x, 1.0, p.pos.z, p.aura, 3, 30); Sfx.swoosh();
+      return true;
+    },
+    ai(p, m, c) { return (c.hasBall || c.carrierOpp) && c.pressure < 2.6; },
+  },
+  supernova: { // NOVA
+    name: 'SUPERNOVA', cd: 15, icon: 'eye', big: true, anim: 'burst',
+    desc: 'A blinding flash of light: opponents within 9 blocks who are looking your way freeze for a moment.',
+    use(p, m) {
+      const hit = m.opponents(p).filter((o) => { if (o.isGK) return false; const dx = p.pos.x - o.pos.x, dz = p.pos.z - o.pos.z, d = Math.hypot(dx, dz); return d < 9 && (dx * Math.sin(o.yaw) + dz * Math.cos(o.yaw)) / (d || 1) > -0.2; });
+      if (!hit.length) return 'NOBODY TO DAZZLE';
+      for (const o of hit) m.stun(o, 0.9);
+      FX.sparks(p.pos.x, 1.6, p.pos.z, '#ffffff', 60, 12, 0.22, 0.5); FX.ring(p.pos.x, 1, p.pos.z, '#fff6c0', 3, 30); Sfx.zap();
+      if (m.involvesHuman(...hit) && typeof Hud !== 'undefined' && Hud.flash) Hud.flash('#ffffff');
+      return true;
+    },
+    ai(p, m, c) { return c.nearOpp < 7; },
+  },
+  intercept: { // SENTINEL
+    name: 'INTERCEPT', cd: 12, icon: 'eye', anim: 'salute',
+    desc: 'For 4s you read their passes: any pass of theirs that comes within 4 blocks of you is yours.',
+    use(p) { p.fx.intercept = 4; FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 4, 34); return true; },
+    ai(p, m, c) { return c.carrierOpp && c.carrierDist < 14 && c.carrierDist > 4; },
+  },
+  jokerSwap: { // JESTER
+    name: 'JOKER SWAP', cd: 12, icon: 'fake', big: true, anim: 'flex',
+    desc: 'Swap places with your teammate furthest up the pitch in a puff of confetti. If you had the ball, it comes with you.',
+    use(p, m) {
+      let best = null; for (const t of m.teams[p.team]) if (t !== p && !t.isGK && t.state === 'free' && (!best || m.prog(p.team, t.pos) > m.prog(p.team, best.pos))) best = t;
+      if (!best) return 'NOBODY TO SWAP WITH';
+      const b = m.ball, had = b.owner === p, mateHad = b.owner === best, a = p.pos.clone();
+      for (const q of [p, best]) for (let i = 0; i < 18; i++) FX.lit.spawn(q.pos.x, 1 + Math.random(), q.pos.z, rand(-3, 3), rand(1, 5), rand(-3, 3), 0.12, 1, col(pick(['#ff5fb0', '#ffe14d', '#3dd8ff', '#7dff6a'])), 0.5, 1);
+      p.pos.copy(best.pos); best.pos.copy(a); p.vel.set(0, 0, 0); best.vel.set(0, 0, 0);
+      if (had) b.pos.set(p.pos.x, BALL_R, p.pos.z); if (mateHad) b.pos.set(best.pos.x, BALL_R, best.pos.z);
+      Sfx.boing(); return true;
+    },
+    ai(p, m, c) { return c.hasBall && c.pressure < 2.5 && c.dGoal > 20; },
+  },
+  gale: { // TEMPEST
+    name: 'GALE', cd: 13, icon: 'dash', big: true, anim: 'swipe',
+    desc: 'A gust of wind blows everyone in front of you back, and a loose ball in front flies on the way you face.',
+    use(p, m) {
+      const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), b = m.ball, bd = dist2D(b.pos, p.pos);
+      const hits = m.opponents(p).filter((o) => { if (o.isGK) return false; const dx = o.pos.x - p.pos.x, dz = o.pos.z - p.pos.z, d = Math.hypot(dx, dz); return d < 8 && (dx * fx + dz * fz) / (d || 1) > 0.5; });
+      const ballHit = !b.owner && bd < 8 && ((b.pos.x - p.pos.x) * fx + (b.pos.z - p.pos.z) * fz) / (bd || 1) > 0.5;
+      if (!hits.length && !ballHit) return 'NOTHING IN FRONT';
+      for (const o of hits) m.knockDown(o, 0.7, fx, fz, 8, p);
+      if (ballHit) { b.vel.x += fx * 14; b.vel.z += fz * 14; b.vel.y += 3; b.touch(p); }
+      for (let i = 0; i < 26; i++) { const k = rand(0.5, 8), sd = rand(-2.5, 2.5); FX.trail(p.pos.x + fx * k + fz * sd, rand(0.3, 2), p.pos.z + fz * k - fx * sd, '#dff6ff', 0.14, 0.5); }
+      Sfx.swoosh(); return true;
+    },
+    ai(p, m, c) { return !c.hasBall && c.carrierOpp && c.carrierDist < 6; },
+  },
+  aceShot: { // ACE
+    name: 'ACE SHOT', cd: 11, icon: 'shot', big: true, anim: 'point',
+    desc: 'A low, hard shot that picks the corner furthest from the keeper by itself.',
+    use(p, m) {
+      if (!nearBall(p, m)) return NEED_BALL;
+      const k = m.keeperOf(1 - p.team), side = k ? (k.pos.x > 0 ? -1 : 1) : (Math.random() < 0.5 ? -1 : 1);
+      return m.shootAt(p, V3(side * (F.GW - 0.9), 0.7, m.oppGoalZ(p.team)), 0.95, { trail: p.aura, exact: true }) || NEED_BALL;
+    },
+    ai(p, m, c) { return c.hasBall && c.dGoal < 24 && c.angleOK; },
+  },
+  shieldBash: { // BASTION
+    name: 'SHIELD BASH', cd: 12, icon: 'shield', anim: 'roar',
+    desc: 'Bash into the opponent with the ball within 4 blocks and take it cleanly, no slide needed.',
+    use(p, m) {
+      const o = m.ball.owner; if (!o || o.team === p.team || o.isGK) return 'NOBODY TO BASH';
+      const dx = o.pos.x - p.pos.x, dz = o.pos.z - p.pos.z, l = len2D(dx, dz) || 1; if (l > 4.2) return 'TOO FAR AWAY';
+      p.yaw = Math.atan2(dx, dz);
+      m.dashP(p, dx / l, dz / l, 14, clamp(l / 14, 0.1, 0.3), { onEnd: () => { if (m.ball.owner === o && dist2D(o.pos, p.pos) < 2.2 && m.steal(p, o)) { FX.ring(p.pos.x, 0.3, p.pos.z, p.aura, 1.6, 20); Sfx.punch(); } } });
+      return true;
+    },
+    ai(p, m, c) { return c.carrierOpp && c.carrierDist < 4 && c.carrierDist > 1.2; },
+  },
+  lastStand: { // AEGIS
+    name: 'LAST STAND', cd: 16, icon: 'glove', anim: 'flex',
+    desc: 'For 6s your dives reach 50% further and you are back on your feet at once.',
+    use(p) { if (!p.isGK) return GK_ONLY; p.fx.stand = 6; FX.ring(p.pos.x, 0.25, p.pos.z, p.aura, 2.4, 28); return true; },
+    ai() { return false; },
+  },
+  streetSpin: { // ROGUE
+    name: 'STREET SPIN', cd: 12, icon: 'flip', big: true, anim: 'spin',
+    desc: 'With the ball: spin round the defender in front of you and come out on their other side.',
+    use(p, m) {
+      if (m.ball.owner !== p) return NEED_BALL;
+      const t = m.opponentInFront(p, 3.6, 1.0); if (!t) return 'NOBODY IN FRONT';
+      const fx = Math.sin(p.yaw), fz = Math.cos(p.yaw), sd = (t.pos.x - p.pos.x) * fz - (t.pos.z - p.pos.z) * fx > 0 ? -1 : 1; // round the side they are not on
+      const ax = t.pos.x + fz * sd * 1.5 - p.pos.x, az = t.pos.z - fx * sd * 1.5 - p.pos.z, la = len2D(ax, az) || 1; // first beside them...
+      m.dashP(p, ax / la, az / la, la / 0.2, 0.2, { onEnd: () => { // ...then round behind them
+        const bx = t.pos.x + fx * 1.8 - p.pos.x, bz = t.pos.z + fz * 1.8 - p.pos.z, lb = len2D(bx, bz) || 1;
+        m.dashP(p, bx / lb, bz / lb, lb / 0.2, 0.2, { onEnd: () => { p.yaw = Math.atan2(fx, fz); } }); p.tackleProof = Math.max(p.tackleProof, 0.3);
+      } });
+      p.tackleProof = 0.5; t.pickBlock = Math.max(t.pickBlock, 0.6); Sfx.dodge();
+      return true;
+    },
+    ai(p, m, c) { return c.hasBall && c.oppInFront; },
+  },
+  ironWall: { // IRONCLAD
+    name: 'IRON WALL', cd: 14, icon: 'wall', anim: 'stomp',
+    desc: 'For 4s nobody dribbles past you: the first opponent who comes within 2 blocks with the ball loses it to you.',
+    use(p) { p.fx.ironwall = 4; FX.ring(p.pos.x, 0.25, p.pos.z, '#9fb4ff', 2.3, 28); return true; },
+    ai(p, m, c) { return c.carrierOpp && c.carrierDist < 9; },
+  },
+  solarFlare: { // SOLARIS
+    name: 'SOLAR FLARE', cd: 11, icon: 'beam', big: true, anim: 'burst',
+    desc: 'A blazing shot that knocks aside every defender between you and the goal on its way in.',
+    use(p, m) {
+      if (!nearBall(p, m)) return NEED_BALL;
+      const t = aimFor(p, m), dx = t.x - p.pos.x, dz = t.z - p.pos.z, l = len2D(dx, dz) || 1, ux = dx / l, uz = dz / l;
+      for (const o of m.opponents(p)) {
+        if (o.isGK) continue;
+        const ox = o.pos.x - p.pos.x, oz = o.pos.z - p.pos.z, along = ox * ux + oz * uz, side = ox * uz - oz * ux, sg = Math.sign(side) || 1;
+        if (along > 0 && along < l && Math.abs(side) < 2) m.knockDown(o, 1, uz * sg, -ux * sg, 6, p);
+      }
+      const ok = m.shootAt(p, t, 1, { mult: 1.25, trail: '#ffb02e', exact: true });
+      FX.sparks(p.pos.x, 1, p.pos.z, '#ffb02e', 30, 9); Sfx.boom();
+      return ok || NEED_BALL;
+    },
+    ai(p, m, c) { return c.hasBall && c.dGoal < 30 && c.angleOK; },
+  },
   /* keeper characters: only work in goal (bots never have them) */
   bigGloves: {
     name: 'GIANT GLOVES', cd: 14, icon: 'glove',
@@ -6572,7 +6872,8 @@ class Match {
     else dx = (want || sgn(b.pos.x - p.pos.x) || 1) * (big ? 5.5 : 3.2);
     if (Math.abs(dx) < 0.5) dx = sgn(dx || 1) * 0.5;
     AI.dive(this, p, dx, ky, tk, Math.max(0.8, this.skill(p)));
-    if (big && p.dive) { p.dive.vx = clamp(dx / clamp(tk, 0.25, 0.5), -24, 24); p.dive.dur = 0.5; p.dive.big = true; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 2, 20); }
+    if (p.dive && p.fx.stand > 0) { p.dive.vx *= 1.5; p.dive.rest = 0.15; } // LAST STAND: further, and up at once
+    if (big && p.dive) { p.dive.vx = clamp(dx / clamp(tk, 0.25, 0.5), -24, 24) * (p.fx.stand > 0 ? 1.5 : 1); p.dive.dur = 0.5; p.dive.big = true; FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 2, 20); }
     else if (aimed && tk > 0.42 && p.dive) { // pressed early: it goes at once, a slower and floatier dive that is still stretched out when the ball gets there
       p.dive.dur = Math.min(tk, 0.85); p.dive.vx = clamp(dx / p.dive.dur, -16, 16);
       if (!p.onGround) { p.vel.y *= 0.5; p.fx.hang = p.dive.dur + 0.2; } // a high one: half the speed up at a quarter of the gravity, the same height for twice as long
@@ -7148,6 +7449,7 @@ class Match {
       if (before) for (const k in p.fx) { const d = p.fx[k] - (before[k] || 0); if (d > 0) p.fx[k] = (before[k] || 0) + d * 1.5; }
       a.cd = a.def.cd;
       this.label(p, a.def.name + (before ? '+' : ''), p.aura);
+      p.moveAnim(a.def.anim || STYLE_ANIM[p.styleId] || 'point'); // owner, Nov 26 2026: two characters never do the same move the same way
       Sfx.ability();
       if (a.def.big) this.cinematic(p, a.def.name);
       return true;
@@ -7456,6 +7758,12 @@ class Match {
         p.starfall = false;
         for (const o of this.opponents(p)) if (!o.isGK && dist2D(o.pos, p.pos) < 4.5) this.knockDown(o, 1.3, o.pos.x - p.pos.x, o.pos.z - p.pos.z, 4, p);
         FX.ring(p.pos.x, 0.2, p.pos.z, p.aura, 4.5, 40); FX.sparks(p.pos.x, 0.4, p.pos.z, p.aura, 30, 8); Shake.add(this.involvesHuman(p) ? 0.4 : 0.1); Sfx.boom();
+      }
+      if (p.fx.intercept > 0 && p.state === 'free' && !b.owner && b.kick && b.kick.type === 'pass' && b.kick.by && b.kick.by.team !== p.team && dist2D(b.pos, p.pos) < 4 && b.pos.y < 2.6) { // SENTINEL's INTERCEPT
+        b.vel.set(0, 0, 0); this.possess(p); p.fx.intercept = 0; p.stats.steals++; this.label(p, 'INTERCEPTED', p.aura); FX.ring(p.pos.x, 0.3, p.pos.z, p.aura, 2, 24); Sfx.save(); continue;
+      }
+      if (p.fx.ironwall > 0 && p.state === 'free' && b.owner && b.owner.team !== p.team && !b.owner.isGK && dist2D(b.owner.pos, p.pos) < 2.3) { // IRONCLAD's IRON WALL
+        if (this.steal(p, b.owner)) { p.fx.ironwall = 0; this.label(p, 'IRON WALL', '#9fb4ff'); FX.ring(p.pos.x, 0.3, p.pos.z, '#9fb4ff', 2, 24); Sfx.punch(); continue; }
       }
       if (!(p.fx.block > 0) || p.state !== 'free' || b.owner || b.vel.lengthSq() < 36) continue;
       const k = b.kick; if (k && k.by && k.by.team === p.team) continue;
@@ -9246,12 +9554,12 @@ const AI = {
     return null;
   },
   dive(m, p, dx, ky, tk, sk) {
-    const side = sgn(dx), dur = 0.4, rs = 10 + 5 * sk; // an 11-wide goal: keepers dive far (they also step across first and dive late)
+    const side = sgn(dx), dur = 0.4, rs = (10 + 5 * sk) * (p.fx.stand > 0 ? 1.5 : 1); // LAST STAND: further // an 11-wide goal: keepers dive far (they also step across first and dive late)
     const vx = clamp(dx / Math.max(0.16, Math.min(tk, dur)), -rs, rs);
     const s = m.dir(p.team);
     p.yaw = s > 0 ? 0 : Math.PI;
     const localX = side * Math.cos(p.yaw);
-    p.dive = { vx, vz: 0, dur, rest: 0.6, side: sgn(localX), high: ky > 1.7, ux: side, uz: 0 };
+    p.dive = { vx, vz: 0, dur, rest: p.fx.stand > 0 ? 0.15 : 0.6, side: sgn(localX), high: ky > 1.7, ux: side, uz: 0 };
     p.setState('dive');
     if (ky > 1.7) { p.vel.y = clamp((ky - 0.9) * 3.4, 3, p.isHuman ? 7.5 : 5.6); p.onGround = false; } // computer keepers cannot fly right up into the top corners
     Sfx.swoosh();
@@ -15031,6 +15339,7 @@ const UI = {
     $('ci-name').textContent = name; $('ci-style').textContent = p.style.name + ' STYLE';
     el.hidden = false; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
     clearTimeout(this.ciT); this.ciT = setTimeout(() => { el.hidden = true; el.classList.remove('go'); }, 820);
+    const B = document.body.classList; B.add('mv-hit'); setTimeout(() => { B.remove('mv-hit'); B.add('mv-hit2'); }, 70); setTimeout(() => B.remove('mv-hit2'), 140); // an impact frame, like the story scenes
   },
   tplPause() {
     return `<section id="scr-pause" class="overlay" hidden>
