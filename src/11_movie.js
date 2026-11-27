@@ -114,7 +114,7 @@ const Movie = {
     if (key === 'COACH') return { team: 0, role: 'MID', style: 'ANCHOR', side: Object.assign({}, home, { kit: MV_COACH_KIT }), number: '', name: 'COACH', skin: SKIN_TONES[3] };
     if (key === 'RIVAL') return { team: 1, role: 'ST', style: RIVAL_FACE[ev.foe] || 'BLITZ', side: away, number: 9, name: 'RIVAL' };
     if (/^R\d$/.test(key)) return { team: 1, role: 'MID', style: MV_EXTRAS[(+key[1] + ev.n) % MV_EXTRAS.length], side: away, number: 2 + +key[1] };
-    if (/^M\d$/.test(key)) { const st = this.mate(+key[1]); return { team: 0, role: 'MID', style: st, side: home, number: MV_NUM[st] || [7, 4, 8][+key[1] - 1] || 6 }; }
+    if (/^M\d$/.test(key)) { const st = this.mate(+key[1]), sl = (d.squadLook || {})[st]; return { team: 0, role: 'MID', style: st, side: home, look: sl ? squadLookIds(sl) : undefined, number: (sl && sl.n) || MV_NUM[st] || [7, 4, 8][+key[1] - 1] || 6 }; } // in their MY TEAM outfit
     if (STYLES[key] && STYLES[key].story) {
       const side = key === 'ROGUE' ? Object.assign({}, home, { club: 'STREET', kit: MV_STREET_KIT, crest: ['#3dffb0', '#14161f', 'star'] }) : ev.foe === 'SUNSPIRE' ? away : sideFor('SUNSPIRE');
       return { team: 1, role: 'ST', style: key, side, number: MV_NUM[key] || 9 };

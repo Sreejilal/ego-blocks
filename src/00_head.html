@@ -599,13 +599,45 @@ body.mv-hit2 canvas#gl { filter: grayscale(1) contrast(3.2) brightness(1.25); }
 .btn.tm .sub { color: #c4ecff; }
 .tm-ovr { display: flex; align-items: baseline; gap: 8px; margin-left: auto; margin-right: 8px; font-family: var(--font-label); font-size: 11px; letter-spacing: .08em; color: var(--muted); }
 .tm-ovr b { font-family: var(--font-display); font-weight: 400; font-size: 48px; line-height: .8; color: var(--gold); text-shadow: 3px 3px 0 var(--ink); }
-.tm-box { padding: 16px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.tm-box { padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 .tm-pitch { position: relative; width: 100%; max-width: 520px; justify-self: center; aspect-ratio: 1 / 1; background: repeating-linear-gradient(180deg, #1d6b34 0 12%, #1a5f2e 12% 24%); box-shadow: inset 0 0 0 3px rgba(255,255,255,.55), 4px 4px 0 rgba(0,0,0,.45); overflow: hidden; }
 .tm-pitch i { position: absolute; border: 3px solid rgba(255,255,255,.45); pointer-events: none; }
 .tm-half { left: -3px; right: -3px; top: -3px; height: 50%; border-top: 0 !important; }
 .tm-circle { left: 50%; top: 50%; width: 22%; aspect-ratio: 1; border-radius: 50%; transform: translate(-50%, -50%); }
 .tm-box1 { left: 30%; right: 30%; top: -3px; height: 11%; } .tm-box2 { left: 30%; right: 30%; bottom: -3px; height: 11%; }
-.tm-side { display: grid; gap: 10px; align-content: start; }
+.tm-side { display: grid; gap: 10px; align-content: start; min-width: 0; }
+/* MY TEAM: the left column (pitch, bench), the spot you picked with its OUTFIT, YOUR PLAYERS, dragging cards */
+.tm-left { display: grid; gap: 12px; justify-items: center; min-width: 0; }
+.tm-left .tm-pitch { aspect-ratio: 5 / 6; max-width: min(460px, calc((100vh - 230px) * 5 / 6)); min-width: 250px; } /* a little taller than wide, so the cards never overlap */
+.tm-pitch .fc-card { width: 84px; height: 114px; }
+.tm-pitch .fc-face { width: 50px; height: 50px; }
+.tm-benchrow { display: flex; align-items: center; gap: 12px; }
+.tm-benchrow h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 28px; line-height: .9; }
+.tm-sel { display: grid; gap: 8px; padding: 12px; background: var(--slate-2); box-shadow: inset 0 0 0 2px var(--slate-3); }
+.tm-who { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.tm-who .fc-face { width: 64px; height: 64px; background: var(--ink); }
+.tm-who b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 30px; line-height: .9; }
+.tm-who .tm-note { font-size: 15px; }
+.tm-oh { margin: 4px 0 0; font-family: var(--font-display); font-weight: 400; font-size: 22px; line-height: .9; color: var(--gold); }
+.tm-outfit { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 14px; }
+.tm-orow { display: grid; grid-template-columns: 82px 30px minmax(0, 1fr) 30px; gap: 6px; align-items: center; }
+.tm-orow .btn.small { min-width: 0; padding: 4px 0; justify-content: center; }
+.tm-orow b { font-family: var(--font-display); font-weight: 400; font-size: 15px; line-height: 1; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm-orow b.tm-n { font-size: 24px; color: var(--gold); }
+.tm-rhead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.tm-rhead .tm-note { font-family: var(--font-label); font-size: 10px; letter-spacing: .08em; }
+.tm-roster { display: grid; grid-template-columns: repeat(auto-fill, 80px); gap: 8px; max-height: 300px; overflow-y: auto; padding: 2px 4px 4px 2px; }
+.tm-roster .fc-card { width: 80px; height: 108px; touch-action: pan-y; }
+.tm-roster .fc-face { width: 44px; height: 44px; }
+.tm-roster .fc-name { font-size: 13px; max-width: 74px; }
+.tm-pitch .fc-card, .tm-bench .fc-card { touch-action: none; }
+.fc-num { position: absolute; right: 7px; top: 9px; font-family: var(--font-display); font-size: 20px; line-height: .8; color: #fff; text-shadow: 2px 2px 0 #000; }
+.fc-tag { position: absolute; right: 5px; top: 30px; padding: 1px 3px; font-family: var(--font-label); font-size: 8px; letter-spacing: .04em; color: var(--gold); background: rgba(0,0,0,.6); }
+.fc-card.dim { opacity: .4; }
+.fc-card.dragging { opacity: .3; }
+.fc-card.drop { box-shadow: inset 0 0 0 3px #2ee38f, 0 0 18px #2ee38f; }
+.fc-card.tm-ghost, .fc-card.tm-ghost * { pointer-events: none !important; }
+.fc-card.tm-ghost { position: fixed !important; z-index: 1000; transform: translate(-50%, -50%) rotate(-5deg) scale(1.08) !important; opacity: .92; box-shadow: 6px 8px 0 rgba(0,0,0,.45); }
 .tm-side h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 32px; line-height: .9; }
 .tm-note { margin: 0; font-family: var(--font-body); font-size: 17px; line-height: 1.15; color: var(--muted); }
 .tm-bench { display: grid; grid-template-columns: repeat(3, minmax(0, 92px)); gap: 10px; }
@@ -638,8 +670,8 @@ body.mv-hit2 canvas#gl { filter: grayscale(1) contrast(3.2) brightness(1.25); }
 .subs-cols h3 { margin: 0 0 8px; font-family: var(--font-display); font-weight: 400; font-size: 26px; }
 .subs-list { display: flex; flex-wrap: wrap; gap: 10px; }
 .subs-list.off .fc-card { opacity: .45; pointer-events: none; }
-@media (max-width: 760px) { .tm-box { grid-template-columns: 1fr; } .tm-pitch { max-width: 420px; justify-self: center; width: 100%; } }
-@media (max-height: 460px) { .tm-box { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); } .fc-card { width: 64px; height: 88px; } .fc-face { width: 36px; height: 36px; } .fc-ovr { font-size: 18px; top: 7px; left: 5px; } .fc-pos { top: 23px; left: 6px; } .fc-name { font-size: 11px; max-width: 60px; } .tm-bench { grid-template-columns: repeat(3, 64px); } }
+@media (max-width: 760px) { .tm-box { grid-template-columns: 1fr; } .tm-left .tm-pitch { max-width: 380px; justify-self: center; width: 100%; } .tm-pitch .fc-card { width: 72px; height: 98px; } .tm-pitch .fc-face { width: 40px; height: 40px; } .tm-pitch .fc-name { font-size: 12px; max-width: 66px; } .tm-roster { max-height: none; } }
+@media (max-height: 460px) { .tm-box { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); } .fc-card { width: 64px; height: 88px; } .fc-face { width: 36px; height: 36px; } .fc-ovr { font-size: 18px; top: 7px; left: 5px; } .fc-pos { top: 23px; left: 6px; } .fc-name { font-size: 11px; max-width: 60px; } .tm-bench { grid-template-columns: repeat(3, 64px); } .tm-roster .fc-card { width: 64px; height: 88px; } .tm-roster { grid-template-columns: repeat(auto-fill, 64px); } .fc-num { font-size: 15px; } .fc-tag { top: 22px; } .tm-left .tm-pitch { max-width: 300px; } .tm-pitch .fc-card { width: 56px; height: 76px; padding: 4px 2px 5px; } .tm-pitch .fc-face { width: 30px; height: 30px; } .tm-pitch .fc-name { font-size: 10px; max-width: 52px; } .tm-pitch .fc-ovr { font-size: 15px; top: 5px; left: 4px; } .tm-pitch .fc-pos { top: 18px; left: 5px; font-size: 7px; } }
 /* TRAINING and the drills' stars; the DAILY login calendar */
 .tr-box { padding: 16px; display: grid; gap: 12px; }
 .tr-box h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 32px; line-height: .9; }

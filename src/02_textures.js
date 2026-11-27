@@ -568,6 +568,14 @@ function portraitCanvas(styleId, size = 96, look = null) {
   if (shape === 'flattop') { g.fillRect(4, 0, 8, 3); }
   if (shape === 'crop') { g.fillStyle = skin; g.fillRect(4, 4, 8, 2); g.fillStyle = '#0a0c17'; g.fillRect(3, 4, 1, 4); g.fillRect(12, 4, 1, 4); g.fillStyle = hair; g.fillRect(5, 2, 3, 1); }
   if (shape === 'mohawk') { g.fillStyle = skin; g.fillRect(4, 3, 3, 2); g.fillRect(9, 3, 3, 2); g.fillStyle = hair; g.fillRect(7, 0, 2, 5); }
+  if (shape === 'fade') { g.fillStyle = skin; g.fillRect(4, 4, 8, 1); g.fillStyle = '#0a0c17'; g.fillRect(3, 4, 1, 4); g.fillRect(12, 4, 1, 4); }
+  if (shape === 'topknot') { g.fillRect(7, 0, 2, 3); }
+  if (shape === 'curtains') { g.fillRect(4, 6, 2, 1); g.fillRect(10, 6, 2, 1); g.fillStyle = skin; g.fillRect(7, 5, 2, 1); g.fillStyle = hair; }
+  if (shape === 'braids') { g.fillRect(3, 4, 1, 10); g.fillRect(12, 4, 1, 10); }
+  if (shape === 'twintails') { g.fillRect(1, 5, 2, 6); g.fillRect(13, 5, 2, 6); g.fillRect(4, 6, 8, 1); }
+  if (shape === 'wolf') { g.fillRect(3, 4, 1, 7); g.fillRect(12, 4, 1, 7); g.fillRect(6, 2, 4, 1); }
+  if (shape === 'dreads') { g.fillRect(2, 4, 2, 9); g.fillRect(12, 4, 2, 9); }
+  if (shape === 'blaze') { g.fillRect(5, 1, 1, 2); g.fillRect(7, 0, 2, 3); g.fillRect(10, 1, 1, 2); g.fillRect(4, 6, 8, 1); }
   g.fillStyle = '#f7f7f2'; g.fillRect(5, 8, 2, 1); g.fillRect(9, 8, 2, 1);
   g.fillStyle = st.aura; g.fillRect(6, 8, 1, 1); g.fillRect(9, 8, 1, 1);
   g.fillStyle = '#7a4a30'; g.fillRect(7, 11, 2, 1);

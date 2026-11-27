@@ -94,7 +94,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], topUpOff: false, story: { done: [] }, squad: {}, tutorial: false, onboarded: false, tips: [], // topUpOff: START OVER was pressed, so the tester pack no longer refills everything by itself
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], topUpOff: false, story: { done: [] }, squad: {}, squadLook: {}, tutorial: false, onboarded: false, tips: [], // topUpOff: START OVER was pressed, so the tester pack no longer refills everything by itself
       posFor: null, fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
@@ -168,6 +168,13 @@ const Save = {
     const sq = out.squad && typeof out.squad === 'object' && !Array.isArray(out.squad) ? out.squad : {}; // MY TEAM: a character per spot and up to 3 on the bench
     out.squad = Object.fromEntries(Object.entries(sq).filter(([k, v]) => ['ST', 'WING', 'MID', 'DEF', 'GK'].includes(k) && typeof v === 'string'));
     out.squad.bench = Array.isArray(sq.bench) ? sq.bench.filter((v) => typeof v === 'string').slice(0, 3) : [];
+    const sl = out.squadLook && typeof out.squadLook === 'object' && !Array.isArray(out.squadLook) ? out.squadLook : {}; out.squadLook = {}; // MY TEAM outfits: a number and skins for each character
+    for (const [id, v] of Object.entries(sl)) {
+      if (typeof STYLES === 'undefined' || !STYLES[id] || !v || typeof v !== 'object') continue;
+      const o = {}; if (Number.isInteger(v.n) && v.n >= 1 && v.n <= 99) o.n = v.n;
+      for (const s of ['hair', 'color', 'face', 'boots', 'gloves', 'acc', 'kit']) if (typeof v[s] === 'string' && SKINS[v[s]] && SKINS[v[s]].slot === s) o[s] = v[s];
+      out.squadLook[id] = o;
+    }
     out.topUpOff = !!out.topUpOff; out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
     out.tips = Array.isArray(out.tips) ? out.tips.filter((t) => typeof t === 'string' && t.length < 16).slice(0, 20) : []; // the first-match tips you have seen
@@ -204,8 +211,8 @@ const Save = {
     const d = this.data;
     codeTopUp(d); // the tester pack keeps up with new styles, Flows and skins
     d.styles = d.styles.filter((s) => STYLES[s]);
-    const own = (id) => d.styles.includes(id) && !!STYLES[id], seen = new Set(); // MY TEAM: only characters you own, each once, keeper styles only in goal
-    for (const k of SQUAD_KEYS) { const id = d.squad[k]; if (id && (!own(id) || !!STYLES[id].gk !== (k === 'GK') || seen.has(id))) delete d.squad[k]; else if (id) seen.add(id); }
+    const own = (id) => (d.styles.includes(id) || d.spunStyle === id) && !!STYLES[id], seen = new Set(); // MY TEAM: only characters you own, each once, keeper styles only in goal
+    for (const k of SQUAD_KEYS) { const id = d.squad[k]; if (id && (!own(id) || (STYLES[id].gk && k !== 'GK') || seen.has(id))) delete d.squad[k]; else if (id) seen.add(id); } // keepers only in goal; anyone can go in goal
     d.squad.bench = (d.squad.bench || []).filter((id) => own(id) && !STYLES[id].gk && !seen.has(id) && (seen.add(id), true)).slice(0, BENCH_MAX);
     if (!d.styles.includes('ROOKIE')) d.styles.unshift('ROOKIE');
     d.flows = d.flows.filter((f) => FLOWS[f]);

@@ -169,7 +169,7 @@ const Game = {
     const pos = story && pos0 === 'GK' ? 'ST' : pos0; // STORY: you are the striker the story is about, never in goal (owner, Nov 26 2026)
     applyBallLook(); // your ball
     const squad = story || !['tutorial', 'freekick', 'fkkeeper'].includes(mode) ? sd0.squad : null; // MY TEAM plays every offline match (not practice)
-    this.match = new Match(mode, skill, { size, role: pos, intro, story, away, squad }); // a winger's team plays wide (Match.pickSetups)
+    this.match = new Match(mode, skill, { size, role: pos, intro, story, away, squad: squad ? Object.assign({}, squad, { looks: sd0.squadLook || {} }) : null }); // a winger's team plays wide (Match.pickSetups)
     this.lastMode = mode; this.lastStory = story; this.storyNext = null; this.ended = false;
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);

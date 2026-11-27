@@ -831,6 +831,8 @@ function lookFor(styleId, look = {}) {
     acc: acc.acc ? { kind: acc.acc, hex: acc.hex, glow: acc.glow || 0 } : null, celeb: S('celeb').celeb || 'jump',
   };
 }
+/** a MY TEAM outfit as the skins a player wears (anything not picked: the character's own) */
+function squadLookIds(sl) { return { face: sl.face || null, hair: sl.hair || null, color: sl.color || null, kit: sl.kit || null, boots: sl.boots || null, gloves: sl.gloves || null, acc: sl.acc || null, celeb: null }; }
 /** bots wear a few skins too, so matches show them off */
 const FACE_IDS = Object.keys(SKINS).filter((k) => SKINS[k].slot === 'face');
 function botLook() {

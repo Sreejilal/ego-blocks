@@ -54,6 +54,7 @@ class Match {
     this.feats = { curler: 0, volley: 0, longShot: 0, ankles: 0, awakens: 0, trailed: false }; // your moments, for the weekly challenges
     this.lastGoal = null; this.pendingEnd = false;
     this.story = opts.story || null; this.myGoals = 0;
+    this.squadLooks = (opts.squad && opts.squad.looks) || null;
     this.bench = opts.squad && Array.isArray(opts.squad.bench) ? opts.squad.bench.filter((id) => STYLES[id]) : []; this.subsLeft = SUBS_MAX; // MY TEAM: subs from the bench // STORY: the event being played, and the goals you scored (whoever you controlled)
     // your club at home against a random other club; the away side changes kit if the colours clash
     const home = opts.home || (opts.noHuman ? pick(CLUB_IDS) : Save.data.club);
@@ -90,7 +91,8 @@ class Match {
   }
   buildTeams(opts) {
     const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
-    const used = new Set([1, 10]);
+    const used = new Set([1, 10]), looks = (opts.squad && opts.squad.looks) || {}; // MY TEAM outfits (a number and skins for each character)
+    if (opts.squad) for (const k of ['ST', 'WING', 'MID', 'DEF']) { const id = opts.squad[k]; if (id && looks[id] && looks[id].n) used.add(looks[id].n); } // their numbers are taken
     this.setups = opts.setups || this.pickSetups(opts);
     // online: each player takes an outfield role on their team, striker first
     const seat = {};
@@ -107,12 +109,13 @@ class Match {
         // online with bots off: only the friends play ('keepers': computer keepers stay, 'none': no keepers either)
         if (opts.humans && !net && opts.bots && opts.bots !== 'fill' && !(role === 'GK' && opts.bots === 'keepers')) continue;
         const human = opts.humans ? !!net : team === 0 && role === mine && !opts.noHuman; // you play the most attacking spot, or the one you picked
-        let num = role === 'GK' ? 1 : human && !net ? 10 : 0;
-        if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
         const sq = !net && !human && team === 0 && opts.squad && opts.squad[SQUAD_OF[role]]; // STORY: the character you picked for this spot
+        const sl = sq && STYLES[sq] ? looks[sq] : null; // their outfit, if you made one
+        let num = role === 'GK' ? (sl && sl.n) || 1 : human && !net ? 10 : sl && sl.n ? sl.n : 0;
+        if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
         const style = net ? net.style : human ? (opts.style || Save.data.style) : sq && STYLES[sq] ? sq : opts.teamStyle ? opts.teamStyle[team] : botStyle(role); // teamStyle: [home, away] for balance tests; bots mostly play a character made for their spot
         const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : (chance(0.85) ? pick(FLOW_IDS) : null);
-        const look = net ? net.look : human ? (opts.look || Save.data.look) : botLook();
+        const look = net ? net.look : human ? (opts.look || Save.data.look) : sl ? squadLookIds(sl) : botLook();
         const tone = net ? net.tone : Save.data.tone;
         const p = new Player(this, { team, role, human, style, flow, look, skin: human ? SKIN_TONES[Number.isInteger(tone) ? tone : 1] || SKIN_TONES[1] : null, number: num, name: net ? net.name : human ? 'YOU' : names.pop() });
         if (!human && (team === 1 || opts.teamD)) { // bots are a little quicker and fitter with skill (both teams when each has its own skill)
@@ -1613,7 +1616,8 @@ class Match {
     const i = this.bench.indexOf(id), h = this.human;
     if (!old || old.isHuman || !h || old.team !== h.team || i < 0 || this.subsLeft <= 0 || !STYLES[id] || this.online) return false;
     const num = old.number; // the shirt number stays with the spot
-    const p = new Player(this, { team: old.team, role: old.role, human: false, style: id, flow: chance(0.85) ? pick(FLOW_IDS) : null, look: botLook(), skin: null, number: num, name: pick(BOT_NAMES.filter((n) => !this.players.some((q) => q.name === n))) || old.name });
+    const sl = this.squadLooks && this.squadLooks[id];
+    const p = new Player(this, { team: old.team, role: old.role, human: false, style: id, flow: chance(0.85) ? pick(FLOW_IDS) : null, look: sl ? squadLookIds(sl) : botLook(), skin: null, number: num, name: pick(BOT_NAMES.filter((n) => !this.players.some((q) => q.name === n))) || old.name });
     p.pos.copy(old.pos); p.yaw = old.yaw;
     const b = this.ball, had = b.owner === old;
     this.players[this.players.indexOf(old)] = p; const T = this.teams[old.team]; T[T.indexOf(old)] = p;
