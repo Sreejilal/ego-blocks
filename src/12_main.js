@@ -235,9 +235,11 @@ const Game = {
     }
     if (m.cfg.drill) { // TRAINING: the stars and their rewards
       if (forfeit || !m.result || !m.result.drill) { this.toLobby(); return; }
-      const o = Drill.finish(d, m.result.drill);
+      const o = Drill.finish(d, m.result.drill), story = m.story && !m.online ? m.story : null, st = story ? Story.finish(d, story, m) : null; // STORY: a drill can be an event (THE TRAINING ARC)
+      this.storyNext = st && st.next ? st.next : null;
       Save.save(); this.state = 'results'; m.paused = true; Input.releaseLock();
-      UI.showDrill(o); Sfx.setCrowd(0.3);
+      UI.showDrill(o, st); Sfx.setCrowd(0.3);
+      if (st && st.first) Cutscene.story(story, 'outro');
       return;
     }
     if (m.cfg.practice) { // free kick practice: your score and your best, no rewards

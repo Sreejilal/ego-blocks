@@ -60,7 +60,7 @@ const Cutscene = {
     if (!lines || !lines.length) { if (done) done(); return; }
     const first = part === 'intro' && STORY[ev.ch].events[0] === ev;
     const film = STORY_FILMS[ev.id] && STORY_FILMS[ev.id][part];
-    this.play(lines, { ev, part, film, place: ev.place, vs: part === 'intro' && !o.watch, title: first ? ['CHAPTER ' + (ev.ch + 1), STORY[ev.ch].name] : null }, done); // WATCH: no VS card
+    this.play(lines, { ev, part, film, place: ev.place, vs: part === 'intro' && !o.watch && !MODES[ev.mode].drill, title: first ? ['CHAPTER ' + (ev.ch + 1), STORY[ev.ch].name] : null }, done); // WATCH: no VS card
   },
   play(lines, o, done) {
     clearTimeout(this.tmr); clearTimeout(this.autoT);

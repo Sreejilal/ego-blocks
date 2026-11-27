@@ -1037,6 +1037,12 @@ const STORY = [
     { id: 'bp3', place: 'street', intro: [["RIVAL", "On our street the ball is a bomb. Lose it in your half and BOOM."], ["COACH", "Keep it moving. Never hold it in our half."], ["YOU", "Then I will blow up their half."]], outro: [["RIVAL", "You beat us at our own game..."], ["YOU", "Next time bring a bigger bomb."]], title: 'THE BOMB ON THE BLOCK', mode: 'bomb', size: 3, skill: 0.2, foe: 'EMBER', goal: { win: true }, reward: { em: 250 }, text: 'Ember City play a wild game on their street: the ball is a bomb. Keep it out of your half and beat them.' },
     { id: 'bp4', place: 'stadium', intro: [["COACH", "The cup. Real crowds, real pressure. Do not freeze."], ["ROGUE", "So you are the kid everyone talks about. Show me something."], ["YOU", "If we win by two, you join us?"], ["ROGUE", "Win by two and I will think about it."]], outro: [["ROGUE", "OK. You are the real deal. I am in.", "join"], ["COACH", "A winger nobody can catch. Now we are dangerous."]], title: 'CUP DEBUT', mode: 'quick', size: 4, skill: 0.3, foe: 'NIGHTFALL', goal: { win: true, by: 2 }, reward: { style: 'ROGUE', em: 300 }, text: 'Your first real cup match. A street winger called ROGUE is watching from the fence. Win by two and ROGUE joins your team.' },
   ] },
+  { name: 'THE TRAINING ARC', events: [ // owner, Nov 26 2026: "a training arc in the story": the TRAINING drills as story events, then a camp match
+    { id: 'tr1', place: 'training', intro: [["COACH", "Welcome to training camp. The City League is faster than anything you have played."], ["ROGUE", "Faster than me? I doubt it."], ["COACH", "Run the gates. Beat my time, or you run them again."], ["YOU", "Then I will beat it on the first try."]], outro: [["COACH", "Not bad. Your legs are getting stronger."], ["ROGUE", "Next time I race you for real."]], title: 'LEGS OF STEEL', mode: 'drillrun', size: 2, skill: 0.3, foe: 'MOSSWOOD', goal: { stars: 1 }, reward: { em: 200 }, text: 'Training camp starts with the sprint drill. Run through all 8 gates fast enough to earn a star.' },
+    { id: 'tr2', place: 'training', intro: [["COACH", "Strikers who cannot defend are only half a player."], ["YOU", "I score goals. Defending is boring."], ["COACH", "Stop four of the five attacks, or you watch the City League from the bench."]], outro: [["COACH", "See? Winning the ball back feels good too."], ["YOU", "OK... that was actually fun."]], title: 'NOBODY GETS PAST', mode: 'drilldef', size: 2, skill: 0.35, foe: 'EMBER', goal: { stars: 2 }, reward: { bp: 2 }, text: 'Two attackers, five attacks. Win the ball or put it out four times to earn two stars.' },
+    { id: 'tr3', place: 'training', intro: [["COACH", "Today you go in goal."], ["YOU", "In goal? Me?"], ["COACH", "If you know how a keeper thinks, you know how to beat one."]], outro: [["YOU", "Now I know where a keeper cannot reach."], ["COACH", "Exactly. Remember that every time you shoot."]], title: 'SAFE HANDS', mode: 'drillgk', size: 2, skill: 0.35, foe: 'HARBOUR', goal: { stars: 1 }, reward: { em: 300 }, text: 'You play in goal. Save, catch or clear three of the five attacks to earn a star.' },
+    { id: 'tr4', place: 'training', intro: [["COACH", "Last day of camp. Tidewater Bay came to test us."], ["RIVAL", "A training camp team? We play real matches every week."], ["YOU", "Then this will be your hardest one."]], outro: [["COACH", "Camp is over. You are ready for the City League."], ["ROGUE", "Then let us go and take it."]], title: 'THE CAMP MATCH', mode: 'quick', size: 3, skill: 0.32, foe: 'TIDEWATER', goal: { win: true, mine: 2 }, reward: { em: 400, bp: 3 }, text: 'The last day of camp: a real match against Tidewater Bay. Win it and score two yourself.' },
+  ] },
   { name: 'THE CITY LEAGUE', events: [
     { id: 'cl1', place: 'city', intro: [["COACH", "Welcome to the City League. The derby here is pure chaos: the rules change every 25 seconds."], ["RIVAL", "Ember City got moved up too. Revenge time."], ["YOU", "Chaos is where I play best."]], outro: [["COACH", "Moon ball, giants, tiny goals... and you still won. Unreal."]], title: 'CHAOS DERBY', mode: 'chaos', size: 4, skill: 0.35, foe: 'EMBER', goal: { win: true }, reward: { bp: 3 }, text: 'The city derby, and the league has gone mad: the rules change every 25 seconds. Keep your head and win.' },
     { id: 'cl2', place: 'city', intro: [["COACH", "Mosswood are back, and they only score on the break."], ["RIVAL", "One chance. That is all we need."], ["YOU", "Then you get zero chances."]], outro: [["COACH", "A clean sheet! The whole team defended like a wall."]], title: 'NOBODY GETS THROUGH', mode: 'quick', size: 4, skill: 0.4, foe: 'MOSSWOOD', goal: { win: true, clean: true }, reward: { em: 400 }, text: 'Mosswood only score on the break. Win without letting a single goal in.' },
@@ -1078,7 +1084,7 @@ function teamOvr(d) {
   return Math.round(r.reduce((a, v) => a + v, 0) / r.length);
 } // a line-up spot -> its squad slot
 const Story = {
-  goalText(g) { return 'WIN' + (g.by ? ' BY ' + g.by : '') + (g.mine ? ' AND SCORE ' + g.mine + ' YOURSELF' : '') + (g.clean ? ' WITHOUT LETTING ONE IN' : ''); },
+  goalText(g) { if (g.stars) return 'GET ' + g.stars + (g.stars > 1 ? ' STARS' : ' STAR'); return 'WIN' + (g.by ? ' BY ' + g.by : '') + (g.mine ? ' AND SCORE ' + g.mine + ' YOURSELF' : '') + (g.clean ? ' WITHOUT LETTING ONE IN' : ''); },
   rewardList(r) { return [r.em ? '+' + r.em + ' EMERALDS' : null, r.bp ? '+' + r.bp + ' BLUEPRINTS' : null, r.style ? 'NEW CHARACTER: ' + STYLES[r.style].name : null].filter(Boolean); },
   done(d, e) { return d.story.done.includes(e.id); },
   /** the event you are on: the first one not done (null when the story is finished) */
@@ -1086,7 +1092,9 @@ const Story = {
   open(d, e) { return this.done(d, e) || this.next(d) === e; },
   /** did this match meet the event's goal? (m.myGoals: goals by whoever you were controlling) */
   met(m, e) {
-    const r = m.result; if (!r || r.res !== 'win') return false;
+    const r = m.result;
+    if (e.goal.stars) return !!(r && r.drill && r.drill.stars >= e.goal.stars); // a TRAINING drill: enough stars
+    if (!r || r.res !== 'win') return false;
     const me = m.human ? m.human.team : 0, gf = m.score[me], ga = m.score[1 - me], g = e.goal;
     return !(g.by && gf - ga < g.by) && !((m.myGoals || 0) < (g.mine || 0)) && !(g.clean && ga > 0);
   },

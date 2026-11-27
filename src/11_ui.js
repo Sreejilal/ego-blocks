@@ -1196,13 +1196,14 @@ const UI = {
     $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
   },
   /** TRAINING: a drill's result (Drill.finish): the time or the attacks stopped, the stars, the rewards for new stars */
-  showDrill(o) {
+  showDrill(o, S) {
     const r = o.r, D = DRILLS[r.mode];
-    $('r-again').textContent = 'TRY AGAIN'; $('r-lobby').textContent = 'TRAINING';
+    $('r-again').textContent = S && S.ok && S.next ? 'NEXT EVENT' : 'TRY AGAIN'; $('r-lobby').textContent = S ? 'STORY' : 'TRAINING';
     $('r-title').textContent = D.name; $('r-title').style.color = D.hex;
     $('r-score').innerHTML = `<span>${r.kind === 'run' ? r.score.toFixed(2) + ' SECONDS' : r.score + ' OF ' + DRILL_ATTACKS + ' STOPPED'}</span><span class="chip">${o.better ? 'NEW BEST' : TrainUI.best(r.mode, o.rec)}</span>`;
     $('r-stats').innerHTML = `<div class="dr-res">${TrainUI.stars(r.stars)}<span class="label">${r.kind === 'run' ? 'STARS AT ' + r.par.map((t) => t.toFixed(1) + 'S').join(', ') : 'STARS AT 3, 4 AND 5 STOPPED'}</span></div>`;
     $('r-earn').innerHTML = o.got.length ? o.got.map((t) => `<div><span>${esc(t)}</span><span></span></div>`).join('') : `<div class="idle-note"><span>${o.rec.stars >= 3 ? 'ALL 3 STARS ARE YOURS. GO FOR A NEW BEST' : 'NO NEW STAR THIS TIME. NEXT STAR: ' + loginText(D.reward[o.rec.stars])}</span></div>`;
+    if (S) $('r-earn').insertAdjacentHTML('afterbegin', `<div class="st-res ${S.ok ? 'ok' : 'no'}"><b>${S.ok ? 'EVENT DONE' : 'NOT YET'}: ${esc(S.e.title)}</b><span>GOAL: ${Story.goalText(S.e.goal)}</span>${S.first ? S.got.map((t) => `<span class="st-got">${esc(t)}</span>`).join('') : S.ok ? '<span>YOU HAD THIS EVENT\'S REWARD ALREADY</span>' : '<span>TRY AGAIN. THE REWARD IS STILL WAITING</span>'}</div>`); // STORY: the training arc
     $('r-rank').hidden = true; $('r-xp').innerHTML = ''; $('r-pass').innerHTML = ''; $('r-daily').innerHTML = '';
     $('hint').hidden = true;
     $('scr-results').hidden = false; Music.set(true);

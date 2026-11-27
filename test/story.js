@@ -20,7 +20,7 @@ const toPlay = (m) => { for (let i = 0; i < 400 && m.phase !== 'play'; i++) m.up
 
   // ---- the events ----
   const E = G.STORY_EVENTS;
-  check('12 events in 3 chapters, each with a mode that exists, a goal and a reward; the characters come at the end of each chapter', E.length === 12 && G.STORY.length === 3 && E.every((e) => G.MODES[e.mode] && e.goal && e.reward && e.text) && G.STORY.map((c) => c.events[c.events.length - 1].reward.style).join() === 'ROGUE,IRONCLAD,SOLARIS', E.map((e) => e.mode));
+  check('16 events in 4 chapters (THE TRAINING ARC is chapter 2), each with a mode that exists, a goal and a reward; the characters come at the end of their chapters', E.length === 16 && G.STORY.length === 4 && E.every((e) => G.MODES[e.mode] && e.goal && e.reward && e.text) && G.STORY.map((c) => c.events[c.events.length - 1].reward.style || '').join() === 'ROGUE,,IRONCLAD,SOLARIS', E.map((e) => e.mode));
   const d = G.Save.defaults(); d.story = { done: [] };
   check('you start at event 1; only it is open', G.Story.next(d) === E[0] && G.Story.open(d, E[0]) && !G.Story.open(d, E[1]));
   const fake = (res, score, mine) => ({ result: { res }, score, human: { team: 0 }, myGoals: mine });
@@ -86,7 +86,7 @@ const toPlay = (m) => { for (let i = 0; i < 400 && m.phase !== 'play'; i++) m.up
   check('MORE MODES lists LAWLESS too', law, law);
   await page.evaluate(() => { document.getElementById('scr-modes').hidden = true; EGO.Save.data.story.done = []; if (!EGO.Save.data.styles.includes('KESTREL')) EGO.Save.data.styles.push('KESTREL'); EGO.UI.show('story'); });
   const scr = await page.evaluate(() => ({ evs: document.querySelectorAll('.st-ev').length, now: document.querySelectorAll('.st-ev.now').length, play: document.querySelectorAll('.st-ev [data-ev]').length, slots: document.querySelectorAll('#st-squad .tm-mini .fc-card').length }));
-  check('the story screen: 12 events, the first one open with PLAY, your team (5 cards)', scr.evs === 12 && scr.now === 1 && scr.play === 1 && scr.slots === 5, scr);
+  check('the story screen: 16 events, the first one open with PLAY, your team (5 cards)', scr.evs === 16 && scr.now === 1 && scr.play === 1 && scr.slots === 5, scr);
   await page.screenshot({ path: __dirname + '/shots/story_screen.png' });
   await page.click('#st-squad .fc-card[data-slot="MID"]'); await page.click('#st-pick-grid [data-style="KESTREL"]');
   const pick = await page.evaluate(() => ({ squad: EGO.Save.data.squad.MID, open: !document.getElementById('st-pick').hidden }));
@@ -116,6 +116,20 @@ const toPlay = (m) => { for (let i = 0; i < 400 && m.phase !== 'play'; i++) m.up
   await page.click('#cs-skip'); // event 2's scene
   const nx = await page.evaluate(() => ({ story: EGO.Game.match && EGO.Game.match.story && EGO.Game.match.story.id }));
   check('NEXT EVENT plays event 2', nx.story === 'bp2', nx);
+  // THE TRAINING ARC: a drill is a story event, its goal is stars
+  const tr = await page.evaluate(() => {
+    const G = EGO.Game, d = EGO.Save.data, ev = EGO.STORY_EVENTS.find((e) => e.id === 'tr1');
+    if (G.match) { G.match.dispose(); G.match = null; } G.toLobby();
+    d.story.done = ['bp1', 'bp2', 'bp3', 'bp4']; if (!d.styles.includes('ROGUE')) d.styles.push('ROGUE');
+    const open = EGO.Story.open(d, ev), em0 = d.emeralds;
+    G.startMatch(ev.mode, { story: ev }); G.manual = true; G.stepManual(2, false);
+    const m = G.match, kind = m.drill && m.drill.kind;
+    m.drill.t = m.drill.par[0] - 1; m.drill.n = m.drill.gates.length; m.endDrill(); G.finishMatch(false); // a run inside the 1 star time
+    const r = { open, kind, ch: ev.ch, chapter: EGO.STORY[ev.ch].name, again: document.getElementById('r-again').textContent, back: document.getElementById('r-lobby').textContent, box: (document.querySelector('#r-earn .st-res') || {}).textContent, done: d.story.done.includes('tr1'), em: d.emeralds - em0, scene: !document.getElementById('cutscene').hidden };
+    EGO.Cutscene.end();
+    return r;
+  });
+  check('THE TRAINING ARC (chapter 2): the sprint drill is event 5; a star meets its goal: EVENT DONE, the reward, NEXT EVENT, and its scene after', tr.open && tr.kind === 'run' && tr.ch === 1 && tr.chapter === 'THE TRAINING ARC' && tr.done && /EVENT DONE/.test(tr.box) && /GET 1 STAR/.test(tr.box) && tr.again === 'NEXT EVENT' && tr.back === 'STORY' && tr.em >= 200 && tr.scene, tr);
   check('no errors on the page', !logs.some((l) => l.startsWith('PAGEERROR')), logs.slice(0, 5));
   await browser.close();
   console.log(results.join('\n'));

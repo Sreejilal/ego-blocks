@@ -40,7 +40,7 @@ process.on('unhandledRejection', (e) => { console.log(results.join('\n')); conso
     }
     return { films, acts, bad };
   });
-  check('every story event has a scene before and after it, and every action and shot in them is a real one', lint.films === 24 && lint.acts > 150 && !lint.bad.length, lint);
+  check('every story event has a scene before and after it, and every action and shot in them is a real one', lint.films === 32 && lint.acts > 150 && !lint.bad.length, lint);
 
   // ---- a scene really moves ----
   await page.evaluate(() => { EGO.Save.data.story.done = []; EGO.UI.show('story'); EGO.Cutscene.full = true; EGO.Cutscene.noAuto = true; });
@@ -126,7 +126,7 @@ process.on('unhandledRejection', (e) => { console.log(results.join('\n')); conso
     }
     return { errs, look: EGO.World.look === look0, kids: EGO.World.scene.children.length - kids0, on: M.on, body: document.body.classList.contains('movie') };
   });
-  check('all 24 scenes play through to the end, and afterwards the sky, the stage and the page are as before', !all.errs.length && all.look && all.kids <= 0 && !all.on && !all.body, all);
+  check('all 32 scenes play through to the end, and afterwards the sky, the stage and the page are as before', !all.errs.length && all.look && all.kids <= 0 && !all.on && !all.body, all);
 
   // ---- WATCH: the scenes of an event you finished, again ----
   const watch = await page.evaluate(() => {

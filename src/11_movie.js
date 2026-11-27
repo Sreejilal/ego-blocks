@@ -116,17 +116,18 @@ const Movie = {
     if (/^R\d$/.test(key)) return { team: 1, role: 'MID', style: MV_EXTRAS[(+key[1] + ev.n) % MV_EXTRAS.length], side: away, number: 2 + +key[1] };
     if (/^M\d$/.test(key)) { const st = this.mate(+key[1]), sl = (d.squadLook || {})[st]; return { team: 0, role: 'MID', style: st, side: home, look: sl ? squadLookIds(sl) : undefined, number: (sl && sl.n) || MV_NUM[st] || [7, 4, 8][+key[1] - 1] || 6 }; } // in their MY TEAM outfit
     if (STYLES[key] && STYLES[key].story) {
+      if (this.joined(key)) return { team: 0, role: 'ST', style: key, side: home, number: MV_NUM[key] || 9 }; // already on your team
       const side = key === 'ROGUE' ? Object.assign({}, home, { club: 'STREET', kit: MV_STREET_KIT, crest: ['#3dffb0', '#14161f', 'star'] }) : ev.foe === 'SUNSPIRE' ? away : sideFor('SUNSPIRE');
       return { team: 1, role: 'ST', style: key, side, number: MV_NUM[key] || 9 };
     }
     return null;
   },
   /** your teammates in the scenes: the story characters who already joined (from chapter 2 on), then MY TEAM */
+  /** a story character who joined in an earlier chapter (and you have them) */
+  joined(id) { const e = STORY_EVENTS.find((x) => x.reward.style === id); return !!e && this.ev.ch > e.ch && Save.data.styles.includes(id); },
   mate(i) {
-    const d = Save.data, ch = this.ev.ch, own = (id) => d.styles.includes(id) && id !== d.style;
-    const list = [];
-    if (ch >= 1 && own('ROGUE')) list.push('ROGUE');
-    if (ch >= 2 && own('IRONCLAD')) list.push('IRONCLAD');
+    const d = Save.data, list = [];
+    for (const id of ['ROGUE', 'IRONCLAD']) if (this.joined(id) && id !== d.style) list.push(id);
     for (const k of ['WING', 'MID', 'DEF', 'ST']) { const id = d.squad[k]; if (id && STYLES[id] && !STYLES[id].gk && id !== d.style && !list.includes(id)) list.push(id); }
     for (const id of ['KESTREL', 'SENTINEL', 'SPARK', 'ROOKIE']) if (id !== d.style && !list.includes(id)) list.push(id);
     return list[i - 1] || 'ROOKIE';

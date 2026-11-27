@@ -5651,6 +5651,12 @@ const STORY = [
     { id: 'bp3', place: 'street', intro: [["RIVAL", "On our street the ball is a bomb. Lose it in your half and BOOM."], ["COACH", "Keep it moving. Never hold it in our half."], ["YOU", "Then I will blow up their half."]], outro: [["RIVAL", "You beat us at our own game..."], ["YOU", "Next time bring a bigger bomb."]], title: 'THE BOMB ON THE BLOCK', mode: 'bomb', size: 3, skill: 0.2, foe: 'EMBER', goal: { win: true }, reward: { em: 250 }, text: 'Ember City play a wild game on their street: the ball is a bomb. Keep it out of your half and beat them.' },
     { id: 'bp4', place: 'stadium', intro: [["COACH", "The cup. Real crowds, real pressure. Do not freeze."], ["ROGUE", "So you are the kid everyone talks about. Show me something."], ["YOU", "If we win by two, you join us?"], ["ROGUE", "Win by two and I will think about it."]], outro: [["ROGUE", "OK. You are the real deal. I am in.", "join"], ["COACH", "A winger nobody can catch. Now we are dangerous."]], title: 'CUP DEBUT', mode: 'quick', size: 4, skill: 0.3, foe: 'NIGHTFALL', goal: { win: true, by: 2 }, reward: { style: 'ROGUE', em: 300 }, text: 'Your first real cup match. A street winger called ROGUE is watching from the fence. Win by two and ROGUE joins your team.' },
   ] },
+  { name: 'THE TRAINING ARC', events: [ // owner, Nov 26 2026: "a training arc in the story": the TRAINING drills as story events, then a camp match
+    { id: 'tr1', place: 'training', intro: [["COACH", "Welcome to training camp. The City League is faster than anything you have played."], ["ROGUE", "Faster than me? I doubt it."], ["COACH", "Run the gates. Beat my time, or you run them again."], ["YOU", "Then I will beat it on the first try."]], outro: [["COACH", "Not bad. Your legs are getting stronger."], ["ROGUE", "Next time I race you for real."]], title: 'LEGS OF STEEL', mode: 'drillrun', size: 2, skill: 0.3, foe: 'MOSSWOOD', goal: { stars: 1 }, reward: { em: 200 }, text: 'Training camp starts with the sprint drill. Run through all 8 gates fast enough to earn a star.' },
+    { id: 'tr2', place: 'training', intro: [["COACH", "Strikers who cannot defend are only half a player."], ["YOU", "I score goals. Defending is boring."], ["COACH", "Stop four of the five attacks, or you watch the City League from the bench."]], outro: [["COACH", "See? Winning the ball back feels good too."], ["YOU", "OK... that was actually fun."]], title: 'NOBODY GETS PAST', mode: 'drilldef', size: 2, skill: 0.35, foe: 'EMBER', goal: { stars: 2 }, reward: { bp: 2 }, text: 'Two attackers, five attacks. Win the ball or put it out four times to earn two stars.' },
+    { id: 'tr3', place: 'training', intro: [["COACH", "Today you go in goal."], ["YOU", "In goal? Me?"], ["COACH", "If you know how a keeper thinks, you know how to beat one."]], outro: [["YOU", "Now I know where a keeper cannot reach."], ["COACH", "Exactly. Remember that every time you shoot."]], title: 'SAFE HANDS', mode: 'drillgk', size: 2, skill: 0.35, foe: 'HARBOUR', goal: { stars: 1 }, reward: { em: 300 }, text: 'You play in goal. Save, catch or clear three of the five attacks to earn a star.' },
+    { id: 'tr4', place: 'training', intro: [["COACH", "Last day of camp. Tidewater Bay came to test us."], ["RIVAL", "A training camp team? We play real matches every week."], ["YOU", "Then this will be your hardest one."]], outro: [["COACH", "Camp is over. You are ready for the City League."], ["ROGUE", "Then let us go and take it."]], title: 'THE CAMP MATCH', mode: 'quick', size: 3, skill: 0.32, foe: 'TIDEWATER', goal: { win: true, mine: 2 }, reward: { em: 400, bp: 3 }, text: 'The last day of camp: a real match against Tidewater Bay. Win it and score two yourself.' },
+  ] },
   { name: 'THE CITY LEAGUE', events: [
     { id: 'cl1', place: 'city', intro: [["COACH", "Welcome to the City League. The derby here is pure chaos: the rules change every 25 seconds."], ["RIVAL", "Ember City got moved up too. Revenge time."], ["YOU", "Chaos is where I play best."]], outro: [["COACH", "Moon ball, giants, tiny goals... and you still won. Unreal."]], title: 'CHAOS DERBY', mode: 'chaos', size: 4, skill: 0.35, foe: 'EMBER', goal: { win: true }, reward: { bp: 3 }, text: 'The city derby, and the league has gone mad: the rules change every 25 seconds. Keep your head and win.' },
     { id: 'cl2', place: 'city', intro: [["COACH", "Mosswood are back, and they only score on the break."], ["RIVAL", "One chance. That is all we need."], ["YOU", "Then you get zero chances."]], outro: [["COACH", "A clean sheet! The whole team defended like a wall."]], title: 'NOBODY GETS THROUGH', mode: 'quick', size: 4, skill: 0.4, foe: 'MOSSWOOD', goal: { win: true, clean: true }, reward: { em: 400 }, text: 'Mosswood only score on the break. Win without letting a single goal in.' },
@@ -5692,7 +5698,7 @@ function teamOvr(d) {
   return Math.round(r.reduce((a, v) => a + v, 0) / r.length);
 } // a line-up spot -> its squad slot
 const Story = {
-  goalText(g) { return 'WIN' + (g.by ? ' BY ' + g.by : '') + (g.mine ? ' AND SCORE ' + g.mine + ' YOURSELF' : '') + (g.clean ? ' WITHOUT LETTING ONE IN' : ''); },
+  goalText(g) { if (g.stars) return 'GET ' + g.stars + (g.stars > 1 ? ' STARS' : ' STAR'); return 'WIN' + (g.by ? ' BY ' + g.by : '') + (g.mine ? ' AND SCORE ' + g.mine + ' YOURSELF' : '') + (g.clean ? ' WITHOUT LETTING ONE IN' : ''); },
   rewardList(r) { return [r.em ? '+' + r.em + ' EMERALDS' : null, r.bp ? '+' + r.bp + ' BLUEPRINTS' : null, r.style ? 'NEW CHARACTER: ' + STYLES[r.style].name : null].filter(Boolean); },
   done(d, e) { return d.story.done.includes(e.id); },
   /** the event you are on: the first one not done (null when the story is finished) */
@@ -5700,7 +5706,9 @@ const Story = {
   open(d, e) { return this.done(d, e) || this.next(d) === e; },
   /** did this match meet the event's goal? (m.myGoals: goals by whoever you were controlling) */
   met(m, e) {
-    const r = m.result; if (!r || r.res !== 'win') return false;
+    const r = m.result;
+    if (e.goal.stars) return !!(r && r.drill && r.drill.stars >= e.goal.stars); // a TRAINING drill: enough stars
+    if (!r || r.res !== 'win') return false;
     const me = m.human ? m.human.team : 0, gf = m.score[me], ga = m.score[1 - me], g = e.goal;
     return !(g.by && gf - ga < g.by) && !((m.myGoals || 0) < (g.mine || 0)) && !(g.clean && ga > 0);
   },
@@ -6602,7 +6610,7 @@ class Match {
       }
     }
     if (p.isGK && this.inOwnBox(p)) { b.held = true; p.setState('hold'); p.ai.holdT = rand(0.8, 1.4); }
-    if (this.story && !this.online && this.human && p.team === this.human.team && p !== this.human && !p.isGK) this.switchTo(p); // STORY: you always play the teammate with the ball (a pass, a tackle, an interception)
+    if (this.story && !this.online && !this.drill && this.human && p.team === this.human.team && p !== this.human && !p.isGK) this.switchTo(p); // STORY: you always play the teammate with the ball (a pass, a tackle, an interception)
     if (!silent) Sfx.touch();
     if (p.fx.skyTrap > 0 && b.pos.y > 1.2) { p.fx.skyTrap = 0; p.fx.hang = 0.45; if (!p.onGround) p.vel.y = Math.max(p.vel.y, 0); FX.ring(b.pos.x, b.pos.y, b.pos.z, p.aura, 0.9, 16); this.label(p, 'TRAPPED', p.aura); Sfx.zap(); }
   }
@@ -10844,7 +10852,7 @@ const Cutscene = {
     if (!lines || !lines.length) { if (done) done(); return; }
     const first = part === 'intro' && STORY[ev.ch].events[0] === ev;
     const film = STORY_FILMS[ev.id] && STORY_FILMS[ev.id][part];
-    this.play(lines, { ev, part, film, place: ev.place, vs: part === 'intro' && !o.watch, title: first ? ['CHAPTER ' + (ev.ch + 1), STORY[ev.ch].name] : null }, done); // WATCH: no VS card
+    this.play(lines, { ev, part, film, place: ev.place, vs: part === 'intro' && !o.watch && !MODES[ev.mode].drill, title: first ? ['CHAPTER ' + (ev.ch + 1), STORY[ev.ch].name] : null }, done); // WATCH: no VS card
   },
   play(lines, o, done) {
     clearTimeout(this.tmr); clearTimeout(this.autoT);
@@ -11071,6 +11079,92 @@ const STORY_FILMS = {
         { cam: ['group', ['YOU', 'ROGUE', 'M1', 'M2', 'COACH']], do: [['COACH', 'emote', 'pump', 2.2], ['M1', 'emote', 'cheer', 2.2], ['M2', 'emote', 'cheer', 2.2], ['ROGUE', 'emote', 'flex', 0]] },
       ],
       end: { t: 2.8, cam: ['orbit', 'ROGUE', 4.2, 1.5, 0.5], do: [['*', 'cheer', 1]] },
+    },
+  },
+  // THE TRAINING ARC (owner, Nov 26 2026): camp on the training ground with ROGUE, who joined at the end of chapter 1
+  tr1: {
+    intro: {
+      set: { YOU: [0, -40, 0], COACH: [4, -37, 'YOU'], ROGUE: [-3, -39, 0] },
+      open: { t: 4.4, cams: [[0, ['fly', [20, 14, -20], [7, 2, -34], 'YOU', 3.6]], [2.4, ['track', 'ROGUE', 1, 6]]], do: [['ROGUE', 'sprint', -3, -22], ['ROGUE', 'sprint', -3, -37], ['ROGUE', 'face', 'YOU'], ['*', 'at', 2.4, 'lines', 'rush', 1.8]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'emote', 'fold', 0]] },
+        { cam: ['close', 'ROGUE'], do: [['ROGUE', 'emote', 'laugh', 0]] },
+        { cam: ['ots', 'COACH', 'YOU'], do: [['COACH', 'emote', 'aim', 1.6]] },
+        { cams: [[0, ['eyes', 'YOU']], [0.9, ['low', 'YOU']]], do: [['YOU', 'glare'], ['YOU', 'emote', 'stance', 0], ['*', 'lines', 'focus', 1.0]] },
+      ],
+      end: { t: 2.4, cam: ['track', 'YOU', 1, 6], do: [['YOU', 'sprint', 0, -18], ['*', 'lines', 'rush', 2.2]] },
+    },
+    outro: {
+      set: { YOU: [0, 30, 3.14], COACH: [3, 27, 'YOU'], ROGUE: [-3, 28, 'YOU'] },
+      open: { t: 3, cam: ['orbit', 'YOU', 4.4, 1.4, 0.4], do: [['YOU', 'emote', 'flex', 0], ['*', 'cheer', 0.3]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'emote', 'clap', 2]] },
+        { cam: ['close', 'ROGUE'], do: [['ROGUE', 'emote', 'point', 0]] },
+      ],
+      end: { t: 3.6, cam: ['two', 'YOU', 'ROGUE'], do: [['YOU', 'face', 'ROGUE'], ['YOU', 'emote', 'stance', 0], ['ROGUE', 'emote', 'stance', 0], ['*', 'at', 0.6, 'panels', 'rows2', [['face', 'YOU'], ['face', 'ROGUE']], 1.5]] },
+    },
+  },
+  tr2: {
+    intro: {
+      set: { COACH: [-3, -30, 'YOU'], YOU: [0, -26, 3.14], R1: [-6, -10, 3.14], R2: [6, -12, 3.14], ball: 'R1' },
+      open: { t: 3.6, cam: ['wide', 0, -20, 14, 6, 0.12], do: [['R1', 'dribble', -2, -16], ['R1', 'pass', 'R2'], ['R2', 'trap']] },
+      lines: [
+        { cam: ['ots', 'COACH', 'YOU'], do: [['COACH', 'emote', 'aim', 1.4]] },
+        { cam: ['close', 'YOU'], do: [['YOU', 'emote', 'shrug', 1.4]] },
+        { cams: [[0, ['close', 'COACH']], [1.0, ['track', 'YOU', 1, 6]]], do: [['YOU', 'wait', 0.8], ['YOU', 'sprint', 4, -16], ['YOU', 'slide', 5.6, -12.4, 'win'], ['*', 'at', 1.5, 'slow', 0.3, 0.7]], hold: 3.8 },
+      ],
+      end: { t: 2.2, cam: ['low', 'YOU'], do: [['YOU', 'emote', 'stance', 0]] },
+    },
+    outro: {
+      set: { YOU: [0, 0, 0], COACH: [-3, -3, 'YOU'], ROGUE: [3, -2, 'YOU'], ball: 'YOU' },
+      open: { t: 3, cam: ['orbit', 'YOU', 4.4, 1.4, 0.4], do: [['YOU', 'juggle', 2.8]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'emote', 'clap', 2]] },
+        { cam: ['close', 'YOU'], do: [['YOU', 'emote', 'shrug', 1.2], ['YOU', 'emote', 'cheer', 0]] },
+      ],
+      end: { t: 2, cam: ['group', ['YOU', 'COACH', 'ROGUE']], do: [['ROGUE', 'emote', 'clap', 0]] },
+    },
+  },
+  tr3: {
+    intro: {
+      set: { YOU: [0, 52.5, 3.14], COACH: [5, 47, 'YOU'], ROGUE: [0, 38, 0], ball: 'ROGUE' },
+      open: { t: 4.6, cams: [[0, ['goal', 1]], [2.6, ['close', 'YOU']]], do: [['ROGUE', 'dribble', 0, 42], ['ROGUE', 'shoot', 1, 3, 1.4], ['YOU', 'wait', 1.1], ['YOU', 'jump'], ['YOU', 'emote', 'shock', 0], ['ROGUE', 'emote', 'laugh', 0]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'walk', 3, 49]] },
+        { cam: ['close', 'YOU'], do: [['YOU', 'emote', 'shock', 1.2]] },
+        { cam: ['ots', 'COACH', 'YOU'], do: [['COACH', 'emote', 'aim', 1.6]] },
+      ],
+      end: { t: 2.2, cam: ['low', 'YOU'], do: [['YOU', 'glare'], ['YOU', 'emote', 'stance', 0], ['*', 'lines', 'focus', 1.2]] },
+    },
+    outro: {
+      set: { YOU: [0, 50, 3.14], COACH: [4, 45, 'YOU'], ROGUE: [-2, 40, 'YOU'], ball: [0, 47] },
+      open: { t: 3, cam: ['orbit', 'YOU', 4.4, 1.4, 0.4], do: [['YOU', 'emote', 'flex', 0]] },
+      lines: [
+        { cams: [[0, ['eyes', 'YOU']], [0.9, ['close', 'YOU']]], do: [['YOU', 'glare'], ['*', 'lines', 'focus', 0.9]] },
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'emote', 'point', 0]] },
+      ],
+      end: { t: 2, cam: ['wide', 0, 46, 12, 5, 0.15] },
+    },
+  },
+  tr4: {
+    intro: {
+      set: { COACH: [-3, 4, 'YOU'], YOU: [0, 6.5, 3.14], ROGUE: [3, 7.5, 3.14], RIVAL: [1.5, 15, 'YOU'], R1: [4.5, 16, 'YOU'] },
+      open: { t: 3.6, cam: ['fly', [0, 18, -20], [6, 3, -2], [0, 2, 8], 3.4], do: [['*', 'cheer', 0.6], ['RIVAL', 'emote', 'fold', 0], ['R1', 'emote', 'fold', 0]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'] },
+        { cam: ['close', 'RIVAL'], do: [['RIVAL', 'walk', 1, 11.5], ['RIVAL', 'emote', 'laugh', 0]] },
+        { cams: [[0, ['zoom', 'YOU']], [1.4, ['low', 'YOU']]], do: [['YOU', 'emote', 'point', 0], ['*', 'lines', 'focus', 1.3]] },
+      ],
+      end: { t: 3.6, cam: ['two', 'YOU', 'RIVAL'], do: [['YOU', 'emote', 'stance', 0], ['*', 'at', 0.8, 'panels', 'rows2', [['face', 'YOU'], ['face', 'RIVAL']], 1.6]] },
+    },
+    outro: {
+      set: { YOU: [0, 10, 3.14], COACH: [-3, 7, 'YOU'], ROGUE: [3, 8, 'YOU'] },
+      open: { t: 3, cam: ['orbit', 'YOU', 4.6, 1.6, 0.35], do: [['YOU', 'emote', 'cheer', 2.6], ['ROGUE', 'emote', 'cheer', 2.6], ['*', 'cheer', 0.6]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'emote', 'clap', 2]] },
+        { cam: ['close', 'ROGUE'], do: [['ROGUE', 'emote', 'pump', 0]] },
+      ],
+      end: { t: 2.6, cam: ['group', ['YOU', 'ROGUE', 'COACH']], do: [['YOU', 'emote', 'flex', 0], ['ROGUE', 'emote', 'flex', 0]] },
     },
   },
   cl1: {
@@ -11716,17 +11810,18 @@ const Movie = {
     if (/^R\d$/.test(key)) return { team: 1, role: 'MID', style: MV_EXTRAS[(+key[1] + ev.n) % MV_EXTRAS.length], side: away, number: 2 + +key[1] };
     if (/^M\d$/.test(key)) { const st = this.mate(+key[1]), sl = (d.squadLook || {})[st]; return { team: 0, role: 'MID', style: st, side: home, look: sl ? squadLookIds(sl) : undefined, number: (sl && sl.n) || MV_NUM[st] || [7, 4, 8][+key[1] - 1] || 6 }; } // in their MY TEAM outfit
     if (STYLES[key] && STYLES[key].story) {
+      if (this.joined(key)) return { team: 0, role: 'ST', style: key, side: home, number: MV_NUM[key] || 9 }; // already on your team
       const side = key === 'ROGUE' ? Object.assign({}, home, { club: 'STREET', kit: MV_STREET_KIT, crest: ['#3dffb0', '#14161f', 'star'] }) : ev.foe === 'SUNSPIRE' ? away : sideFor('SUNSPIRE');
       return { team: 1, role: 'ST', style: key, side, number: MV_NUM[key] || 9 };
     }
     return null;
   },
   /** your teammates in the scenes: the story characters who already joined (from chapter 2 on), then MY TEAM */
+  /** a story character who joined in an earlier chapter (and you have them) */
+  joined(id) { const e = STORY_EVENTS.find((x) => x.reward.style === id); return !!e && this.ev.ch > e.ch && Save.data.styles.includes(id); },
   mate(i) {
-    const d = Save.data, ch = this.ev.ch, own = (id) => d.styles.includes(id) && id !== d.style;
-    const list = [];
-    if (ch >= 1 && own('ROGUE')) list.push('ROGUE');
-    if (ch >= 2 && own('IRONCLAD')) list.push('IRONCLAD');
+    const d = Save.data, list = [];
+    for (const id of ['ROGUE', 'IRONCLAD']) if (this.joined(id) && id !== d.style) list.push(id);
     for (const k of ['WING', 'MID', 'DEF', 'ST']) { const id = d.squad[k]; if (id && STYLES[id] && !STYLES[id].gk && id !== d.style && !list.includes(id)) list.push(id); }
     for (const id of ['KESTREL', 'SENTINEL', 'SPARK', 'ROOKIE']) if (id !== d.style && !list.includes(id)) list.push(id);
     return list[i - 1] || 'ROOKIE';
@@ -14078,7 +14173,7 @@ const StoryUI = {
         <div class="st-evs">${c.events.map((e) => {
           const done = Story.done(d, e), now = cur === e, st = done ? 'done' : now ? 'now' : 'locked';
           return `<div class="st-ev ${st}"><span class="st-num">${done ? '' : e.n}</span>
-            <div class="st-main"><b>${e.title}</b><span class="st-goal">${MODES[e.mode].name} · ${e.size}V${e.size} · GOAL: ${Story.goalText(e.goal)}</span>${now ? `<p class="st-text">${e.text}</p>` : ''}</div>
+            <div class="st-main"><b>${e.title}</b><span class="st-goal">${MODES[e.mode].name}${MODES[e.mode].drill ? '' : ' · ' + e.size + 'V' + e.size} · GOAL: ${Story.goalText(e.goal)}</span>${now ? `<p class="st-text">${e.text}</p>` : ''}</div>
             <div class="st-rws">${this.rewards(e.reward)}</div>
             ${done || now ? `<span class="st-btns">${done ? `<button class="btn small ghost st-watch" type="button" data-watch="${e.id}">WATCH</button>` : ''}<button class="btn small ${now ? 'blue' : ''} st-go" type="button" data-ev="${e.id}">${now ? 'PLAY' : 'REPLAY'}</button></span>` : '<span class="st-lock">LOCKED</span>'}</div>`;
         }).join('')}</div></section>`;
@@ -15566,13 +15661,14 @@ const UI = {
     $('scr-results').hidden = false; Music.set(true); // the music comes back on the results
   },
   /** TRAINING: a drill's result (Drill.finish): the time or the attacks stopped, the stars, the rewards for new stars */
-  showDrill(o) {
+  showDrill(o, S) {
     const r = o.r, D = DRILLS[r.mode];
-    $('r-again').textContent = 'TRY AGAIN'; $('r-lobby').textContent = 'TRAINING';
+    $('r-again').textContent = S && S.ok && S.next ? 'NEXT EVENT' : 'TRY AGAIN'; $('r-lobby').textContent = S ? 'STORY' : 'TRAINING';
     $('r-title').textContent = D.name; $('r-title').style.color = D.hex;
     $('r-score').innerHTML = `<span>${r.kind === 'run' ? r.score.toFixed(2) + ' SECONDS' : r.score + ' OF ' + DRILL_ATTACKS + ' STOPPED'}</span><span class="chip">${o.better ? 'NEW BEST' : TrainUI.best(r.mode, o.rec)}</span>`;
     $('r-stats').innerHTML = `<div class="dr-res">${TrainUI.stars(r.stars)}<span class="label">${r.kind === 'run' ? 'STARS AT ' + r.par.map((t) => t.toFixed(1) + 'S').join(', ') : 'STARS AT 3, 4 AND 5 STOPPED'}</span></div>`;
     $('r-earn').innerHTML = o.got.length ? o.got.map((t) => `<div><span>${esc(t)}</span><span></span></div>`).join('') : `<div class="idle-note"><span>${o.rec.stars >= 3 ? 'ALL 3 STARS ARE YOURS. GO FOR A NEW BEST' : 'NO NEW STAR THIS TIME. NEXT STAR: ' + loginText(D.reward[o.rec.stars])}</span></div>`;
+    if (S) $('r-earn').insertAdjacentHTML('afterbegin', `<div class="st-res ${S.ok ? 'ok' : 'no'}"><b>${S.ok ? 'EVENT DONE' : 'NOT YET'}: ${esc(S.e.title)}</b><span>GOAL: ${Story.goalText(S.e.goal)}</span>${S.first ? S.got.map((t) => `<span class="st-got">${esc(t)}</span>`).join('') : S.ok ? '<span>YOU HAD THIS EVENT\'S REWARD ALREADY</span>' : '<span>TRY AGAIN. THE REWARD IS STILL WAITING</span>'}</div>`); // STORY: the training arc
     $('r-rank').hidden = true; $('r-xp').innerHTML = ''; $('r-pass').innerHTML = ''; $('r-daily').innerHTML = '';
     $('hint').hidden = true;
     $('scr-results').hidden = false; Music.set(true);
@@ -16100,9 +16196,11 @@ const Game = {
     }
     if (m.cfg.drill) { // TRAINING: the stars and their rewards
       if (forfeit || !m.result || !m.result.drill) { this.toLobby(); return; }
-      const o = Drill.finish(d, m.result.drill);
+      const o = Drill.finish(d, m.result.drill), story = m.story && !m.online ? m.story : null, st = story ? Story.finish(d, story, m) : null; // STORY: a drill can be an event (THE TRAINING ARC)
+      this.storyNext = st && st.next ? st.next : null;
       Save.save(); this.state = 'results'; m.paused = true; Input.releaseLock();
-      UI.showDrill(o); Sfx.setCrowd(0.3);
+      UI.showDrill(o, st); Sfx.setCrowd(0.3);
+      if (st && st.first) Cutscene.story(story, 'outro');
       return;
     }
     if (m.cfg.practice) { // free kick practice: your score and your best, no rewards

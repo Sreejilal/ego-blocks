@@ -66,7 +66,7 @@ const StoryUI = {
         <div class="st-evs">${c.events.map((e) => {
           const done = Story.done(d, e), now = cur === e, st = done ? 'done' : now ? 'now' : 'locked';
           return `<div class="st-ev ${st}"><span class="st-num">${done ? '' : e.n}</span>
-            <div class="st-main"><b>${e.title}</b><span class="st-goal">${MODES[e.mode].name} · ${e.size}V${e.size} · GOAL: ${Story.goalText(e.goal)}</span>${now ? `<p class="st-text">${e.text}</p>` : ''}</div>
+            <div class="st-main"><b>${e.title}</b><span class="st-goal">${MODES[e.mode].name}${MODES[e.mode].drill ? '' : ' · ' + e.size + 'V' + e.size} · GOAL: ${Story.goalText(e.goal)}</span>${now ? `<p class="st-text">${e.text}</p>` : ''}</div>
             <div class="st-rws">${this.rewards(e.reward)}</div>
             ${done || now ? `<span class="st-btns">${done ? `<button class="btn small ghost st-watch" type="button" data-watch="${e.id}">WATCH</button>` : ''}<button class="btn small ${now ? 'blue' : ''} st-go" type="button" data-ev="${e.id}">${now ? 'PLAY' : 'REPLAY'}</button></span>` : '<span class="st-lock">LOCKED</span>'}</div>`;
         }).join('')}</div></section>`;

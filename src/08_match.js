@@ -552,7 +552,7 @@ class Match {
       }
     }
     if (p.isGK && this.inOwnBox(p)) { b.held = true; p.setState('hold'); p.ai.holdT = rand(0.8, 1.4); }
-    if (this.story && !this.online && this.human && p.team === this.human.team && p !== this.human && !p.isGK) this.switchTo(p); // STORY: you always play the teammate with the ball (a pass, a tackle, an interception)
+    if (this.story && !this.online && !this.drill && this.human && p.team === this.human.team && p !== this.human && !p.isGK) this.switchTo(p); // STORY: you always play the teammate with the ball (a pass, a tackle, an interception)
     if (!silent) Sfx.touch();
     if (p.fx.skyTrap > 0 && b.pos.y > 1.2) { p.fx.skyTrap = 0; p.fx.hang = 0.45; if (!p.onGround) p.vel.y = Math.max(p.vel.y, 0); FX.ring(b.pos.x, b.pos.y, b.pos.z, p.aura, 0.9, 16); this.label(p, 'TRAPPED', p.aura); Sfx.zap(); }
   }

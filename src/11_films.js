@@ -102,6 +102,92 @@ const STORY_FILMS = {
       end: { t: 2.8, cam: ['orbit', 'ROGUE', 4.2, 1.5, 0.5], do: [['*', 'cheer', 1]] },
     },
   },
+  // THE TRAINING ARC (owner, Nov 26 2026): camp on the training ground with ROGUE, who joined at the end of chapter 1
+  tr1: {
+    intro: {
+      set: { YOU: [0, -40, 0], COACH: [4, -37, 'YOU'], ROGUE: [-3, -39, 0] },
+      open: { t: 4.4, cams: [[0, ['fly', [20, 14, -20], [7, 2, -34], 'YOU', 3.6]], [2.4, ['track', 'ROGUE', 1, 6]]], do: [['ROGUE', 'sprint', -3, -22], ['ROGUE', 'sprint', -3, -37], ['ROGUE', 'face', 'YOU'], ['*', 'at', 2.4, 'lines', 'rush', 1.8]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'emote', 'fold', 0]] },
+        { cam: ['close', 'ROGUE'], do: [['ROGUE', 'emote', 'laugh', 0]] },
+        { cam: ['ots', 'COACH', 'YOU'], do: [['COACH', 'emote', 'aim', 1.6]] },
+        { cams: [[0, ['eyes', 'YOU']], [0.9, ['low', 'YOU']]], do: [['YOU', 'glare'], ['YOU', 'emote', 'stance', 0], ['*', 'lines', 'focus', 1.0]] },
+      ],
+      end: { t: 2.4, cam: ['track', 'YOU', 1, 6], do: [['YOU', 'sprint', 0, -18], ['*', 'lines', 'rush', 2.2]] },
+    },
+    outro: {
+      set: { YOU: [0, 30, 3.14], COACH: [3, 27, 'YOU'], ROGUE: [-3, 28, 'YOU'] },
+      open: { t: 3, cam: ['orbit', 'YOU', 4.4, 1.4, 0.4], do: [['YOU', 'emote', 'flex', 0], ['*', 'cheer', 0.3]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'emote', 'clap', 2]] },
+        { cam: ['close', 'ROGUE'], do: [['ROGUE', 'emote', 'point', 0]] },
+      ],
+      end: { t: 3.6, cam: ['two', 'YOU', 'ROGUE'], do: [['YOU', 'face', 'ROGUE'], ['YOU', 'emote', 'stance', 0], ['ROGUE', 'emote', 'stance', 0], ['*', 'at', 0.6, 'panels', 'rows2', [['face', 'YOU'], ['face', 'ROGUE']], 1.5]] },
+    },
+  },
+  tr2: {
+    intro: {
+      set: { COACH: [-3, -30, 'YOU'], YOU: [0, -26, 3.14], R1: [-6, -10, 3.14], R2: [6, -12, 3.14], ball: 'R1' },
+      open: { t: 3.6, cam: ['wide', 0, -20, 14, 6, 0.12], do: [['R1', 'dribble', -2, -16], ['R1', 'pass', 'R2'], ['R2', 'trap']] },
+      lines: [
+        { cam: ['ots', 'COACH', 'YOU'], do: [['COACH', 'emote', 'aim', 1.4]] },
+        { cam: ['close', 'YOU'], do: [['YOU', 'emote', 'shrug', 1.4]] },
+        { cams: [[0, ['close', 'COACH']], [1.0, ['track', 'YOU', 1, 6]]], do: [['YOU', 'wait', 0.8], ['YOU', 'sprint', 4, -16], ['YOU', 'slide', 5.6, -12.4, 'win'], ['*', 'at', 1.5, 'slow', 0.3, 0.7]], hold: 3.8 },
+      ],
+      end: { t: 2.2, cam: ['low', 'YOU'], do: [['YOU', 'emote', 'stance', 0]] },
+    },
+    outro: {
+      set: { YOU: [0, 0, 0], COACH: [-3, -3, 'YOU'], ROGUE: [3, -2, 'YOU'], ball: 'YOU' },
+      open: { t: 3, cam: ['orbit', 'YOU', 4.4, 1.4, 0.4], do: [['YOU', 'juggle', 2.8]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'emote', 'clap', 2]] },
+        { cam: ['close', 'YOU'], do: [['YOU', 'emote', 'shrug', 1.2], ['YOU', 'emote', 'cheer', 0]] },
+      ],
+      end: { t: 2, cam: ['group', ['YOU', 'COACH', 'ROGUE']], do: [['ROGUE', 'emote', 'clap', 0]] },
+    },
+  },
+  tr3: {
+    intro: {
+      set: { YOU: [0, 52.5, 3.14], COACH: [5, 47, 'YOU'], ROGUE: [0, 38, 0], ball: 'ROGUE' },
+      open: { t: 4.6, cams: [[0, ['goal', 1]], [2.6, ['close', 'YOU']]], do: [['ROGUE', 'dribble', 0, 42], ['ROGUE', 'shoot', 1, 3, 1.4], ['YOU', 'wait', 1.1], ['YOU', 'jump'], ['YOU', 'emote', 'shock', 0], ['ROGUE', 'emote', 'laugh', 0]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'walk', 3, 49]] },
+        { cam: ['close', 'YOU'], do: [['YOU', 'emote', 'shock', 1.2]] },
+        { cam: ['ots', 'COACH', 'YOU'], do: [['COACH', 'emote', 'aim', 1.6]] },
+      ],
+      end: { t: 2.2, cam: ['low', 'YOU'], do: [['YOU', 'glare'], ['YOU', 'emote', 'stance', 0], ['*', 'lines', 'focus', 1.2]] },
+    },
+    outro: {
+      set: { YOU: [0, 50, 3.14], COACH: [4, 45, 'YOU'], ROGUE: [-2, 40, 'YOU'], ball: [0, 47] },
+      open: { t: 3, cam: ['orbit', 'YOU', 4.4, 1.4, 0.4], do: [['YOU', 'emote', 'flex', 0]] },
+      lines: [
+        { cams: [[0, ['eyes', 'YOU']], [0.9, ['close', 'YOU']]], do: [['YOU', 'glare'], ['*', 'lines', 'focus', 0.9]] },
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'emote', 'point', 0]] },
+      ],
+      end: { t: 2, cam: ['wide', 0, 46, 12, 5, 0.15] },
+    },
+  },
+  tr4: {
+    intro: {
+      set: { COACH: [-3, 4, 'YOU'], YOU: [0, 6.5, 3.14], ROGUE: [3, 7.5, 3.14], RIVAL: [1.5, 15, 'YOU'], R1: [4.5, 16, 'YOU'] },
+      open: { t: 3.6, cam: ['fly', [0, 18, -20], [6, 3, -2], [0, 2, 8], 3.4], do: [['*', 'cheer', 0.6], ['RIVAL', 'emote', 'fold', 0], ['R1', 'emote', 'fold', 0]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'] },
+        { cam: ['close', 'RIVAL'], do: [['RIVAL', 'walk', 1, 11.5], ['RIVAL', 'emote', 'laugh', 0]] },
+        { cams: [[0, ['zoom', 'YOU']], [1.4, ['low', 'YOU']]], do: [['YOU', 'emote', 'point', 0], ['*', 'lines', 'focus', 1.3]] },
+      ],
+      end: { t: 3.6, cam: ['two', 'YOU', 'RIVAL'], do: [['YOU', 'emote', 'stance', 0], ['*', 'at', 0.8, 'panels', 'rows2', [['face', 'YOU'], ['face', 'RIVAL']], 1.6]] },
+    },
+    outro: {
+      set: { YOU: [0, 10, 3.14], COACH: [-3, 7, 'YOU'], ROGUE: [3, 8, 'YOU'] },
+      open: { t: 3, cam: ['orbit', 'YOU', 4.6, 1.6, 0.35], do: [['YOU', 'emote', 'cheer', 2.6], ['ROGUE', 'emote', 'cheer', 2.6], ['*', 'cheer', 0.6]] },
+      lines: [
+        { cam: ['two', 'COACH', 'YOU'], do: [['COACH', 'emote', 'clap', 2]] },
+        { cam: ['close', 'ROGUE'], do: [['ROGUE', 'emote', 'pump', 0]] },
+      ],
+      end: { t: 2.6, cam: ['group', ['YOU', 'ROGUE', 'COACH']], do: [['YOU', 'emote', 'flex', 0], ['ROGUE', 'emote', 'flex', 0]] },
+    },
+  },
   cl1: {
     intro: {
       set: { COACH: [0, 9, 'YOU'], YOU: [0, 13, 3.14], M1: [-3.2, 14.6, 3.14], RIVAL: [1.2, 25, 'YOU'], R1: [-2, 27, 'YOU'], ball: [3.5, 18] },
