@@ -78,12 +78,14 @@ const toPlay = (m) => { for (let i = 0; i < 400 && m.phase !== 'play'; i++) m.up
   await drag('#tm-pitch .fc-card[data-slot="MID"]', '#tm-bench .fc-card[data-slot="B1"]');
   const d3 = await page.evaluate(() => ({ mid: EGO.Save.data.squad.MID || null, bench: EGO.Save.data.squad.bench.slice() }));
   check('drag a card onto the bench: they sit on the bench', d3.mid === null && d3.bench.includes('BASTION') && d3.bench.includes('THUNDER'), d3);
-  // the outfit: number and skins, only skins you own, saved, and worn in a match
-  await page.evaluate(() => { const d = EGO.Save.data; d.skins.push('MOHAWK', 'RED_BAND'); EGO.Save.save(); EGO.TeamUI.sel = 'DEF'; EGO.TeamUI.render(); });
-  for (let i = 0; i < 3; i++) await page.click('#tm-sel [data-num="1"]');
-  await page.click('#tm-sel [data-of="hair"][data-dir="1"]');
-  const o1 = await page.evaluate(() => ({ look: EGO.Save.data.squadLook.RAILGUN, num: document.querySelector('#tm-sel .tm-n').textContent, card: (document.querySelector('#tm-pitch .fc-card[data-slot="DEF"] .fc-num') || {}).textContent, hairs: EGO.TeamUI.options('hair') }));
-  check('OUTFIT: change their number and hairstyle (from the hairstyles you own); the card shows the number', o1.look && o1.look.n === 4 && o1.num === '4' && o1.card === '4' && o1.look.hair && o1.hairs.includes('MOHAWK') && !o1.hairs.includes('AFRO'), o1);
+  // the LOCKER ROOM: number and skins (only ones you own), the 3D model changes with them, saved, and worn in a match
+  await page.evaluate(() => { const d = EGO.Save.data; d.skins.push('MOHAWK', 'RED_BAND'); EGO.Save.save(); EGO.TeamUI.who = 'RAILGUN'; EGO.TeamUI.setTab('room'); });
+  const k0 = await page.evaluate(() => ({ key: EGO.Showcase.key, stage: EGO.Showcase.stageId, style: EGO.Showcase.p && EGO.Showcase.p.styleId, list: document.querySelectorAll('#lr-list .lr-row').length }));
+  for (let i = 0; i < 3; i++) await page.click('#lr-edit [data-num="1"]');
+  await page.click('#lr-edit [data-of="hair"][data-dir="1"]');
+  const o1 = await page.evaluate(() => { EGO.Showcase.ensure(); const r = { look: EGO.Save.data.squadLook.RAILGUN, num: document.querySelector('#lr-edit .tm-n').textContent, key: EGO.Showcase.key, shape: EGO.Showcase.p && EGO.Showcase.p.look.hairShape, want: EGO.SKINS[(EGO.Save.data.squadLook.RAILGUN || {}).hair] && EGO.SKINS[EGO.Save.data.squadLook.RAILGUN.hair].shape, number: EGO.Showcase.p && EGO.Showcase.p.number, hairs: EGO.TeamUI.options('hair') }; EGO.TeamUI.setTab('squad'); r.card = (document.querySelector('#tm-pitch .fc-card[data-slot="DEF"] .fc-num') || {}).textContent; return r; });
+  check('LOCKER ROOM: every character listed (captain first), the 3D model shows who you pick', k0.stage === 'cl-fit-room' && k0.style === 'RAILGUN' && k0.list >= 5, k0);
+  check('change their number and hairstyle (from the hairstyles you own): the 3D model changes at once, and the card shows the number', o1.look && o1.look.n === 4 && o1.num === '4' && o1.card === '4' && o1.look.hair && o1.key !== k0.key && o1.shape === o1.want && o1.number === 4 && o1.hairs.includes('MOHAWK') && !o1.hairs.includes('AFRO'), o1);
   await page.waitForTimeout(400); await page.screenshot({ path: __dirname + '/shots/team_screen.png', timeout: 120000 }).catch(() => {});
   const o2 = await page.evaluate(() => {
     const G = EGO.Game; EGO.Save.load(); EGO.Save.validate();

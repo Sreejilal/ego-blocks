@@ -1602,6 +1602,45 @@ const Drill = {
 const GIFTS = [[45, { emeralds: 100 }], [25, { emeralds: 150 }], [15, { emeralds: 250 }], [10, { xp: 300 }], [5, { emeralds: 500, jackpot: true }]];
 /** today on this device, so the day turns over at your own midnight */
 function dayKey(t = Date.now()) { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+/* MARKET (owner, Nov 27 2026: "sell and buy players from the market", and players you sell go up): every day a new list of
+   MKT_OFFERS characters for emeralds (MKT_PRICE by rarity). Selling one of yours pays MKT_SELL of its price and puts it
+   back on the market for more: each sale of a character raises its price by MKT_UP (Save.data.market.sold counts them).
+   Story characters are never bought or sold, your captain (the style you play) cannot be sold */
+const MKT_PRICE = { Rare: 400, Epic: 900, Legendary: 2000, Mythic: 3500, Generational: 6000 };
+const MKT_OFFERS = 6, MKT_SELL = 0.5, MKT_UP = 1.25;
+const Market = {
+  price(d, id) { const st = STYLES[id]; return Math.round((MKT_PRICE[st.rarity] || 400) * Math.pow(MKT_UP, d.market.sold[id] || 0) / 10) * 10; },
+  sellPrice(d, id) { return Math.round((MKT_PRICE[STYLES[id].rarity] || 400) * MKT_SELL / 10) * 10; },
+  canSell(d, id) { const st = STYLES[id]; return !!st && !st.story && d.styles.includes(id) && id !== d.style; },
+  /** today's characters (the same all day), then every one you sold that is still for sale, priced up */
+  list(d, day = dayKey()) {
+    const M = d.market;
+    if (M.day !== day) { M.day = day; M.bought = []; }
+    let h = 7; for (const ch of day) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    const pool = STYLE_IDS.filter((id) => !STYLES[id].story && !d.styles.includes(id)), daily = []; // characters you do not have yet
+    for (let i = 0; pool.length && daily.length < Math.min(MKT_OFFERS, pool.length) && i < 400; i++) { h = (Math.imul(h, 1103515245) + 12345) >>> 0; const id = pool[(h >>> 8) % pool.length]; if (!daily.includes(id)) daily.push(id); } // (nothing left to offer: you have them all)
+    const out = daily.filter((id) => !M.bought.includes(id) && !M.listed.includes(id)).map((id) => ({ id, price: this.price(d, id), mine: false }));
+    for (const id of M.listed) if (STYLES[id]) out.push({ id, price: this.price(d, id), mine: true });
+    return out;
+  },
+  buy(d, id) {
+    const o = this.list(d).find((x) => x.id === id);
+    if (!o) return 'NOT FOR SALE TODAY';
+    if (d.styles.includes(id)) return 'YOU HAVE THEM ALREADY';
+    if (d.emeralds < o.price) return 'NOT ENOUGH EMERALDS';
+    d.emeralds -= o.price; d.styles.push(id); d.market.bought.push(id); d.market.listed = d.market.listed.filter((x) => x !== id);
+    if (d.spunStyle === id) d.spunStyle = null; // bought for good
+    return true;
+  },
+  sell(d, id) {
+    if (!this.canSell(d, id)) return STYLES[id] && STYLES[id].story ? 'STORY CHARACTERS STAY' : id === d.style ? 'THAT IS YOUR CAPTAIN' : 'YOU DO NOT HAVE THEM';
+    d.emeralds += this.sellPrice(d, id); d.styles = d.styles.filter((x) => x !== id);
+    for (const k of ['ST', 'WING', 'MID', 'DEF', 'GK']) if (d.squad[k] === id) delete d.squad[k];
+    d.squad.bench = (d.squad.bench || []).filter((x) => x !== id); delete d.squadLook[id];
+    d.market.sold[id] = (d.market.sold[id] || 0) + 1; if (!d.market.listed.includes(id)) d.market.listed.push(id);
+    return true;
+  },
+};
 function dailyFor(key) { let h = 7; for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0; return DAILY_IDS[h % DAILY_IDS.length]; }
 const Daily = {
   /** a new day: a new challenge */

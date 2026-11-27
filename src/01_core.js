@@ -94,7 +94,7 @@ const Save = {
       club: 'ROVERS', skins: [], look: { hair: 'STYLE_HAIR', color: 'STYLE_COLOR', kit: 'TEAM_KIT', boots: 'TEAM_BOOTS', gloves: 'NO_GLOVES', acc: 'NO_ACC', celeb: 'JUMP' },
       rp: 0, pity: { style: 0, flow: 0, skin: 0 },
       stats: { played: 0, wins: 0, draws: 0, losses: 0, goals: 0, assists: 0, spins: 0, tackles: 0, ankles: 0, awakens: 0 },
-      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], topUpOff: false, story: { done: [] }, squad: {}, squadLook: {}, rankGot: 0, tutorial: false, onboarded: false, tips: [], // topUpOff: START OVER was pressed, so the tester pack no longer refills everything by itself
+      spunStyle: null, bp: 0, goalSteps: {}, tone: 1, fkBest: 0, codes: [], topUpOff: false, story: { done: [] }, squad: {}, squadLook: {}, rankGot: 0, market: { day: '', bought: [], sold: {}, listed: [] }, capNum: 10, tutorial: false, onboarded: false, tips: [], // topUpOff: START OVER was pressed, so the tester pack no longer refills everything by itself
       posFor: null, fid: '', friends: [], // fid: this device's friend id (random); friends: [{ f, n }] (the FRIENDS panel; kept here, so no account is needed)
       name: '', account: null, settings: { mute: false, quality: 'auto', sens: 1, invertY: false, btn: 1, assist: true, cutins: true, server: '', chat: 'all', cam: 'third', camPicked: false, autoFs: true, shiftLock: false, sky: 'day', showOnline: true, invites: 'all', frOpen: null, music: true, ballCue: 'auto' },
       howto: false,
@@ -177,6 +177,9 @@ const Save = {
       out.squadLook[id] = o;
     }
     out.rankGot = clamp(Math.floor(Number(out.rankGot) || 0), 0, 9999); // the RANK ROAD: the last step paid
+    const mk = out.market && typeof out.market === 'object' ? out.market : {}, ids = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === 'string' && x.length < 24).slice(0, 60) : []); // the MARKET
+    out.market = { day: typeof mk.day === 'string' ? mk.day.slice(0, 12) : '', bought: ids(mk.bought), listed: ids(mk.listed), sold: Object.fromEntries(Object.entries(mk.sold && typeof mk.sold === 'object' ? mk.sold : {}).filter(([k, v]) => typeof k === 'string' && Number.isInteger(v) && v > 0 && v < 99).slice(0, 80)) };
+    out.capNum = Number.isInteger(out.capNum) && out.capNum >= 1 && out.capNum <= 99 ? out.capNum : 10; // your own shirt number
     out.topUpOff = !!out.topUpOff; out.tutorial = !!out.tutorial; out.onboarded = !!out.onboarded || out.tutorial || (out.stats && out.stats.played > 0); // only brand-new players land in the tutorial
     out.codes = Array.isArray(out.codes) ? out.codes.filter((c) => typeof c === 'string' && c.length < 20).slice(0, 50) : [];
     out.tips = Array.isArray(out.tips) ? out.tips.filter((t) => typeof t === 'string' && t.length < 16).slice(0, 20) : []; // the first-match tips you have seen

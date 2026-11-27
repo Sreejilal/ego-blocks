@@ -673,6 +673,54 @@ body.mv-hit2 canvas#gl { filter: grayscale(1) contrast(3.2) brightness(1.25); }
 @media (max-width: 760px) { .tm-box { grid-template-columns: 1fr; } .tm-left .tm-pitch { max-width: 380px; justify-self: center; width: 100%; } .tm-pitch .fc-card { width: 72px; height: 98px; } .tm-pitch .fc-face { width: 40px; height: 40px; } .tm-pitch .fc-name { font-size: 12px; max-width: 66px; } .tm-roster { max-height: none; } }
 @media (max-height: 460px) { .tm-box { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); } .fc-card { width: 64px; height: 88px; } .fc-face { width: 36px; height: 36px; } .fc-ovr { font-size: 18px; top: 7px; left: 5px; } .fc-pos { top: 23px; left: 6px; } .fc-name { font-size: 11px; max-width: 60px; } .tm-bench { grid-template-columns: repeat(3, 64px); } .tm-roster .fc-card { width: 64px; height: 88px; } .tm-roster { grid-template-columns: repeat(auto-fill, 64px); } .fc-num { font-size: 15px; } .fc-tag { top: 22px; } .tm-left .tm-pitch { max-width: 300px; } .tm-pitch .fc-card { width: 56px; height: 76px; padding: 4px 2px 5px; } .tm-pitch .fc-face { width: 30px; height: 30px; } .tm-pitch .fc-name { font-size: 10px; max-width: 52px; } .tm-pitch .fc-ovr { font-size: 15px; top: 5px; left: 4px; } .tm-pitch .fc-pos { top: 18px; left: 5px; font-size: 7px; } }
 /* TRAINING and the drills' stars; the DAILY login calendar */
+/* MY CLUB (TeamUI): tabs SQUAD, LOCKER ROOM and MARKET, each with a 3D stage (the stadium shows through round the player,
+   like the Locker: Showcase moves --stx/--sty to the stage) */
+#scr-team.club { background: radial-gradient(ellipse 17% 38% at var(--stx, 18%) var(--sty, 45%), rgba(9,11,22,.08) 40%, rgba(9,11,22,.93) 100%); }
+.cl-wrap { max-width: 1440px; }
+.cl-head { flex-wrap: wrap; gap: 10px 14px; }
+.cl-tabs { display: flex; gap: 4px; padding: 4px; background: rgba(9,11,22,.7); box-shadow: inset 0 0 0 2px var(--slate-3); }
+.cl-tab { all: unset; box-sizing: border-box; cursor: pointer; padding: 8px 16px; font-family: var(--font-display); font-size: 22px; line-height: 1; color: var(--muted); }
+.cl-tab[aria-selected="true"] { background: var(--gold); color: var(--ink); }
+.cl-tab:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+@media (hover: hover) { .cl-tab:not([aria-selected="true"]):hover { color: var(--text); background: var(--slate-2); } }
+.cl-em { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-display); font-size: 26px; color: var(--emerald); }
+.cl-em img { width: 22px; height: 22px; image-rendering: pixelated; }
+.cl-body { display: grid; gap: 14px; align-items: start; }
+.cl-squad { grid-template-columns: minmax(230px, .85fr) minmax(0, 1.25fr) minmax(0, 1fr); }
+.cl-room { grid-template-columns: minmax(220px, .8fr) minmax(240px, 1fr) minmax(0, 1.1fr); }
+.cl-market { grid-template-columns: minmax(0, 1fr) minmax(240px, .8fr) minmax(0, 1fr); }
+.cl-col { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.cl-col.panel { padding: 14px; }
+.cl-col h3 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 28px; line-height: .9; }
+.cl-stage { position: relative; height: clamp(260px, 52vh, 560px); touch-action: none; cursor: grab; }
+.cl-stage:active { cursor: grabbing; }
+.cl-info { display: grid; gap: 6px; padding: 12px 14px; }
+.cl-capname { font-family: var(--font-display); font-weight: 400; font-size: 40px; line-height: .85; }
+.cl-capline { font-family: var(--font-label); font-size: 10px; letter-spacing: .06em; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.cl-moves { display: flex; gap: 4px; flex-wrap: wrap; }
+.cl-moves i { font-style: normal; padding: 3px 6px; font-family: var(--font-label); font-size: 9px; letter-spacing: .04em; background: var(--slate-2); box-shadow: inset 0 0 0 1px var(--slate-3); }
+.cl-btns, .tm-selbtns { display: flex; gap: 6px; flex-wrap: wrap; }
+.tm-sel { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.tm-sel b { font-family: var(--font-display); font-weight: 400; font-size: 28px; line-height: .9; }
+.tm-sel .label, .tm-sel .tm-note { grid-column: 1 / -1; }
+.tm-sel .tm-selbtns { grid-row: 2; grid-column: 2; }
+.lr-list, .mk-list { display: grid; gap: 6px; max-height: min(62vh, 640px); overflow-y: auto; padding: 2px 4px 4px 2px; }
+.lr-row, .mk-see { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 10px; align-items: center; padding: 6px 8px; background: var(--slate-2); box-shadow: inset 4px 0 0 var(--rc, #5a5f78); }
+.lr-row .fc-face, .mk-see .fc-face { grid-row: span 2; width: 44px; height: 44px; background: var(--ink); }
+.lr-row b, .mk-see b { font-family: var(--font-display); font-weight: 400; font-size: 20px; line-height: .9; }
+.lr-row > span, .mk-see > span { font-family: var(--font-label); font-size: 9px; letter-spacing: .06em; color: var(--muted); display: flex; gap: 4px; align-items: center; }
+.lr-row.on, .mk-row.on .mk-see { background: var(--slate-3); box-shadow: inset 4px 0 0 var(--rc, #5a5f78), inset 0 0 0 2px var(--gold); }
+.lr-row:focus-visible, .mk-see:focus-visible, .cl-tab:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+@media (hover: hover) { .lr-row:hover, .mk-see:hover { background: var(--slate-3); } }
+.lr-who { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.lr-who b { font-family: var(--font-display); font-weight: 400; font-size: 36px; line-height: .85; }
+.lr-edit .tm-outfit { grid-template-columns: 1fr; }
+.mk-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
+.mk-price { display: grid; justify-items: end; font-family: var(--font-display); font-size: 22px; line-height: .9; color: var(--emerald); }
+.mk-price img { width: 16px; height: 16px; image-rendering: pixelated; display: inline; vertical-align: middle; margin-right: 3px; }
+.mk-price em { font-style: normal; font-family: var(--font-label); font-size: 8px; letter-spacing: .04em; color: var(--gold); }
+@media (max-width: 1000px) { .cl-squad, .cl-room, .cl-market { grid-template-columns: 1fr; } .cl-stage { height: clamp(220px, 38vh, 360px); } .lr-list, .mk-list { max-height: 42vh; } }
+@media (max-height: 460px) { .cl-stage { height: 230px; } .cl-tab { font-size: 16px; padding: 6px 10px; } .cl-capname { font-size: 28px; } }
 /* RANK ROAD (RankUI): your rank, the road of rewards (a skin at every new rank), and the button on the start screen */
 .rr-go { all: unset; box-sizing: border-box; cursor: pointer; pointer-events: auto; display: grid; gap: 1px; margin-top: 8px; padding: 6px 10px; background: rgba(255,203,61,.12); box-shadow: inset 0 0 0 2px var(--gold); }
 .rr-go span { font-family: var(--font-display); font-size: 18px; line-height: .9; color: var(--gold); }

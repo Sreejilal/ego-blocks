@@ -92,7 +92,7 @@ class Match {
   }
   buildTeams(opts) {
     const names = BOT_NAMES.slice().sort(() => Math.random() - 0.5);
-    const used = new Set([1, 10]), looks = (opts.squad && opts.squad.looks) || {}; // MY TEAM outfits (a number and skins for each character)
+    const used = new Set([1, 10, opts.capNum || 10]), looks = (opts.squad && opts.squad.looks) || {}; // MY TEAM outfits (a number and skins for each character)
     if (opts.squad) for (const k of ['ST', 'WING', 'MID', 'DEF']) { const id = opts.squad[k]; if (id && looks[id] && looks[id].n) used.add(looks[id].n); } // their numbers are taken
     this.setups = opts.setups || this.pickSetups(opts);
     // online: each player takes an outfield role on their team, striker first
@@ -112,7 +112,7 @@ class Match {
         const human = opts.humans ? !!net : team === 0 && role === mine && !opts.noHuman; // you play the most attacking spot, or the one you picked
         const sq = !net && !human && team === 0 && opts.squad && opts.squad[SQUAD_OF[role]]; // STORY: the character you picked for this spot
         const sl = sq && STYLES[sq] ? looks[sq] : null; // their outfit, if you made one
-        let num = role === 'GK' ? (sl && sl.n) || 1 : human && !net ? 10 : sl && sl.n ? sl.n : 0;
+        let num = role === 'GK' ? (sl && sl.n) || 1 : human && !net ? (opts.capNum || 10) : sl && sl.n ? sl.n : 0;
         if (!num) { do num = randi(2, 99); while (used.has(num)); used.add(num); }
         const style = net ? net.style : human ? (opts.style || Save.data.style) : sq && STYLES[sq] ? sq : team === 0 && opts.squad && !opts.teamStyle ? 'ROOKIE' : opts.teamStyle ? opts.teamStyle[team] : botStyle(role); // MY TEAM: a spot nobody was put in is ROOKIE (owner: never a random pick) // teamStyle: [home, away] for balance tests; bots mostly play a character made for their spot
         const flow = net ? net.flow : human ? (opts.flow !== undefined ? opts.flow : Save.data.flow) : sl ? (sl.flow && FLOWS[sl.flow] ? sl.flow : null) : team === 0 && opts.squad ? null : (chance(0.85) ? pick(FLOW_IDS) : null); // your team: only the Flow you gave them

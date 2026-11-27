@@ -169,7 +169,7 @@ const Game = {
     const pos = story && pos0 === 'GK' ? 'ST' : pos0; // STORY: you are the striker the story is about, never in goal (owner, Nov 26 2026)
     applyBallLook(); // your ball
     const squad = story || !['tutorial', 'freekick', 'fkkeeper'].includes(mode) ? sd0.squad : null; // MY TEAM plays every offline match (not practice)
-    this.match = new Match(mode, skill, { size, role: pos, intro, story, away, squad: squad ? Object.assign({}, squad, { looks: sd0.squadLook || {} }) : null }); // a winger's team plays wide (Match.pickSetups)
+    this.match = new Match(mode, skill, { size, role: pos, intro, story, away, squad: squad ? Object.assign({}, squad, { looks: sd0.squadLook || {} }) : null, capNum: sd0.capNum || 10 }); // a winger's team plays wide (Match.pickSetups)
     this.lastMode = mode; this.lastStory = story; this.storyNext = null; this.ended = false;
     Replay.reset(this.match);
     World.paintCrowd(TEAM[0], TEAM[1]); World.setTier(this.match.tier);
@@ -410,7 +410,7 @@ window.EGO = {
   Game, World, Save, AI, Match, FX, TimeCtl, UI, Touch, Input, Cam, Cine, Showcase, Reveal, Replay, Net, Friends, Tips, BallCue, PadNav, Admin, unlockAll, ROOKIE_RAMP, rookieRamp, Account, Portal, Player, TEAM, rollRarity, poolFor,
   Goals, GOALS, BP_COST, SKIN_SLOTS, Sfx, Music, MUSIC_BPM, MUSIC_VOL,
   EMOTES, FK_TYPES, fkIdeal, FK_TOL, FKHud, ShotHud, CURVE_ANGLE, CURVE_MIN, TUT_STEPS, TutHud, CODES, GIFT_CODE, codeHash, redeemCode, codeTopUp,
-  StoryUI, Cutscene, Movie, STORY_FILMS, MV_PLACES, crestCanvas, RankUI, Rank, RANK_ROAD, TeamUI, TrainUI, Drill, DRILLS, LOGIN_REWARDS, Story, STORY, STORY_EVENTS, SQUAD_SLOTS, MODE_ART, CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
+  StoryUI, Cutscene, Movie, STORY_FILMS, MV_PLACES, crestCanvas, RankUI, Rank, RANK_ROAD, Market, MKT_PRICE, TeamUI, TrainUI, Drill, DRILLS, LOGIN_REWARDS, Story, STORY, STORY_EVENTS, SQUAD_SLOTS, MODE_ART, CLUBS, CLUB_IDS, sideFor, matchSides, standTop, kitClash, STYLES, STYLE_IDS, GK_IDS, botStyle, ROLES, roleFits, roleSpot, AWAKEN_STORY, ABILITIES, Sfx, FLOWS, SKINS, Daily, DAILY_CHALLENGES, PITCH: F,
   /** run a full bot-vs-bot match off-screen and report what happened */
   /** teamD: [home skill, away skill] to pit two levels against each other, e.g. [0.2, 0.95] for Wood vs Obsidian */
   simulate(mode = 'quick', d = 0.5, seconds = 240, size = 0, teamD = null) {

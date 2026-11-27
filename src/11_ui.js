@@ -764,7 +764,7 @@ const UI = {
     const was = this.cur;
     this.cur = name;
     if (was && was !== name && was !== 'hud' && name !== 'hud') { if (name === 'lobby') Sfx.close(); else Sfx.open(); } // menus whoosh in and out (matches have their own sounds)
-    if (name === 'team' && this.cur !== 'team') TeamUI.from = this.cur === 'story' ? 'story' : 'lobby'; // BACK goes where you came from
+    if (name === 'team' && was !== 'team') TeamUI.from = was === 'story' ? 'story' : 'lobby'; // BACK goes where you came from
     const map = { ranks: 'scr-ranks', train: 'scr-train', team: 'scr-team', story: 'scr-story', lobby: 'scr-lobby', spins: 'scr-spins', locker: 'scr-locker', howto: 'scr-howto', profile: 'scr-profile', pass: 'scr-pass', goals: 'scr-goals', online: 'scr-online', hud: 'hud' };
     for (const k in map) $(map[k]).hidden = k !== name;
     if (name !== 'hud') { $('scoreboard').hidden = true; this.youLabel.hidden = true; for (const t of this.ntags) t.hidden = true; for (const l of this.labels) { l.p = null; l.el.hidden = true; } }
